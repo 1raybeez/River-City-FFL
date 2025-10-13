@@ -1,4 +1,12 @@
-<p><b>River City Fantasy Football</b></p>
+/*   STEP 1   */
+export const leagueID = "1199749375539027968"; // your league ID
+export const leagueName = "River City"; // your league name
+export const dues = 100; // (optional) used in template constitution page
+export const dynasty = true; // true for dynasty leagues, false for redraft and keeper
+export const enableBlog = false; // requires VITE_CONTENTFUL_ACCESS_TOKEN and VITE_CONTENTFUL_SPACE environment variables
+
+/*   STEP 2   */
+export const homepageText = `<p><b>River City Fantasy Football</b></p>
   <p><b>Our History: From Roots to RVA</b></p>
   <p><b>Area 10 FFL</> was born in 2011, founded by a small group from Area 10 church with a simple goal: to create a community beyond Sunday services and small groups. It was a space for new members and longtime attendees to connect over a shared passion for fantasy football.</p>
   <p>As time passed, life happened. Core members moved away, but the bond forged over draft picks and weekly matchups held firm. In 2019, to keep our league together and honor our enduring friendships, we decided to rebrand. We shed the church affiliation and became <b>River City FFL</b>, a name that proudly ties us to the heart of Richmond, Virginia—the RVA.</p>
