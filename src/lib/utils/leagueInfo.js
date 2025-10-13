@@ -8,7 +8,7 @@ export const enableBlog = false; // requires VITE_CONTENTFUL_ACCESS_TOKEN and VI
 /*   STEP 2   */
 export const homepageText = `<p><b>River City Fantasy Football</b></p>
   <p><b>Our History: From Roots to RVA</b></p>
-  <p><b>Area 10 FFL</> was born in 2011, founded by a small group from Area 10 church with a simple goal: to create a community beyond Sunday services and small groups. It was a space for new members and longtime attendees to connect over a shared passion for fantasy football.</p>
+  <p><b>Area 10 FFL</b> was born in 2011, founded by a small group from Area 10 church with a simple goal: to create a community beyond Sunday services and small groups. It was a space for new members and longtime attendees to connect over a shared passion for fantasy football.</p>
   <p>As time passed, life happened. Core members moved away, but the bond forged over draft picks and weekly matchups held firm. In 2019, to keep our league together and honor our enduring friendships, we decided to rebrand. We shed the church affiliation and became <b>River City FFL</b>, a name that proudly ties us to the heart of Richmond, Virginia—the RVA.</p>
   <p><b>The Stakes</b></p>
   <p>Every season, our managers compete for a place in the record books. The ultimate champion walks away with a $219 payout, a custom championship ring, and all the bragging rights they can handle. So far, <b>Tommy Moore</b> is the one to beat, holding an impressive five league titles.</p>
