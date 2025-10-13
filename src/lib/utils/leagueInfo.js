@@ -1,18 +1,11 @@
-/*   STEP 1   */
-export const leagueID = "1199749375539027968"; // your league ID
-export const leagueName = "River City"; // your league name
-export const dues = 100; // (optional) used in template constitution page
-export const dynasty = true; // true for dynasty leagues, false for redraft and keeper
-export const enableBlog = false; // requires VITE_CONTENTFUL_ACCESS_TOKEN and VITE_CONTENTFUL_SPACE environment variables
-
-/*   STEP 2   */
-export const homepageText = `
-  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
-  <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
-  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
-  <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
-  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
-  <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+<p>River City Fantasy Football </p>
+  <p>Our History: From Roots to RVA</p>
+  <p><b>Area 10 FFL</> was born in 2011, founded by a small group from Area 10 church with a simple goal: to create a community beyond Sunday services and small groups. It was a space for new members and longtime attendees to connect over a shared passion for fantasy football.</p>
+  <p>As time passed, life happened. Core members moved away, but the bond forged over draft picks and weekly matchups held firm. In 2019, to keep our league together and honor our enduring friendships, we decided to rebrand. We shed the church affiliation and became <b>River City FFL</b>, a name that proudly ties us to the heart of Richmond, Virginia—the RVA.</p>
+  <p><b>The Stakes</b></p>
+  <p>Every season, our managers compete for a place in the record books. The ultimate champion walks away with a $219 payout, a custom championship ring, and all the bragging rights they can handle. So far, <b>Tommy Moore</b> is the one to beat, holding an impressive five league titles.</p>
+  <p>But not every story has a happy ending. Our league has its own unique form of punishment: the <b>Toilet Bowl</b>. The loser is tasked with writing a cringe-worthy apology letter to the league, a tradition that started in 2022. No one knows this struggle better than <b>Landon Elliott</b>, who has endured this particular brand of humiliation a record three times.</p>
+  <p>While the competition gets more intense each year, our core values of community and friendly rivalry remain the same. The trophy, the payout, and the shame are all just bonuses to the friendships we've built along the way.</p>
 `;
 
 /*   STEP 3   */
