@@ -55,6 +55,7 @@ export default function LeagueInfoPage() {
             { title: "Constitution", desc: "Official bylaws, scoring, and trade rules.", href: "/league-info/constitution", icon: Scale, color: "blue", linkText: "Read Rules" },
             { title: "Draft Board", desc: "History of every pick (2018-Present).", href: "/league-info/draft", icon: Grid3X3, color: "green", linkText: "View Board" },
             { title: "Trophy Room", desc: "Hall of Champions & The Shame Wall.", href: "/league-info/trophy-room", icon: Trophy, color: "yellow", linkText: "Enter Hall" },
+            { title: "Rivalry Hub", desc: "Head-to-head records and career stats.", href: "/league-info/rivalries", icon: Swords, color: "red", linkText: "Scan Rivalry" },
             { title: "Resources", desc: "Helpful links, tools, and league documents.", href: "/league-info/resources", icon: FileText, color: "purple", linkText: "View Docs" },
             { title: "Archives", desc: "Past seasons, newsletters, and history.", href: "/league-info/archives", icon: Archive, color: "orange", linkText: "Open Archives" },
             { title: "Payouts", desc: "League finances and dues tracking.", href: "/league-info/payouts", icon: DollarSign, color: "emerald", linkText: "View Vault" }
