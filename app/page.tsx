@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { 
   Trophy, Users, BookOpen, Swords, ArrowRight, 
-  MessageCircle, TrendingUp, X, FileText, Calendar, Crown, Loader2, Book
+  MessageCircle, TrendingUp, X, FileText, Calendar, Crown, Book
 } from 'lucide-react';
 import { ModeToggle } from '@/components/ModeToggle';
 
@@ -26,7 +26,7 @@ export default function Home() {
   const [loadingProjections, setLoadingProjections] = useState(true);
   const [liveRecap, setLiveRecap] = useState("Loading latest trash talk..."); 
 
-  // --- FETCH LIVE COMMISH RECAP ---
+  // --- FETCH LIVE COMMISH RECAP FROM FIREBASE ---
   useEffect(() => {
     async function fetchRecap() {
       try {
@@ -37,8 +37,8 @@ export default function Home() {
         }
       } catch (err) { 
         console.error("Error fetching recap:", err);
-        // Fallback recap if Firebase is unreachable
-        setLiveRecap("The 2025 campaign has concluded. Aaron Hawkins surged through the playoffs to claim the throne after a 9-5 regular season. Meanwhile, Commish Ray Long has claimed the Toilet Bowl—we await the apology letter.");
+        // Fallback recap
+        setLiveRecap("The 2025 campaign has concluded. Aaron Hawkins surged through the playoffs to claim the throne. Meanwhile, Commish Ray Long has claimed the Toilet Bowl—we await the apology letter.");
       }
     }
     fetchRecap();
@@ -53,25 +53,7 @@ export default function Home() {
         const myLeague = leagues.find((l: any) => l.name.includes("River City"));
         if (!myLeague) return;
 
-        const [usersRes, rostersRes, bracketRes] = await Promise.all([
-            fetch(`https://api.sleeper.app/v1/league/${myLeague.league_id}/users`),
-            fetch(`https://api.sleeper.app/v1/league/${myLeague.league_id}/rosters`),
-            fetch(`https://api.sleeper.app/v1/league/${myLeague.league_id}/winners_bracket`)
-        ]);
-
-        const users = await usersRes.json();
-        const rosters = await rostersRes.json();
-
-        const rosterMap: Record<number, any> = {}; 
-        rosters.forEach((r: any) => {
-            const user = users.find((u: any) => u.user_id === r.owner_id);
-            rosterMap[r.roster_id] = {
-                name: user?.metadata?.team_name || user?.display_name || "Unknown",
-                fpts: r.settings.fpts,
-            };
-        });
-
-        // Set static final rankings based on 2025 results
+        // Static final rankings based on 2025 results
         const finalStandings = [
           { name: "Aaron Hawkins", pct: "100", status: "Champion", color: "bg-yellow-500", rank: 1 },
           { name: "Travis Miller", pct: "85.0", status: "Runner Up", color: "bg-gray-400", rank: 2 },
@@ -100,7 +82,7 @@ export default function Home() {
             <Link href="/" className="flex items-center gap-1 md:gap-2 rounded-full bg-orange-600 dark:bg-[#ff5722] text-white shadow-lg px-4 md:px-6 py-1.5 md:py-2 text-[10px] md:text-sm font-bold"><Trophy className="w-3 h-3 md:w-4 md:h-4" />Home</Link>
             <Link href="/managers" className="flex items-center gap-1 md:gap-2 rounded-full bg-white border border-gray-200 text-gray-700 dark:bg-[#2c2c2c] dark:border-white/10 dark:text-gray-300 px-4 md:px-6 py-1.5 md:py-2 text-[10px] md:text-sm transition"><Users className="w-3 h-3 md:w-4 md:h-4" />Managers</Link>
             <Link href="/league-info" className="flex items-center gap-1 md:gap-2 rounded-full bg-white border border-gray-200 text-gray-700 dark:bg-[#2c2c2c] dark:border-white/10 dark:text-gray-300 px-4 md:px-6 py-1.5 md:py-2 text-[10px] md:text-sm transition"><BookOpen className="w-3 h-3 md:w-4 md:h-4" />Info</Link>
-            <Link href="/matchups" className="flex items-center gap-1 md:gap-2 rounded-full bg-white border border-gray-200 text-gray-700 dark:bg-[#2c2c2c] dark:border-white/10 dark:text-gray-300 px-4 md:px-6 py-1.5 md:py-2 text-[10px] md:text-sm transition"><Swords className="h-3 w-3 md:w-4 md:h-4" />Matchups</Link>
+            <Link href="/matchups" className="flex items-center gap-1 md:gap-2 rounded-full bg-white border border-gray-200 text-gray-700 dark:bg-[#2c2c2c] dark:border-white/10 dark:text-gray-300 px-4 md:px-6 py-1.5 md:py-2 text-[10px] md:text-sm transition"><Swords className="h-3 w-3 md:h-4 md:w-4" />Matchups</Link>
           </nav>
         </div>
       </header>
@@ -108,6 +90,7 @@ export default function Home() {
       <main className="container mx-auto px-4 py-8 md:py-12 max-w-6xl">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 items-start">
           
+          {/* HISTORY PREVIEW CARD */}
           <div className="lg:col-span-2 text-gray-900">
             <button onClick={() => setShowHistoryModal(true)} className="w-full group relative bg-white dark:bg-[#1e1e1e] rounded-3xl border border-gray-200 dark:border-white/10 shadow-lg hover:shadow-2xl transition-all p-8 md:p-12 text-left">
                 <div className="absolute top-0 right-0 p-8 opacity-5"><Book className="w-32 h-32 md:w-48 md:h-48" /></div>
@@ -121,7 +104,7 @@ export default function Home() {
           </div>
 
           <div className="space-y-4 md:space-y-6">
-            {/* === REIGNING CHAMPION UPDATED === */}
+            {/* REIGNING CHAMPION */}
             <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-sm border border-gray-200 dark:border-white/5 overflow-hidden text-center group transition-all text-gray-900">
                 <div className="bg-gradient-to-r from-[#FF4500] to-[#FF0000] p-3"><h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Reigning Champion</h3></div>
                 <div className="p-4 md:p-6">
@@ -138,24 +121,24 @@ export default function Home() {
                 </div>
             </div>
 
+            {/* COMMISSIONER CORNER */}
             <div className="bg-[#0B1527] text-white p-5 md:p-6 rounded-2xl shadow-lg relative overflow-hidden border border-white/5">
                 <div className="absolute top-0 right-0 p-4 opacity-10"><FileText className="w-16 h-16 md:w-24 md:h-24" /></div>
-                <div className="flex items-center gap-3 mb-4 relative z-10 text-gray-900"><MessageCircle className="w-5 h-5 text-blue-400" /><div><h3 className="text-xs font-bold uppercase text-white">Commissioner's Corner</h3><p className="text-[10px] text-blue-300 uppercase tracking-wider">Season Finale Recap</p></div></div>
-                <h4 className="text-sm md:text-lg font-bold mb-2 relative z-10 text-white">2025: A New Era Begins</h4>
+                <div className="flex items-center gap-3 mb-4 relative z-10"><MessageCircle className="w-5 h-5 text-blue-400" /><div><h3 className="text-xs font-bold uppercase text-white">Commissioner's Corner</h3><p className="text-[10px] text-blue-300 uppercase tracking-wider">Season Finale Recap</p></div></div>
+                <h4 className="text-sm md:text-lg font-bold mb-2 relative z-10">2025: A New Era Begins</h4>
                 <p className="text-xs text-gray-300 leading-relaxed mb-4 md:mb-6 relative z-10 line-clamp-3 md:line-clamp-5">{liveRecap}</p>
                 <button onClick={() => setShowRecap(true)} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-[10px] md:text-xs font-bold py-2 md:py-2.5 rounded-lg mb-3 transition-colors">Read Full Recap</button>
             </div>
 
-            {/* === AI PREDICTOR UPDATED === */}
+            {/* AI PREDICTOR / STANDINGS */}
             <div className="bg-[#3b0764] text-white p-5 md:p-6 rounded-2xl shadow-lg relative overflow-hidden border border-white/5">
                 <div className="absolute top-0 right-0 p-4 opacity-10"><TrendingUp className="w-24 h-24 md:w-32 md:h-32" /></div>
-                <div className="flex items-center gap-3 mb-4 md:mb-6 relative z-10 text-gray-900">
+                <div className="flex items-center gap-3 mb-4 md:mb-6 relative z-10">
                     <div className="p-2 bg-fuchsia-500/20 rounded-lg text-fuchsia-300"><TrendingUp className="w-5 h-5" /></div>
                     <div><h3 className="text-sm md:text-lg font-bold text-white">AI Season Predictor</h3><p className="text-[10px] text-fuchsia-300 uppercase tracking-wider">Final Standings</p></div>
                 </div>
                 <div className="relative z-10 mb-6 italic text-xs leading-relaxed text-fuchsia-100">
-                    "The 2025 campaign belongs to **Aaron Hawkins**. After a solid 9-5 season, he proved unstoppable in the playoffs. 
-                    Algorithms now project a massive 2026 title defense as Travis Miller and JD Dowling plot their revenge."
+                    "The 2025 campaign belongs to **Aaron Hawkins**. After a solid 9-5 season, he proved unstoppable in the playoffs."
                 </div>
                 <button onClick={() => setShowProjections(true)} className="w-full bg-fuchsia-900/50 hover:bg-fuchsia-800 border border-fuchsia-500/30 text-white text-[10px] md:text-xs font-bold py-2 md:py-2.5 rounded-lg transition-colors relative z-10">View 2025 Standings</button>
             </div>
@@ -163,23 +146,48 @@ export default function Home() {
         </div>
       </main>
       
-      {/* Modals remain exactly as previous logic */}
+      {/* HISTORY MODAL WITH FULL STORY */}
       {showHistoryModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300 text-gray-900" onClick={() => setShowHistoryModal(false)}>
-            <div className="bg-white dark:bg-[#1e1e1e] w-full max-w-2xl rounded-3xl overflow-hidden relative p-8 md:p-12" onClick={e => e.stopPropagation()}>
+            <div className="bg-white dark:bg-[#1e1e1e] w-full max-w-2xl rounded-3xl overflow-hidden relative p-8 md:p-12 shadow-2xl" onClick={e => e.stopPropagation()}>
                 <button onClick={() => setShowHistoryModal(false)} className="absolute top-4 right-4 p-2 text-gray-500 hover:text-orange-600 transition-colors z-20"><X className="w-6 h-6" /></button>
-                <div className="max-h-[85vh] overflow-y-auto space-y-6 custom-scrollbar">
-                    <div className="flex items-center gap-3 mb-4 text-gray-900"><Book className="w-8 h-8 text-orange-600" /><h3 className="text-2xl font-black dark:text-white uppercase tracking-tight">The League Annals</h3></div>
+                
+                <div className="max-h-[85vh] overflow-y-auto space-y-8 pr-2 custom-scrollbar">
+                    <div className="flex items-center gap-3 mb-4">
+                        <Book className="w-8 h-8 text-orange-600" />
+                        <h3 className="text-3xl font-black dark:text-white uppercase tracking-tight italic">The League Annals</h3>
+                    </div>
+                    
                     <div className="prose prose-sm md:prose-base dark:prose-invert text-gray-600 dark:text-gray-300 leading-relaxed">
-                        <p><strong>Area 10 FFL</strong> was born in 2011. In 2019, we rebranded to <span className="text-orange-600 font-bold">River City FFL</span>, tying us to the heart of Richmond, VA.</p>
-                        <div className="bg-orange-50 dark:bg-white/5 p-6 rounded-2xl border border-orange-100 dark:border-white/5 my-6 text-gray-900">
-                            <h4 className="text-lg font-bold mb-2 dark:text-white uppercase tracking-tight">The Stakes</h4>
-                            <p className="mb-2">The champion receives a <span className="text-green-600 font-bold">$219 payout</span> and a ring.</p>
-                            <p>The <span className="text-red-500 font-bold">Toilet Bowl</span> loser must write an apology letter.</p>
-                        </div>
-                        <div className="pt-6 text-center">
-                            <Link href="/league-info/trophy-room" className="inline-flex items-center justify-center w-full bg-orange-600 text-white py-4 rounded-2xl font-black text-lg hover:bg-orange-700 transition-colors shadow-lg">
-                                <Trophy className="w-6 h-6 mr-2" /> Enter the Trophy Room
+                        <section>
+                            <h4 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-3">Our History: From Roots to RVA</h4>
+                            <p>
+                                <strong>Area 10 FFL</strong> was born in 2011, founded by a small group from Area 10 church with a simple goal: to create a community beyond Sunday services and small groups. It was a space for new members and longtime attendees to connect over a shared passion for fantasy football.
+                            </p>
+                            <p>
+                                As time passed, life happened. Core members moved away, but the bond forged over draft picks and weekly matchups held firm. In 2019, to keep our league together and honor our enduring friendships, we decided to rebrand. We shed the church affiliation and became <strong>River City FFL</strong>, a name that proudly ties us to the heart of Richmond, Virginia—the RVA.
+                            </p>
+                        </section>
+
+                        <section className="bg-gray-50 dark:bg-white/5 p-6 rounded-2xl border border-gray-100 dark:border-white/5 my-8">
+                            <h4 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-3 italic underline decoration-orange-600">The Stakes</h4>
+                            <p>
+                                Every season, our managers compete for a place in the record books. The ultimate champion walks away with a <strong>$219 payout</strong>, a custom championship ring, and all the bragging rights they can handle. So far, <strong>Tommy Moore</strong> is the one to beat, holding an impressive five league titles.
+                            </p>
+                            <p>
+                                But not every story has a happy ending. Our league has its own unique form of punishment: the <strong>Toilet Bowl</strong>. The loser is tasked with writing a cringe-worthy apology letter to the league, a tradition that started in 2022. No one knows this struggle better than <strong>Landon Elliott</strong>, who has endured this particular brand of humiliation a record three times.
+                            </p>
+                        </section>
+
+                        <section>
+                            <p className="italic font-medium">
+                                While the competition gets more intense each year, our core values of community and friendly rivalry remain the same. The trophy, the payout, and the shame are all just bonuses to the friendships we've built along the way.
+                            </p>
+                        </section>
+
+                        <div className="pt-8 text-center">
+                            <Link href="/league-info/trophy-room" className="inline-flex items-center justify-center w-full bg-orange-600 text-white py-4 rounded-2xl font-black text-lg hover:bg-orange-700 transition-all shadow-lg hover:scale-[1.02]">
+                                <Trophy className="w-6 h-6 mr-3" /> Visit the Trophy Room
                             </Link>
                         </div>
                     </div>
@@ -188,6 +196,7 @@ export default function Home() {
         </div>
       )}
 
+      {/* COMMISSIONER RECAP MODAL */}
       {showRecap && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowRecap(false)}>
             <div className="bg-[#0B1527] w-full max-w-lg rounded-2xl shadow-2xl border border-blue-500/30 overflow-hidden relative text-white" onClick={e => e.stopPropagation()}>
@@ -200,6 +209,7 @@ export default function Home() {
         </div>
       )}
 
+      {/* FINAL STANDINGS MODAL */}
       {showProjections && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowProjections(false)}>
             <div className="bg-white dark:bg-[#1e1e1e] w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -215,7 +225,7 @@ export default function Home() {
                                 <tr key={team.rank} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                                     <td className="px-3 py-3 font-mono text-gray-400">#{team.rank}</td>
                                     <td className="px-3 py-3 font-bold text-gray-900 dark:text-white flex items-center gap-2">{team.rank <= 3 && <Crown className="w-3 h-3 text-yellow-500" />}<span>{team.name}</span></td>
-                                    <td className="px-3 py-3 text-right font-mono text-gray-900 dark:text-white">{team.status}</td>
+                                    <td className="px-3 py-3 text-right font-mono text-gray-900 dark:text-white uppercase">{team.status}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -224,6 +234,14 @@ export default function Home() {
             </div>
         </div>
       )}
+
+      {/* GLOBAL CUSTOM SCROLLBAR STYLE */}
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
+      `}</style>
     </div>
   );
 }
