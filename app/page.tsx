@@ -94,14 +94,15 @@ export default function Home() {
     { 
       date: "March 21, 2026", 
       event: "Spring Owners Meeting", 
-      desc: "9:30 AM start. Debate 2026 rule proposals. Voting window opens.", 
+      desc: "9:30 AM start. Zoom Passcode: r727dL. We will debate 2026 rules and the Draft Getaway.", 
       icon: Gavel, 
       color: "orange",
-      location: "Google Meet",
-      start: "20260320T203000",
-      end: "20260320T220000",
-      link: "https://meet.google.com/your-meeting-id", 
-      gCalLink: "https://www.google.com/calendar/render?action=TEMPLATE&text=River+City+FFL+Spring+Meeting&dates=20260321T003000Z/20260321T020000Z&details=Debate+2026+proposals.&location=Google+Meet"
+      location: "Zoom",
+      start: "20260321T093000",
+      end: "20260321T110000",
+      link: "https://us04web.zoom.us/j/79182897961?pwd=fEGKPcKevhR5utbDk0K30nZzSI4yRg.1", 
+      // gCalLink converted to UTC (9:30 AM EST is 14:30 UTC)
+      gCalLink: "https://www.google.com/calendar/render?action=TEMPLATE&text=River+City+FFL+Spring+Meeting&dates=20260321T143000Z/20260321T160000Z&details=Join+Zoom+Meeting%0Ahttps://us04web.zoom.us/j/79182897961?pwd=fEGKPcKevhR5utbDk0K30nZzSI4yRg.1%0A%0AMeeting+ID:+791+8289+7961%0APasscode:+r727dL&location=Zoom"
     },
     { 
       date: "Mar 21 - Mar 28", 
@@ -109,9 +110,9 @@ export default function Home() {
       desc: "7-day window to cast ballots in the Legislative Hub before results lock.", 
       icon: Vote, 
       color: "red",
-      start: "20260320T220000",
-      end: "20260327T235959",
-      gCalLink: "https://www.google.com/calendar/render?action=TEMPLATE&text=FFL+Voting+Deadline&dates=20260321T020000Z/20260328T040000Z&details=Cast+final+ballots+in+the+Hub."
+      start: "20260321T110000",
+      end: "20260328T235959",
+      gCalLink: "https://www.google.com/calendar/render?action=TEMPLATE&text=FFL+Voting+Deadline&dates=20260321T160000Z/20260329T040000Z&details=Cast+final+ballots+in+the+Hub."
     },
     { 
       date: "Sept 4 - Sept 7", 
