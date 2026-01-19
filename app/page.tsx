@@ -92,9 +92,9 @@ export default function Home() {
   // --- CALENDAR DATA ---
   const events = [
     { 
-      date: "March 20, 2026", 
+      date: "March 2, 2026", 
       event: "Spring Owners Meeting", 
-      desc: "8:30 PM start. Debate 2026 rule proposals. Voting window opens.", 
+      desc: "9:30 AM start. Debate 2026 rule proposals. Voting window opens.", 
       icon: Gavel, 
       color: "orange",
       location: "Google Meet",
@@ -104,7 +104,7 @@ export default function Home() {
       gCalLink: "https://www.google.com/calendar/render?action=TEMPLATE&text=River+City+FFL+Spring+Meeting&dates=20260321T003000Z/20260321T020000Z&details=Debate+2026+proposals.&location=Google+Meet"
     },
     { 
-      date: "Mar 20 - Mar 27", 
+      date: "Mar 21 - Mar 28", 
       event: "Official Voting Window", 
       desc: "7-day window to cast ballots in the Legislative Hub before results lock.", 
       icon: Vote, 

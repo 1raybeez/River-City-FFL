@@ -135,8 +135,24 @@ export default function ProposalsPage() {
                     </div>
                     
                     <h3 className="text-lg font-black uppercase mb-4 tracking-tighter leading-tight text-gray-900 dark:text-white">{prop.title}</h3>
+                    
+                    {/* NEW: Clickable Description Parser */}
                     <div className="bg-gray-50 dark:bg-black/20 p-5 rounded-3xl border-l-4 border-orange-600 italic text-sm text-gray-600 dark:text-gray-400">
-                      "{prop.description}"
+                      {prop.description.split(/(https?:\/\/[^\s]+)/g).map((part: string, i: number) => (
+                        part.match(/^https?:\/\//) ? (
+                          <a 
+                            key={i} 
+                            href={part} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-orange-600 underline break-all font-bold hover:text-orange-500 transition-colors"
+                          >
+                            {part}
+                          </a>
+                        ) : (
+                          <span key={i}>{part}</span>
+                        )
+                      ))}
                     </div>
                   </div>
 
