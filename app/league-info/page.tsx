@@ -5,7 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { 
   Trophy, Users, BookOpen, Swords, ArrowLeft, 
-  Scale, Grid3X3, DollarSign, FileText, Archive
+  Scale, Grid3X3, DollarSign, FileText, Archive,
+  Gavel // Added for the Legislative Hub
 } from 'lucide-react';
 import { ModeToggle } from '@/components/ModeToggle';
 
@@ -16,13 +17,11 @@ export default function LeagueInfoPage() {
       {/* HEADER: RESPONSIVE PADDING & SCALING */}
       <header className="border-b border-gray-200 dark:border-white/10 bg-linear-to-b from-gray-50 to-white dark:from-[#1a1a1a] dark:to-[#121212] pb-6 md:pb-8 pt-4 shadow-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 text-center relative">
-          {/* BACK BUTTON: Smaller on mobile */}
           <Link href="/" className="absolute top-4 left-2 md:left-4 flex items-center gap-1 md:gap-2 text-gray-500 hover:text-orange-600 transition-colors font-bold text-[10px] md:text-sm uppercase tracking-widest">
              <ArrowLeft className="w-3 h-3 md:w-4 md:h-4" /> Home
           </Link>
           <div className="absolute top-4 right-2 md:right-4"><ModeToggle /></div>
           
-          {/* LOGO: Scaled for phone */}
           <div className="mx-auto mb-4 md:mb-6 flex h-16 w-16 md:h-24 md:w-24 items-center justify-center rounded-full bg-white dark:bg-linear-to-br dark:from-[#2c2c2c] dark:to-[#1a1a1a] shadow-xl border-2 md:border-4 border-gray-100 dark:border-white/5 overflow-hidden relative">
              <Image src="/River City FFL Logo.JPG" alt="Logo" fill className="object-cover" priority unoptimized />
           </div>
@@ -31,7 +30,6 @@ export default function LeagueInfoPage() {
             League <span className="text-orange-600 dark:text-white">Info Hub</span>
           </h1>
 
-          {/* NAV: FLEX-WRAP FOR MOBILE */}
           <nav className="flex flex-wrap justify-center gap-2 md:gap-4 mb-4 md:mb-8 px-2">
             {[
               { label: 'Home', href: '/', icon: Trophy },
@@ -47,12 +45,13 @@ export default function LeagueInfoPage() {
         </div>
       </header>
 
-      {/* --- INFO GRID: 1 COL PHONE / 2 COL TABLET / 3 COL DESKTOP --- */}
+      {/* --- INFO GRID --- */}
       <main className="container mx-auto px-4 py-8 md:py-12 max-w-6xl">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
           
           {[
             { title: "Constitution", desc: "Official bylaws, scoring, and trade rules.", href: "/league-info/constitution", icon: Scale, color: "blue", linkText: "Read Rules" },
+            { title: "Legislative Hub", desc: "Submit proposals and vote on 2026 rule changes.", href: "/commish/proposals", icon: Gavel, color: "orange", linkText: "Enter Chamber" },
             { title: "Draft Board", desc: "History of every pick (2018-Present).", href: "/league-info/draft", icon: Grid3X3, color: "green", linkText: "View Board" },
             { title: "Trophy Room", desc: "Hall of Champions & The Shame Wall.", href: "/league-info/trophy-room", icon: Trophy, color: "yellow", linkText: "Enter Hall" },
             { title: "Rivalry Hub", desc: "Head-to-head records and career stats.", href: "/league-info/rivalries", icon: Swords, color: "red", linkText: "Scan Rivalry" },

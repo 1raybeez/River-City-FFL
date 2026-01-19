@@ -5,7 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { 
   Trophy, Users, BookOpen, Swords, ArrowRight, 
-  MessageCircle, TrendingUp, X, FileText, Calendar, Crown, Book
+  MessageCircle, TrendingUp, X, FileText, Calendar, Crown, Book,
+  CalendarDays, MapPin, Vote, Video, Plus, Gavel
 } from 'lucide-react';
 import { ModeToggle } from '@/components/ModeToggle';
 
@@ -26,6 +27,29 @@ export default function Home() {
   const [loadingProjections, setLoadingProjections] = useState(true);
   const [liveRecap, setLiveRecap] = useState("Loading latest trash talk..."); 
 
+  // --- ICAL GENERATOR ---
+  const downloadICS = (title: string, desc: string, start: string, end: string) => {
+    const calendarData = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'BEGIN:VEVENT',
+      `SUMMARY:${title}`,
+      `DESCRIPTION:${desc}`,
+      `DTSTART:${start}`,
+      `DTEND:${end}`,
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\n');
+
+    const blob = new Blob([calendarData], { type: 'text/calendar;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = window.URL.createObjectURL(blob);
+    link.setAttribute('download', `${title.replace(/\s+/g, '_')}.ics`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // --- FETCH LIVE COMMISH RECAP FROM FIREBASE ---
   useEffect(() => {
     async function fetchRecap() {
@@ -37,7 +61,6 @@ export default function Home() {
         }
       } catch (err) { 
         console.error("Error fetching recap:", err);
-        // Fallback recap
         setLiveRecap("The 2025 campaign has concluded. Aaron Hawkins surged through the playoffs to claim the throne. Meanwhile, Commish Ray Long has claimed the Toilet Bowl—we await the apology letter.");
       }
     }
@@ -53,7 +76,6 @@ export default function Home() {
         const myLeague = leagues.find((l: any) => l.name.includes("River City"));
         if (!myLeague) return;
 
-        // Static final rankings based on 2025 results
         const finalStandings = [
           { name: "Aaron Hawkins", pct: "100", status: "Champion", color: "bg-yellow-500", rank: 1 },
           { name: "Travis Miller", pct: "85.0", status: "Runner Up", color: "bg-gray-400", rank: 2 },
@@ -67,8 +89,44 @@ export default function Home() {
     fetchPlayoffStatus();
   }, []);
 
+  // --- CALENDAR DATA ---
+  const events = [
+    { 
+      date: "March 20, 2026", 
+      event: "Spring Owners Meeting", 
+      desc: "8:30 PM start. Debate 2026 rule proposals. Voting window opens.", 
+      icon: Gavel, 
+      color: "orange",
+      location: "Google Meet",
+      start: "20260320T203000",
+      end: "20260320T220000",
+      link: "https://meet.google.com/your-meeting-id", 
+      gCalLink: "https://www.google.com/calendar/render?action=TEMPLATE&text=River+City+FFL+Spring+Meeting&dates=20260321T003000Z/20260321T020000Z&details=Debate+2026+proposals.&location=Google+Meet"
+    },
+    { 
+      date: "Mar 20 - Mar 27", 
+      event: "Official Voting Window", 
+      desc: "7-day window to cast ballots in the Legislative Hub before results lock.", 
+      icon: Vote, 
+      color: "red",
+      start: "20260320T220000",
+      end: "20260327T235959",
+      gCalLink: "https://www.google.com/calendar/render?action=TEMPLATE&text=FFL+Voting+Deadline&dates=20260321T020000Z/20260328T040000Z&details=Cast+final+ballots+in+the+Hub."
+    },
+    { 
+      date: "Sept 4 - Sept 7", 
+      event: "2026 Draft Weekend", 
+      desc: "Labor Day Weekend Draft. Final location (RVA vs. Getaway) TBD at Spring Meeting.", 
+      icon: MapPin, 
+      color: "emerald",
+      start: "20260904T090000",
+      end: "20260907T235900",
+      gCalLink: "https://www.google.com/calendar/render?action=TEMPLATE&text=River+City+FFL+Draft+Weekend&dates=20260904/20260908&details=Labor+Day+Weekend+Draft+Logistics."
+    }
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#121212] transition-colors duration-300 font-sans selection:bg-orange-500 selection:text-white">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#121212] transition-colors duration-300 font-sans selection:bg-orange-500 selection:text-white pb-20">
       
       <header className="border-b border-gray-200 dark:border-white/10 bg-linear-to-b from-gray-50 to-white dark:from-[#1a1a1a] dark:to-[#121212] pb-4 md:pb-8 pt-4 shadow-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 text-center relative text-gray-900">
@@ -88,7 +146,7 @@ export default function Home() {
       </header>
 
       <main className="container mx-auto px-4 py-8 md:py-12 max-w-6xl">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 items-start mb-16">
           
           {/* HISTORY PREVIEW CARD */}
           <div className="lg:col-span-2 text-gray-900">
@@ -144,6 +202,47 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* --- DYNAMIC CALENDAR SECTION --- */}
+        <section className="mt-16 border-t dark:border-white/5 pt-12">
+          <div className="flex items-center gap-3 mb-8">
+            <CalendarDays className="text-orange-600 w-8 h-8" />
+            <h2 className="text-3xl font-black uppercase italic tracking-tighter text-gray-900 dark:text-white">
+              2026 Important Dates
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {events.map((item, idx) => (
+              <div key={idx} className="bg-white dark:bg-[#1e1e1e] p-8 rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-sm flex flex-col h-full hover:shadow-xl transition-all duration-300">
+                <div className={`w-12 h-12 bg-${item.color}-100 dark:bg-${item.color}-900/20 rounded-2xl flex items-center justify-center text-${item.color}-600 mb-6`}>
+                  <item.icon size={24} />
+                </div>
+                
+                <p className="text-[11px] font-black uppercase text-gray-400 tracking-widest mb-1">{item.date}</p>
+                <h3 className="text-xl font-black uppercase text-gray-900 dark:text-white mb-3 tracking-tight">{item.event}</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium leading-relaxed mb-8 flex-grow">{item.desc}</p>
+
+                <div className="flex flex-col gap-2">
+                  {item.link && (
+                    <a href={item.link} target="_blank" rel="noopener noreferrer" className="w-full bg-orange-600 text-white py-3 rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2 hover:bg-orange-700 transition">
+                      <Video size={14} /> Join Meeting
+                    </a>
+                  )}
+                  <a href={item.gCalLink} target="_blank" rel="noopener noreferrer" className="w-full bg-blue-600 text-white py-2.5 rounded-xl font-bold text-[10px] uppercase flex items-center justify-center gap-2 hover:bg-blue-700 transition">
+                    Add to Google
+                  </a>
+                  <button 
+                    onClick={() => downloadICS(item.event, item.desc, item.start, item.end)}
+                    className="w-full bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-gray-300 py-2.5 rounded-xl font-bold text-[10px] uppercase flex items-center justify-center gap-2 hover:bg-gray-200 dark:hover:bg-white/10 transition"
+                  >
+                    Add to iCal / Outlook
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       </main>
       
       {/* HISTORY MODAL WITH FULL STORY */}
@@ -209,7 +308,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* FINAL STANDINGS MODAL */}
+      {/* STANDINGS MODAL */}
       {showProjections && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowProjections(false)}>
             <div className="bg-white dark:bg-[#1e1e1e] w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
