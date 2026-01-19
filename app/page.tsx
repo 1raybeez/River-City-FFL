@@ -92,7 +92,7 @@ export default function Home() {
   // --- CALENDAR DATA ---
   const events = [
     { 
-      date: "March 2, 2026", 
+      date: "March 21, 2026", 
       event: "Spring Owners Meeting", 
       desc: "9:30 AM start. Debate 2026 rule proposals. Voting window opens.", 
       icon: Gavel, 
