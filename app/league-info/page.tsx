@@ -6,19 +6,31 @@ import Link from 'next/link';
 import { 
   Trophy, Users, BookOpen, Swords, ArrowLeft, 
   Scale, Grid3X3, DollarSign, FileText, Archive,
-  Gavel // Added for the Legislative Hub
+  Gavel, ArrowRightLeft
 } from 'lucide-react';
 import { ModeToggle } from '@/components/ModeToggle';
 
 export default function LeagueInfoPage() {
+  const cards = [
+    { title: "Constitution", desc: "Official bylaws, scoring, and trade rules.", href: "/league-info/constitution", icon: Scale, color: "blue", linkText: "Read Rules" },
+    { title: "Trade Analyzer", desc: "Multi-team auction value & power ranking simulator.", href: "/league-info/analyzer", icon: ArrowRightLeft, color: "orange", linkText: "Run Simulation" },
+    { title: "Legislative Hub", desc: "Submit proposals and vote on 2026 rule changes.", href: "/commish/proposals", icon: Gavel, color: "orange", linkText: "Enter Chamber" },
+    { title: "Draft Board", desc: "History of every pick (2018-Present).", href: "/league-info/draft", icon: Grid3X3, color: "green", linkText: "View Board" },
+    { title: "Trophy Room", desc: "Hall of Champions & The Shame Wall.", href: "/league-info/trophy-room", icon: Trophy, color: "yellow", linkText: "Enter Hall" },
+    { title: "Rivalry Hub", desc: "Head-to-head records and career stats.", href: "/league-info/rivalries", icon: Swords, color: "red", linkText: "Scan Rivalry" },
+    { title: "Resources", desc: "Helpful links, tools, and league documents.", href: "/league-info/resources", icon: FileText, color: "purple", linkText: "View Docs" },
+    { title: "Archives", desc: "Past seasons, newsletters, and history.", href: "/league-info/archives", icon: Archive, color: "orange", linkText: "Open Archives" },
+    { title: "Payouts", desc: "League finances and dues tracking.", href: "/league-info/payouts", icon: DollarSign, color: "emerald", linkText: "View Vault" }
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#121212] transition-colors duration-300 font-sans selection:bg-orange-500 selection:text-white pb-12">
       
-      {/* HEADER: RESPONSIVE PADDING & SCALING */}
+      {/* HEADER */}
       <header className="border-b border-gray-200 dark:border-white/10 bg-linear-to-b from-gray-50 to-white dark:from-[#1a1a1a] dark:to-[#121212] pb-6 md:pb-8 pt-4 shadow-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 text-center relative">
           <Link href="/" className="absolute top-4 left-2 md:left-4 flex items-center gap-1 md:gap-2 text-gray-500 hover:text-orange-600 transition-colors font-bold text-[10px] md:text-sm uppercase tracking-widest">
-             <ArrowLeft className="w-3 h-3 md:w-4 md:h-4" /> Home
+              <ArrowLeft className="w-3 h-3 md:w-4 md:h-4" /> Home
           </Link>
           <div className="absolute top-4 right-2 md:right-4"><ModeToggle /></div>
           
@@ -48,17 +60,7 @@ export default function LeagueInfoPage() {
       {/* --- INFO GRID --- */}
       <main className="container mx-auto px-4 py-8 md:py-12 max-w-6xl">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
-          
-          {[
-            { title: "Constitution", desc: "Official bylaws, scoring, and trade rules.", href: "/league-info/constitution", icon: Scale, color: "blue", linkText: "Read Rules" },
-            { title: "Legislative Hub", desc: "Submit proposals and vote on 2026 rule changes.", href: "/commish/proposals", icon: Gavel, color: "orange", linkText: "Enter Chamber" },
-            { title: "Draft Board", desc: "History of every pick (2018-Present).", href: "/league-info/draft", icon: Grid3X3, color: "green", linkText: "View Board" },
-            { title: "Trophy Room", desc: "Hall of Champions & The Shame Wall.", href: "/league-info/trophy-room", icon: Trophy, color: "yellow", linkText: "Enter Hall" },
-            { title: "Rivalry Hub", desc: "Head-to-head records and career stats.", href: "/league-info/rivalries", icon: Swords, color: "red", linkText: "Scan Rivalry" },
-            { title: "Resources", desc: "Helpful links, tools, and league documents.", href: "/league-info/resources", icon: FileText, color: "purple", linkText: "View Docs" },
-            { title: "Archives", desc: "Past seasons, newsletters, and history.", href: "/league-info/archives", icon: Archive, color: "orange", linkText: "Open Archives" },
-            { title: "Payouts", desc: "League finances and dues tracking.", href: "/league-info/payouts", icon: DollarSign, color: "emerald", linkText: "View Vault" }
-          ].map((card, idx) => (
+          {cards.map((card, idx) => (
             <Link key={idx} href={card.href} className="group relative overflow-hidden rounded-[2rem] bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-white/10 shadow-md hover:shadow-xl transition-all hover:scale-[1.02]">
               <div className="absolute top-0 right-0 p-6 md:p-8 opacity-5 group-hover:opacity-10 transition-opacity">
                   <card.icon className="w-24 h-24 md:w-32 md:h-32 text-gray-900 dark:text-white" />
@@ -75,7 +77,6 @@ export default function LeagueInfoPage() {
               </div>
             </Link>
           ))}
-
         </div>
       </main>
     </div>

@@ -3,23 +3,32 @@ import Image from 'next/image';
 import { Trophy, Activity } from 'lucide-react';
 import { getChampionDetails } from '@/lib/sleeper';
 
+// Define a Type to satisfy the TypeScript compiler
+interface Champion {
+  name: string;
+  teamName: string;
+  avatar: string;
+}
+
 export default async function HomeSidebar() {
-  // Use your actual league ID and the most recently completed season [cite: 2025-01-01]
   const LEAGUE_ID = process.env.NEXT_PUBLIC_SLEEPER_LEAGUE_ID || '896024194098907136'; 
   const SEASON_YEAR = 2025; 
 
-  let champion;
+  // Initialize with fallback values to prevent "undefined" errors in VS Code
+  let champion: Champion = {
+    name: "Aaron Hawkins",
+    teamName: "Reigning Champ",
+    avatar: "/managers/Aaron.png" 
+  };
+
   try {
-    // Dynamically fetch the winner of the 2025 campaign
-    champion = await getChampionDetails(LEAGUE_ID, SEASON_YEAR); 
+    const fetchedChampion = await getChampionDetails(LEAGUE_ID, SEASON_YEAR); 
+    if (fetchedChampion) {
+      champion = fetchedChampion;
+    }
   } catch (error) {
     console.error("Failed to fetch champion details:", error);
-    // Hardcoded fallback based on your league history [cite: 2025-10-15]
-    champion = {
-      name: "Aaron Hawkins",
-      teamName: "Reigning Champ",
-      avatar: "/managers/Aaron.png" 
-    };
+    // champion already holds the fallback values defined above
   }
   
   return (
@@ -46,6 +55,7 @@ export default async function HomeSidebar() {
             </div>
           </div>
           
+          {/* These will no longer be red because champion is guaranteed to have data */}
           <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase leading-none">{champion.name}</h2>
           <p className="text-[10px] text-gray-500 font-bold mt-2 uppercase tracking-widest">{champion.teamName}</p>
         </div>

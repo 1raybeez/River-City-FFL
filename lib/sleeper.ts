@@ -1,6 +1,19 @@
 // lib/sleeper.ts
 
-export const LEAGUE_ID = '1199749375539027968'; 
+export const LEAGUE_ID = '1199749375539027968';
+
+// --- MULTI-YEAR LEAGUE ID MAP ---
+export const LEAGUE_IDS: Record<number, string> = {
+  2026: "1312149033254416384",
+  2025: "1199749375539027968",
+  2024: "1072545817749331968",
+  2023: "997510104398315520",
+  2022: "784542934581256192",
+  2021: "677751457528762368",
+  2020: "530115541505298432",
+  2019: "466632190273253376",
+  2018: "342868033913540608"
+};
 
 // --- TYPES ---
 export interface Transaction {
@@ -33,7 +46,7 @@ export interface RecordEntry {
 
 export interface CareerEntry {
   manager: string;
-  userId?: string; 
+  userId?: string;
   avatar: string;
   wins: number;
   losses: number;
@@ -47,46 +60,56 @@ export interface CareerEntry {
 export interface Award {
   year: number;
   type: 'champion' | 'runner_up' | 'third_place' | 'toilet_bowl';
-  manager: string; 
-  avatar?: string; 
+  manager: string;
+  avatar?: string;
 }
 
 // --- CACHE BUSTING CONSTANT ---
 const CACHE_OPTIONS = { cache: 'no-store' } as const;
 
+// --- CORE FETCH HELPERS ---
+
+async function sleeperFetch<T>(url: string): Promise<T | null> {
+  try {
+    const res = await fetch(url, CACHE_OPTIONS);
+    if (!res.ok) {
+      console.error(`Sleeper fetch failed: ${url} - ${res.status}`);
+      return null;
+    }
+    return (await res.json()) as T;
+  } catch (error) {
+    console.error(`Sleeper fetch error: ${url}`, error);
+    return null;
+  }
+}
+
 // --- API FUNCTIONS ---
 
 export async function getNFLState() {
-  try {
-    // UPDATED: Use CACHE_OPTIONS
-    const response = await fetch('https://api.sleeper.app/v1/state/nfl', CACHE_OPTIONS);
-    if (!response.ok) return { week: 1, season: '2025' };
-    return response.json();
-  } catch (error) {
-    console.error("Error fetching NFL state:", error);
-    return { week: 1, season: '2025' };
-  }
+  const fallback = { week: 1, season: '2025' };
+  const data = await sleeperFetch<{ week: number; season: string }>(
+    'https://api.sleeper.app/v1/state/nfl'
+  );
+  if (!data) return fallback;
+  if (!data.week || !data.season) return fallback;
+  return data;
 }
 
 export async function getRecentTransactions(): Promise<Transaction[]> {
   try {
     const state = await getNFLState();
-    const currentWeek = state.week > 0 ? state.week : 1; 
+    const currentWeek = state.week > 0 ? state.week : 1;
 
-    const promises = [];
+    const promises: Promise<Transaction[]>[] = [];
     for (let i = 1; i <= currentWeek; i++) {
-      promises.push(
-        // UPDATED: Use CACHE_OPTIONS
-        fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID}/transactions/${i}`, CACHE_OPTIONS)
-          .then(res => res.ok ? res.json() : [])
-          .catch(() => [])
-      );
+      const url = `https://api.sleeper.app/v1/league/${LEAGUE_ID}/transactions/${i}`;
+      const p = sleeperFetch<Transaction[]>(url).then((res) => res ?? []);
+      promises.push(p);
     }
 
     const results = await Promise.all(promises);
     const allTransactions = results.flat();
     return allTransactions.sort((a, b) => b.created - a.created);
-
   } catch (error) {
     console.error("Error getting transactions:", error);
     return [];
@@ -94,89 +117,73 @@ export async function getRecentTransactions(): Promise<Transaction[]> {
 }
 
 export async function getAllPlayers() {
-  try {
-    // UPDATED: Use CACHE_OPTIONS
-    const response = await fetch('https://api.sleeper.app/v1/players/nfl', CACHE_OPTIONS);
-    if (!response.ok) return {};
-    return response.json();
-  } catch (error) {
-    console.error("Error fetching players:", error);
-    return {};
-  }
+  const data = await sleeperFetch<Record<string, Player>>(
+    'https://api.sleeper.app/v1/players/nfl'
+  );
+  return data ?? {};
 }
 
 export async function getLeagueRosters(leagueId: string = LEAGUE_ID) {
-  try {
-    // UPDATED: Use CACHE_OPTIONS
-    const response = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`, CACHE_OPTIONS);
-    if (!response.ok) return [];
-    return response.json();
-  } catch (error) {
-    console.error("Error fetching rosters:", error);
-    return [];
-  }
+  const data = await sleeperFetch<any[]>(
+    `https://api.sleeper.app/v1/league/${leagueId}/rosters`
+  );
+  return data ?? [];
 }
 
 export async function getLeagueUsers(leagueId: string = LEAGUE_ID) {
-  try {
-    // UPDATED: Use CACHE_OPTIONS
-    const response = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`, CACHE_OPTIONS);
-    if (!response.ok) return [];
-    return response.json();
-  } catch (error) {
-    console.error("Error fetching users:", error);
-    return [];
-  }
+  const data = await sleeperFetch<any[]>(
+    `https://api.sleeper.app/v1/league/${leagueId}/users`
+  );
+  return data ?? [];
 }
 
 export const getRosters = getLeagueRosters;
 export const getUsers = getLeagueUsers;
 
 export const getWinnersBracket = async (leagueId: string = LEAGUE_ID) => {
-  // UPDATED: Use CACHE_OPTIONS
-  const res = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/winners_bracket`, CACHE_OPTIONS);
-  if (!res.ok) throw new Error('Failed to fetch winners bracket');
-  return res.json();
+  const data = await sleeperFetch<any[]>(
+    `https://api.sleeper.app/v1/league/${leagueId}/winners_bracket`
+  );
+  if (!data) throw new Error('Failed to fetch winners bracket');
+  return data;
 };
 
 export const getLosersBracket = async (leagueId: string = LEAGUE_ID) => {
-  // UPDATED: Use CACHE_OPTIONS
-  const res = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/losers_bracket`, CACHE_OPTIONS);
-  if (!res.ok) throw new Error('Failed to fetch losers bracket');
-  return res.json();
+  const data = await sleeperFetch<any[]>(
+    `https://api.sleeper.app/v1/league/${leagueId}/losers_bracket`
+  );
+  if (!data) throw new Error('Failed to fetch losers bracket');
+  return data;
 };
 
 export const getMatchups = async (week: number, leagueId: string = LEAGUE_ID) => {
-  // UPDATED: Use CACHE_OPTIONS
-  const res = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/matchups/${week}`, CACHE_OPTIONS);
-  if (!res.ok) throw new Error(`Failed to fetch matchups for week ${week}`);
-  return res.json();
+  const data = await sleeperFetch<any[]>(
+    `https://api.sleeper.app/v1/league/${leagueId}/matchups/${week}`
+  );
+  if (!data) throw new Error(`Failed to fetch matchups for week ${week}`);
+  return data;
 };
 
 export const getTransactions = async (week: number, leagueId: string = LEAGUE_ID) => {
-  // UPDATED: Use CACHE_OPTIONS
-  const res = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/transactions/${week}`, CACHE_OPTIONS);
-  if (!res.ok) throw new Error(`Failed to fetch transactions for week ${week}`);
-  return res.json();
+  const data = await sleeperFetch<any[]>(
+    `https://api.sleeper.app/v1/league/${leagueId}/transactions/${week}`
+  );
+  if (!data) throw new Error(`Failed to fetch transactions for week ${week}`);
+  return data;
 };
 
 async function fetchUserAvatar(userId: string) {
-    if (!userId) return "";
-    try {
-        // UPDATED: Use CACHE_OPTIONS
-        const response = await fetch(`https://api.sleeper.app/v1/user/${userId}`, CACHE_OPTIONS);
-        if (!response.ok) return "";
-        const data = await response.json();
-        return data.avatar ? `https://sleepercdn.com/avatars/thumbs/${data.avatar}` : "";
-    } catch (error) {
-        console.error(`Error fetching avatar for ${userId}:`, error);
-        return "";
-    }
+  if (!userId) return "";
+  const data = await sleeperFetch<{ avatar?: string }>(
+    `https://api.sleeper.app/v1/user/${userId}`
+  );
+  if (!data || !data.avatar) return "";
+  return `https://sleepercdn.com/avatars/thumbs/${data.avatar}`;
 }
 
 // --- HARDCODED STATS ---
+
 export async function fetchAllTimeStats() {
-  // These arrays rely on manual data but ensure all managers have avatars fetched via the now-uncached fetchUserAvatar
   const highScores: RecordEntry[] = [
     { manager: "Jordan Maslyn", avatar: "", score: 184.44, year: 2024, week: 7 },
     { manager: "Jordan Maslyn", avatar: "", score: 168.08, year: 2024, week: 12 },
@@ -208,13 +215,15 @@ export async function fetchAllTimeStats() {
     { manager: "Ray Long", userId: "342828350391230464", avatar: "", wins: 35, losses: 68, ties: 0, pointsFor: 9400.20, pointsAgainst: 11350.50, potentialPoints: 10100, seasons: 7 },
   ];
 
-  const careerStats = await Promise.all(careerStatsRaw.map(async (entry) => {
-    if (entry.userId) {
+  const careerStats = await Promise.all(
+    careerStatsRaw.map(async (entry) => {
+      if (entry.userId) {
         const realAvatar = await fetchUserAvatar(entry.userId);
         return { ...entry, avatar: realAvatar };
-    }
-    return entry;
-  }));
+      }
+      return entry;
+    })
+  );
 
   return { highScores, lowScores, careerStats };
 }
@@ -222,29 +231,29 @@ export async function fetchAllTimeStats() {
 // --- HISTORICAL WINNERS ENGINE ---
 
 async function fetchLeagueYear(leagueId: string) {
-  // UPDATED: Use CACHE_OPTIONS
-  const leagueRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}`, CACHE_OPTIONS);
-  if (!leagueRes.ok) return null;
-  const leagueData = await leagueRes.json();
+  const leagueData = await sleeperFetch<any>(
+    `https://api.sleeper.app/v1/league/${leagueId}`
+  );
+  if (!leagueData) return null;
 
-  const [winnersRes, losersRes, rostersRes, usersRes] = await Promise.all([
-    // UPDATED: Use CACHE_OPTIONS for all sub-fetches
-    fetch(`https://api.sleeper.app/v1/league/${leagueId}/winners_bracket`, CACHE_OPTIONS),
-    fetch(`https://api.sleeper.app/v1/league/${leagueId}/losers_bracket`, CACHE_OPTIONS),
-    fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`, CACHE_OPTIONS),
-    fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`, CACHE_OPTIONS)
+  const [winnersBracket, losersBracket, rosters, users] = await Promise.all([
+    sleeperFetch<any[]>(`https://api.sleeper.app/v1/league/${leagueId}/winners_bracket`),
+    sleeperFetch<any[]>(`https://api.sleeper.app/v1/league/${leagueId}/losers_bracket`),
+    sleeperFetch<any[]>(`https://api.sleeper.app/v1/league/${leagueId}/rosters`),
+    sleeperFetch<any[]>(`https://api.sleeper.app/v1/league/${leagueId}/users`),
   ]);
 
-  const winnersBracket = winnersRes.ok ? await winnersRes.json() : [];
-  const losersBracket = losersRes.ok ? await losersRes.json() : [];
-  const rosters = rostersRes.ok ? await rostersRes.json() : [];
-  const users = usersRes.ok ? await usersRes.json() : [];
-
-  return { leagueData, winnersBracket, losersBracket, rosters, users };
+  return {
+    leagueData,
+    winnersBracket: winnersBracket ?? [],
+    losersBracket: losersBracket ?? [],
+    rosters: rosters ?? [],
+    users: users ?? [],
+  };
 }
 
 export async function getLeagueHistoryAwards() {
-  let currentId = LEAGUE_ID;
+  let currentId: string | null = LEAGUE_ID;
   const awards: Award[] = [];
 
   while (currentId) {
@@ -255,38 +264,37 @@ export async function getLeagueHistoryAwards() {
       const { leagueData, winnersBracket, losersBracket, rosters, users } = data;
       const year = parseInt(leagueData.season);
 
-      const ownerMap: Record<number, any> = {};
+      const ownerMap: Record<number, { name: string; avatar: string | null }> = {};
       rosters.forEach((r: any) => {
         const user = users.find((u: any) => u.user_id === r.owner_id);
         ownerMap[r.roster_id] = {
-            name: user ? (user.display_name || "Unknown") : "Unknown",
-            avatar: user?.avatar ? `https://sleepercdn.com/avatars/thumbs/${user.avatar}` : null
+          name: user ? (user.display_name || "Unknown") : "Unknown",
+          avatar: user?.avatar ? `https://sleepercdn.com/avatars/thumbs/${user.avatar}` : null,
         };
       });
 
-      const champMatch = winnersBracket.find((m: any) => m.p === 1); 
+      const champMatch = winnersBracket.find((m: any) => m.p === 1);
       if (champMatch) {
-         const winner = ownerMap[champMatch.w] || { name: "Unknown" };
-         const runner = ownerMap[champMatch.l] || { name: "Unknown" };
-         awards.push({ year, type: 'champion', manager: winner.name, avatar: winner.avatar });
-         awards.push({ year, type: 'runner_up', manager: runner.name, avatar: runner.avatar });
+        const winner = ownerMap[champMatch.w] || { name: "Unknown", avatar: null };
+        const runner = ownerMap[champMatch.l] || { name: "Unknown", avatar: null };
+        awards.push({ year, type: 'champion', manager: winner.name, avatar: winner.avatar || undefined });
+        awards.push({ year, type: 'runner_up', manager: runner.name, avatar: runner.avatar || undefined });
       }
 
       const thirdMatch = winnersBracket.find((m: any) => m.p === 3);
       if (thirdMatch) {
-         const third = ownerMap[thirdMatch.w] || { name: "Unknown" };
-         awards.push({ year, type: 'third_place', manager: third.name, avatar: third.avatar });
+        const third = ownerMap[thirdMatch.w] || { name: "Unknown", avatar: null };
+        awards.push({ year, type: 'third_place', manager: third.name, avatar: third.avatar || undefined });
       }
 
       const toiletMatch = losersBracket.find((m: any) => m.p === 1);
       if (toiletMatch) {
-        const toilet = ownerMap[toiletMatch.w] || { name: "Unknown" };
-        awards.push({ year, type: 'toilet_bowl', manager: toilet.name, avatar: toilet.avatar });
+        const toilet = ownerMap[toiletMatch.w] || { name: "Unknown", avatar: null };
+        awards.push({ year, type: 'toilet_bowl', manager: toilet.name, avatar: toilet.avatar || undefined });
       }
 
-      currentId = leagueData.previous_league_id;
-      if (year < 2018) break; 
-
+      currentId = leagueData.previous_league_id || null;
+      if (year < 2018) break;
     } catch (e) {
       console.error("Error fetching history for league " + currentId, e);
       break;
@@ -299,82 +307,91 @@ export async function getLeagueHistoryAwards() {
 // --- DRAFT HISTORY FETCHING (UPDATED FOR BOARD) ---
 
 export async function getAllDrafts() {
-  let currentLeagueId = LEAGUE_ID;
-  const draftsData = [];
+  let currentLeagueId: string | null = LEAGUE_ID;
+  const draftsData: {
+    year: string;
+    draft_id: string;
+    settings: any;
+    picks: any[];
+    teams: Record<number, { name: string; avatar: string | null }>;
+    slot_to_roster: Record<number, number>;
+  }[] = [];
 
-  // Loop back until 2018
   while (currentLeagueId) {
     try {
-      // UPDATED: Use CACHE_OPTIONS
-      const leagueRes = await fetch(`https://api.sleeper.app/v1/league/${currentLeagueId}`, CACHE_OPTIONS);
-      if (!leagueRes.ok) break;
-      const league = await leagueRes.json();
-      
-      const year = league.season; 
+      const league: any = await sleeperFetch<any>(  
+        `https://api.sleeper.app/v1/league/${currentLeagueId}`
+      );
+      if (!league) break;
 
-      // UPDATED: Use CACHE_OPTIONS
-      const draftsRes = await fetch(`https://api.sleeper.app/v1/league/${currentLeagueId}/drafts`, CACHE_OPTIONS);
-      const drafts = await draftsRes.json();
-      
-      const mainDraft = drafts.find((d: any) => d.status === 'complete' && d.settings.rounds > 3) || drafts[0];
+      const year: string = league.season;
+
+      const drafts = await sleeperFetch<any[]>(
+        `https://api.sleeper.app/v1/league/${currentLeagueId}/drafts`
+      );
+      if (!drafts || drafts.length === 0) {
+        if (!league.previous_league_id || year === '2018') break;
+        currentLeagueId = league.previous_league_id;
+        continue;
+      }
+
+      const mainDraft =
+        drafts.find((d: any) => d.status === 'complete' && d.settings?.rounds > 3) ||
+        drafts[0];
 
       if (mainDraft) {
-        // UPDATED: Use CACHE_OPTIONS
-        const picksRes = await fetch(`https://api.sleeper.app/v1/draft/${mainDraft.draft_id}/picks`, CACHE_OPTIONS);
-        const picks = await picksRes.json();
+        const picks = await sleeperFetch<any[]>(
+          `https://api.sleeper.app/v1/draft/${mainDraft.draft_id}/picks`
+        ) ?? [];
 
-        // UPDATED: Use CACHE_OPTIONS
-        const usersRes = await fetch(`https://api.sleeper.app/v1/league/${currentLeagueId}/users`, CACHE_OPTIONS);
-        const users = await usersRes.json();
-        
-        // UPDATED: Use CACHE_OPTIONS
-        const rostersRes = await fetch(`https://api.sleeper.app/v1/league/${currentLeagueId}/rosters`, CACHE_OPTIONS);
-        const rosters = await rostersRes.json();
+        const users = await sleeperFetch<any[]>(
+          `https://api.sleeper.app/v1/league/${currentLeagueId}/users`
+        ) ?? [];
 
-        // 1. Map Owner IDs to User Data
+        const rosters = await sleeperFetch<any[]>(
+          `https://api.sleeper.app/v1/league/${currentLeagueId}/rosters`
+        ) ?? [];
+
         const userMap: Record<string, any> = {};
         users.forEach((u: any) => {
-            userMap[u.user_id] = u;
+          userMap[u.user_id] = u;
         });
 
-        // 2. Map Roster IDs to Team Data
-        const ownerMap: Record<number, any> = {};
+        const ownerMap: Record<number, { name: string; avatar: string | null }> = {};
         rosters.forEach((r: any) => {
-            const user = userMap[r.owner_id];
-            ownerMap[r.roster_id] = {
-                name: user?.metadata?.team_name || user?.display_name || `Team ${r.roster_id}`,
-                avatar: user?.avatar ? `https://sleepercdn.com/avatars/thumbs/${user.avatar}` : null
-            };
+          const user = userMap[r.owner_id];
+          ownerMap[r.roster_id] = {
+            name: user?.metadata?.team_name || user?.display_name || `Team ${r.roster_id}`,
+            avatar: user?.avatar ? `https://sleepercdn.com/avatars/thumbs/${user.avatar}` : null,
+          };
         });
 
-        // 3. Map Draft Slots to Roster IDs
         const slotToRoster: Record<number, number> = {};
         if (mainDraft.draft_order) {
-            Object.entries(mainDraft.draft_order).forEach(([rosterIdStr, slot]) => {
-                const rId = parseInt(rosterIdStr);
-                const s = slot as number;
-                slotToRoster[s] = rId;
-            });
+          Object.entries(mainDraft.draft_order).forEach(([rosterIdStr, slot]) => {
+            const rId = parseInt(rosterIdStr, 10);
+            const s = slot as number;
+            slotToRoster[s] = rId;
+          });
         }
 
         draftsData.push({
           year,
           draft_id: mainDraft.draft_id,
           settings: mainDraft.settings,
-          picks: picks,
-          teams: ownerMap, 
-          slot_to_roster: slotToRoster 
+          picks,
+          teams: ownerMap,
+          slot_to_roster: slotToRoster,
         });
       }
 
       if (year === '2018' || !league.previous_league_id) break;
       currentLeagueId = league.previous_league_id;
-
     } catch (error) {
       console.error(`Error fetching draft for league ${currentLeagueId}:`, error);
       break;
     }
   }
 
-  return draftsData.sort((a, b) => b.year.localeCompare(a.year)); 
+  return draftsData.sort((a, b) => b.year.localeCompare(a.year));
 }
