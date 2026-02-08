@@ -1,8 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { Gavel, Check, X, ArrowLeft, Lock, PlusCircle, Clock } from 'lucide-react';
+import { useTheme } from "next-themes";
+import { 
+  Home, Gavel, Check, X, Lock, Unlock, PlusCircle, Clock, 
+  Sun, Moon, Monitor, MessageSquare, ShieldCheck
+} from 'lucide-react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, doc, updateDoc, arrayUnion, getDoc } from "firebase/firestore";
 
@@ -27,14 +32,29 @@ const MEETING_DATE = new Date('2026-03-20T20:30:00');
 const VOTING_DEADLINE = new Date(MEETING_DATE.getTime() + 7 * 24 * 60 * 60 * 1000);
 
 export default function ProposalsPage() {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [proposals, setProposals] = useState<any[]>([]);
   const [selectedManagerId, setSelectedManagerId] = useState("");
   const [now, setNow] = useState(new Date());
+  const [isOverrideOpen, setIsOverrideOpen] = useState(false);
 
-  const isVotingOpen = now >= MEETING_DATE && now <= VOTING_DEADLINE;
-  const isVotingFinished = now > VOTING_DEADLINE;
-  const isPreMeeting = now < MEETING_DATE;
+  // LOGIC: Voting is open if time is right OR manual override is toggled
+  const isVotingOpen = (now >= MEETING_DATE && now <= VOTING_DEADLINE) || isOverrideOpen;
+  const isVotingFinished = now > VOTING_DEADLINE && !isOverrideOpen;
+  const isPreMeeting = now < MEETING_DATE && !isOverrideOpen;
 
+  useEffect(() => { setMounted(true); }, []);
+
+  // Sync Global Voting Override
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "league_settings", "voting_state"), (doc) => {
+      if (doc.exists()) setIsOverrideOpen(doc.data().isOverrideOpen);
+    });
+    return () => unsub();
+  }, []);
+
+  // Sync Proposals
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
     const unsubscribe = onSnapshot(collection(db, "proposals"), (snapshot) => {
@@ -42,6 +62,15 @@ export default function ProposalsPage() {
     });
     return () => { unsubscribe(); clearInterval(timer); };
   }, []);
+
+  const toggleFloor = async () => {
+    if (selectedManagerId !== "342828350391230464") return;
+    try {
+      await updateDoc(doc(db, "league_settings", "voting_state"), {
+        isOverrideOpen: !isOverrideOpen
+      });
+    } catch (err) { console.error(err); }
+  };
 
   const handleVote = async (proposalId: string, type: 'yes' | 'no') => {
     if (!selectedManagerId || !isVotingOpen) return;
@@ -68,131 +97,99 @@ export default function ProposalsPage() {
     } catch (error) { console.error(error); }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#121212] pb-20 font-sans">
-      <div className="bg-white dark:bg-[#1e1e1e] border-b dark:border-white/5 py-8 sticky top-0 z-50 shadow-sm">
-        <div className="container mx-auto px-4 text-center relative text-gray-900 dark:text-white">
-          <Link href="/league-info" className="absolute left-4 top-2 flex items-center gap-2 text-gray-500 font-bold text-xs uppercase italic tracking-tighter hover:text-orange-600 transition-colors">
-            <ArrowLeft size={16} /> Hub
-          </Link>
-          <h1 className="text-xl md:text-2xl font-black uppercase italic flex items-center justify-center gap-3">
-            <Gavel className="text-orange-600" /> 2026 Legislative Hub
-          </h1>
-        </div>
-      </div>
+  if (!mounted) return null;
 
-      <main className="container mx-auto px-4 py-10 max-w-4xl">
-        <div className="mb-10 p-6 bg-orange-600 rounded-[2.5rem] text-white shadow-xl flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-             <Lock size={20} className={isVotingOpen ? "animate-pulse" : ""} />
-             <p className="font-black text-xs uppercase tracking-widest italic">Manager Identification Required</p>
+  return (
+    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-20 selection:bg-orange-600">
+      
+      {/* NAVIGATION BAR */}
+      <nav className="border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
+        <div className="flex items-center gap-4">
+          <Link href="/league-info" className="p-2 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:scale-105 transition-all">
+            <Home size={18} />
+          </Link>
+          <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
+            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${theme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
+            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${theme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
+            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${theme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
           </div>
-          <select 
-            className="bg-white text-gray-900 px-6 py-3 rounded-2xl font-black text-xs uppercase w-full md:w-72 outline-none"
-            value={selectedManagerId}
-            onChange={(e) => setSelectedManagerId(e.target.value)}
-          >
-            <option value="">-- Verify Identity --</option>
+        </div>
+
+        {selectedManagerId === "342828350391230464" && (
+            <button onClick={toggleFloor} className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase italic border transition-all ${isOverrideOpen ? 'bg-red-600 text-white border-red-500 shadow-lg' : 'bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10 opacity-60'}`}>
+                {isOverrideOpen ? <Unlock size={14} /> : <Lock size={14} />}
+                {isOverrideOpen ? "Voting Open" : "Open Floor"}
+            </button>
+        )}
+      </nav>
+
+      <main className="max-w-4xl mx-auto px-6 py-10">
+        {/* IDENTIFICATION BAR */}
+        <div className="mb-12 p-1 bg-orange-600 rounded-2xl flex flex-col md:flex-row justify-between items-center shadow-lg">
+          <div className="flex items-center gap-3 px-6 py-3 text-white">
+             {isVotingOpen ? <Unlock size={18} className="animate-pulse" /> : <Lock size={18} />}
+             <p className="font-black text-[10px] uppercase tracking-widest italic">
+                {isVotingOpen ? "Floor is Open for Voting" : "Chamber Closed Until Meeting"}
+             </p>
+          </div>
+          <select className="bg-white text-black px-6 py-3 rounded-xl font-black text-xs uppercase w-full md:w-80 outline-none cursor-pointer" value={selectedManagerId} onChange={(e) => setSelectedManagerId(e.target.value)}>
+            <option value="">Verify Identity</option>
             {managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
         </div>
 
-        {!selectedManagerId ? (
-          <div className="text-center py-20 bg-white dark:bg-[#1e1e1e] rounded-[3rem] border-2 border-dashed dark:border-white/5">
-             <Lock size={48} className="mx-auto mb-4 text-gray-300 dark:text-gray-700" />
-             <p className="font-black uppercase text-gray-400 text-sm tracking-widest">Select Identity to View Proposals</p>
+        <div className="space-y-10">
+          <div className="flex justify-between items-center border-b-2 border-orange-600 pb-2">
+               <h2 className="text-2xl font-black uppercase italic tracking-tighter">Active Floor</h2>
+               <Link href="/commish/proposals/new" className="p-2 bg-orange-600 text-white rounded-full hover:scale-110 transition shadow-lg"><PlusCircle size={24} /></Link>
           </div>
-        ) : (
-          <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center">
-               <h2 className="text-xl font-black uppercase italic tracking-tight underline decoration-orange-500 decoration-4 underline-offset-8 text-gray-900 dark:text-white">Active 2026 Ballot</h2>
-               <Link href="/commish/proposals/new" className="bg-orange-600 text-white p-3 rounded-full hover:scale-110 transition shadow-lg"><PlusCircle size={24} /></Link>
-            </div>
 
-            {proposals.map((prop) => {
-              const hasVotedYes = prop.votes?.yes?.includes(selectedManagerId);
-              const hasVotedNo = prop.votes?.no?.includes(selectedManagerId);
-              const hasVoted = hasVotedYes || hasVotedNo;
-              const yesCount = prop.votes?.yes?.length || 0;
-              const noCount = prop.votes?.no?.length || 0;
-              const isRatified = yesCount >= 7;
+          {proposals.map((prop) => {
+            const yesCount = prop.votes?.yes?.length || 0;
+            const noCount = prop.votes?.no?.length || 0;
+            const hasVoted = prop.votes?.yes?.includes(selectedManagerId) || prop.votes?.no?.includes(selectedManagerId);
 
-              return (
-                <div key={prop.id} className={`bg-white dark:bg-[#1e1e1e] rounded-[2.5rem] border transition-all ${isRatified ? 'border-emerald-500 shadow-emerald-500/10' : 'dark:border-white/10 shadow-sm'}`}>
-                  <div className="p-8">
-                    <div className="flex items-center gap-4 mb-6">
-                      <div className="h-14 w-14 rounded-full border-2 border-orange-600 overflow-hidden shrink-0 shadow-md">
-                        <img 
-                          src={`https://sleepercdn.com/avatars/thumbs/${prop.sleeperId}`} 
-                          alt="Proposer" 
-                          onError={(e) => { (e.target as HTMLImageElement).src = "/River City FFL Logo.JPG"; }}
-                        />
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{prop.section}</span>
-                        <p className="font-black uppercase text-gray-900 dark:text-white leading-none">{prop.submittedBy}</p>
-                      </div>
+            return (
+              <div key={prop.id} className="bg-black/5 dark:bg-white/5 rounded-[2.5rem] border border-black/5 dark:border-white/10 overflow-hidden shadow-xl">
+                <div className="p-8">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="h-14 w-14 rounded-full border-2 border-orange-600 overflow-hidden shrink-0 relative bg-black/20">
+                      <Image src={prop.managerImage || "/River City FFL Logo.JPG"} alt="Proposer" fill className="object-cover" unoptimized />
                     </div>
-                    
-                    <h3 className="text-lg font-black uppercase mb-4 tracking-tighter leading-tight text-gray-900 dark:text-white">{prop.title}</h3>
-                    
-                    {/* NEW: Clickable Description Parser */}
-                    <div className="bg-gray-50 dark:bg-black/20 p-5 rounded-3xl border-l-4 border-orange-600 italic text-sm text-gray-600 dark:text-gray-400">
-                      {prop.description.split(/(https?:\/\/[^\s]+)/g).map((part: string, i: number) => (
-                        part.match(/^https?:\/\//) ? (
-                          <a 
-                            key={i} 
-                            href={part} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="text-orange-600 underline break-all font-bold hover:text-orange-500 transition-colors"
-                          >
-                            {part}
-                          </a>
-                        ) : (
-                          <span key={i}>{part}</span>
-                        )
-                      ))}
+                    <div>
+                      <span className="text-[9px] font-black uppercase opacity-40 leading-none block mb-1">{prop.section}</span>
+                      <p className="font-black uppercase italic tracking-tighter text-lg leading-none">{prop.submittedBy}</p>
                     </div>
                   </div>
+                  <h3 className="text-2xl font-black uppercase tracking-tighter mb-4 text-orange-600 italic leading-none">{prop.title}</h3>
+                  <div className="bg-black/10 dark:bg-black/40 p-6 rounded-3xl border-l-4 border-orange-600 italic text-sm opacity-70 leading-relaxed">{prop.description}</div>
+                </div>
 
-                  <div className="grid grid-cols-2 border-t dark:border-white/5">
+                <div className="grid grid-cols-2 border-t border-black/5 dark:border-white/10">
                     {isPreMeeting ? (
-                      <div className="col-span-2 py-6 text-center font-black uppercase text-[10px] tracking-widest text-gray-400 bg-gray-50 dark:bg-white/5 flex items-center justify-center gap-2">
-                        <Clock size={16} /> Voting Unlocks {MEETING_DATE.toLocaleDateString()}
+                      <div className="col-span-2 py-6 text-center font-black uppercase text-[10px] tracking-[0.3em] opacity-30 bg-black/5 flex items-center justify-center gap-2">
+                        <Clock size={14} /> Voting Unlocks {MEETING_DATE.toLocaleDateString()}
                       </div>
                     ) : isVotingFinished ? (
-                      <div className="col-span-2 py-6 text-center font-black uppercase text-[10px] tracking-widest text-orange-600 bg-orange-50 dark:bg-orange-900/10 flex items-center justify-center gap-2">
-                        <Lock size={16} /> Final Tally: {yesCount} Yes / {noCount} No
+                      <div className="col-span-2 py-6 text-center font-black uppercase text-[10px] tracking-[0.3em] text-orange-600 bg-orange-600/10 flex items-center justify-center gap-2">
+                        <Lock size={14} /> Final Tally: {yesCount} Yes / {noCount} No
                       </div>
                     ) : hasVoted ? (
-                      <div className="col-span-2 py-4 flex flex-col items-center bg-emerald-50 dark:bg-emerald-900/10 gap-1">
-                        <div className="text-emerald-500 font-black uppercase text-[10px] tracking-widest flex items-center gap-2">
-                          <Check size={14} /> Team Ballot Recorded ({yesCount} - {noCount})
-                        </div>
-                        <button 
-                          onClick={() => handleVote(prop.id, hasVotedYes ? 'no' : 'yes')}
-                          className="text-[9px] font-bold text-gray-400 hover:text-orange-600 uppercase underline underline-offset-2"
-                        >
-                          Flip Vote to {hasVotedYes ? 'No' : 'Yes'}
-                        </button>
+                      <div className="col-span-2 py-6 flex flex-col items-center bg-emerald-600/10 gap-1">
+                        <div className="text-emerald-500 font-black uppercase text-[10px] tracking-widest flex items-center gap-2"><Check size={14} /> Ballot Recorded ({yesCount} - {noCount})</div>
+                        <button onClick={() => handleVote(prop.id, prop.votes?.yes?.includes(selectedManagerId) ? 'no' : 'yes')} className="text-[9px] font-black opacity-30 hover:text-orange-600 uppercase underline transition-all">Change Vote</button>
                       </div>
                     ) : (
                       <>
-                        <button onClick={() => handleVote(prop.id, 'yes')} className="py-5 font-black uppercase text-xs text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all border-r dark:border-white/5 flex items-center justify-center gap-2">
-                           <Check size={18} /> Yes
-                        </button>
-                        <button onClick={() => handleVote(prop.id, 'no')} className="py-5 font-black uppercase text-xs text-red-600 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2">
-                           <X size={18} /> No
-                        </button>
+                        <button onClick={() => handleVote(prop.id, 'yes')} className="py-6 font-black uppercase text-xs text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all border-r border-black/5 dark:border-white/10 italic flex items-center justify-center gap-2 italic"><Check size={18} /> Yes</button>
+                        <button onClick={() => handleVote(prop.id, 'no')} className="py-6 font-black uppercase text-xs text-red-600 hover:bg-red-600 hover:text-white transition-all italic flex items-center justify-center gap-2 italic"><X size={18} /> No</button>
                       </>
                     )}
-                  </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              </div>
+            );
+          })}
+        </div>
       </main>
     </div>
   );

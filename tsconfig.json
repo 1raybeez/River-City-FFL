@@ -13,14 +13,20 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
+
+    // ⭐ REQUIRED FIX — this is what makes "@/..." imports work
+    "baseUrl": ".",
+
+    // ⭐ Your alias mapping (now works because baseUrl is set)
+    "paths": {
+      "@/*": ["./*"]
+    },
+
     "plugins": [
       {
         "name": "next"
       }
-    ],
-    "paths": {
-      "@/*": ["./*"]
-    }
+    ]
   },
   "include": [
     "next-env.d.ts",

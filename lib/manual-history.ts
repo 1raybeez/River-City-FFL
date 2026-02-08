@@ -1,86 +1,212 @@
 export const MANUAL_HISTORY = {
-    2024: [
-      { rank: 1, manager: "Jordan" }, { rank: 2, manager: "Wade" }, { rank: 3, manager: "Doug" },
-      { rank: 4, manager: "Dave" }, { rank: 5, manager: "JD" }, { rank: 6, manager: "Tommy" },
-      { rank: 7, manager: "Travis" }, { rank: 8, manager: "Ray" }, { rank: 9, manager: "Landon" },
-      { rank: 10, manager: "Billy" }, { rank: 11, manager: "Brian" }, { rank: 12, manager: "Rashad" }
-    ],
-    2023: [
-      { rank: 1, manager: "Tommy" }, { rank: 2, manager: "Brian" }, { rank: 3, manager: "Ray" },
-      { rank: 4, manager: "JD" }, { rank: 5, manager: "Billy" }, { rank: 6, manager: "Travis" },
-      { rank: 7, manager: "Wade" }, { rank: 8, manager: "Dave" }, { rank: 9, manager: "Doug" },
-      { rank: 10, manager: "Rashad" }, { rank: 11, manager: "Jordan" }, { rank: 12, manager: "Landon" }
-    ],
-    2022: [
-      { rank: 1, manager: "Tommy" }, { rank: 2, manager: "Dave" }, { rank: 3, manager: "Brian" },
-      { rank: 4, manager: "Billy" }, { rank: 5, manager: "Landon" }, { rank: 6, manager: "Doug" },
-      { rank: 7, manager: "Ray" }, { rank: 8, manager: "Travis" }, { rank: 9, manager: "Wade" },
-      { rank: 10, manager: "Rashad" }, { rank: 11, manager: "Jordan" }, { rank: 12, manager: "JD" }
-    ],
-    2021: [
-      { rank: 1, manager: "Dave" }, { rank: 2, manager: "JD" }, { rank: 3, manager: "Adam" },
-      { rank: 4, manager: "Wade" }, { rank: 5, manager: "Landon" }, { rank: 6, manager: "Doug" },
-      { rank: 7, manager: "Billy" }, { rank: 8, manager: "Tommy" }, { rank: 9, manager: "Travis" },
-      { rank: 10, manager: "Ray" }, { rank: 11, manager: "Brian" }, { rank: 12, manager: "Jordan" }
-    ],
-    2020: [
-      { rank: 1, manager: "JD" }, { rank: 2, manager: "Landon" }, { rank: 3, manager: "Dave" },
-      { rank: 4, manager: "Brian" }, { rank: 5, manager: "Ray" }, { rank: 6, manager: "Doug" },
-      { rank: 7, manager: "Jordan" }, { rank: 8, manager: "Wade" }, { rank: 9, manager: "Adam" },
-      { rank: 10, manager: "Billy" }, { rank: 11, manager: "Travis" }, { rank: 12, manager: "Tommy" }
-    ],
-    2019: [
-      { rank: 1, manager: "Wade" }, { rank: 2, manager: "Travis" }, { rank: 3, manager: "Brian" },
-      { rank: 4, manager: "Patrick" }, { rank: 5, manager: "Ray" }, { rank: 6, manager: "Dave" },
-      { rank: 7, manager: "Landon" }, { rank: 8, manager: "Billy" }, { rank: 9, manager: "Jordan" },
-      { rank: 10, manager: "JD" }, { rank: 11, manager: "Doug" }, { rank: 12, manager: "Tommy" }
-    ],
-    2018: [
-      { rank: 1, manager: "Brian" }, { rank: 2, manager: "Tommy" }, { rank: 3, manager: "Ray" },
-      { rank: 4, manager: "Jordan" }, { rank: 5, manager: "Chris" }, { rank: 6, manager: "Wade" },
-      { rank: 7, manager: "Patrick" }, { rank: 8, manager: "JD" }, { rank: 9, manager: "Ricky" },
-      { rank: 10, manager: "Billy" }, { rank: 11, manager: "Travis" }, { rank: 12, manager: "Landon" }
-    ],
-    2017: [
-      { rank: 1, manager: "Tommy" }, { rank: 2, manager: "JD" }, { rank: 3, manager: "Minnix" },
-      { rank: 4, manager: "Travis" }, { rank: 5, manager: "Jordan" }, { rank: 6, manager: "Ray" },
-      { rank: 7, manager: "Garet" }, { rank: 8, manager: "Landon" }, { rank: 9, manager: "Patrick" },
-      { rank: 10, manager: "Wade" }, { rank: 11, manager: "Chris" }, { rank: 12, manager: "Brian" }
-    ],
-    2016: [
-      { rank: 1, manager: "Tommy" }, { rank: 2, manager: "Minnix" }, { rank: 3, manager: "Ray" },
-      { rank: 4, manager: "Gordie" }, { rank: 5, manager: "Landon" }, { rank: 6, manager: "Chris" },
-      { rank: 7, manager: "Bryan" }, { rank: 8, manager: "JD" }, { rank: 9, manager: "Travis" },
-      { rank: 10, manager: "Brian" }, { rank: 11, manager: "Garet" }, { rank: 12, manager: "Wade" }
-    ],
-    2015: [
-      { rank: 1, manager: "Keith" }, { rank: 2, manager: "JD" }, { rank: 3, manager: "Tommy" },
-      { rank: 4, manager: "Chris" }, { rank: 5, manager: "Garet" }, { rank: 6, manager: "Ray" },
-      { rank: 7, manager: "Minnix" }, { rank: 8, manager: "Wade" }, { rank: 9, manager: "Landon" },
-      { rank: 10, manager: "Gordie" }, { rank: 11, manager: "Bryan" }, { rank: 12, manager: "Travis" }
-    ],
-    2014: [
-      { rank: 1, manager: "Garet" }, { rank: 2, manager: "Gordie" }, { rank: 3, manager: "Keith" },
-      { rank: 4, manager: "Chris" }, { rank: 5, manager: "Bryan" }, { rank: 6, manager: "Travis" },
-      { rank: 7, manager: "Minnix" }, { rank: 8, manager: "Wade" }, { rank: 9, manager: "JD" },
-      { rank: 10, manager: "Ray" }, { rank: 11, manager: "Tommy" }, { rank: 12, manager: "Landon" }
-    ],
-    2013: [
-      { rank: 1, manager: "Tommy" }, { rank: 2, manager: "Minnix" }, { rank: 3, manager: "Bryan" },
-      { rank: 4, manager: "Landon" }, { rank: 5, manager: "Chris" }, { rank: 6, manager: "Keith" },
-      { rank: 7, manager: "JD" }, { rank: 8, manager: "Garet" }, { rank: 9, manager: "Gordie" },
-      { rank: 10, manager: "Ray" }, { rank: 11, manager: "Wade" }, { rank: 12, manager: "Travis" }
-    ],
-    2012: [
-      { rank: 1, manager: "Bryan" }, { rank: 2, manager: "Chris" }, { rank: 3, manager: "Nicholas" },
-      { rank: 4, manager: "Minnix" }, { rank: 5, manager: "Tommy" }, { rank: 6, manager: "Landon" },
-      { rank: 7, manager: "Gordie" }, { rank: 8, manager: "Wade" }, { rank: 9, manager: "Travis" },
-      { rank: 10, manager: "Darren" }, { rank: 11, manager: "JD" }, { rank: 12, manager: "Zach" }
-    ],
-    2011: [
-      { rank: 1, manager: "Gordie" }, { rank: 2, manager: "Wade" }, { rank: 3, manager: "Zach" },
-      { rank: 4, manager: "Keith" }, { rank: 5, manager: "-" }, { rank: 6, manager: "Bryan" },
-      { rank: 7, manager: "Chris" }, { rank: 8, manager: "Ray" }, { rank: 9, manager: "-" },
-      { rank: 10, manager: "Darren" }, { rank: 11, manager: "Rachel" }, { rank: 12, manager: "-" }
-    ]
-  };
+  2025: [
+    { rank: 1, manager: "Aaron Hawkins" },
+    { rank: 2, manager: "Travis Miller" },
+    { rank: 3, manager: "JD Dowling" },
+    { rank: 4, manager: "David Besedich" },
+    { rank: 5, manager: "Rashad Gresham" },
+    { rank: 6, manager: "Stan Schoppe" },
+    { rank: 7, manager: "Tommy Moore" },
+    { rank: 8, manager: "Jordan Maslyn" },
+    { rank: 9, manager: "Brian Stevens" },
+    { rank: 10, manager: "Doug Fordham" },
+    { rank: 11, manager: "Wade Cameron" },
+    { rank: 12, manager: "Ray Long" }
+  ],
+  2024: [
+    { rank: 1, manager: "Jordan Maslyn" },
+    { rank: 2, manager: "Wade Cameron" },
+    { rank: 3, manager: "Doug Fordham" },
+    { rank: 4, manager: "David Besedich" },
+    { rank: 5, manager: "JD Dowling" },
+    { rank: 6, manager: "Tommy Moore" },
+    { rank: 7, manager: "Travis Miller" },
+    { rank: 8, manager: "Ray Long" },
+    { rank: 9, manager: "Landon Elliott" },
+    { rank: 10, manager: "Billy Biddle" },
+    { rank: 11, manager: "Brian Stevens" },
+    { rank: 12, manager: "Rashad Gresham" }
+  ],
+  2023: [
+    { rank: 1, manager: "Tommy Moore" },
+    { rank: 2, manager: "Brian Stevens" },
+    { rank: 3, manager: "Ray Long" },
+    { rank: 4, manager: "JD Dowling" },
+    { rank: 5, manager: "Billy Biddle" },
+    { rank: 6, manager: "Travis Miller" },
+    { rank: 7, manager: "Wade Cameron" },
+    { rank: 8, manager: "David Besedich" },
+    { rank: 9, manager: "Doug Fordham" },
+    { rank: 10, manager: "Rashad Gresham" },
+    { rank: 11, manager: "Jordan Maslyn" },
+    { rank: 12, manager: "Landon Elliott" }
+  ],
+  2022: [
+    { rank: 1, manager: "Tommy Moore" },
+    { rank: 2, manager: "David Besedich" },
+    { rank: 3, manager: "Brian Stevens" },
+    { rank: 4, manager: "Billy Biddle" },
+    { rank: 5, manager: "Landon Elliott" },
+    { rank: 6, manager: "Doug Fordham" },
+    { rank: 7, manager: "Ray Long" },
+    { rank: 8, manager: "Travis Miller" },
+    { rank: 9, manager: "Wade Cameron" },
+    { rank: 10, manager: "Rashad Gresham" },
+    { rank: 11, manager: "Jordan Maslyn" },
+    { rank: 12, manager: "JD Dowling" }
+  ],
+  2021: [
+    { rank: 1, manager: "David Besedich" },
+    { rank: 2, manager: "JD Dowling" },
+    { rank: 3, manager: "Adam Lind" },
+    { rank: 4, manager: "Wade Cameron" },
+    { rank: 5, manager: "Landon Elliott" },
+    { rank: 6, manager: "Doug Fordham" },
+    { rank: 7, manager: "Billy Biddle" },
+    { rank: 8, manager: "Tommy Moore" },
+    { rank: 9, manager: "Travis Miller" },
+    { rank: 10, manager: "Ray Long" },
+    { rank: 11, manager: "Brian Stevens" },
+    { rank: 12, manager: "Jordan Maslyn" }
+  ],
+  2020: [
+    { rank: 1, manager: "JD Dowling" },
+    { rank: 2, manager: "Landon Elliott" },
+    { rank: 3, manager: "David Besedich" },
+    { rank: 4, manager: "Brian Stevens" },
+    { rank: 5, manager: "Ray Long" },
+    { rank: 6, manager: "Doug Fordham" },
+    { rank: 7, manager: "Jordan Maslyn" },
+    { rank: 8, manager: "Wade Cameron" },
+    { rank: 9, manager: "Adam Lind" },
+    { rank: 10, manager: "Billy Biddle" },
+    { rank: 11, manager: "Travis Miller" },
+    { rank: 12, manager: "Tommy Moore" }
+  ],
+  2019: [
+    { rank: 1, manager: "Wade Cameron" },
+    { rank: 2, manager: "Travis Miller" },
+    { rank: 3, manager: "Brian Stevens" },
+    { rank: 4, manager: "Patrick Leahey" },
+    { rank: 5, manager: "Ray Long" },
+    { rank: 6, manager: "David Besedich" },
+    { rank: 7, manager: "Landon Elliott" },
+    { rank: 8, manager: "Billy Biddle" },
+    { rank: 9, manager: "Jordan Maslyn" },
+    { rank: 10, manager: "JD Dowling" },
+    { rank: 11, manager: "Doug Fordham" },
+    { rank: 12, manager: "Tommy Moore" }
+  ],
+  2018: [
+    { rank: 1, manager: "Brian Stevens" },
+    { rank: 2, manager: "Tommy Moore" },
+    { rank: 3, manager: "Ray Long" },
+    { rank: 4, manager: "Jordan Maslyn" },
+    { rank: 5, manager: "Chris Barras" },
+    { rank: 6, manager: "Wade Cameron" },
+    { rank: 7, manager: "Patrick Leahey" },
+    { rank: 8, manager: "JD Dowling" },
+    { rank: 9, manager: "Ricky Taylor" },
+    { rank: 10, manager: "Billy Biddle" },
+    { rank: 11, manager: "Travis Miller" },
+    { rank: 12, manager: "Landon Elliott" }
+  ],
+  2017: [
+    { rank: 1, manager: "Tommy Moore" },
+    { rank: 2, manager: "JD Dowling" },
+    { rank: 3, manager: "James Minnix" },
+    { rank: 4, manager: "Travis Miller" },
+    { rank: 5, manager: "Jordan Maslyn" },
+    { rank: 6, manager: "Ray Long" },
+    { rank: 7, manager: "Garet Prior" },
+    { rank: 8, manager: "Landon Elliott" },
+    { rank: 9, manager: "Patrick Leahey" },
+    { rank: 10, manager: "Wade Cameron" },
+    { rank: 11, manager: "Chris Barras" },
+    { rank: 12, manager: "Brian Stevens" }
+  ],
+  2016: [
+    { rank: 1, manager: "Tommy Moore" },
+    { rank: 2, manager: "James Minnix" },
+    { rank: 3, manager: "Ray Long" },
+    { rank: 4, manager: "Gordie Gahagan" },
+    { rank: 5, manager: "Landon Elliott" },
+    { rank: 6, manager: "Chris Barras" },
+    { rank: 7, manager: "Bryan Doane" },
+    { rank: 8, manager: "JD Dowling" },
+    { rank: 9, manager: "Travis Miller" },
+    { rank: 10, manager: "Brian Stevens" },
+    { rank: 11, manager: "Garet Prior" },
+    { rank: 12, manager: "Wade Cameron" }
+  ],
+  2015: [
+    { rank: 1, manager: "Keith Polarek" },
+    { rank: 2, manager: "JD Dowling" },
+    { rank: 3, manager: "Tommy Moore" },
+    { rank: 4, manager: "Chris Barras" },
+    { rank: 5, manager: "Garet Prior" },
+    { rank: 6, manager: "Ray Long" },
+    { rank: 7, manager: "James Minnix" },
+    { rank: 8, manager: "Wade Cameron" },
+    { rank: 9, manager: "Landon Elliott" },
+    { rank: 10, manager: "Gordie Gahagan" },
+    { rank: 11, manager: "Bryan Doane" },
+    { rank: 12, manager: "Travis Miller" }
+  ],
+  2014: [
+    { rank: 1, manager: "Garet Prior" },
+    { rank: 2, manager: "Gordie Gahagan" },
+    { rank: 3, manager: "Keith Polarek" },
+    { rank: 4, manager: "Chris Barras" },
+    { rank: 5, manager: "Bryan Doane" },
+    { rank: 6, manager: "Travis Miller" },
+    { rank: 7, manager: "James Minnix" },
+    { rank: 8, manager: "Wade Cameron" },
+    { rank: 9, manager: "JD Dowling" },
+    { rank: 10, manager: "Ray Long" },
+    { rank: 11, manager: "Tommy Moore" },
+    { rank: 12, manager: "Landon Elliott" }
+  ],
+  2013: [
+    { rank: 1, manager: "Tommy Moore" },
+    { rank: 2, manager: "James Minnix" },
+    { rank: 3, manager: "Bryan Doane" },
+    { rank: 4, manager: "Landon Elliott" },
+    { rank: 5, manager: "Chris Barras" },
+    { rank: 6, manager: "Keith Polarek" },
+    { rank: 7, manager: "JD Dowling" },
+    { rank: 8, manager: "Garet Prior" },
+    { rank: 9, manager: "Gordie Gahagan" },
+    { rank: 10, manager: "Ray Long" },
+    { rank: 11, manager: "Wade Cameron" },
+    { rank: 12, manager: "Travis Miller" }
+  ],
+  2012: [
+    { rank: 1, manager: "Bryan Doane" },
+    { rank: 2, manager: "Chris Barras" },
+    { rank: 3, manager: "Nicholas Bates" },
+    { rank: 4, manager: "James Minnix" },
+    { rank: 5, manager: "Tommy Moore" },
+    { rank: 6, manager: "Landon Elliott" },
+    { rank: 7, manager: "Gordie Gahagan" },
+    { rank: 8, manager: "Wade Cameron" },
+    { rank: 9, manager: "Travis Miller" },
+    { rank: 10, manager: "Darren Kusaj" },
+    { rank: 11, manager: "JD Dowling" },
+    { rank: 12, manager: "Zach Woolard" }
+  ],
+  2011: [
+    { rank: 1, manager: "Gordie Gahagan" },
+    { rank: 2, manager: "Wade Cameron" },
+    { rank: 3, manager: "Zach Woolard" },
+    { rank: 4, manager: "Keith Polarek" },
+    { rank: 5, manager: "Unknown" },
+    { rank: 6, manager: "Bryan Doane" },
+    { rank: 7, manager: "Chris Barras" },
+    { rank: 8, manager: "Ray Long" },
+    { rank: 9, manager: "Unknown" },
+    { rank: 10, manager: "Darren Kusaj" },
+    { rank: 11, manager: "Rachel Woolard" },
+    { rank: 12, manager: "Unknown" }
+  ]
+};

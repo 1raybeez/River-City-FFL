@@ -1,99 +1,126 @@
-// lib/tradeFairnessEngine.ts
+import { RIVER_CITY_ALGORITHM as ALGO } from "./leagueAlgorithm";
 
-import { HistoricalTrade, LeagueFairnessProfile, compareTradeToHistory } from "./historicalTradeEngine";
+export interface TradePlayer {
+  playerId: string;
+  totalValueScore?: number; 
+  value?: number; // Common fallback
+  keeperCost: number;
+  toTeam: number;
+}
 
-type TradeSide = {
+export interface TradeSide {
   teamIndex: number;
-  players: {
-    playerId: string;
-    totalValueScore: number;
-    keeperCost?: number;
-    keeperEligible?: boolean;
-    position?: string;
-  }[];
-  faabSent?: number;
-};
+  faabSent: number;
+  players: TradePlayer[];
+}
 
-type TradeAnalysisInput = {
-  sides: TradeSide[];
-  historicalProfile?: LeagueFairnessProfile;
-};
-
-type TradeAnalysisResult = {
+export interface TradeEvaluationResult {
   fairnessScore: number;
   verdict: string;
-  perTeam: {
-    teamIndex: number;
-    valueIn: number;
-    valueOut: number;
-    net: number;
-  }[];
-  historicalContext?: string;
-};
+  teamNetValues: number[];
+}
 
-export function evaluateTrade({
-  sides,
-  historicalProfile
-}: TradeAnalysisInput): TradeAnalysisResult {
-  const perTeam = sides.map((side) => {
-    const valueOut = side.players.reduce((sum, p) => sum + p.totalValueScore, 0);
-    const valueIn = sides
-      .filter((s) => s.teamIndex !== side.teamIndex)
-      .flatMap((s) =>
-        s.players.filter((p) => p.teamIndex === side.teamIndex)
-      )
-      .reduce((sum, p) => sum + p.totalValueScore, 0);
+/**
+ * Calculates the "Keeper Surplus" value.
+ * Logic: If a player is worth more than their cost, apply a 1.2x bonus.
+ * If they are a "bad contract," apply a 0.8x penalty.
+ */
+function calculateKeeperSurplus(p: TradePlayer): number {
+  const val = p.totalValueScore ?? p.value ?? 0;
+  const surplus = val - (p.keeperCost ?? 0);
+  
+  // Return weighted surplus based on whether it's positive or negative
+  return surplus > 0 ? surplus * 1.2 : surplus * 0.8;
+}
 
-    const faab = side.faabSent ?? 0;
-    return {
-      teamIndex: side.teamIndex,
-      valueIn: valueIn + faab,
-      valueOut,
-      net: valueIn + faab - valueOut
-    };
+export function evaluateTrade(input: { sides: TradeSide[] }): TradeEvaluationResult {
+  const { sides } = input;
+
+  if (!sides || sides.length < 2) {
+    return { fairnessScore: 100, verdict: "Incomplete trade.", teamNetValues: [] };
+  }
+
+  const numTeams = sides.length;
+  const teamNets = Array(numTeams).fill(0);
+
+  sides.forEach((side, i) => {
+    // 1. Assets Sent (Talent and Surplus)
+    const talentSent = side.players.reduce((sum, p) => {
+      const pVal = p.totalValueScore ?? p.value ?? 0;
+      return sum + Math.pow(pVal, ALGO.marketMultiplier);
+    }, 0);
+
+    const surplusSent = side.players.reduce((sum, p) => sum + calculateKeeperSurplus(p), 0);
+
+    // 2. Assets Received
+    let talentReceived = 0;
+    let surplusReceived = 0;
+    let playersReceivedCount = 0;
+    let faabReceived = 0;
+
+    sides.forEach(otherSide => {
+      if (otherSide.teamIndex === i) return;
+      
+      const arriving = otherSide.players.filter(p => p.toTeam === i);
+      playersReceivedCount += arriving.length;
+      
+      talentReceived += arriving.reduce((sum, p) => {
+        const pVal = p.totalValueScore ?? p.value ?? 0;
+        return sum + Math.pow(pVal, ALGO.marketMultiplier);
+      }, 0);
+      
+      surplusReceived += arriving.reduce((sum, p) => sum + calculateKeeperSurplus(p), 0);
+      
+      // Handle FAAB (usually 2-team trades)
+      if (numTeams === 2) faabReceived = otherSide.faabSent ?? 0;
+    });
+
+    // 3. Roster Impact (Tax for getting more players than you sent)
+    const netPlayerCount = playersReceivedCount - side.players.length;
+    const rosterTax = netPlayerCount > 0 ? netPlayerCount * ALGO.rosterSpotTax : 0;
+
+    // 4. Calculate Net Delta
+    const deltaTalent = talentReceived - talentSent;
+    const deltaSurplus = surplusReceived - surplusSent;
+    const deltaFaab = faabReceived - (side.faabSent ?? 0);
+
+    // DEBUG LOG: Helps identify why impact is 0
+    console.log(`Team ${i} Analysis:`, { deltaTalent, deltaSurplus, deltaFaab, rosterTax });
+
+    teamNets[i] = (
+      (deltaTalent * ALGO.weights.currentTalent) +
+      (deltaSurplus * ALGO.weights.keeperSurplus) +
+      (deltaFaab * ALGO.weights.faab) -
+      rosterTax
+    );
   });
 
-  const totalNet = perTeam.reduce((sum, t) => sum + Math.abs(t.net), 0);
-  const avgNet = totalNet / perTeam.length;
+  // Calculate the "Gap" between the biggest winner and biggest loser
+  const maxGain = Math.max(...teamNets);
+  const minLoss = Math.min(...teamNets);
+  const gap = Math.abs(maxGain - minLoss);
 
-  let fairnessScore = Math.max(0, 100 - avgNet / 20);
-  fairnessScore = Math.min(100, Math.round(fairnessScore));
-
-  let verdict = "";
-  const mostFavored = perTeam.reduce((a, b) => (a.net > b.net ? a : b));
-  const mostHurt = perTeam.reduce((a, b) => (a.net < b.net ? a : b));
-
-  if (Math.abs(mostFavored.net - mostHurt.net) < 300) {
-    verdict = "Trade appears balanced across all teams.";
-  } else {
-    verdict = `Trade favors Team ${mostFavored.teamIndex + 1} by approximately ${Math.round(
-      mostFavored.net
-    )} points.`;
-  }
-
-  let historicalContext: string | undefined = undefined;
-
-  if (historicalProfile) {
-    const mockTrade: HistoricalTrade = {
-      id: "current",
-      season: 2026,
-      timestamp: Date.now(),
-      teams: sides.map((side) => ({
-        teamId: `team-${side.teamIndex}`,
-        playersIn: [],
-        playersOut: side.players.map((p) => p.playerId),
-        faabIn: side.faabSent ?? 0,
-        faabOut: 0
-      }))
-    };
-
-    historicalContext = compareTradeToHistory(mockTrade, historicalProfile);
-  }
-
+  const fairnessScore = computeFairnessScore(gap);
+  
   return {
     fairnessScore,
-    verdict,
-    perTeam,
-    historicalContext
+    verdict: generateVerdict(fairnessScore),
+    teamNetValues: teamNets
   };
+}
+
+function computeFairnessScore(gap: number): number {
+  if (gap <= ALGO.tolerance.elite) return 100;
+  if (gap <= ALGO.tolerance.fair) return 90;
+  if (gap <= ALGO.tolerance.lopsided) return 65;
+  if (gap <= ALGO.tolerance.egregious) return 35;
+  return 5;
+}
+
+function generateVerdict(score: number): string {
+  if (score >= 95) return "Pure Balance: This trade is a perfect value wash.";
+  if (score >= 80) return "Fair: Minor value differences, well within league norms.";
+  if (score >= 60) return "Lopsided: One manager gains a clear advantage.";
+  if (score >= 35) return "Heavily Favored: This deal creates a massive power shift.";
+  return "Egregious: Historically unprecedented imbalance. Collusion possible.";
 }

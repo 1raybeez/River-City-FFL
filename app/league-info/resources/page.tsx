@@ -1,15 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useTheme } from "next-themes";
 import { 
-  ArrowLeft, BookOpen, Music, Mic2, Globe, BarChart3, 
-  ChevronRight, Radio
+  Home, BookOpen, Music, Mic2, Globe, BarChart3, 
+  ChevronRight, Radio, Sun, Moon, Monitor
 } from 'lucide-react';
-import { ModeToggle } from '@/components/ModeToggle';
 
-// --- DATA REMAINS UNCHANGED (192 LINES PRESERVED) ---
 const BROADCAST_FEED = [
   { year: "2025", label: "Draft Kit", link: "https://music.apple.com/us/playlist/2025-river-city-ffl/pl.u-mJy88LDtBYqpd1" },
   { year: "2024", label: "Archive", link: "https://music.apple.com/us/playlist/2024-river-city-ffl/pl.u-11zBXZouZKBzgm" },
@@ -53,142 +52,160 @@ const ANALYZERS = [
 
 export default function ResourcesPage() {
   const [activeTab, setActiveTab] = useState('playlists');
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   const ResourceCard = ({ title, desc, url, type }: any) => (
     <a 
       href={url} 
       target="_blank" 
       rel="noopener noreferrer"
-      className="group bg-white dark:bg-[#1e1e1e] p-5 sm:p-6 rounded-[2rem] sm:rounded-[2.5rem] border border-gray-200 dark:border-white/5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full relative overflow-hidden"
+      className="group bg-black/5 dark:bg-white/5 p-6 rounded-[2.5rem] border border-black/5 dark:border-white/10 shadow-lg hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300 flex flex-col h-full relative overflow-hidden"
     >
-      <div className="flex justify-between items-start mb-2">
-        <h3 className="text-base sm:text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight italic pr-12 leading-tight">
+      <div className="flex justify-between items-start mb-4">
+        <h3 className="text-xl font-black uppercase italic tracking-tighter leading-none pr-12">
           {title}
         </h3>
         {type && (
-          <span className={`absolute top-4 right-4 sm:top-6 sm:right-6 text-[8px] sm:text-[9px] font-black uppercase px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full border shadow-xs tracking-widest ${
-            type === 'Premium' ? 'bg-orange-500 text-white border-orange-400' : 
-            type === 'Freemium' ? 'bg-blue-500 text-white border-blue-400' :
-            'bg-emerald-500 text-white border-emerald-400'
+          <span className={`absolute top-6 right-6 text-[8px] font-black uppercase px-2 py-0.5 rounded-full border shadow-sm tracking-[0.2em] ${
+            type === 'Premium' ? 'bg-orange-600 text-white border-orange-500' : 
+            type === 'Freemium' ? 'bg-blue-600 text-white border-blue-500' :
+            'bg-emerald-600 text-white border-emerald-500'
           }`}>
             {type}
           </span>
         )}
       </div>
-      <p className="text-[10px] sm:text-xs font-bold text-gray-400 dark:text-gray-500 leading-relaxed flex-grow">{desc}</p>
-      <div className="mt-4 sm:mt-6 flex items-center gap-2 text-[9px] sm:text-[10px] font-black text-orange-600 dark:text-orange-500 uppercase tracking-[0.2em] group-hover:gap-3 transition-all italic">
-        Access Link <ChevronRight className="w-3 h-3" />
+      <p className="text-sm font-medium opacity-50 leading-relaxed flex-grow">{desc}</p>
+      <div className="mt-6 flex items-center gap-2 text-[10px] font-black text-orange-600 uppercase tracking-widest group-hover:gap-3 transition-all italic">
+        Open Resource <ChevronRight size={14} />
       </div>
     </a>
   );
 
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#121212] transition-colors duration-300 font-sans pb-20 text-gray-900 dark:text-white">
-      
-      {/* HEADER: Fluid Scale */}
-      <div className="bg-white dark:bg-[#1e1e1e] border-b border-gray-200 dark:border-white/5 pb-6 sm:pb-8 pt-4 sticky top-0 z-50 shadow-sm text-center">
-          <div className="container mx-auto px-4 relative flex flex-col items-center">
-            <Link href="/league-info" className="sm:absolute sm:top-4 sm:left-4 mb-2 sm:mb-0 flex items-center gap-1 text-gray-500 hover:text-orange-600 transition-colors font-bold text-[10px] sm:text-xs uppercase tracking-tight">
-                <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4" /> Hub
-            </Link>
-            <div className="absolute top-4 right-4 z-50 scale-75 sm:scale-100"><ModeToggle /></div>
-            <h1 className="mt-2 text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-tighter flex items-center justify-center gap-2 sm:gap-3 italic">
-                <span className="p-1.5 sm:p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400 shadow-sm"><BookOpen className="w-5 h-5 sm:w-8 sm:h-8" /></span>
-                League Resources
-            </h1>
-          </div>
-      </div>
+  if (!mounted) return null;
 
-      <main className="container mx-auto px-4 py-8 sm:py-12 max-w-7xl">
+  return (
+    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-20 selection:bg-purple-600">
+      
+      {/* NAVIGATION BAR */}
+      <nav className="border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
+        <div className="flex items-center gap-4">
+          <Link href="/league-info" className="p-2 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:scale-105 transition-all">
+            <Home size={18} />
+          </Link>
+          <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
+            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${theme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
+            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${theme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
+            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${theme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+           <BookOpen className="text-purple-600 hidden sm:block" size={20} />
+           <span className="text-xs font-black uppercase italic tracking-tighter">Resources</span>
+        </div>
+      </nav>
+
+      <header className="px-6 py-12 text-center">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 overflow-hidden relative shadow-lg">
+             <Image src="/River City FFL Logo.JPG" alt="Logo" fill className="object-cover" priority unoptimized />
+        </div>
+        <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic leading-none">
+            League <span className="text-purple-600">Resources</span>
+        </h1>
+        <p className="mt-4 text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Broadcasts & War Room Intelligence</p>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-6 py-10">
         
-        {/* TAB NAV: Horizontal Scroll for Mobile */}
-        <div className="flex justify-center mb-10 sm:mb-16">
-          <div className="flex overflow-x-auto no-scrollbar gap-2 bg-white dark:bg-[#1e1e1e] p-1.5 rounded-full border border-gray-200 dark:border-white/5 shadow-sm max-w-full">
+        {/* TAB NAV */}
+        <div className="flex justify-center mb-16">
+          <div className="flex overflow-x-auto no-scrollbar gap-2 bg-black/5 dark:bg-white/5 p-1.5 rounded-full border border-black/5 dark:border-white/10 shadow-md">
             {[
-              { id: 'playlists', icon: Music, label: 'Playlists', color: '#fa233b' },
-              { id: 'podcasts', icon: Mic2, label: 'Broadcasts', color: '#ea580c' },
-              { id: 'websites', icon: Globe, label: 'Websites', color: '#2563eb' },
-              { id: 'analyzers', icon: BarChart3, label: 'Analyzers', color: '#059669' }
+              { id: 'playlists', icon: Music, label: 'Playlists', color: 'bg-red-600' },
+              { id: 'podcasts', icon: Mic2, label: 'Broadcasts', color: 'bg-orange-600' },
+              { id: 'websites', icon: Globe, label: 'Intelligence', color: 'bg-blue-600' },
+              { id: 'analyzers', icon: BarChart3, label: 'Simulators', color: 'bg-emerald-600' }
             ].map((tab) => (
               <button 
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)} 
-                className={`whitespace-nowrap px-4 sm:px-8 py-2 sm:py-3 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
-                  activeTab === tab.id ? 'text-white shadow-lg' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
+                className={`whitespace-nowrap px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
+                  activeTab === tab.id ? `${tab.color} text-white shadow-lg` : 'opacity-40 hover:opacity-100'
                 }`}
-                style={{ backgroundColor: activeTab === tab.id ? tab.color : 'transparent' }}
               >
-                <tab.icon className="w-3 h-3 sm:w-4 sm:h-4" /> {tab.label}
+                <tab.icon size={14} /> {tab.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* --- DRAFT DAY BROADCAST TAB --- */}
+        {/* Playlists */}
         {activeTab === 'playlists' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="mb-8 sm:mb-10 border-l-4 border-[#fa233b] pl-4 sm:pl-6 py-1 sm:py-2">
-                <h2 className="text-2xl sm:text-4xl font-black tracking-tighter uppercase italic">Draft Day <span className="text-[#fa233b]">Feed</span></h2>
-                <p className="text-[8px] sm:text-[10px] font-black text-[#fa233b] uppercase tracking-[0.3em] mt-1 italic">War Room Frequencies</p>
+            <div className="mb-10 border-l-4 border-red-600 pl-6">
+                <h2 className="text-4xl font-black tracking-tighter uppercase italic">Draft Day <span className="text-red-600">Feed</span></h2>
+                <p className="text-[10px] font-black opacity-30 uppercase tracking-widest mt-1">Official War Room Audio</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
               {BROADCAST_FEED.map((p) => (
-                <a key={p.year} href={p.link} target="_blank" className="relative overflow-hidden p-6 sm:p-8 rounded-[2rem] sm:rounded-[3.rem] shadow-lg flex items-center justify-between transition-all duration-500 hover:scale-[1.02] active:scale-95 bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-white/5 text-gray-900 dark:text-white">
+                <a key={p.year} href={p.link} target="_blank" className="relative overflow-hidden p-10 rounded-[2.5rem] shadow-xl flex items-center justify-between transition-all hover:scale-[1.02] bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 group">
                   <div className="relative z-10">
-                    <span className="text-4xl sm:text-6xl font-black tracking-tighter italic uppercase">{p.year}</span>
-                    <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] mt-1 text-[#fa233b]">{p.label}</p>
+                    <span className="text-6xl font-black tracking-tighter italic uppercase">{p.year}</span>
+                    <p className="text-[11px] font-black uppercase tracking-[0.2em] mt-1 text-red-600">{p.label}</p>
                   </div>
-                  <div className="p-4 sm:p-5 rounded-2xl bg-gray-50 dark:bg-white/5">
-                     <Music className="w-8 h-8 sm:w-10 sm:h-10 text-[#fa233b]" />
+                  <div className="p-5 rounded-2xl bg-black/10 dark:bg-white/5 group-hover:bg-red-600 group-hover:text-white transition-colors">
+                     <Music size={32} />
                   </div>
-                  <Radio className="absolute -bottom-6 -right-6 w-32 h-32 opacity-10 rotate-12" />
                 </a>
               ))}
             </div>
           </div>
         )}
 
-        {/* --- IN-SEASON BROADCASTS TAB --- */}
+        {/* Broadcasts/Podcasts */}
         {activeTab === 'podcasts' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="mb-8 sm:mb-10 border-l-4 border-orange-500 pl-4 sm:pl-6 py-1 sm:py-2">
-                <h2 className="text-2xl sm:text-4xl font-black tracking-tighter uppercase italic">Weekly <span className="text-orange-600">Broadcasts</span></h2>
-                <p className="text-[8px] sm:text-[10px] font-black text-orange-500 uppercase tracking-[0.3em] mt-1 italic">Analysis</p>
+            <div className="mb-10 border-l-4 border-orange-600 pl-6">
+                <h2 className="text-4xl font-black tracking-tighter uppercase italic">Weekly <span className="text-orange-600">Broadcasts</span></h2>
+                <p className="text-[10px] font-black opacity-30 uppercase tracking-widest mt-1">In-Season Analysis</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {PODCASTS.map(pod => <ResourceCard key={pod.name} title={pod.name} desc={pod.desc} url={pod.url} type={pod.type} />)}
             </div>
           </div>
         )}
 
-        {/* --- INTELLIGENCE CENTERS TAB --- */}
+        {/* Intelligence Centers */}
         {activeTab === 'websites' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="mb-8 sm:mb-10 border-l-4 border-blue-500 pl-4 sm:pl-6 py-1 sm:py-2">
-                <h2 className="text-2xl sm:text-4xl font-black tracking-tighter uppercase italic">Intelligence <span className="text-blue-600">Centers</span></h2>
-                <p className="text-[8px] sm:text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] mt-1 italic">Intelligence Gathering</p>
+            <div className="mb-10 border-l-4 border-blue-600 pl-6">
+                <h2 className="text-4xl font-black tracking-tighter uppercase italic">Intelligence <span className="text-blue-600">Centers</span></h2>
+                <p className="text-[10px] font-black opacity-30 uppercase tracking-widest mt-1">Expert Consensus & Data</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {WEBSITES.map(site => <ResourceCard key={site.name} title={site.name} desc={site.desc} url={site.url} type={site.type} />)}
             </div>
           </div>
         )}
 
-        {/* --- WAR ROOM SIMULATORS TAB --- */}
+        {/* Simulators */}
         {activeTab === 'analyzers' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="mb-8 sm:mb-10 border-l-4 border-emerald-500 pl-4 sm:pl-6 py-1 sm:py-2">
-                <h2 className="text-2xl sm:text-4xl font-black tracking-tighter uppercase italic">Scenario <span className="text-emerald-600">Analytics</span></h2>
-                <p className="text-[8px] sm:text-[10px] font-black text-emerald-500 uppercase tracking-[0.4em] mt-1 italic">Trade Simulators</p>
+            <div className="mb-10 border-l-4 border-emerald-600 pl-6">
+                <h2 className="text-4xl font-black tracking-tighter uppercase italic">Scenario <span className="text-emerald-600">Analytics</span></h2>
+                <p className="text-[10px] font-black opacity-30 uppercase tracking-widest mt-1">Trade Simulators & Calculators</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {ANALYZERS.map(tool => <ResourceCard key={tool.name} title={tool.name} desc={tool.desc} url={tool.url} type={tool.type} />)}
             </div>
           </div>
         )}
 
       </main>
-      
+
       <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

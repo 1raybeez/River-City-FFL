@@ -3,11 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useTheme } from "next-themes";
 import { 
-  ArrowLeft, Loader2, Swords, X, Calendar, 
-  TrendingUp, TrendingDown, Trophy
+  Home, Loader2, Swords, X, Calendar, 
+  TrendingUp, TrendingDown, Trophy, Sun, Moon, Monitor
 } from 'lucide-react';
-import { ModeToggle } from '@/components/ModeToggle';
 
 // --- CONFIGURATION: RIVER CITY DATA ---
 const LEAGUE_HISTORY = [
@@ -23,23 +23,24 @@ const LEAGUE_HISTORY = [
 ];
 
 const MANAGER_MAP: Record<string, { name: string; image: string }> = {
-  "73400761740312576": { name: "Doug Fordham", image: "/managers/Doug.jpg" },
-  "341412060426436608": { name: "Jordan Maslyn", image: "/managers/Jordan.jpg" },
-  "469199353672626176": { name: "Landon Elliott", image: "/managers/Landon.png" },
-  "342828350391230464": { name: "Ray Long", image: "/managers/Ray.png" },
-  "356621920969555968": { name: "Jeffrey Hudgins", image: "/managers/Jeffrey.png" },
-  "342831451382841344": { name: "Travis Miller", image: "/managers/Travis.png" },
-  "342838548870762496": { name: "Wade Cameron", image: "/managers/Wade.png" },
-  "342849293037608960": { name: "Tommy Moore", image: "/managers/Tommy.png" },
-  "342850391018356736": { name: "JD Dowling", image: "/managers/JD.png" },
-  "343129212162523136": { name: "Brian Stevens", image: "/managers/Brian.png" },
-  "466663208728391680": { name: "David Besedich", image: "/managers/Dave.png" },
-  "583513420586848256": { name: "Aaron Dogg", image: "/managers/Aaron.png" },
-  "864186418971418624": { name: "Rashad Gresham", image: "/managers/Rashad.png" },
-  "1260048448384667648": { name: "Stan Schoppe", image: "/managers/Stan.jpg" }
+  "73400761740312576": { name: "Doug", image: "/managers/Doug.jpg" },
+  "341412060426436608": { name: "Jordan", image: "/managers/Jordan.jpg" },
+  "469199353672626176": { name: "Landon", image: "/managers/Landon.png" },
+  "342828350391230464": { name: "Ray & Jeffrey", image: "/managers/Ray.png" },
+  "342831451382841344": { name: "Travis", image: "/managers/Travis.png" },
+  "342838548870762496": { name: "Wade", image: "/managers/Wade.png" },
+  "342849293037608960": { name: "Tommy", image: "/managers/Tommy.png" },
+  "342850391018356736": { name: "JD", image: "/managers/JD.png" },
+  "343129212162523136": { name: "Brian", image: "/managers/Brian.png" },
+  "466663208728391680": { name: "Dave", image: "/managers/Dave.png" },
+  "583513420586848256": { name: "Aaron", image: "/managers/Aaron.png" },
+  "864186418971418624": { name: "Rashad", image: "/managers/Rashad.png" },
+  "1260048448384667648": { name: "Stan", image: "/managers/Stan.jpg" }
 };
 
 export default function RivalryHub() {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [playerA, setPlayerA] = useState('');
   const [playerB, setPlayerB] = useState('');
   const [loading, setLoading] = useState(false);
@@ -48,6 +49,8 @@ export default function RivalryHub() {
     aWins: 0, bWins: 0, aPoints: 0, bPoints: 0, totalGames: 0,
     blowout: null, shave: null
   });
+
+  useEffect(() => { setMounted(true); }, []);
 
   const scanHistory = async () => {
     if (!playerA || !playerB) return;
@@ -59,9 +62,11 @@ export default function RivalryHub() {
       try {
         const rosterRes = await fetch(`https://api.sleeper.app/v1/league/${season.id}/rosters`);
         const rosters = await rosterRes.json();
-        const ridA = rosters.find((r: any) => r.owner_id === playerA)?.roster_id;
-        const ridB = rosters.find((r: any) => r.owner_id === playerB)?.roster_id;
-        if (!ridA || !ridB) continue;
+        
+        const ridA = rosters.find((r: any) => r.owner_id === playerA || r.co_owners?.includes(playerA))?.roster_id;
+        const ridB = rosters.find((r: any) => r.owner_id === playerB || r.co_owners?.includes(playerB))?.roster_id;
+        
+        if (!ridA || !ridB || ridA === ridB) continue;
 
         for (let w = 1; w <= 17; w++) {
           const mRes = await fetch(`https://api.sleeper.app/v1/league/${season.id}/matchups/${w}`);
@@ -69,7 +74,7 @@ export default function RivalryHub() {
           const matchA = matchups.find((m: any) => m.roster_id === ridA);
           const matchB = matchups.find((m: any) => m.roster_id === ridB);
 
-          if (matchA?.matchup_id === matchB?.matchup_id && matchA && matchB && matchA.points !== null) {
+          if (matchA?.matchup_id === matchB?.matchup_id && matchA && matchB && matchA.points !== undefined) {
             const diff = Math.abs(matchA.points - matchB.points);
             games.push({ year: season.year, week: w, a: matchA, b: matchB, diff });
             h2h.totalGames++;
@@ -82,77 +87,103 @@ export default function RivalryHub() {
       } catch (err) { console.error(err); }
     }
 
-    const blowout = games.reduce((prev, curr) => (prev.diff > curr.diff) ? prev : curr, games[0]);
-    const shave = games.reduce((prev, curr) => (prev.diff < curr.diff) ? prev : curr, games[0]);
-
-    setStats({ ...h2h, blowout, shave });
+    if (games.length > 0) {
+      const blowout = games.reduce((prev, curr) => (prev.diff > curr.diff) ? prev : curr, games[0]);
+      const shave = games.reduce((prev, curr) => (prev.diff < curr.diff) ? prev : curr, games[0]);
+      setStats({ ...h2h, blowout, shave });
+    } else {
+      setStats({ aWins: 0, bWins: 0, aPoints: 0, bPoints: 0, totalGames: 0, blowout: null, shave: null });
+    }
     setLoading(false);
   };
 
   useEffect(() => { scanHistory(); }, [playerA, playerB]);
+
+  if (!mounted) return null;
 
   const managerA = MANAGER_MAP[playerA];
   const managerB = MANAGER_MAP[playerB];
   const aWinPct = stats.totalGames > 0 ? (stats.aWins / stats.totalGames) * 100 : 50;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#121212] transition-colors duration-300 font-sans pb-32">
-      <header className="bg-white dark:bg-[#1e1e1e] border-b border-gray-200 dark:border-white/5 pb-8 pt-4 sticky top-0 z-50 shadow-sm text-center text-gray-900 dark:text-white">
-        <Link href="/league-info" className="absolute top-4 left-4 flex items-center gap-2 text-gray-500 hover:text-orange-600 transition-colors font-bold text-xs uppercase tracking-tight">
-          <ArrowLeft className="w-4 h-4" /> Back to Hub
-        </Link>
-        <div className="absolute top-4 right-4"><ModeToggle /></div>
-        <h1 className="mt-2 text-3xl font-black uppercase tracking-tighter flex items-center justify-center gap-3 italic">
-          <span className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-xl text-orange-600 dark:text-orange-400"><Swords className="w-8 h-8" /></span>
-          Rivalry Hub
+    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-32 selection:bg-red-600">
+      
+      {/* NAVIGATION BAR - Consistent Header */}
+      <nav className="border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
+        <div className="flex items-center gap-4">
+          <Link href="/league-info" className="p-2 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:scale-105 transition-all">
+            <Home size={18} />
+          </Link>
+          
+          <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
+            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${theme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
+            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${theme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
+            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${theme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+           <Swords className="text-red-600 hidden sm:block" size={20} />
+           <span className="text-xs font-black uppercase italic tracking-tighter">Rivalry Hub</span>
+        </div>
+      </nav>
+
+      <header className="px-6 py-10 text-center">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 overflow-hidden relative shadow-lg">
+             <Image src="/River City FFL Logo.JPG" alt="Logo" fill className="object-cover" priority unoptimized />
+        </div>
+        <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic leading-none">
+            Head-To-<span className="text-red-600">Head</span>
         </h1>
+        <p className="mt-4 text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Historical Matchup Analyzer</p>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-12">
-        <div className="flex flex-col md:flex-row justify-center items-center gap-8 md:gap-16 mb-16">
-          <ManagerProfile id={playerA} manager={managerA} setPlayer={setPlayerA} hasLead={stats.aWins > stats.bWins} />
-          <div className="flex flex-col items-center"><span className="text-4xl font-black italic text-gray-300 dark:text-white/10 select-none">VS</span></div>
-          <ManagerProfile id={playerB} manager={managerB} setPlayer={setPlayerB} hasLead={stats.bWins > stats.aWins} />
+      <main className="max-w-6xl mx-auto px-6 py-12">
+        <div className="flex flex-col md:flex-row justify-center items-center gap-8 md:gap-16 mb-20">
+          <ManagerProfile id={playerA} manager={managerA} setPlayer={setPlayerA} hasLead={stats.aWins > stats.bWins} side="left" />
+          <div className="text-5xl font-black italic opacity-10 select-none">VS</div>
+          <ManagerProfile id={playerB} manager={managerB} setPlayer={setPlayerB} hasLead={stats.bWins > stats.aWins} side="right" />
         </div>
 
         {loading ? (
-          <div className="flex flex-col items-center py-20 opacity-50">
-            <Loader2 className="animate-spin text-orange-600 mb-4" size={48} />
-            <p className="font-black uppercase tracking-widest text-[10px] text-gray-500">Scanning History...</p>
+          <div className="flex flex-col items-center py-20 animate-pulse">
+            <Loader2 className="animate-spin text-red-600 mb-4" size={48} />
+            <p className="font-black uppercase tracking-widest text-[10px] opacity-40">Scanning archives...</p>
           </div>
         ) : stats.totalGames > 0 && (
-          <div className="space-y-10 animate-in fade-in duration-500">
-            <div className="bg-white dark:bg-[#1e1e1e] rounded-[2.5rem] p-10 shadow-xl border border-gray-100 dark:border-white/5">
-              <div className="h-4 w-full bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden flex border border-gray-200 dark:border-white/5 shadow-inner">
-                <div className="h-full bg-orange-600 transition-all duration-1000" style={{ width: `${aWinPct}%` }} />
-                <div className="h-full bg-blue-600 transition-all duration-1000" style={{ width: `${100 - aWinPct}%` }} />
+          <div className="space-y-12 animate-in fade-in duration-500">
+            {/* Stat Bar and Numbers */}
+            <div className="bg-black/5 dark:bg-white/5 rounded-[2.5rem] p-10 border border-black/5 dark:border-white/10 shadow-2xl relative overflow-hidden">
+              <div className="h-5 w-full bg-black/10 dark:bg-white/10 rounded-full overflow-hidden flex border border-black/5 dark:border-white/5 shadow-inner">
+                <div className="h-full bg-red-600 transition-all duration-1000 ease-out" style={{ width: `${aWinPct}%` }} />
+                <div className="h-full bg-blue-600 transition-all duration-1000 ease-out" style={{ width: `${100 - aWinPct}%` }} />
               </div>
-              <div className="grid grid-cols-2 gap-12 text-center mt-12 text-gray-900 dark:text-white">
+              <div className="grid grid-cols-2 gap-12 text-center mt-12">
                 <div>
-                  <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2 flex items-center justify-center gap-1">
-                    H2H Wins {stats.aWins > stats.bWins && <span className="text-sm">💪</span>}
+                  <p className="text-[10px] font-black uppercase opacity-40 tracking-widest mb-2 flex items-center justify-center gap-2">
+                    {managerA.name} Wins {stats.aWins > stats.bWins && <Trophy size={12} className="text-yellow-500" />}
                   </p>
-                  <h4 className="text-6xl font-black italic">{stats.aWins}</h4>
-                  <p className="text-xs font-bold mt-4 text-orange-600 uppercase tracking-tighter">Avg: {(stats.aPoints / stats.totalGames).toFixed(1)} PPG</p>
+                  <h4 className="text-7xl font-black italic">{stats.aWins}</h4>
+                  <p className="text-xs font-black mt-4 text-red-600 uppercase italic">Avg: {(stats.aPoints / stats.totalGames).toFixed(1)} PPG</p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2 flex items-center justify-center gap-1">
-                    H2H Wins {stats.bWins > stats.aWins && <span className="text-sm">💪</span>}
+                  <p className="text-[10px] font-black uppercase opacity-40 tracking-widest mb-2 flex items-center justify-center gap-2">
+                    {managerB.name} Wins {stats.bWins > stats.aWins && <Trophy size={12} className="text-yellow-500" />}
                   </p>
-                  <h4 className="text-6xl font-black italic">{stats.bWins}</h4>
-                  <p className="text-xs font-bold mt-4 text-blue-600 uppercase tracking-tighter">Avg: {(stats.bPoints / stats.totalGames).toFixed(1)} PPG</p>
+                  <h4 className="text-7xl font-black italic">{stats.bWins}</h4>
+                  <p className="text-xs font-black mt-4 text-blue-600 uppercase italic">Avg: {(stats.bPoints / stats.totalGames).toFixed(1)} PPG</p>
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-               <button onClick={() => setSelectedMatch(stats.blowout)} className="group bg-white dark:bg-[#1e1e1e] p-8 rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-md text-center hover:scale-[1.02] transition-all text-gray-900 dark:text-white">
-                  <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2"><TrendingUp className="inline w-3 h-3 text-red-500 mr-2" /> Biggest Blowout</p>
-                  <p className="text-3xl font-black italic">± {stats.blowout?.diff.toFixed(1)} Pts</p>
+               <button onClick={() => setSelectedMatch(stats.blowout)} className="group bg-black/5 dark:bg-white/5 p-8 rounded-[2.5rem] border border-black/5 dark:border-white/10 shadow-lg text-center hover:bg-black/10 dark:hover:bg-white/10 transition-all">
+                  <p className="text-[10px] font-black uppercase opacity-40 tracking-widest mb-2"><TrendingUp className="inline w-3 h-3 text-red-600 mr-2" /> Biggest Blowout</p>
+                  <p className="text-4xl font-black italic tracking-tighter">± {stats.blowout?.diff.toFixed(1)} Pts</p>
                </button>
-               <button onClick={() => setSelectedMatch(stats.shave)} className="group bg-white dark:bg-[#1e1e1e] p-8 rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-md text-center hover:scale-[1.02] transition-all text-gray-900 dark:text-white">
-                  <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2"><TrendingDown className="inline w-3 h-3 text-emerald-500 mr-2" /> Closest Shave</p>
-                  <p className="text-3xl font-black italic">± {stats.shave?.diff.toFixed(1)} Pts</p>
+               <button onClick={() => setSelectedMatch(stats.shave)} className="group bg-black/5 dark:bg-white/5 p-8 rounded-[2.5rem] border border-black/5 dark:border-white/10 shadow-lg text-center hover:bg-black/10 dark:hover:bg-white/10 transition-all">
+                  <p className="text-[10px] font-black uppercase opacity-40 tracking-widest mb-2"><TrendingDown className="inline w-3 h-3 text-blue-600 mr-2" /> Closest Shave</p>
+                  <p className="text-4xl font-black italic tracking-tighter">± {stats.shave?.diff.toFixed(1)} Pts</p>
                </button>
             </div>
           </div>
@@ -161,40 +192,34 @@ export default function RivalryHub() {
 
       {/* MATCH MODAL */}
       {selectedMatch && managerA && managerB && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setSelectedMatch(null)}>
-          <div className="bg-white dark:bg-[#1e1e1e] rounded-[3rem] w-full max-w-lg p-10 relative shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setSelectedMatch(null)} className="absolute top-8 right-8 text-gray-400 hover:text-orange-600 transition-colors"><X /></button>
-            <h2 className="text-xl font-black italic uppercase mb-8 border-b dark:border-white/10 pb-4 text-center text-gray-900 dark:text-white flex items-center justify-center gap-2">
-                <Calendar className="w-5 h-5" /> {selectedMatch.year} Week {selectedMatch.week}
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-6" onClick={() => setSelectedMatch(null)}>
+          <div className="bg-white dark:bg-[#1a1a1a] rounded-[3rem] w-full max-w-lg p-10 relative shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setSelectedMatch(null)} className="absolute top-8 right-8 opacity-40 hover:opacity-100 hover:text-red-600 transition-all"><X /></button>
+            <h2 className="text-xl font-black italic uppercase mb-8 border-b border-black/5 dark:border-white/10 pb-4 text-center flex items-center justify-center gap-3 tracking-tighter">
+                <Calendar className="w-5 h-5 opacity-40" /> {selectedMatch.year} Week {selectedMatch.week}
             </h2>
             <div className="space-y-8">
                 <div className="flex justify-between items-center">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-orange-500 shrink-0 relative">
+                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-red-600 relative bg-black/20">
                             <Image src={managerA.image} alt={managerA.name} fill className="object-cover" unoptimized />
                         </div>
-                        <div className="flex items-center gap-2 text-gray-900 dark:text-white">
-                          <span className={`text-lg font-black uppercase tracking-tighter ${selectedMatch.a.points > selectedMatch.b.points ? 'text-orange-600' : 'text-gray-400'}`}>
-                            {managerA.name}
-                          </span>
-                          {selectedMatch.a.points > selectedMatch.b.points && <span className="text-xl">💪</span>}
-                        </div>
+                        <span className={`text-xl font-black uppercase italic tracking-tighter ${selectedMatch.a.points > selectedMatch.b.points ? 'text-red-600' : 'opacity-40'}`}>
+                          {managerA.name}
+                        </span>
                     </div>
-                    <span className="text-2xl font-black italic text-gray-900 dark:text-white">{selectedMatch.a.points.toFixed(2)}</span>
+                    <span className="text-3xl font-black italic tracking-tighter">{selectedMatch.a.points.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-blue-500 shrink-0 relative">
+                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-blue-600 relative bg-black/20">
                             <Image src={managerB.image} alt={managerB.name} fill className="object-cover" unoptimized />
                         </div>
-                        <div className="flex items-center gap-2 text-gray-900 dark:text-white">
-                          <span className={`text-lg font-black uppercase tracking-tighter ${selectedMatch.b.points > selectedMatch.a.points ? 'text-blue-600' : 'text-gray-400'}`}>
-                            {managerB.name}
-                          </span>
-                          {selectedMatch.b.points > selectedMatch.a.points && <span className="text-xl">💪</span>}
-                        </div>
+                        <span className={`text-xl font-black uppercase italic tracking-tighter ${selectedMatch.b.points > selectedMatch.a.points ? 'text-blue-600' : 'opacity-40'}`}>
+                          {managerB.name}
+                        </span>
                     </div>
-                    <span className="text-2xl font-black italic text-gray-900 dark:text-white">{selectedMatch.b.points.toFixed(2)}</span>
+                    <span className="text-3xl font-black italic tracking-tighter">{selectedMatch.b.points.toFixed(2)}</span>
                 </div>
             </div>
           </div>
@@ -204,28 +229,27 @@ export default function RivalryHub() {
   );
 }
 
-function ManagerProfile({ manager, id, setPlayer, hasLead }: any) {
+function ManagerProfile({ manager, id, setPlayer, hasLead, side }: any) {
   return (
     <div className="flex flex-col items-center gap-6">
-      <div className={`w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 shadow-2xl overflow-hidden relative ${hasLead ? 'border-orange-500' : 'border-white dark:border-white/10'}`}>
+      <div className={`w-32 h-32 sm:w-44 sm:h-44 rounded-full border-4 shadow-2xl overflow-hidden relative transition-all duration-500 ${hasLead ? (side === 'left' ? 'border-red-600 scale-105' : 'border-blue-600 scale-105') : 'border-black/5 dark:border-white/10'}`}>
         {manager?.image ? (
             <Image src={manager.image} alt={manager.name} fill className="object-cover" unoptimized />
         ) : (
-            <div className="w-full h-full bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-300 font-black">?</div>
+            <div className="w-full h-full bg-black/5 dark:bg-white/5 flex items-center justify-center text-black/20 dark:text-white/20 font-black text-2xl">?</div>
         )}
         {hasLead && (
-            <div className="absolute -top-1 -right-1 bg-orange-600 text-white p-1.5 rounded-full shadow-lg">
-                <Trophy className="w-4 h-4" />
+            <div className={`absolute -top-1 -right-1 p-2 rounded-full shadow-lg border-2 border-white dark:border-[#0a0a0a] ${side === 'left' ? 'bg-red-600' : 'bg-blue-600'}`}>
+                <Trophy className="w-4 h-4 text-white" />
             </div>
         )}
       </div>
-      <div className="text-center text-gray-900 dark:text-white">
-        {/* BICEP ICON ADDED HERE NEXT TO NAME */}
-        <h3 className="text-lg font-black italic uppercase tracking-tighter mb-4 leading-none flex items-center justify-center gap-2">
-            {manager?.name || "Select Manager"}
-            {hasLead && <span className="text-xl not-italic">💪</span>}
+      <div className="text-center">
+        <h3 className="text-2xl font-black italic uppercase tracking-tighter mb-4 leading-none flex items-center justify-center gap-2">
+            {manager?.name || "Select Opponent"}
+            {hasLead && <span className="text-2xl not-italic">💪</span>}
         </h3>
-        <select value={id} onChange={(e) => setPlayer(e.target.value)} className="bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-white/10 p-3 rounded-xl font-black uppercase italic text-[9px] outline-none cursor-pointer text-gray-500 hover:border-orange-500 transition-colors shadow-sm">
+        <select value={id} onChange={(e) => setPlayer(e.target.value)} className="bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 p-4 rounded-2xl font-black uppercase italic text-[10px] outline-none cursor-pointer hover:border-red-600 transition-all shadow-sm">
           <option value="">Choose Manager</option>
           {Object.entries(MANAGER_MAP).map(([uid, info]) => <option key={uid} value={uid}>{info.name}</option>)}
         </select>

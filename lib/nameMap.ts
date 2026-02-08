@@ -1,0 +1,22 @@
+export const HIST_MAP: Record<string, string> = {
+  'Aaron': 'Aaron Hawkins',
+  'Brian': 'Brian Stevens',
+  'Dave': 'David Besedich',
+  'Doug': 'Doug Fordham',
+  'JD': 'JD Dowling',
+  'Jordan': 'Jordan Maslyn',
+  'Landon': 'Landon Elliott',
+  'Ray': 'Ray Long',
+  'Jeffrey': 'Jeffrey Hudgins',
+  'Rashad': 'Rashad Gresham',
+  'Stan': 'Stan Schoppe',
+  'Travis': 'Travis Miller',
+  'Tommy': 'Tommy Moore',
+  'Wade': 'Wade Cameron',
+  'Damon': 'Damon Davis',
+  'Adam': 'Adam Lind',
+  'Billy': 'Billy Biddle',
+  'Chris': 'Chris Barras',
+  'Patrick': 'Patrick Leahey',
+  'Ricky': 'Ricky Taylor'
+};

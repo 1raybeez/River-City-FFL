@@ -1,7 +1,6 @@
-import { initializeApp, getApps } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
-// Your project-specific configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCP0M7e1N758YAC1Zzyrj5hA8ns9ZilUC4",
   authDomain: "river-city-ffl.firebaseapp.com",
@@ -12,6 +11,11 @@ const firebaseConfig = {
   measurementId: "G-X8MXRMTKYW"
 };
 
-// Initialize Firebase only if it hasn't been started yet
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-export const db = getFirestore(app);
+// Initialize Firebase only if we're in the browser or if it's not already initialized
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+// Get the Firestore instance
+const db = getFirestore(app);
+
+// Export both as named exports for maximum compatibility
+export { app, db };

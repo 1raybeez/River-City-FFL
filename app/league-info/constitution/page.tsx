@@ -2,18 +2,29 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Scale, Search, History, XCircle } from 'lucide-react';
-import { ModeToggle } from '@/components/ModeToggle';
+import { useTheme } from "next-themes";
+import { 
+  Home, Scale, Search, History, XCircle, 
+  Sun, Moon, Monitor, ChevronRight 
+} from 'lucide-react';
 import { db } from "@/lib/firebase"; 
 import { collection, onSnapshot } from "firebase/firestore";
 import constitutionData from '@/lib/constitutionData';
 import ConstitutionSection from '@/components/ConstitutionSection';
 
 export default function ConstitutionPage() {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [openSections, setOpenSections] = useState<string[]>([]);
   const [liveRules, setLiveRules] = useState<any[]>([]);
 
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Listen for Live Rule Changes (Firebase)
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "ratified_rules"), (snapshot) => {
       const rules = snapshot.docs.map(doc => ({
@@ -39,7 +50,7 @@ export default function ConstitutionPage() {
     setOpenSections([]);
   };
 
-  // Fixed useEffect: We only depend on the query string to prevent array size errors
+  // Auto-scroll and expand on search match
   useEffect(() => {
     if (searchQuery.length < 3) return;
     const q = searchQuery.toLowerCase();
@@ -61,7 +72,7 @@ export default function ConstitutionPage() {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }
-  }, [searchQuery]); // Removed combinedRules from deps to satisfy React's constant size rule
+  }, [searchQuery]);
 
   const filteredData = combinedRules.filter(section => 
     section.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -71,54 +82,83 @@ export default function ConstitutionPage() {
     )
   );
 
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#121212] font-sans pb-20">
-      <div className="bg-white dark:bg-[#1e1e1e] border-b dark:border-white/5 pb-8 pt-4 sticky top-0 z-50 shadow-sm">
-        <div className="container mx-auto px-4 text-center relative">
-          <Link href="/league-info" className="absolute top-4 left-4 flex items-center gap-2 text-gray-500 hover:text-orange-600 font-bold text-xs uppercase">
-            <ArrowLeft size={16} /> Hub
-          </Link>
-          <div className="absolute top-4 right-4"><ModeToggle /></div>
-          <h1 className="text-2xl font-black uppercase tracking-tighter flex items-center justify-center gap-3 italic text-gray-900 dark:text-white">
-            <Scale className="text-orange-600" /> League Constitution
-          </h1>
-        </div>
-      </div>
+  if (!mounted) return null;
 
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="relative mb-8 group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+  return (
+    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 pb-20 selection:bg-orange-500 selection:text-white">
+      
+      {/* NAVIGATION BAR - Directs back to Info Hub */}
+      <nav className="border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
+        <div className="flex items-center gap-4">
+          <Link 
+            href="/league-info" 
+            className="p-2 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:scale-105 transition-all"
+          >
+            <Home size={18} />
+          </Link>
+          
+          <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
+            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${theme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
+            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${theme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
+            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${theme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+           <Scale className="text-orange-600 hidden sm:block" size={20} />
+           <span className="text-sm font-black uppercase italic tracking-tighter">Constitution</span>
+        </div>
+      </nav>
+
+      <main className="max-w-4xl mx-auto px-6 py-10">
+        <header className="text-center mb-12">
+            <h1 className="text-5xl font-black uppercase italic tracking-tighter mb-4">League Bylaws</h1>
+            <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Last Updated: Feb 2026</p>
+        </header>
+
+        {/* SEARCH BAR */}
+        <div className="relative mb-12 group">
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-black/20 dark:text-white/20 group-focus-within:text-orange-600 transition-colors" size={20} />
           <input 
             type="text" 
-            placeholder="Search regulations..." 
-            className="w-full pl-10 pr-12 py-4 rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#1e1e1e] focus:ring-2 focus:ring-orange-500 outline-none transition text-sm sm:text-base text-gray-900 dark:text-white shadow-sm"
+            placeholder="Search regulations (e.g. 'Trade', 'Scoring')..." 
+            className="w-full pl-14 pr-12 py-5 rounded-[2rem] border border-black/5 dark:border-white/10 bg-black/5 dark:bg-white/5 focus:bg-white dark:focus:bg-white/10 focus:ring-4 focus:ring-orange-600/10 outline-none transition-all text-base font-medium shadow-sm"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           {searchQuery && (
-            <button onClick={clearSearch} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-orange-600">
-              <XCircle size={20} />
+            <button onClick={clearSearch} className="absolute right-5 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-100 hover:text-orange-600 transition-all">
+              <XCircle size={24} />
             </button>
           )}
         </div>
 
-        <div className="space-y-4">
-          {filteredData.map((section) => (
-            <div key={section.id} id={section.anchor} className="scroll-mt-28">
-              <ConstitutionSection
-                title={section.title}
-                icon={section.icon}
-                subsections={section.subsections}
-                isOpen={openSections.includes(section.id)}
-                onToggle={() => toggleSection(section.id)}
-              />
+        {/* REGULATION SECTIONS */}
+        <div className="space-y-6">
+          {filteredData.length > 0 ? (
+            filteredData.map((section) => (
+              <div key={section.id} id={section.anchor} className="scroll-mt-32">
+                <ConstitutionSection
+                  title={section.title}
+                  icon={section.icon}
+                  subsections={section.subsections}
+                  isOpen={openSections.includes(section.id)}
+                  onToggle={() => toggleSection(section.id)}
+                />
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-20 opacity-30 border-2 border-dashed border-black/10 dark:border-white/10 rounded-[2.5rem]">
+              <Search size={48} className="mx-auto mb-4" />
+              <p className="font-black uppercase italic">No Regulations Found</p>
             </div>
-          ))}
+          )}
         </div>
 
-        <div className="text-center mt-16">
-          <Link href="/history/version-history" className="text-orange-600 hover:text-orange-700 font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2">
-            View Full Version History <History size={16} />
+        {/* FOOTER ACTION */}
+        <div className="mt-20 pt-10 border-t border-black/5 dark:border-white/10 text-center">
+          <Link href="/history/version-history" className="group inline-flex items-center gap-3 px-8 py-4 rounded-full bg-orange-600 text-white font-black uppercase text-xs tracking-widest shadow-lg shadow-orange-900/40 hover:scale-105 transition-all">
+            Version History <History size={16} /> <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>
       </main>

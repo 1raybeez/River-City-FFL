@@ -1,0 +1,22 @@
+export const SLEEPER_ID_MAP: Record<string, string> = {
+  'Aaron Hawkins': '583513420586848256',
+  'Brian Stevens': '343129212162523136',
+  'David Besedich': '466663208728391680',
+  'Doug Fordham': '73400761740312576',
+  'JD Dowling': '342850391018356736',
+  'Jordan Maslyn': '341412060426436608',
+  'Landon Elliott': '469199353672626176',
+  'Ray Long': '342828350391230464',
+  'Jeffrey Hudgins': '356621920969555968',
+  'Rashad Gresham': '864186418971418624',
+  'Stan Schoppe': '1260048448384667648',
+  'Travis Miller': '342831451382841344',
+  'Tommy Moore': '342849293037608960',
+  'Wade Cameron': '342838548870762496',
+  'Damon Davis': '737878619958947840',
+  'Adam Lind': '556676922517524480',
+  'Billy Biddle': '470428278931320832',
+  'Chris Barras': '345934777502699520',
+  'Patrick Leahey': '342831898403377152',
+  'Ricky Taylor': '98907192333582336'
+};

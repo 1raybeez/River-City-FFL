@@ -3,18 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useTheme } from "next-themes";
 import { 
-  ArrowLeft, Trophy, Loader2, Crown, TrendingUp, Zap, ChevronDown, ChevronUp,
-  ArrowDown, History
+  Home, Trophy, Loader2, Crown, TrendingUp, Zap, ChevronDown, ChevronUp,
+  ArrowDown, History, Sun, Moon, Monitor
 } from 'lucide-react';
-import { ModeToggle } from '@/components/ModeToggle';
 
 // --- CONFIGURATION ---
 const COMMISH_ID = "342828350391230464"; 
 const START_YEAR = 2018;
 const END_YEAR = 2025; 
 
-// --- REAL NAME MAPPING (Master Key) ---
+// --- REAL NAME MAPPING ---
 const REAL_NAMES: Record<string, string> = {
   "73400761740312576": "Doug Fordham",
   "341412060426436608": "Jordan Maslyn",
@@ -61,43 +61,44 @@ interface SeasonRecord {
     fpts: number;
 }
 
-// --- LEADERBOARD CARD COMPONENT: Fluid Scaling Fixes ---
 const LeaderboardCard = ({ id, title, icon: Icon, data, valueKey, label, colorClass, expandedCard, setExpandedCard }: any) => {
     const isExpanded = expandedCard === id;
     const displayData = isExpanded ? data : data.slice(0, 5);
 
     return (
-      <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl border border-gray-200 dark:border-white/5 overflow-hidden shadow-sm flex flex-col h-full">
-        <div className={`p-4 sm:p-5 ${colorClass} bg-opacity-10 dark:bg-opacity-20 flex items-center gap-3 border-b border-gray-100 dark:border-white/5`}>
-          <div className={`p-2 rounded-lg ${colorClass} text-white shadow-sm shrink-0`}>
-            <Icon className="w-5 h-5" />
+      <div className="bg-black/5 dark:bg-white/5 rounded-[2.5rem] border border-black/5 dark:border-white/10 overflow-hidden shadow-xl flex flex-col h-full transition-all">
+        <div className={`p-6 ${colorClass} bg-opacity-10 dark:bg-opacity-20 flex items-center justify-between border-b border-black/5 dark:border-white/10`}>
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-xl ${colorClass} text-white shadow-lg`}>
+                <Icon size={20} />
+            </div>
+            <h3 className="font-black text-black dark:text-white uppercase italic tracking-tighter text-sm sm:text-base">{title}</h3>
           </div>
-          <h3 className="font-black text-gray-900 dark:text-white uppercase tracking-wider text-xs sm:text-sm truncate">{title}</h3>
         </div>
         
-        <div className="divide-y divide-gray-100 dark:divide-white/5 flex-grow">
+        <div className="divide-y divide-black/5 dark:divide-white/5 flex-grow">
           {displayData.map((manager: any, i: number) => (
-            <div key={`${manager.id}-${manager.year || 'all'}`} className="p-3 sm:p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-white/5 transition-colors animate-in slide-in-from-top-2 duration-300">
-              <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
-                 <span className={`font-mono font-bold text-xs sm:text-sm w-4 sm:w-5 text-center shrink-0 ${i === 0 ? 'text-yellow-500' : 'text-gray-400'}`}>{i + 1}</span>
-                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden relative border border-gray-100 dark:border-white/10 shrink-0">
+            <div key={`${manager.id}-${manager.year || 'all'}`} className="p-4 flex items-center justify-between hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+              <div className="flex items-center gap-3 overflow-hidden">
+                 <span className={`font-black italic text-sm w-5 text-center shrink-0 ${i === 0 ? 'text-yellow-500' : 'opacity-20'}`}>{i + 1}</span>
+                 <div className="w-10 h-10 rounded-full bg-black/20 overflow-hidden relative border border-black/10 dark:border-white/10 shrink-0">
                     {manager.avatar ? (
                         <Image src={`https://sleepercdn.com/avatars/thumbs/${manager.avatar}`} alt={manager.teamName} fill className="object-cover" unoptimized />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center font-bold text-gray-400 text-xs">{manager.realName.charAt(0)}</div>
+                        <div className="w-full h-full flex items-center justify-center font-black text-xs opacity-30">{manager.realName.charAt(0)}</div>
                     )}
                  </div>
                  <div className="flex flex-col min-w-0">
-                    <span className="font-bold text-gray-900 dark:text-white text-xs sm:text-sm leading-tight truncate">{manager.realName}</span>
+                    <span className="font-black text-black dark:text-white text-xs sm:text-sm leading-tight uppercase italic truncate">{manager.realName}</span>
                     <div className="flex items-center gap-1">
-                        <span className="text-[9px] sm:text-[10px] text-gray-400 uppercase truncate max-w-[80px] sm:max-w-none">{manager.teamName}</span>
-                        {manager.year && <span className="text-[8px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/10 text-gray-500 font-bold shrink-0">{manager.year}</span>}
+                        <span className="text-[10px] opacity-40 uppercase truncate font-bold">{manager.teamName}</span>
+                        {manager.year && <span className="text-[8px] px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 font-black shrink-0">{manager.year}</span>}
                     </div>
                  </div>
               </div>
-              <div className="text-right shrink-0">
-                 <span className="block font-black text-xs sm:text-base text-gray-900 dark:text-white">{valueKey(manager)}</span>
-                 <span className="text-[8px] sm:text-[10px] text-gray-400 uppercase font-bold leading-none">{label}</span>
+              <div className="text-right shrink-0 ml-2">
+                 <span className="block font-black text-base sm:text-lg italic leading-none">{valueKey(manager)}</span>
+                 <span className="text-[8px] opacity-30 uppercase font-black tracking-widest">{label}</span>
               </div>
             </div>
           ))}
@@ -105,12 +106,12 @@ const LeaderboardCard = ({ id, title, icon: Icon, data, valueKey, label, colorCl
 
         <button 
             onClick={() => setExpandedCard(isExpanded ? null : id)}
-            className="w-full py-3 bg-gray-50 dark:bg-white/5 text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] hover:bg-gray-100 dark:hover:bg-white/10 transition-colors flex items-center justify-center gap-1 border-t border-gray-100 dark:border-white/5"
+            className="w-full py-4 bg-black/5 dark:bg-white/5 text-[10px] font-black opacity-40 hover:opacity-100 uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 border-t border-black/5 dark:border-white/10 italic"
         >
             {isExpanded ? (
-                <>Show Less <ChevronUp className="w-3 h-3" /></>
+                <>Collapse <ChevronUp size={14} /></>
             ) : (
-                <>View All <ChevronDown className="w-3 h-3" /></>
+                <>View Rankings <ChevronDown size={14} /></>
             )}
         </button>
       </div>
@@ -118,11 +119,15 @@ const LeaderboardCard = ({ id, title, icon: Icon, data, valueKey, label, colorCl
 };
 
 export default function ArchivesPage() {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [stats, setStats] = useState<ManagerStats[]>([]);
   const [seasonRecords, setSeasonRecords] = useState<SeasonRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState("");
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     async function fetchHistory() {
@@ -133,7 +138,7 @@ export default function ArchivesPage() {
       
       try {
         for (let year = END_YEAR; year >= START_YEAR; year--) {
-            setProgress(`Analyzing ${year} Season...`);
+            setProgress(`${year} Data Sync...`);
             
             const leagueRes = await fetch(`https://api.sleeper.app/v1/user/${COMMISH_ID}/leagues/nfl/${year}`);
             const leagues = await leagueRes.json();
@@ -210,33 +215,54 @@ export default function ArchivesPage() {
     fetchHistory();
   }, []);
 
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#121212] transition-colors duration-300 font-sans selection:bg-orange-500 selection:text-white pb-20">
-      
-      {/* HEADER: RESPONSIVE PADDING & SCALING */}
-      <div className="pt-6 sm:pt-8 px-4 max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <Link href="/league-info" className="flex items-center gap-1 sm:gap-2 text-gray-500 hover:text-orange-600 transition-colors font-black text-[10px] sm:text-xs uppercase tracking-widest">
-              <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4" /> Hub
-          </Link>
-          <ModeToggle />
-        </div>
-        
-        <div className="mb-8">
-            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black text-gray-900 dark:text-white mb-2 tracking-tighter uppercase leading-none">League <span className="text-orange-600">Archives</span></h1>
-            <p className="text-[10px] sm:text-sm text-gray-500 dark:text-gray-400 font-black uppercase tracking-[0.2em]">Sleeper Data ({START_YEAR}–{END_YEAR})</p>
-        </div>
-      </div>
+  if (!mounted) return null;
 
-      {/* CONTENT AREA: RESPONSIVE GRID */}
-      <main className="px-4 max-w-7xl mx-auto">
+  return (
+    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-20 selection:bg-orange-600">
+      
+      {/* NAVIGATION BAR - Consistent with Hub Style */}
+      <nav className="border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
+        <div className="flex items-center gap-4">
+          <Link 
+            href="/league-info" 
+            className="p-2 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:scale-105 transition-all"
+            title="Back to Info Hub"
+          >
+            <Home size={18} />
+          </Link>
+          
+          <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
+            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${theme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
+            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${theme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
+            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${theme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+           <History className="text-orange-600 hidden sm:block" size={20} />
+           <span className="text-xs font-black uppercase italic tracking-tighter">Archives</span>
+        </div>
+      </nav>
+
+      {/* HEADER */}
+      <header className="px-6 py-12 text-center">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 overflow-hidden relative shadow-lg">
+             <Image src="/River City FFL Logo.JPG" alt="Logo" fill className="object-cover" priority unoptimized />
+        </div>
+        <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic leading-none">
+            League <span className="text-orange-600">Archives</span>
+        </h1>
+        <p className="mt-4 text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Sleeper Intelligence Data ({START_YEAR}–{END_YEAR})</p>
+      </header>
+
+      {/* MAIN CONTENT AREA */}
+      <main className="max-w-7xl mx-auto px-6 py-10">
         {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 opacity-50">
-              <Loader2 className="w-10 h-10 animate-spin text-blue-600 mb-4" />
-              <p className="font-black text-gray-500 uppercase tracking-widest text-[10px] sm:text-xs animate-pulse">{progress}</p>
+            <div className="flex flex-col items-center justify-center py-20 animate-pulse">
+              <Loader2 className="w-12 h-12 animate-spin text-orange-600 mb-6" />
+              <p className="font-black opacity-40 uppercase tracking-widest text-[10px] italic">{progress}</p>
             </div>
         ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 animate-in fade-in duration-500">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in duration-500">
                 
                 <LeaderboardCard 
                     id="wins" title="All-Time Wins" icon={Trophy} colorClass="bg-yellow-500"
@@ -246,7 +272,7 @@ export default function ArchivesPage() {
                 />
 
                 <LeaderboardCard 
-                    id="points" title="All-Time Points" icon={TrendingUp} colorClass="bg-green-500"
+                    id="points" title="Career Points" icon={TrendingUp} colorClass="bg-green-500"
                     data={[...stats].sort((a,b) => b.fpts - a.fpts)}
                     valueKey={(m: any) => m.fpts.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     label="Points"
@@ -262,7 +288,7 @@ export default function ArchivesPage() {
                 />
 
                 <LeaderboardCard 
-                    id="worst_season" title="Lowest Season" icon={ArrowDown} colorClass="bg-red-500"
+                    id="worst_season" title="Worst Season" icon={ArrowDown} colorClass="bg-red-500"
                     data={[...seasonRecords].filter(m => m.fpts > 500).sort((a,b) => a.fpts - b.fpts)} 
                     valueKey={(m: any) => m.fpts.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     label="Points"
@@ -270,7 +296,7 @@ export default function ArchivesPage() {
                 />
 
                 <LeaderboardCard 
-                    id="winpct" title="Best Win %" icon={Crown} colorClass="bg-purple-500"
+                    id="winpct" title="Winning %" icon={Crown} colorClass="bg-purple-500"
                     data={[...stats].filter(s => s.seasons >= 2).sort((a,b) => {
                         const pctA = a.wins / (a.wins + a.losses + a.ties);
                         const pctB = b.wins / (b.wins + b.losses + b.ties);
@@ -282,10 +308,10 @@ export default function ArchivesPage() {
                 />
 
                 <LeaderboardCard 
-                    id="efficiency" title="Lineup Efficiency" icon={Zap} colorClass="bg-blue-500"
+                    id="efficiency" title="Lineup Start %" icon={Zap} colorClass="bg-blue-500"
                     data={[...stats].filter(s => s.ppts > 0).sort((a,b) => (b.fpts/b.ppts) - (a.fpts/a.ppts))}
                     valueKey={(m: any) => ((m.fpts / m.ppts) * 100).toFixed(1) + "%"}
-                    label="Start %"
+                    label="Efficiency"
                     expandedCard={expandedCard} setExpandedCard={setExpandedCard}
                 />
 

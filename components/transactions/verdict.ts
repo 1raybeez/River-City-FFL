@@ -1,30 +1,55 @@
-export function generateVerdict(summaries: {
-  managerName: string | null;
-  netSurplus: number;
-  faabNet: number;
-}[]): string {
-  if (summaries.length < 2) return "Not enough teams to evaluate trade fairness.";
+export function generateVerdict(
+  summaries: {
+    managerName: string | null;
+    netSurplus: number;
+    faabNet: number;
+  }[]
+): string {
+  if (!summaries || summaries.length < 2) {
+    return "Not enough teams to evaluate trade fairness.";
+  }
 
-  const totals = summaries.map((s) => ({
-    name: s.managerName ?? `Team`,
+  // Compute totals
+  const totals = summaries.map((s, i) => ({
+    index: i,
+    name: s.managerName ?? `Team ${i + 1}`,
     net: s.netSurplus + s.faabNet
   }));
 
+  // Sort by net gain
   const sorted = [...totals].sort((a, b) => b.net - a.net);
-  const winner = sorted[0];
-  const loser = sorted[sorted.length - 1];
-  const spread = winner.net - loser.net;
 
-  let tone = "";
-  if (spread < 10) {
-    tone = `This trade is pretty balanced. Slight edge to ${winner.name}.`;
-  } else if (spread < 20) {
-    tone = `${winner.name} comes out ahead here. ${loser.name} gives up more than they get.`;
-  } else if (spread < 30) {
-    tone = `${winner.name} wins this trade clean (+${winner.net.toFixed(1)}). ${loser.name} takes a hit (–${loser.net.toFixed(1)}).`;
-  } else {
-    tone = `${winner.name} absolutely bodies this trade (+${winner.net.toFixed(1)}). ${loser.name} might need a hug (–${loser.net.toFixed(1)}).`;
+  const topNet = sorted[0].net;
+  const bottomNet = sorted[sorted.length - 1].net;
+  const spread = topNet - bottomNet;
+
+  // Identify winners (teams tied for top)
+  const winners = sorted.filter((t) => t.net === topNet);
+  const losers = sorted.filter((t) => t.net === bottomNet);
+
+  const winnerNames = winners.map((w) => w.name).join(", ");
+  const loserNames = losers.map((l) => l.name).join(", ");
+
+  // Perfectly balanced
+  if (spread <= 5) {
+    return "This trade is perfectly balanced. No winners, no losers — just clean business.";
   }
 
-  return tone;
+  // Slight edge
+  if (spread <= 15) {
+    return `Slight edge to ${winnerNames}, but nothing that’ll make the group chat explode.`;
+  }
+
+  // Noticeable advantage
+  if (spread <= 30) {
+    return `${winnerNames} clearly come out ahead here. Not a fleece, but definitely a win.`;
+  }
+
+  // Borderline robbery
+  if (spread <= 60) {
+    return `${winnerNames} should be investigated by the league office. This is bordering on a heist.`;
+  }
+
+  // Full-blown fleecing
+  return `${winnerNames} committed a felony on the trade block. ${loserNames} might need emotional support after this one.`;
 }
