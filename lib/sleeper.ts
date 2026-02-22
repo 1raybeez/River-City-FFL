@@ -35,17 +35,13 @@ async function sleeperFetch<T>(url: string): Promise<T | null> {
 // --- API FUNCTIONS ---
 
 export async function getNFLState() {
-  const fallback = { week: 1, season: '2026' }; // Updated to 2026
+  const fallback = { week: 1, season: '2026' }; 
   const data = await sleeperFetch<{ week: number; season: string }>(
     'https://api.sleeper.app/v1/state/nfl'
   );
   return data ?? fallback;
 }
 
-/**
- * MERGED PLAYER DATA
- * Combines Sleeper API with Firestore 'player_stats' for valuation.
- */
 export async function getAllPlayers() {
   try {
     const response = await fetch("https://api.sleeper.app/v1/players/nfl", CACHE_OPTIONS);
@@ -87,27 +83,33 @@ export async function getLeagueUsers(leagueId: string = LEAGUE_ID) {
   return data ?? [];
 }
 
-// NEW: Fetches draft picks for a specific season (Crucial for Keeper Cost)
 export async function getLeagueDrafts(year: number = 2026) {
   const leagueId = LEAGUE_IDS[year];
   if (!leagueId) return [];
   const drafts = await sleeperFetch<any[]>(`https://api.sleeper.app/v1/league/${leagueId}/drafts`);
   if (!drafts || drafts.length === 0) return [];
   
-  // Get the picks for the first draft found in that season
   return await sleeperFetch<any[]>(`https://api.sleeper.app/v1/draft/${drafts[0].draft_id}/picks`) ?? [];
 }
 
-// NEW: Fetches transactions for FAAB analysis
 export async function getLeagueTransactions(week: number, year: number = 2026) {
   const leagueId = LEAGUE_IDS[year];
   if (!leagueId) return [];
   return await sleeperFetch<any[]>(`https://api.sleeper.app/v1/league/${leagueId}/transactions/${week}`) ?? [];
 }
 
-// Aliases for backward compatibility
+// ⭐ NEW: Added for Award functionality compatibility
+export async function getLeagueHistoryAwards() {
+    // Returns data from your manual history file
+    return MANUAL_HISTORY || [];
+}
+
+// --- ALIASES FOR COMPATIBILITY ---
+// These ensure that if a file asks for "getTransactions" or "getAllDrafts", it works.
 export const getRosters = getLeagueRosters;
 export const getUsers = getLeagueUsers;
+export const getAllDrafts = getLeagueDrafts;
+export const getTransactions = getLeagueTransactions;
 
 export const getMatchups = async (week: number, leagueId: string = LEAGUE_ID) => {
   const data = await sleeperFetch<any[]>(`https://api.sleeper.app/v1/league/${leagueId}/matchups/${week}`);

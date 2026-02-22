@@ -126,26 +126,24 @@ export default function ManagerCards({ managers, isRetired = false }: ManagerCar
                     </div>
                   )}
 
-                  {/* TRADE AGGRESSION METER */}
+                  {/* ⚡ UPDATED: TRUE MULTI-COLOR GRADIENT METER */}
                   {!isRetired && typeof m.tradeAggression === "number" && (
                     <div className="mb-4">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[9px] font-black opacity-40 tracking-widest uppercase italic">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[9px] font-black opacity-50 tracking-widest uppercase italic">
                           Trade Aggression
                         </span>
-                        <span className="text-[10px] font-black">
+                        <span className="text-[10px] font-black italic">
                           {m.tradeAggression}/10
                         </span>
                       </div>
-                      <div className="w-full h-2.5 rounded-full bg-white/10 overflow-hidden border border-white/10">
+                      <div className="w-full h-2.5 rounded-full bg-black/30 p-[2px] border border-white/10 overflow-hidden">
                         <div
-                          className={`
-                            h-full rounded-full transition-all
-                            ${m.tradeAggression >= 7 ? "bg-green-400" :
-                              m.tradeAggression >= 4 ? "bg-yellow-400" :
-                              "bg-red-400"}
-                          `}
-                          style={{ width: `${Math.min(100, (m.tradeAggression / 10) * 100)}%` }}
+                          className="h-full rounded-full transition-all duration-1000 ease-out bg-gradient-to-r from-red-500 via-yellow-400 to-green-400"
+                          style={{ 
+                            width: `${Math.min(100, (m.tradeAggression / 10) * 100)}%`,
+                            boxShadow: m.tradeAggression >= 8 ? '0 0 10px rgba(74, 222, 128, 0.4)' : 'none'
+                          }}
                         />
                       </div>
                     </div>
