@@ -10,6 +10,14 @@ interface ManagerCardsProps {
 }
 
 export default function ManagerCards({ managers, isRetired = false }: ManagerCardsProps) {
+  
+  // 🎨 HELPER: Logic to pick the color based on the score
+  const getAggressionColor = (score: number) => {
+    if (score >= 8) return "#4ade80"; // Green
+    if (score >= 5) return "#facc15"; // Yellow/Orange
+    return "#ef4444"; // Red
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
       {managers.map((m) => {
@@ -126,23 +134,24 @@ export default function ManagerCards({ managers, isRetired = false }: ManagerCar
                     </div>
                   )}
 
-                  {/* ⚡ UPDATED: TRUE MULTI-COLOR GRADIENT METER */}
+                  {/* ⚡ CORRECTED: DYNAMIC SOLID COLOR METER */}
                   {!isRetired && typeof m.tradeAggression === "number" && (
                     <div className="mb-4">
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[9px] font-black opacity-50 tracking-widest uppercase italic">
+                        <span className="text-[9px] font-black opacity-50 tracking-widest uppercase italic text-white">
                           Trade Aggression
                         </span>
-                        <span className="text-[10px] font-black italic">
+                        <span className="text-[10px] font-black italic text-white">
                           {m.tradeAggression}/10
                         </span>
                       </div>
-                      <div className="w-full h-2.5 rounded-full bg-black/30 p-[2px] border border-white/10 overflow-hidden">
+                      <div className="w-full h-2.5 rounded-full bg-black/30 p-[2px] border border-white/10 overflow-hidden shadow-inner">
                         <div
-                          className="h-full rounded-full transition-all duration-1000 ease-out bg-gradient-to-r from-red-500 via-yellow-400 to-green-400"
+                          className="h-full rounded-full transition-all duration-1000 ease-out"
                           style={{ 
                             width: `${Math.min(100, (m.tradeAggression / 10) * 100)}%`,
-                            boxShadow: m.tradeAggression >= 8 ? '0 0 10px rgba(74, 222, 128, 0.4)' : 'none'
+                            backgroundColor: getAggressionColor(m.tradeAggression),
+                            boxShadow: m.tradeAggression >= 8 ? '0 0 10px rgba(74, 222, 128, 0.5)' : 'none'
                           }}
                         />
                       </div>
