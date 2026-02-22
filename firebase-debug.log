@@ -1,0 +1,120 @@
+[debug] [2026-02-08T04:38:05.078Z] ----------------------------------------------------------------------
+[debug] [2026-02-08T04:38:05.082Z] Command:       /usr/local/bin/node /usr/local/bin/firebase deploy
+[debug] [2026-02-08T04:38:05.082Z] CLI Version:   15.0.0
+[debug] [2026-02-08T04:38:05.082Z] Platform:      darwin
+[debug] [2026-02-08T04:38:05.083Z] Node Version:  v24.11.1
+[debug] [2026-02-08T04:38:05.083Z] Time:          Sat Feb 07 2026 23:38:05 GMT-0500 (Eastern Standard Time)
+[debug] [2026-02-08T04:38:05.083Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-02-08T04:38:05.085Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-02-08T04:38:07.280Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-02-08T04:38:07.280Z] > authorizing via signed-in user (raylong1977@gmail.com)
+[debug] [2026-02-08T04:38:07.280Z] [iam] checking project river-city-ffl for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-02-08T04:38:07.281Z] Checked if tokens are valid: false, expires at: 1769106616366
+[debug] [2026-02-08T04:38:07.281Z] Checked if tokens are valid: false, expires at: 1769106616366
+[debug] [2026-02-08T04:38:07.281Z] > refreshing access token with scopes: []
+[debug] [2026-02-08T04:38:07.282Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-02-08T04:38:07.282Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-02-08T04:38:07.384Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-02-08T04:38:07.384Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-02-08T04:38:07.428Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-02-08T04:38:07.428Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-02-08T04:38:07.471Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/river-city-ffl:testIamPermissions [none]
+[debug] [2026-02-08T04:38:07.471Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/river-city-ffl:testIamPermissions x-goog-quota-user=projects/river-city-ffl
+[debug] [2026-02-08T04:38:07.471Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/river-city-ffl:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-08T04:38:07.561Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/river-city-ffl:testIamPermissions 200
+[debug] [2026-02-08T04:38:07.561Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/river-city-ffl:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-08T04:38:07.562Z] Checked if tokens are valid: true, expires at: 1770529086428
+[debug] [2026-02-08T04:38:07.562Z] Checked if tokens are valid: true, expires at: 1770529086428
+[debug] [2026-02-08T04:38:07.562Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/river-city-ffl [none]
+[debug] [2026-02-08T04:38:07.790Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/river-city-ffl 200
+[debug] [2026-02-08T04:38:07.790Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/river-city-ffl {"projectId":"river-city-ffl","projectNumber":"905503961976","displayName":"River City FFL","name":"projects/river-city-ffl","resources":{"hostingSite":"river-city-ffl"},"state":"ACTIVE","etag":"1_ed45dde7-22cb-4cd6-b0ba-9fe56351cef7"}
+[debug] [2026-02-08T04:38:09.811Z] defaultcredentials: writing to file /Users/raylong/.config/firebase/raylong1977_gmail_com_application_default_credentials.json
+[debug] [2026-02-08T04:38:09.813Z] Checked if tokens are valid: true, expires at: 1770529086428
+[debug] [2026-02-08T04:38:09.813Z] Checked if tokens are valid: true, expires at: 1770529086428
+[debug] [2026-02-08T04:38:09.813Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/river-city-ffl/sites pageToken=&pageSize=10
+[debug] [2026-02-08T04:38:10.396Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/river-city-ffl/sites 200
+[debug] [2026-02-08T04:38:10.396Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/river-city-ffl/sites {"sites":[{"name":"projects/river-city-ffl/sites/river-city-ffl","defaultUrl":"https://river-city-ffl.web.app","appId":"1:905503961976:web:6219debd8f793f8a1f4e8d","type":"DEFAULT_SITE"}]}
+[debug] [2026-02-08T04:38:10.396Z] Checked if tokens are valid: true, expires at: 1770529086428
+[debug] [2026-02-08T04:38:10.397Z] Checked if tokens are valid: true, expires at: 1770529086428
+[debug] [2026-02-08T04:38:10.397Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/-/webApps/1:905503961976:web:6219debd8f793f8a1f4e8d/config [none]
+[debug] [2026-02-08T04:38:10.628Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/-/webApps/1:905503961976:web:6219debd8f793f8a1f4e8d/config 200
+[debug] [2026-02-08T04:38:10.628Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/-/webApps/1:905503961976:web:6219debd8f793f8a1f4e8d/config {"projectId":"river-city-ffl","appId":"1:905503961976:web:6219debd8f793f8a1f4e8d","storageBucket":"river-city-ffl.firebasestorage.app","apiKey":"AIzaSyCP0M7e1N758YAC1Zzyrj5hA8ns9ZilUC4","authDomain":"river-city-ffl.firebaseapp.com","messagingSenderId":"905503961976","measurementId":"G-X8MXRMTKYW","projectNumber":"905503961976","version":"2"}
+[info] 
+   Thank you for trying our early preview of Next.js support on Firebase Hosting.
+   During the preview, support is best-effort and breaking changes can be expected. Proceed with caution.
+   The integration is known to work with Next.js version 12 - 15.0. You may encounter errors.
+
+   Documentation: https://firebase.google.com/docs/hosting/frameworks/nextjs
+   File a bug: https://github.com/firebase/firebase-tools/issues/new?template=bug_report.md
+   Submit a feature request: https://github.com/firebase/firebase-tools/issues/new?template=feature_request.md
+
+   We'd love to learn from you. Express your interest in helping us shape the future of Firebase Hosting: https://goo.gle/41enW5X
+
+[debug] [2026-02-08T04:38:15.121Z] Checked if tokens are valid: true, expires at: 1770529086428
+[debug] [2026-02-08T04:38:15.122Z] Checked if tokens are valid: true, expires at: 1770529086428
+[debug] [2026-02-08T04:38:15.122Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/river-city-ffl/sites/river-city-ffl [none]
+[debug] [2026-02-08T04:38:15.365Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/river-city-ffl/sites/river-city-ffl 200
+[debug] [2026-02-08T04:38:15.365Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/river-city-ffl/sites/river-city-ffl {"name":"projects/river-city-ffl/sites/river-city-ffl","defaultUrl":"https://river-city-ffl.web.app","appId":"1:905503961976:web:6219debd8f793f8a1f4e8d","type":"DEFAULT_SITE"}
+[info] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+
+[info]    ▲ Next.js 16.0.10 (Turbopack)
+
+[info]    - Environments: .env
+
+
+[info]    Creating an optimized production build ...
+
+[info] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+
+[info] 
+
+[info] > Build error occurred
+
+[info] Error: Turbopack build failed with 3 errors:
+./app/api/history/drafts/route.ts:1:1
+Export getAllDrafts doesn't exist in target module
+> 1 | import { getAllDrafts } from "@/lib/sleeper";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  2 | import { NextResponse } from "next/server";
+  3 |
+  4 | export async function GET() {
+
+The export getAllDrafts was not found in module [project]/lib/sleeper.ts [app-route] (ecmascript).
+Did you mean to import getAllPlayers?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+
+./app/api/history/awards/route.ts:1:1
+Export getLeagueHistoryAwards doesn't exist in target module
+> 1 | import { getLeagueHistoryAwards } from "@/lib/sleeper";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  2 | import { NextResponse } from "next/server";
+  3 |
+  4 | export async function GET() {
+
+The export getLeagueHistoryAwards was not found in module [project]/lib/sleeper.ts [app-route] (ecmascript).
+Did you mean to import getLeagueRosters?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+
+./app/api/history/transactions/route.ts:1:1
+Export getTransactions doesn't exist in target module
+> 1 | import { getTransactions } from "@/lib/sleeper";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  2 | import { LEAGUE_IDS } from "@/lib/sleeper";
+  3 | import { NextResponse } from "next/server";
+  4 |
+
+The export getTransactions was not found in module [project]/lib/sleeper.ts [app-route] (ecmascript).
+Did you mean to import getWinnersBracket?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+
+    at <unknown> (./app/api/history/drafts/route.ts:1:1)
+    at <unknown> (./app/api/history/awards/route.ts:1:1)
+    at <unknown> (./app/api/history/transactions/route.ts:1:1)
+
+[debug] [2026-02-08T04:38:25.504Z] Error: ENOENT: no such file or directory, open '/Users/raylong/Coding/river-city-ffl/.next/server/middleware-manifest.json'
+[error] 
+[error] Error: An unexpected error has occurred.

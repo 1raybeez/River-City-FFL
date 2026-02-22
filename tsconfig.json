@@ -7,17 +7,21 @@
     "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
+
+    // ⭐ Next.js requires ESNext modules — DO NOT change this
     "module": "esnext",
+
+    // ⭐ Next.js App Router requires bundler resolution — DO NOT change this
     "moduleResolution": "bundler",
+
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
 
-    // ⭐ REQUIRED FIX — this is what makes "@/..." imports work
+    // ⭐ Required for "@/..." imports
     "baseUrl": ".",
 
-    // ⭐ Your alias mapping (now works because baseUrl is set)
     "paths": {
       "@/*": ["./*"]
     },
@@ -28,6 +32,7 @@
       }
     ]
   },
+
   "include": [
     "next-env.d.ts",
     "**/*.ts",
@@ -36,5 +41,6 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
+
   "exclude": ["node_modules"]
 }

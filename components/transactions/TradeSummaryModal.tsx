@@ -1,16 +1,9 @@
 "use client";
 
-import React from "react";
-import { 
-  X, 
-  CheckCircle2, 
-  AlertCircle, 
-  Info, 
-  Scale, 
-  TrendingDown, 
-  Users 
-} from "lucide-react";
+import React, { useState } from "react";
+import { X, Info, TrendingUp, TrendingDown, Award, CheckCircle2, ShieldAlert, ScrollText } from "lucide-react";
 
+// The interfaces must match what is passed from TradeAnalyzer.tsx
 export interface TeamSummary {
   teamName: string;
   ownerName: string;
@@ -20,6 +13,23 @@ export interface TeamSummary {
   surplusSent: number;
   surplusReceived: number;
   faabNet: number;
+  // DATA KEYS FOR LOGOS & RECEIPTS
+  avatar?: string; 
+  playersReceived?: { name: string; pos: string; value: number }[];
+}
+
+export interface TeamComponentBreakdown {
+  deltaTalent: number;
+  deltaSurplus: number;
+  deltaFaab: number;
+  rosterTax: number;
+  netValue: number;
+}
+
+export interface GlobalComponentSummary {
+  imbalanceGap: number;
+  biggestWinnerIndex: number;
+  biggestLoserIndex: number;
 }
 
 type Props = {
@@ -28,6 +38,11 @@ type Props = {
   teamSummaries: TeamSummary[];
   fairnessScore: number | null;
   verdict: string;
+  isBlackKnight: boolean;
+  components: {
+    global: GlobalComponentSummary;
+    perTeam: TeamComponentBreakdown[];
+  };
 };
 
 export default function TradeSummaryModal({
@@ -35,119 +50,175 @@ export default function TradeSummaryModal({
   onClose,
   teamSummaries,
   fairnessScore,
-  verdict
+  verdict,
+  isBlackKnight,
+  components,
 }: Props) {
+  const [showLegend, setShowLegend] = useState(false);
+
   if (!isOpen) return null;
 
-  const isApproved = fairnessScore !== null && fairnessScore >= 80;
-  const sealSrc = isApproved ? "/logos/Trade Approval Seal.png" : "/logos/Trade Declined Seal.png";
+  const { global, perTeam } = components;
+  const sealSrc = !isBlackKnight
+    ? "/logos/Trade Approval Seal.png"
+    : "/logos/Trade Declined Seal.png";
+
+  const getDetailedAnalysis = () => {
+    const winner = teamSummaries[global.biggestWinnerIndex];
+    const gap = global.imbalanceGap || 0;
+    if (isBlackKnight) return `The Black Knight rejects this proposal. ${winner?.teamName || 'The beneficiary'} is extracting roughly ${gap.toFixed(1)} points of uncompensated value.`;
+    return `${winner?.teamName || 'One side'} wins the talent acquisition phase, but the other side is likely prioritizing future flexibility. Buddy Jesus sees a path to victory for both sides.`;
+  };
 
   return (
-    <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/85 backdrop-blur-md animate-in fade-in duration-300">
-      <div className="bg-[#1a1a1a] border border-white/10 rounded-4xl shadow-2xl w-full max-w-5xl mx-4 overflow-hidden relative animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-xl">
+      <div className={`bg-[#0f111a] border rounded-[2.5rem] shadow-2xl w-full max-w-4xl mx-4 overflow-hidden relative border-white/10`}>
         
-        <button
-          onClick={onClose}
-          className="absolute top-8 right-8 w-12 h-12 flex items-center justify-center rounded-full bg-white/5 text-gray-400 hover:text-orange-500 hover:bg-white/10 transition-all z-210"
-        >
-          <X className="w-6 h-6" />
+        <button onClick={onClose} className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full bg-white/5 text-gray-400 hover:text-white z-50">
+          <X className="w-5 h-5" />
         </button>
 
-        <div className="p-8 md:p-12 overflow-y-auto max-h-[90vh] custom-scrollbar">
+        <div className="p-6 md:p-10 overflow-y-auto max-h-[90vh] custom-scrollbar">
           
-          <div className="flex flex-col items-center text-center mb-10">
-             {fairnessScore !== null && (
-               <div className="flex flex-col items-center">
-                 <img
-                   src={sealSrc}
-                   alt={isApproved ? "Approved" : "Declined"}
-                   className="w-48 h-48 object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
-                 />
-                 <div className={`mt-6 px-8 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-xl border ${
-                   isApproved ? "bg-green-600/20 border-green-500 text-green-400" : "bg-red-600/20 border-red-500 text-red-400"
-                 }`}>
-                   {isApproved ? "DECREE GRANTED" : "DECREE DENIED"}
-                 </div>
-               </div>
-             )}
-            <h2 className="text-3xl font-black italic uppercase tracking-tighter mt-6 mb-1 text-white">
-              Trade <span className="text-orange-600">Verdict</span>
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12 items-stretch">
-            <div className="lg:col-span-1 bg-black/40 p-8 rounded-4xl border border-white/5 flex flex-col items-center justify-center text-center">
-              <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Fairness Rating</span>
-              <span className={`text-6xl font-black leading-none ${isApproved ? "text-green-500" : "text-orange-500"}`}>
-                {fairnessScore?.toFixed(0) || "0"}
-              </span>
-            </div>
-
-            <div className="lg:col-span-2 flex flex-col justify-center bg-white/2 p-8 rounded-4xl border border-white/5 text-left">
-              <div className="flex items-start gap-4 mb-4">
-                {isApproved ? <CheckCircle2 className="w-6 h-6 text-green-500 shrink-0" /> : <AlertCircle className="w-6 h-6 text-orange-500 shrink-0" />}
-                <p className="text-lg font-bold text-white leading-tight">{verdict}</p>
+          {/* HEADER SECTION: BUDDY JESUS + NARRATIVE */}
+          <div className="flex flex-col md:flex-row items-center gap-8 mb-10 p-6 bg-white/5 rounded-3xl border border-white/5">
+            <img src={sealSrc} alt="Verdict" className="w-32 h-32 object-contain rounded-xl" />
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className={`text-xl font-black uppercase tracking-widest ${!isBlackKnight ? "text-green-500" : "text-red-500"}`}>
+                  {!isBlackKnight ? "Decree Granted" : "Injunction Issued"}
+                </h2>
+                <span className="text-xs font-mono bg-black/40 px-3 py-1 rounded-full border border-white/10 text-gray-400">
+                  FAIRNESS <span className={!isBlackKnight ? "text-green-400" : "text-red-400"}>{Number(fairnessScore || 0).toFixed(0)}%</span>
+                </span>
               </div>
-              <div className="p-5 bg-black/40 border-l-2 border-orange-600 rounded-r-2xl italic text-gray-400 text-sm">
-                "{isApproved ? "By decree of the Assistant to the Commish, this trade shall pass." : "By decree of the Assistant to the Commish, this trade is declined."}"
+              <div className="flex gap-3 text-gray-200 italic font-medium leading-snug text-sm md:text-base">
+                <ScrollText className="w-5 h-5 text-blue-500 shrink-0 mt-1" />
+                <p>{getDetailedAnalysis()}</p>
               </div>
             </div>
           </div>
 
-          <div className="mb-12 text-left">
-             <div className="flex items-center gap-3 mb-6">
-                <Info size={16} className="text-orange-500" />
-                <h3 className="text-xs font-black uppercase tracking-widest text-gray-500">Analysis Breakdown</h3>
-             </div>
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-black/20 p-5 rounded-3xl border border-white/5">
-                   <div className="flex items-center gap-2 mb-2">
-                      <Scale size={14} className="text-gray-500" />
-                      <span className="text-[9px] font-black uppercase text-gray-400">Talent Gap</span>
-                   </div>
-                   <p className="text-sm font-black text-white">{fairnessScore && fairnessScore < 60 ? "Significant" : "Stable"}</p>
+          {/* TEAM CARDS */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {teamSummaries.map((team, idx) => {
+              const comp = perTeam[idx];
+              // LOGO LOGIC: If avatar is missing, use a fallback image
+              const avatarUrl = team.avatar 
+                ? `https://sleepercdn.com/avatars/thumbs/${team.avatar}`
+                : `https://sleepercdn.com/images/v2/icons/player_default.webp`;
+
+              return (
+                <div key={idx} className="bg-[#161826] border border-white/10 rounded-[2rem] overflow-hidden flex flex-col">
+                  <div className="p-6 border-b border-white/5">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-3">
+                        <img 
+                          src={avatarUrl} 
+                          className="w-12 h-12 rounded-full border-2 border-blue-500/30 object-cover bg-gray-800" 
+                          alt="Team Logo" 
+                          onError={(e) => { (e.target as HTMLImageElement).src = 'https://sleepercdn.com/images/v2/icons/player_default.webp'; }}
+                        />
+                        <div>
+                          <h3 className="font-bold text-white truncate w-32">{team.teamName}</h3>
+                          <p className="text-[10px] text-gray-500 uppercase font-bold">{team.ownerName}</p>
+                        </div>
+                      </div>
+                      <button onClick={() => setShowLegend(true)} className="text-gray-500 hover:text-white"><Info size={18} /></button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 text-center">
+                      <div className="bg-black/30 p-4 rounded-2xl border border-white/5">
+                        <span className="text-[9px] font-black text-gray-500 uppercase block mb-1">Net Value</span>
+                        <span className={`text-xl font-mono font-bold ${comp.netValue >= 0 ? "text-green-400" : "text-red-400"}`}>
+                          {comp.netValue > 0 ? "+" : ""}{comp.netValue.toFixed(1)}
+                        </span>
+                      </div>
+                      <div className="bg-black/30 p-4 rounded-2xl border border-white/5">
+                        <span className="text-[9px] font-black text-gray-500 uppercase block mb-1">Playoff Impact</span>
+                        <div className="flex items-center justify-center gap-2 font-mono font-bold text-blue-400 text-xl">
+                          {team.netSurplus > 0 ? "+" : ""}{team.netSurplus.toFixed(1)}
+                          {team.netSurplus >= 0 ? <TrendingUp size={16} className="text-green-500" /> : <TrendingDown size={16} className="text-red-500" />}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ROSTER RECEIPT BOX */}
+                  <div className="p-6 bg-black/20 flex-1">
+                    <h4 className="text-[10px] font-black uppercase text-gray-500 mb-4 flex items-center gap-2 tracking-widest">
+                      <Award size={12} /> Roster Receipt (Acquisitions)
+                    </h4>
+                    
+                    <div className="space-y-2 min-h-[80px]">
+                      {team.playersReceived && team.playersReceived.length > 0 ? (
+                        team.playersReceived.map((p, i) => (
+                          <div key={i} className="flex justify-between items-center bg-white/5 px-3 py-2 rounded-lg border border-white/5 text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[9px] font-bold bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded leading-none">{p.pos}</span>
+                              <span className="text-gray-200 font-medium">{p.name}</span>
+                            </div>
+                            <span className="font-mono text-gray-400">+{p.value.toFixed(1)}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-6 opacity-40">
+                          <p className="text-[10px] uppercase font-black tracking-tighter">No Players Tracked</p>
+                          <p className="text-[8px] italic">Verify TradeAnalyzer data mapping</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-white/5 space-y-2">
+                      <div className="flex justify-between text-[10px] uppercase font-bold tracking-tighter">
+                        <span className="text-gray-500">Talent Delta</span>
+                        <span className={comp.deltaTalent >= 0 ? "text-green-400" : "text-red-400"}>{comp.deltaTalent.toFixed(1)}</span>
+                      </div>
+                      <div className="flex justify-between text-[10px] uppercase font-bold tracking-tighter">
+                        <span className="text-gray-500">Keeper Surplus</span>
+                        <span className={comp.deltaSurplus >= 0 ? "text-green-400" : "text-red-400"}>{comp.deltaSurplus.toFixed(1)}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="bg-black/20 p-5 rounded-3xl border border-white/5">
-                   <div className="flex items-center gap-2 mb-2">
-                      <TrendingDown size={14} className="text-gray-500" />
-                      <span className="text-[9px] font-black uppercase text-gray-400">Roster Tax</span>
-                   </div>
-                   <p className="text-sm font-black text-white">Applied</p>
-                </div>
-                <div className="bg-black/20 p-5 rounded-3xl border border-white/5">
-                   <div className="flex items-center gap-2 mb-2">
-                      <Users size={14} className="text-gray-500" />
-                      <span className="text-[9px] font-black uppercase text-gray-400">History</span>
-                   </div>
-                   <p className={`text-sm font-black ${isApproved ? "text-green-500" : "text-red-500"}`}>{isApproved ? "Standard" : "Anomaly"}</p>
-                </div>
-             </div>
+              );
+            })}
           </div>
 
-          <div className={`grid gap-6 ${teamSummaries.length > 2 ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-4" : "grid-cols-1 md:grid-cols-2"}`}>
-            {teamSummaries.map((team, idx) => (
-              <div key={idx} className="bg-black/40 rounded-3xl p-6 border border-white/5 relative overflow-hidden flex flex-col justify-between text-left">
-                <div className={`absolute top-0 left-0 w-1.5 h-full ${team.netSurplus >= 0 ? "bg-green-500" : "bg-red-500/50"}`} />
-                <div>
-                  <h3 className="text-[9px] font-black uppercase tracking-widest text-orange-500 mb-1">{team.teamName}</h3>
-                  <p className="text-xs font-black truncate text-white mb-6">{team.ownerName}</p>
-                </div>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-end">
-                    <span className="text-[9px] font-black text-gray-500 uppercase">Impact</span>
-                    <span className={`text-sm font-black ${team.netSurplus >= 0 ? "text-green-500" : "text-red-400"}`}>
-                      {team.netSurplus > 0 ? "+" : ""}{team.netSurplus.toFixed(1)}
-                    </span>
-                  </div>
-                  <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                    <div className={`h-full ${team.netSurplus >= 0 ? "bg-green-500" : "bg-red-500"}`} style={{ width: `${Math.min(Math.abs(team.netSurplus) * 3, 100)}%` }} />
-                  </div>
-                </div>
+          {/* FOOTER */}
+          <div className="mt-8 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-6">
+              <div>
+                <p className="text-[9px] font-black text-gray-500 uppercase">Imbalance Gap</p>
+                <p className="text-lg font-mono font-bold text-orange-500">{global.imbalanceGap.toFixed(1)}</p>
               </div>
-            ))}
+              <div className="h-8 w-px bg-white/10" />
+              <div>
+                <p className="text-[9px] font-black text-gray-500 uppercase">Biggest Winner</p>
+                <p className="text-sm font-bold text-green-400">{teamSummaries[global.biggestWinnerIndex]?.teamName}</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="px-10 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-[0.2em] rounded-full transition-all shadow-lg shadow-blue-600/20">
+              Close Verdict
+            </button>
           </div>
         </div>
       </div>
+
+      {/* LEGEND OVERLAY */}
+      {showLegend && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowLegend(false)}>
+          <div className="bg-[#1a1c2e] border border-white/10 p-8 rounded-3xl max-w-sm w-full animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
+            <h3 className="text-xl font-bold mb-4 text-blue-400 italic">The Verdict Glossary</h3>
+            <div className="space-y-4 text-sm text-gray-300">
+              <p><strong className="text-white">Net Value:</strong> The final sum of Talent, Keeper Surplus, and FAAB. Total asset shift.</p>
+              <p><strong className="text-white">Playoff Impact:</strong> Change in your team's projected weekly win probability.</p>
+              <p><strong className="text-white">Talent Delta:</strong> Raw points-per-game shift based on roster depth.</p>
+            </div>
+            <button className="mt-6 w-full py-2 bg-white/5 rounded-xl text-xs uppercase font-bold text-gray-400">Close</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

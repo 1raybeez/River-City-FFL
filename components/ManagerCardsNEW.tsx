@@ -115,13 +115,38 @@ export default function ManagerCards({ managers, isRetired = false }: ManagerCar
 
                   {/* RIVAL SECTION */}
                   {!isRetired && (
-                    <div className="bg-black/20 rounded-2xl p-3 flex items-center justify-between border border-white/5 mb-4">
+                    <div className="bg-black/20 rounded-2xl p-3 flex items-center justify-between border border-white/5 mb-3">
                       <span className="text-[9px] font-black opacity-40 tracking-widest uppercase italic">The Rivalry</span>
                       <div className="flex items-center gap-3">
                         <span className="text-[11px] font-black">{m.rival?.name}</span>
                         <div className="h-8 w-8 rounded-full overflow-hidden border border-white/20 bg-black/40">
                           <Image src={m.rival?.image || "/managers/default.png"} width={32} height={32} alt="r" />
                         </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TRADE AGGRESSION METER */}
+                  {!isRetired && typeof m.tradeAggression === "number" && (
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[9px] font-black opacity-40 tracking-widest uppercase italic">
+                          Trade Aggression
+                        </span>
+                        <span className="text-[10px] font-black">
+                          {m.tradeAggression}/10
+                        </span>
+                      </div>
+                      <div className="w-full h-2.5 rounded-full bg-white/10 overflow-hidden border border-white/10">
+                        <div
+                          className={`
+                            h-full rounded-full transition-all
+                            ${m.tradeAggression >= 7 ? "bg-green-400" :
+                              m.tradeAggression >= 4 ? "bg-yellow-400" :
+                              "bg-red-400"}
+                          `}
+                          style={{ width: `${Math.min(100, (m.tradeAggression / 10) * 100)}%` }}
+                        />
                       </div>
                     </div>
                   )}

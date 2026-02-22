@@ -1,67 +1,99 @@
+// /lib/types/Manager.ts
+
 export enum ManagerStatus {
   Active = "Active",
-  Retired = "Retired"
+  Retired = "Retired",
+  Staff = "Staff",
 }
 
 export enum DraftPreference {
   Rookies = "Rookies",
-  Vets = "Vets"
+  Vets = "Vets",
 }
 
 export enum ValuePosition {
-  QB = "QB", RB = "RB", WR = "WR", TE = "TE", K = "K", DEF = "DEF",
-  Auctioneer = "Auctioneer" // Resolves "Auctioneer" error
+  QB = "QB",
+  RB = "RB",
+  WR = "WR",
+  TE = "TE",
+  K = "K",
+  DEF = "DEF",
 }
 
 export enum TeamCode {
-  ATL = "ATL", BAL = "BAL", CAR = "CAR", CLE = "CLE", DET = "DET", GB = "GB", 
-  MIN = "MIN", NO = "NO", NYG = "NYG", NYJ = "NYJ", PIT = "PIT", SF = "SF", 
-  TB = "TB", WAS = "WAS"
+  ATL = "ATL",
+  CLE = "CLE",
+  WAS = "WAS",
+  MIN = "MIN",
+  NO = "NO",
+  GB = "GB",
+  CAR = "CAR",
+  NYG = "NYG",
+  DET = "DET",
+  SF = "SF",
+  TB = "TB",
 }
 
-export interface ManagerIdentity {
-  shortName: string;
+export interface CoOwner {
   fullName: string;
 }
 
-export interface ManagerProfile {
-  status: ManagerStatus;
-  teamName: string;
-  photo: string | null;
-  bio: string;
-  philosophy: string;
-  favoriteTeam: TeamCode;
-  rookieOrVets: DraftPreference;
-  location: string;
-  fantasyStart: number;
+export interface RivalInfo {
+  name: string;
+  image: string;
 }
 
-export interface ActiveManager extends ManagerIdentity, ManagerProfile {
+export interface BaseManager {
   roster: number;
-  tookOver?: number | null;
+  shortName: string;
+  fullName: string;
+  status: ManagerStatus;
+  teamName: string;
+  tookOver: number | null;
+  location: string;
+  bio: string;
+  photo: string;
+  fantasyStart: number;
+  favoriteTeam: TeamCode;
   mode: string;
+  rival: RivalInfo;
+  favoritePlayer: number;
+  valuePosition: ValuePosition;
+  rookieOrVets: DraftPreference;
+  philosophy: string;
   preferredContact: string;
   contactValue: string;
   sleeperId: string;
+  record: string;
   currentWinnings: number;
-  roles?: string[]; // Kept for legacy arrays
-  role?: string;    // Resolves "role" vs "roles" error
-  coOwner?: { fullName: string } | null;
   championships: number;
   podiums: number;
   bestFinish: string;
-  record?: string;
-  valuePosition: ValuePosition;
-  tradingScale?: number;
-  favoritePlayer: number;
-  rival: { name: string; image: string };
   toiletBowls: number;
+  role?: string;
+  coOwner?: CoOwner;
 }
 
-export interface RetiredManager extends ManagerIdentity, ManagerProfile {
-  record?: string;
-  championships: number;
-  podiums: number;
-  bestFinish: string;
-  role?: string;
+//
+// ⭐ Active managers get the Trade Aggression field
+//
+export interface ActiveManager extends BaseManager {
+  status: ManagerStatus.Active;
+  tradeAggression: number; // ← NEW FIELD
 }
+
+//
+// ⭐ Retired managers DO NOT get tradeAggression
+//
+export interface RetiredManager extends BaseManager {
+  status: ManagerStatus.Retired;
+}
+
+//
+// ⭐ Staff (like Damon) DO NOT get tradeAggression
+//
+export interface StaffManager extends BaseManager {
+  status: ManagerStatus.Staff;
+}
+
+export type Manager = ActiveManager | RetiredManager | StaffManager;

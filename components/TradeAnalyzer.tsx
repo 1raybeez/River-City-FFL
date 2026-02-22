@@ -1,258 +1,500 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { 
-  Users, ArrowRightLeft, X, Search, Trash2, Plus, 
-  Scale, LayoutGrid, Database, RotateCcw 
+import {
+  Users, ArrowRightLeft, X, Search, Plus, Scale,
+  RotateCcw, Home, Sun, Moon, Monitor,
 } from "lucide-react";
+import Link from "next/link";
+import { useTheme } from "next-themes";
 import { getLeagueRosters, getAllPlayers, LEAGUE_ID } from "@/lib/sleeper";
 import TradeSummaryModal from "./transactions/TradeSummaryModal";
 import { evaluateTrade } from "@/lib/tradeFairnessEngine";
+import { calculatePlayerValue } from "@/lib/trade/playerValuations";
+import { db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
-// POSITIONAL BRANDING & SORT ORDER
-const POS_ORDER: Record<string, number> = { QB: 1, RB: 2, WR: 3, TE: 4, K: 5, DEF: 6 };
-const POS_COLORS: Record<string, string> = {
-  QB: "bg-[#ff2a6d]",
-  RB: "bg-[#00ceb8]",
-  WR: "bg-[#58a7ff]",
-  TE: "bg-[#ffae58]",
-  K: "bg-[#bd7af5]",
-  DEF: "bg-[#81a1c1]"
+// ----------------------------------------------------------------------
+// TYPES & INTERFACES
+// ----------------------------------------------------------------------
+interface PlayerData {
+  player_id?: string;
+  full_name?: string;
+  name?: string;
+  position?: string;
+  team?: string;
+  totalValueScore?: number;
+  keeperCost?: number;
+  value?: number;
+}
+
+interface TradeAsset { 
+  playerId: string; 
+  toTeam: number; 
+}
+
+interface TradeSideState { 
+  sending: TradeAsset[]; 
+  faabSent: number; 
+}
+
+interface HistoricalPercentiles {
+  p05: number; p10: number; p25: number; p50: number; 
+  p75: number; p90: number; p95: number;
+}
+
+const POS_ORDER: Record<string, number> = {
+  QB: 1, RB: 2, WR: 3, TE: 4, K: 5, DEF: 6,
 };
 
-const managers = [
-  { name: "Aaron Hawkins", id: "583513420586848256" },
-  { name: "Brian Stevens", id: "343129212162523136" },
-  { name: "David Besedich", id: "466663208728391680" },
-  { name: "Doug Fordham", id: "73400761740312576" },
-  { name: "JD Dowling", id: "342850391018356736" },
-  { name: "Jordan & Landon", id: "341412060426436608" },
-  { name: "Ray & Jeffrey", id: "342828350391230464" },
-  { name: "Rashad Gresham", id: "864186418971418624" },
-  { name: "Stan Schoppe", id: "1260048448384667648" },
-  { name: "Travis Miller", id: "342831451382841344" },
-  { name: "Tommy Moore", id: "342849293037608960" },
-  { name: "Wade Cameron", id: "342838548870762496" }
-];
+const POS_COLORS: Record<string, string> = {
+  QB: "bg-[#ff2a6d]", RB: "bg-[#00ceb8]", WR: "bg-[#58a7ff]",
+  TE: "bg-[#ffae58]", K: "bg-[#bd7af5]", DEF: "bg-[#81a1c1]",
+};
 
 export default function TradeAnalyzer() {
+  const { theme, setTheme } = useTheme();
+  
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const [mode, setMode] = useState<"league" | "custom">("league");
-  const [numTeams, setNumTeams] = useState(2);
-  const [selections, setSelections] = useState<string[]>(Array(4).fill(""));
+  const [numTeams, setNumTeams] = useState<number>(2);
+  const [selections, setSelections] = useState<string[]>(Array(4).fill("")); 
   const [rosters, setRosters] = useState<any[]>([]);
-  const [players, setPlayers] = useState<Record<string, any>>({});
+  const [users, setUsers] = useState<any[]>([]);
+  const [players, setPlayers] = useState<Record<string, PlayerData>>({});
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [searchTerms, setSearchTerms] = useState<string[]>(Array(4).fill(""));
-  const [tradeState, setTradeState] = useState<any[]>(
+  const [faabOpen, setFaabOpen] = useState<boolean[]>(Array(4).fill(false));
+
+  const [tradeState, setTradeState] = useState<TradeSideState[]>(
     Array(4).fill(null).map(() => ({ sending: [], faabSent: 0 }))
   );
 
+  const [historicalPercentiles, setHistoricalPercentiles] = useState<HistoricalPercentiles | null>(null);
+
+  const isGridLayout = numTeams >= 2;
+
+  // -----------------------------
+  // Helpers
+  // -----------------------------
+  const loadPlayerValue = async (playerId: string) => {
+    try {
+      const value = await calculatePlayerValue(playerId);
+      setPlayers((prev) => ({
+        ...prev,
+        [playerId]: {
+          ...(prev[playerId] || {}),
+          totalValueScore: value.totalValueScore,
+          keeperCost: value.keeperCost,
+          value: value.value,
+        },
+      }));
+    } catch (err) { console.error("Failed to load player value", err); }
+  };
+
+  const handleAddTeam = () => {
+    setNumTeams((prev) => (prev >= 4 ? prev : prev + 1));
+  };
+
+  const handleRemoveTeam = (index: number) => {
+    setNumTeams((prev) => (prev <= 2 ? prev : prev - 1));
+    setTradeState(prev => prev.map((s, i) => i === index ? { sending: [], faabSent: 0 } : s));
+  };
+
+  const updateFaab = (teamIndex: number, amount: number) => {
+    setTradeState((prev) =>
+      prev.map((side, idx) => idx === teamIndex ? { ...side, faabSent: Math.max(0, amount) } : side)
+    );
+  };
+
+  const updateAssetDestination = (teamIndex: number, playerId: string, toTeam: number) => {
+    setTradeState((prev) =>
+      prev.map((side, idx) => {
+        if (idx !== teamIndex) return side;
+        return {
+          ...side,
+          sending: side.sending.map((asset) => asset.playerId === playerId ? { ...asset, toTeam } : asset),
+        };
+      })
+    );
+  };
+
+  const toggleFaab = (teamIndex: number) => {
+    setFaabOpen((prev) => prev.map((open, idx) => (idx === teamIndex ? !open : open)));
+  };
+
+  const handleSelectPlayer = (teamIndex: number, playerId: string) => {
+    setTradeState((prev) =>
+      prev.map((side, idx) => {
+        if (idx !== teamIndex) return side;
+        if (side.sending.some((a) => a.playerId === playerId)) return side;
+        return {
+          ...side,
+          sending: [...side.sending, { playerId, toTeam: (teamIndex + 1) % numTeams }],
+        };
+      })
+    );
+    loadPlayerValue(playerId);
+    // Clear search if in custom mode
+    setSearchTerms(prev => prev.map((t, i) => i === teamIndex ? "" : t));
+  };
+
+  const handleRemoveAsset = (teamIndex: number, playerId: string) => {
+    setTradeState((prev) =>
+      prev.map((side, idx) => idx === teamIndex
+          ? { ...side, sending: side.sending.filter((a) => a.playerId !== playerId) }
+          : side
+      )
+    );
+  };
+
+  const filteredPlayers = (term: string) => {
+    if (!term || term.length < 2) return [];
+    const lowerTerm = term.toLowerCase();
+    return Object.values(players)
+      .filter(p => (p.full_name || "").toLowerCase().includes(lowerTerm))
+      .slice(0, 8);
+  };
+
+  // -----------------------------
+  // Data Loading
+  // -----------------------------
   useEffect(() => {
     async function loadData() {
-      // Logic fix: using the current LEAGUE_ID variable for consistency
-      const rosterData = await getLeagueRosters(LEAGUE_ID);
-      const playerData = await getAllPlayers();
-      setRosters(rosterData);
-      setPlayers(playerData);
+      try {
+        const [uRes, rosterData, playerData] = await Promise.all([
+          fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID}/users`),
+          getLeagueRosters(LEAGUE_ID),
+          getAllPlayers(),
+        ]);
+        const uData = await uRes.json();
+        const excludedNames = ["JEFFHUDGE", "LANDONELLIOTT1", "DBUCCANEER12", "SHEADOWLING"];
+        const primaryUsers = uData.filter((u: any) => !excludedNames.includes(u.display_name?.toUpperCase()));
+        setUsers(primaryUsers);
+        setRosters(rosterData || []);
+        setPlayers(playerData || {});
+      } catch (e) { console.error("Trade data sync failed", e); }
     }
     loadData();
   }, []);
 
-  const allPlayersArray = useMemo(() => Object.values(players), [players]);
+  useEffect(() => {
+    async function loadHistoricalDistribution() {
+      try {
+        const distRef = doc(db, "historical_distribution", "imbalance_percentiles");
+        const snap = await getDoc(distRef);
+        if (snap.exists()) {
+          const data = snap.data() as { percentiles?: HistoricalPercentiles };
+          if (data?.percentiles) setHistoricalPercentiles(data.percentiles);
+        }
+      } catch (e) { console.error("Failed to load historical distribution", e); }
+    }
+    loadHistoricalDistribution();
+  }, []);
 
+  // -----------------------------
+  // ANALYSIS ENGINE
+  // -----------------------------
   const currentAnalysis = useMemo(() => {
     const sides = tradeState.slice(0, numTeams).map((side, i) => ({
       teamIndex: i,
       faabSent: side.faabSent || 0,
-      players: side.sending.map((a: any) => ({
-        playerId: a.playerId,
-        totalValueScore: players[a.playerId]?.totalValueScore || players[a.playerId]?.value || 0,
-        keeperCost: players[a.playerId]?.keeperCost || 0,
-        toTeam: a.toTeam,
-        pos: players[a.playerId]?.position || "BN"
-      }))
+      players: side.sending.map((a) => {
+        const p = players[a.playerId] || {};
+        return {
+          playerId: a.playerId, 
+          totalValueScore: p.totalValueScore || 0,
+          keeperCost: p.keeperCost || 0, 
+          toTeam: a.toTeam, 
+          pos: p.position || "BN",
+          full_name: p.full_name || p.name || "Unknown Player"
+        };
+      }),
     }));
-    return evaluateTrade({ sides });
-  }, [tradeState, players, numTeams]);
 
-  const addPlayer = (teamIndex: number, playerId: string) => {
-    setTradeState((prev) => {
-      const next = [...prev];
-      if (next[teamIndex].sending.some((a: any) => a.playerId === playerId)) return prev;
-      const target = numTeams === 2 ? (teamIndex === 0 ? 1 : 0) : (teamIndex + 1) % numTeams;
-      next[teamIndex] = {
-        ...next[teamIndex],
-        sending: [...next[teamIndex].sending, { playerId, toTeam: target }]
+    const teamMeta = Array.from({ length: numTeams }).map((_, idx) => {
+      const teamSelection = selections[idx];
+      const roster = rosters.find((r: any) => r.owner_id === teamSelection);
+      const user = users.find((u: any) => u.user_id === teamSelection);
+      return {
+        teamName: mode === "league" ? (roster?.metadata?.team_name || user?.metadata?.team_name || `Team ${idx + 1}`) : `Team ${idx + 1}`,
+        ownerName: mode === "league" ? (user?.display_name || "Unassigned") : "Custom Entry",
+        avatar: mode === "league" ? (user?.avatar || null) : null,
       };
-      return next;
     });
-  };
 
-  const removePlayer = (teamIndex: number, playerId: string) => {
-    setTradeState((prev) => {
-      const next = [...prev];
-      next[teamIndex] = {
-        ...next[teamIndex],
-        sending: next[teamIndex].sending.filter((a: any) => a.playerId !== playerId)
-      };
-      return next;
-    });
-  };
+    const evaluation = evaluateTrade(sides, historicalPercentiles, teamMeta);
 
-  const resetAll = () => {
-    setTradeState(Array(4).fill(null).map(() => ({ sending: [], faabSent: 0 })));
-    setSelections(Array(4).fill(""));
-    setSearchTerms(Array(4).fill(""));
-  };
+    if (evaluation && evaluation.teamSummaries) {
+      evaluation.teamSummaries = evaluation.teamSummaries.map((summary, teamIdx) => {
+        const received: any[] = [];
+        sides.forEach(side => {
+          side.players.forEach(p => {
+            if (p.toTeam === teamIdx) {
+              received.push({
+                name: p.full_name,
+                pos: p.pos,
+                value: p.totalValueScore
+              });
+            }
+          });
+        });
+
+        return {
+          ...summary,
+          avatar: teamMeta[teamIdx].avatar,
+          playersReceived: received         
+        };
+      });
+    }
+
+    return evaluation;
+  }, [tradeState, numTeams, players, historicalPercentiles, selections, rosters, users, mode]);
+
+  if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-[#121212] text-white font-sans selection:bg-orange-500/30 pb-40">
-      
-      <div className="max-w-7xl mx-auto mb-10 pt-6 px-4 text-left">
-        <div className="bg-[#1a1a1a]/80 backdrop-blur-xl border border-white/10 p-6 rounded-4xl shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="bg-orange-600 p-3 rounded-2xl shadow-lg">
-              <Scale size={24} />
-            </div>
-            <h1 className="text-2xl font-black italic uppercase tracking-tighter leading-none">Trade <span className="text-orange-500">Analyzer</span></h1>
-          </div>
-          <div className="flex items-center gap-4">
-             <div className="flex bg-black/40 p-1.5 rounded-3xl border border-white/5">
-                <button onClick={() => setMode("league")} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${mode === "league" ? "bg-orange-600" : "text-gray-500"}`}>Rosters</button>
-                <button onClick={() => setMode("custom")} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${mode === "custom" ? "bg-orange-600" : "text-gray-500"}`}>Full Pool</button>
-             </div>
-             <button onClick={resetAll} className="p-3 bg-white/5 hover:bg-red-600/20 text-gray-400 hover:text-red-500 rounded-2xl border border-white/10 transition-all"><RotateCcw size={18} /></button>
-          </div>
+    <div className="w-full max-w-6xl mx-auto space-y-6 p-4">
+      {/* Top Left Icon Nav */}
+      <div className="flex items-center gap-3 mb-2">
+        <Link
+          href="/league-info"
+          className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-slate-800 dark:bg-white/10 border border-white/20 text-white hover:bg-slate-700 dark:hover:bg-white/20 transition shadow-lg"
+        >
+          <Home className="w-5 h-5" />
+        </Link>
+
+        <div className="inline-flex items-center gap-1 px-1 py-1 rounded-full bg-slate-800 dark:bg-white/10 border border-white/20 shadow-lg">
+          <button onClick={() => setTheme("light")} className={`inline-flex items-center justify-center w-8 h-8 rounded-full transition ${theme === "light" ? "bg-white text-black shadow-md" : "text-gray-400"}`}><Sun className="w-4 h-4" /></button>
+          <button onClick={() => setTheme("dark")} className={`inline-flex items-center justify-center w-8 h-8 rounded-full transition ${theme === "dark" ? "bg-white text-black shadow-md" : "text-gray-400"}`}><Moon className="w-4 h-4" /></button>
+          <button onClick={() => setTheme("system")} className={`inline-flex items-center justify-center w-8 h-8 rounded-full transition ${theme === "system" ? "bg-white text-black shadow-md" : "text-gray-400"}`}><Monitor className="w-4 h-4" /></button>
         </div>
       </div>
 
-      <div className={`max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${numTeams} gap-8 px-6`}>
-        {Array.from({ length: numTeams }).map((_, idx) => (
-          <div key={idx} className="bg-[#1e1e1e] border border-white/10 rounded-4xl overflow-hidden flex flex-col shadow-2xl">
-            
-            <div className="p-8 bg-black/40 border-b border-white/10 text-left">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                   <span className="text-[10px] font-black uppercase tracking-widest text-nowrap text-orange-500">Team 0{idx + 1}</span>
-                   <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
-                      currentAnalysis.teamNetValues[idx] >= 0 ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
-                   }`}>
-                      {currentAnalysis.teamNetValues[idx] > 0 ? "+" : ""}{currentAnalysis.teamNetValues[idx].toFixed(1)}
-                   </span>
-                </div>
-                <Users size={16} className="text-white/10" />
-              </div>
-              <select 
-                value={selections[idx]}
-                onChange={(e) => { const s = [...selections]; s[idx] = e.target.value; setSelections(s); }}
-                className="w-full bg-black/60 border border-white/10 rounded-2xl p-4 text-sm font-black uppercase text-white outline-none focus:ring-1 focus:ring-orange-500 appearance-none cursor-pointer"
-              >
-                <option value="">Select Manager</option>
-                {managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
-            </div>
-
-            {/* Standardized max-height classes applied here */}
-            <div className="p-8 grow space-y-8 max-h-125 overflow-y-auto custom-scrollbar relative z-40 text-left">
-              <div className="space-y-4">
-                <h4 className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Sending Out</h4>
-                <div className="space-y-2">
-                  {tradeState[idx].sending.map((asset: any) => (
-                    <div key={asset.playerId} className="flex items-center justify-between p-4 bg-[#2a2a2a] border border-white/5 rounded-2xl group">
-                      <div className="flex items-center gap-3">
-                        <span className={`w-8 h-5 rounded-sm text-[9px] font-black flex items-center justify-center text-white ${POS_COLORS[players[asset.playerId]?.position] || "bg-gray-600"}`}>
-                          {players[asset.playerId]?.position || "BN"}
-                        </span>
-                        <div className="flex flex-col text-left">
-                          <span className="text-xs font-bold uppercase">{players[asset.playerId]?.full_name}</span>
-                          <span className="text-[8px] font-black text-gray-500 uppercase">To Team {asset.toTeam + 1}</span>
-                        </div>
-                      </div>
-                      <button onClick={() => removePlayer(idx, asset.playerId)} className="text-gray-500 hover:text-red-500 transition-colors pointer-events-auto relative z-50"><X size={16} /></button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-8 border-t border-white/10 relative z-50">
-                <div className="relative mb-4">
-                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-                   <input 
-                     placeholder="Find Asset..." 
-                     value={searchTerms[idx]}
-                     onChange={(e) => { const s = [...searchTerms]; s[idx] = e.target.value; setSearchTerms(s); }}
-                     className="w-full bg-black/80 border border-white/20 rounded-2xl py-4 pl-12 pr-4 text-xs font-black uppercase text-white outline-none focus:border-orange-500"
-                   />
-                </div>
-                
-                {/* Standardized max-height classes applied here */}
-                <div className="space-y-2 max-h-62.5 overflow-y-auto pr-2 custom-scrollbar pointer-events-auto relative z-60">
-                  {(mode === "league" ? (rosters.find(r => r.owner_id === selections[idx])?.players || []) : allPlayersArray)
-                    ?.map((p: any) => (typeof p === 'string' ? players[p] : p))
-                    ?.filter((player: any) => player?.full_name?.toLowerCase().includes(searchTerms[idx].toLowerCase()))
-                    .sort((a: any, b: any) => (POS_ORDER[a.position] || 99) - (POS_ORDER[b.position] || 99))
-                    .slice(0, 40)
-                    .map((player: any) => (
-                        <button key={player.player_id} onClick={() => addPlayer(idx, player.player_id)} className="w-full text-left p-4 rounded-2xl bg-[#262626] hover:bg-orange-600/30 border border-white/10 transition-all flex items-center justify-between group cursor-pointer relative z-70">
-                          <div className="flex items-center gap-3">
-                             <span className={`w-8 h-5 rounded-sm text-[9px] font-black flex items-center justify-center text-white ${POS_COLORS[player.position] || "bg-gray-600"}`}>
-                               {player.position}
-                             </span>
-                             <span className="text-[10px] font-black uppercase text-gray-100 group-hover:text-white">{player.full_name}</span>
-                          </div>
-                          <Plus size={14} className="text-orange-500" />
-                        </button>
-                    ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="p-8 bg-black/40 border-t border-white/10 text-left">
-              <span className="text-[9px] font-black uppercase text-gray-500 tracking-widest block mb-3">FAAB Contribution</span>
-              <input 
-                type="number" 
-                placeholder="$0"
-                value={tradeState[idx].faabSent || ""}
-                onChange={(e) => { 
-                  const next = [...tradeState]; 
-                  next[idx].faabSent = Number(e.target.value); 
-                  setTradeState(next); 
-                }}
-                className="w-full bg-black/60 border border-white/10 rounded-xl py-3 px-4 text-xs font-black text-orange-500 outline-none focus:border-orange-500 transition-all" 
-              />
-            </div>
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg shadow-orange-900/40">
+            <Scale className="w-5 h-5 text-white" />
           </div>
-        ))}
+          <div>
+            <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">River City Trade Analyzer</h1>
+            <p className="text-xs text-slate-500 dark:text-gray-400">Multi-team fairness engine</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em]">
+          <button
+            className={`px-3 py-1 rounded-full border text-xs ${mode === "league" ? "bg-slate-800 text-white border-slate-800 dark:bg-white dark:text-black dark:border-white" : "bg-transparent text-gray-400 border-gray-600"}`}
+            onClick={() => setMode("league")}
+          > League </button>
+          <button
+            className={`px-3 py-1 rounded-full border text-xs ${mode === "custom" ? "bg-slate-800 text-white border-slate-800 dark:bg-white dark:text-black dark:border-white" : "bg-transparent text-gray-400 border-gray-600"}`}
+            onClick={() => setMode("custom")}
+          > Custom </button>
+        </div>
       </div>
 
-      <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-100">
-        <button 
-          onClick={() => setIsSummaryOpen(true)}
-          className="bg-orange-600 hover:bg-orange-700 text-white px-10 py-5 rounded-full font-black uppercase text-xs tracking-widest shadow-2xl active:scale-95 flex items-center gap-3 transition-all"
+      {/* Teams Count */}
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 dark:text-gray-400 font-black">
+          Parties: {numTeams} / 4
+        </p>
+        {numTeams < 4 && (
+          <button
+            onClick={handleAddTeam}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-600 text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-lg hover:scale-105 transition-transform"
+          >
+            <Plus className="w-3 h-3" /> Add Team
+          </button>
+        )}
+      </div>
+
+      {/* Team Cards Grid */}
+      <div className={isGridLayout ? "grid grid-cols-1 lg:grid-cols-2 gap-6" : "flex flex-col gap-4"}>
+        {Array.from({ length: numTeams }).map((_, idx) => {
+          const teamSelection = selections[idx];
+          const sending = tradeState[idx]?.sending || [];
+          const faabSent = tradeState[idx]?.faabSent || 0;
+          const roster = rosters.find((r: any) => r.owner_id === teamSelection);
+          const user = users.find((u: any) => u.user_id === teamSelection);
+          const teamName = mode === "league" ? (roster?.metadata?.team_name || user?.metadata?.team_name || `Team ${idx + 1}`) : `Team ${idx + 1}`;
+          const ownerName = mode === "league" ? (user?.display_name || "Unassigned") : "Custom Search";
+
+          return (
+            <div key={idx} className="relative rounded-[2.5rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-gradient-to-b dark:from-black/60 dark:to-black/90 p-6 space-y-4 shadow-xl">
+              {idx >= 2 && numTeams > 2 && (
+                <button onClick={() => handleRemoveTeam(idx)} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 hover:bg-red-500 text-slate-500 hover:text-white transition flex items-center justify-center">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+
+              <div className="flex items-center gap-4 mb-2">
+                {mode === "league" && user?.avatar ? (
+                  <img src={`https://sleepercdn.com/avatars/${user.avatar}`} className="w-14 h-14 rounded-2xl border border-slate-200 dark:border-white/10" alt="avatar" />
+                ) : (
+                  <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center text-[9px] text-gray-400 font-black uppercase tracking-[0.2em]">Team {idx+1}</div>
+                )}
+                <div>
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white leading-tight">{teamName}</h2>
+                  <p className="text-[11px] text-slate-500 dark:text-gray-400 font-semibold uppercase tracking-wider">{ownerName}</p>
+                </div>
+              </div>
+
+              {/* Input logic based on Mode */}
+              {mode === "league" ? (
+                <div className="space-y-2">
+                  <select
+                    value={teamSelection}
+                    onChange={(e) => setSelections((prev) => prev.map((val, i) => i === idx ? e.target.value : val))}
+                    className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-orange-600"
+                  >
+                    <option value="">Choose a team...</option>
+                    {users.map((u: any) => (
+                      <option key={u.user_id} value={u.user_id}>{u.metadata?.team_name || u.display_name}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="relative">
+                  <div className="flex items-center bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3">
+                    <Search size={16} className="text-gray-400 mr-2" />
+                    <input 
+                        placeholder="Search NFL player..." 
+                        value={searchTerms[idx]}
+                        onChange={(e) => setSearchTerms(prev => prev.map((t, i) => i === idx ? e.target.value : t))}
+                        className="bg-transparent text-sm font-bold outline-none w-full text-slate-900 dark:text-white"
+                    />
+                  </div>
+                  {searchTerms[idx] && (
+                    <div className="absolute top-full left-0 right-0 z-50 mt-2 bg-white dark:bg-[#1a1c2e] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+                        {filteredPlayers(searchTerms[idx]).map(p => (
+                            <button key={p.player_id} onClick={() => handleSelectPlayer(idx, p.player_id!)} className="w-full flex items-center justify-between p-3 hover:bg-slate-50 dark:hover:bg-white/5 border-b border-slate-100 dark:border-white/5 last:border-0">
+                                <div className="flex items-center gap-2">
+                                    <span className={`px-2 py-0.5 rounded text-[9px] font-black text-white ${POS_COLORS[p.position || ''] || 'bg-gray-500'}`}>{p.position}</span>
+                                    <span className="text-xs font-bold text-slate-700 dark:text-white">{p.full_name}</span>
+                                </div>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase">{p.team}</span>
+                            </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Roster list (League mode only) */}
+              {mode === "league" && roster && roster.players && (
+                <div className="space-y-2 mt-3">
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Available Roster</p>
+                  <div className="max-h-48 overflow-y-auto rounded-2xl border border-slate-100 dark:border-white/10 bg-slate-50/50 dark:bg-black/40 p-2 custom-scrollbar">
+                    {roster.players.slice().sort((a: string, b: string) => {
+                        const pa = players[a] || {}; const pb = players[b] || {};
+                        const posA = POS_ORDER[pa.position || ""] || 99;
+                        const posB = POS_ORDER[pb.position || ""] || 99;
+                        if (posA !== posB) return posA - posB;
+                        return (pa.full_name || "").localeCompare(pb.full_name || "");
+                      }).map((pid: string) => {
+                        const p = players[pid] || {};
+                        return (
+                          <button key={pid} onClick={() => handleSelectPlayer(idx, pid)} className="w-full flex items-center justify-between px-3 py-2 text-xs text-slate-600 dark:text-gray-300 hover:bg-white dark:hover:bg-white/5 rounded-lg transition-colors text-left">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-8 h-4 rounded-sm text-[9px] font-black flex items-center justify-center text-white ${POS_COLORS[p.position || ""] || "bg-gray-600"}`}>
+                                {p.position || "BN"}
+                              </span>
+                              <span className="font-bold">{p.full_name || p.name}</span>
+                            </div>
+                            <span className="text-[10px] text-slate-400">{p.team || "FA"}</span>
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Trading Away</p>
+                <div className="space-y-2">
+                  {sending.length === 0 && <p className="text-center py-4 text-[10px] text-slate-300 italic">No assets selected...</p>}
+                  {sending.map((asset) => {
+                    const p = players[asset.playerId] || {};
+                    return (
+                      <div key={asset.playerId} className="p-4 bg-slate-100 dark:bg-[#2a2a2a] border border-slate-200 dark:border-white/5 rounded-2xl space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className={`w-8 h-5 rounded-sm text-[9px] font-black flex items-center justify-center text-white ${POS_COLORS[p.position || ""] || "bg-gray-600"}`}>
+                              {p.position}
+                            </span>
+                            <span className="text-sm font-black text-slate-800 dark:text-white">{p.full_name}</span>
+                          </div>
+                          <button onClick={() => handleRemoveAsset(idx, asset.playerId)} className="text-slate-400 hover:text-red-500">
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[8px] font-black uppercase text-slate-400">Route To:</label>
+                          <select
+                            value={asset.toTeam}
+                            onChange={(e) => updateAssetDestination(idx, asset.playerId, Number(e.target.value))}
+                            className="w-full bg-white dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-[10px] font-bold text-slate-800 dark:text-white"
+                          >
+                            {Array.from({ length: numTeams }).map((_, tIdx) => (
+                              <option key={tIdx} value={tIdx} disabled={tIdx === idx}>
+                                Team {tIdx + 1} ({mode === "league" ? (users.find(u => u.user_id === selections[tIdx])?.display_name || "Other") : `Team ${tIdx+1}`})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 dark:border-white/5">
+                <button onClick={() => toggleFaab(idx)} className="w-full text-[10px] font-black uppercase py-2 bg-slate-100 dark:bg-white/5 rounded-xl text-slate-500 dark:text-gray-400">
+                  {faabSent > 0 ? `FAAB Sent: $${faabSent}` : "+ Include FAAB"}
+                </button>
+                {faabOpen[idx] && (
+                  <input type="number" min={0} value={faabSent} onChange={(e) => updateFaab(idx, Number(e.target.value) || 0)} className="mt-2 w-full bg-slate-50 dark:bg-black/60 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none" placeholder="Amount..." />
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="pt-10 flex items-center justify-center gap-4">
+        <button
+          onClick={() => {
+            setTradeState(Array(4).fill(null).map(() => ({ sending: [], faabSent: 0 })));
+            setSelections(Array(4).fill(""));
+            setSearchTerms(Array(4).fill(""));
+          }}
+          className="px-6 py-3 rounded-full bg-slate-200 dark:bg-white/5 text-slate-600 dark:text-gray-300 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-red-500 hover:text-white transition-all"
         >
-          <ArrowRightLeft size={18} /> Analyze Trade
+          Reset Trade
+        </button>
+
+        <button
+          onClick={() => setIsSummaryOpen(true)}
+          className="px-10 py-4 rounded-full bg-orange-600 text-white text-[13px] font-black uppercase tracking-[0.3em] shadow-2xl hover:scale-105 transition-transform"
+        >
+          Analyze Trade
         </button>
       </div>
 
-      <TradeSummaryModal 
-        isOpen={isSummaryOpen} 
-        onClose={() => setIsSummaryOpen(false)}
-        teamSummaries={currentAnalysis.teamNetValues.map((v, i) => ({
-           teamName: `Team ${i + 1}`,
-           ownerName: managers.find(m => m.id === selections[i])?.name || `Team ${i + 1}`,
-           valueSent: tradeState[i].sending.reduce((acc: number, a: any) => acc + (players[a.playerId]?.totalValueScore || players[a.playerId]?.value || 0), 0),
-           valueReceived: tradeState.reduce((acc, otherSide) => {
-              const receivedFromOther = otherSide.sending.filter((a: any) => a.toTeam === i).reduce((sum: number, a: any) => sum + (players[a.playerId]?.totalValueScore || players[a.playerId]?.value || 0), 0);
-              return acc + receivedFromOther;
-           }, 0),
-           netSurplus: v,
-           surplusSent: 0,
-           surplusReceived: 0,
-           faabNet: 0
-        }))} 
-        fairnessScore={currentAnalysis.fairnessScore}
-        verdict={currentAnalysis.verdict}
-      />
+      {isSummaryOpen && currentAnalysis && (
+        <TradeSummaryModal
+          isOpen={isSummaryOpen} onClose={() => setIsSummaryOpen(false)}
+          teamSummaries={currentAnalysis.teamSummaries} fairnessScore={currentAnalysis.fairnessScore}
+          verdict={currentAnalysis.verdict} isBlackKnight={currentAnalysis.isBlackKnight}
+          components={currentAnalysis.components}
+        />
+      )}
     </div>
   );
 }
