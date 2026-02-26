@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { X, Info, TrendingUp, TrendingDown, Award, CheckCircle2, ShieldAlert, ScrollText } from "lucide-react";
 
-// The interfaces must match what is passed from TradeAnalyzer.tsx
 export interface TeamSummary {
   teamName: string;
   ownerName: string;
@@ -13,8 +12,7 @@ export interface TeamSummary {
   surplusSent: number;
   surplusReceived: number;
   faabNet: number;
-  // DATA KEYS FOR LOGOS & RECEIPTS
-  avatar?: string; 
+  avatar?: string | null; 
   playersReceived?: { name: string; pos: string; value: number }[];
 }
 
@@ -72,7 +70,7 @@ export default function TradeSummaryModal({
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-xl">
-      <div className={`bg-[#0f111a] border rounded-[2.5rem] shadow-2xl w-full max-w-4xl mx-4 overflow-hidden relative border-white/10`}>
+      <div className="bg-[#0f111a] border rounded-[2.5rem] shadow-2xl w-full max-w-4xl mx-4 overflow-hidden relative border-white/10">
         
         <button onClick={onClose} className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full bg-white/5 text-gray-400 hover:text-white z-50">
           <X className="w-5 h-5" />
@@ -80,7 +78,6 @@ export default function TradeSummaryModal({
 
         <div className="p-6 md:p-10 overflow-y-auto max-h-[90vh] custom-scrollbar">
           
-          {/* HEADER SECTION: BUDDY JESUS + NARRATIVE */}
           <div className="flex flex-col md:flex-row items-center gap-8 mb-10 p-6 bg-white/5 rounded-3xl border border-white/5">
             <img src={sealSrc} alt="Verdict" className="w-32 h-32 object-contain rounded-xl" />
             <div className="flex-1">
@@ -99,11 +96,9 @@ export default function TradeSummaryModal({
             </div>
           </div>
 
-          {/* TEAM CARDS */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {teamSummaries.map((team, idx) => {
               const comp = perTeam[idx];
-              // LOGO LOGIC: If avatar is missing, use a fallback image
               const avatarUrl = team.avatar 
                 ? `https://sleepercdn.com/avatars/thumbs/${team.avatar}`
                 : `https://sleepercdn.com/images/v2/icons/player_default.webp`;
@@ -135,7 +130,7 @@ export default function TradeSummaryModal({
                         </span>
                       </div>
                       <div className="bg-black/30 p-4 rounded-2xl border border-white/5">
-                        <span className="text-[9px] font-black text-gray-500 uppercase block mb-1">Playoff Impact</span>
+                        <span className="text-[9px] font-black text-gray-500 uppercase block mb-1">Impact Delta</span>
                         <div className="flex items-center justify-center gap-2 font-mono font-bold text-blue-400 text-xl">
                           {team.netSurplus > 0 ? "+" : ""}{team.netSurplus.toFixed(1)}
                           {team.netSurplus >= 0 ? <TrendingUp size={16} className="text-green-500" /> : <TrendingDown size={16} className="text-red-500" />}
@@ -144,7 +139,6 @@ export default function TradeSummaryModal({
                     </div>
                   </div>
 
-                  {/* ROSTER RECEIPT BOX */}
                   <div className="p-6 bg-black/20 flex-1">
                     <h4 className="text-[10px] font-black uppercase text-gray-500 mb-4 flex items-center gap-2 tracking-widest">
                       <Award size={12} /> Roster Receipt (Acquisitions)
@@ -153,7 +147,7 @@ export default function TradeSummaryModal({
                     <div className="space-y-2 min-h-[80px]">
                       {team.playersReceived && team.playersReceived.length > 0 ? (
                         team.playersReceived.map((p, i) => (
-                          <div key={i} className="flex justify-between items-center bg-white/5 px-3 py-2 rounded-lg border border-white/5 text-xs">
+                          <div key={i} className="flex justify-between items-center bg-white/5 px-3 py-2 rounded-lg border border-white/5 text-xs hover:border-blue-500/50 transition-all cursor-help">
                             <div className="flex items-center gap-2">
                               <span className="text-[9px] font-bold bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded leading-none">{p.pos}</span>
                               <span className="text-gray-200 font-medium">{p.name}</span>
@@ -164,20 +158,8 @@ export default function TradeSummaryModal({
                       ) : (
                         <div className="flex flex-col items-center justify-center py-6 opacity-40">
                           <p className="text-[10px] uppercase font-black tracking-tighter">No Players Tracked</p>
-                          <p className="text-[8px] italic">Verify TradeAnalyzer data mapping</p>
                         </div>
                       )}
-                    </div>
-
-                    <div className="mt-4 pt-4 border-t border-white/5 space-y-2">
-                      <div className="flex justify-between text-[10px] uppercase font-bold tracking-tighter">
-                        <span className="text-gray-500">Talent Delta</span>
-                        <span className={comp.deltaTalent >= 0 ? "text-green-400" : "text-red-400"}>{comp.deltaTalent.toFixed(1)}</span>
-                      </div>
-                      <div className="flex justify-between text-[10px] uppercase font-bold tracking-tighter">
-                        <span className="text-gray-500">Keeper Surplus</span>
-                        <span className={comp.deltaSurplus >= 0 ? "text-green-400" : "text-red-400"}>{comp.deltaSurplus.toFixed(1)}</span>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -185,7 +167,6 @@ export default function TradeSummaryModal({
             })}
           </div>
 
-          {/* FOOTER */}
           <div className="mt-8 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-6">
               <div>
@@ -198,27 +179,12 @@ export default function TradeSummaryModal({
                 <p className="text-sm font-bold text-green-400">{teamSummaries[global.biggestWinnerIndex]?.teamName}</p>
               </div>
             </div>
-            <button onClick={onClose} className="px-10 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-[0.2em] rounded-full transition-all shadow-lg shadow-blue-600/20">
+            <button onClick={onClose} className="px-10 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-[0.2em] rounded-full transition-all shadow-lg">
               Close Verdict
             </button>
           </div>
         </div>
       </div>
-
-      {/* LEGEND OVERLAY */}
-      {showLegend && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowLegend(false)}>
-          <div className="bg-[#1a1c2e] border border-white/10 p-8 rounded-3xl max-w-sm w-full animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
-            <h3 className="text-xl font-bold mb-4 text-blue-400 italic">The Verdict Glossary</h3>
-            <div className="space-y-4 text-sm text-gray-300">
-              <p><strong className="text-white">Net Value:</strong> The final sum of Talent, Keeper Surplus, and FAAB. Total asset shift.</p>
-              <p><strong className="text-white">Playoff Impact:</strong> Change in your team's projected weekly win probability.</p>
-              <p><strong className="text-white">Talent Delta:</strong> Raw points-per-game shift based on roster depth.</p>
-            </div>
-            <button className="mt-6 w-full py-2 bg-white/5 rounded-xl text-xs uppercase font-bold text-gray-400">Close</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

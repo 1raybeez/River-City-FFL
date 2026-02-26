@@ -1,8 +1,3 @@
-// ---------------------------------------------------------
-// File: /lib/tradeFairnessEngine.ts
-// Cleaned, strict-mode safe, with teamMeta + avatar support
-// ---------------------------------------------------------
-
 import { RIVER_CITY_ALGORITHM as ALGO } from "./leagueAlgorithm";
 import {
   TeamSummary,
@@ -65,11 +60,38 @@ function calculateKeeperSurplus(p: TradePlayer): number {
   return surplus > 0 ? surplus * 1.2 : surplus * 0.8;
 }
 
+/** * ⚡ FANTASYPROS STINGY MATH
+ * Widens the gap between elite assets and bench depth.
+ */
+function calculateAdjustedTalent(players: TradePlayer[]): number {
+  if (!players || players.length === 0) return 0;
+
+  // Sort by value descending
+  const sorted = [...players].sort((a, b) => (b.totalValueScore ?? 0) - (a.totalValueScore ?? 0));
+
+  return sorted.reduce((sum, p, index) => {
+    let pVal = p.totalValueScore ?? 0;
+
+    // ELITE TAX: Boost the #1 asset if they are a high-value star
+    if (index === 0 && pVal > 40) {
+      pVal *= 1.25; // 25% scarcity premium
+    }
+
+    // DEPTH PENALTY: Reduce value of 2nd player and beyond
+    if (index >= 1) {
+      pVal *= 0.80; // Only count 80% of secondary piece value
+    }
+
+    return sum + pVal;
+  }, 0);
+}
+
 function computeFairnessScore(gap: number): number {
-  if (gap <= ALGO.tolerance.elite) return 100;
-  if (gap <= ALGO.tolerance.fair) return 90;
-  if (gap <= ALGO.tolerance.lopsided) return 60;
-  if (gap <= ALGO.tolerance.egregious) return 30;
+  // Tighten thresholds: make lopsided verdicts happen sooner
+  if (gap <= 2) return 100;
+  if (gap <= 5) return 90;
+  if (gap <= 10) return 60;
+  if (gap <= 15) return 30;
   return 5;
 }
 
@@ -101,18 +123,13 @@ export function evaluateTrade(
       verdict: "Incomplete trade.",
       isBlackKnight: false,
       components: {
-        global: {
-          imbalanceGap: 0,
-          biggestWinnerIndex: 0,
-          biggestLoserIndex: 0,
-        },
+        global: { imbalanceGap: 0, biggestWinnerIndex: 0, biggestLoserIndex: 0 },
         perTeam: [],
       },
     };
   }
 
   const numTeams = sides.length;
-
   const teamNetValues: number[] = Array(numTeams).fill(0);
   const perTeamComponents: TeamComponentBreakdown[] = Array(numTeams)
     .fill(null)
@@ -124,90 +141,55 @@ export function evaluateTrade(
       netValue: 0,
     }));
 
-  const teamSummaries: TeamSummary[] = Array(numTeams)
-    .fill(null)
-    .map((_, i) => {
-      const meta = teamMeta[i];
-      return {
-        teamName: meta?.teamName ?? `Team ${i + 1}`,
-        ownerName: meta?.ownerName ?? "Unassigned",
-        avatar: meta?.avatar ?? null,
-        valueSent: 0,
-        valueReceived: 0,
-        netSurplus: 0,
-        surplusSent: 0,
-        surplusReceived: 0,
-        faabNet: 0,
-      };
-    });
+  const teamSummaries: TeamSummary[] = sides.map((_, i) => {
+    const meta = teamMeta[i];
+    return {
+      teamName: meta?.teamName ?? `Team ${i + 1}`,
+      ownerName: meta?.ownerName ?? "Unassigned",
+      avatar: meta?.avatar ?? null,
+      valueSent: 0,
+      valueReceived: 0,
+      netSurplus: 0,
+      surplusSent: 0,
+      surplusReceived: 0,
+      faabNet: 0,
+    };
+  });
 
-  // -----------------------------
-  // Per-team calculations
-  // -----------------------------
   sides.forEach((side, i) => {
-    // Sent
-    const talentSent = side.players.reduce((sum, p) => {
-      const pVal = p.totalValueScore ?? 0;
-      return sum + Math.pow(pVal, ALGO.marketMultiplier);
-    }, 0);
-
+    const talentSent = calculateAdjustedTalent(side.players);
     const surplusSent = side.players.reduce(
       (sum, p) => sum + calculateKeeperSurplus(p),
       0
     );
 
-    // Received
-    let talentReceived = 0;
     let surplusReceived = 0;
     let playersReceivedCount = 0;
     let faabReceived = 0;
+    const receivedPlayers: TradePlayer[] = [];
 
     sides.forEach((otherSide) => {
       if (otherSide.teamIndex === i) return;
-
       const arriving = otherSide.players.filter((p) => p.toTeam === i);
+      receivedPlayers.push(...arriving);
       playersReceivedCount += arriving.length;
-
-      talentReceived += arriving.reduce((sum, p) => {
-        const pVal = p.totalValueScore ?? 0;
-        return sum + Math.pow(pVal, ALGO.marketMultiplier);
-      }, 0);
-
-      surplusReceived += arriving.reduce(
-        (sum, p) => sum + calculateKeeperSurplus(p),
-        0
-      );
-
-      if (numTeams === 2) {
-        faabReceived += otherSide.faabSent ?? 0;
-      }
+      surplusReceived += arriving.reduce((sum, p) => sum + calculateKeeperSurplus(p), 0);
+      if (numTeams === 2) faabReceived += otherSide.faabSent ?? 0;
     });
 
-    // Roster tax
+    const talentReceived = calculateAdjustedTalent(receivedPlayers);
     const netPlayerCount = playersReceivedCount - side.players.length;
-    const rosterTax =
-      netPlayerCount > 0 ? netPlayerCount * ALGO.rosterSpotTax : 0;
+    const rosterTax = netPlayerCount > 0 ? netPlayerCount * 2 : 0; // Fixed tax value
 
-    // Deltas
     const deltaTalent = talentReceived - talentSent;
     const deltaSurplus = surplusReceived - surplusSent;
     const deltaFaab = faabReceived - (side.faabSent ?? 0);
 
-    const netValue =
-      deltaTalent * ALGO.weights.currentTalent +
-      deltaSurplus * ALGO.weights.keeperSurplus +
-      deltaFaab * ALGO.weights.faab -
-      rosterTax;
+    // Final calculation for Net Value
+    const netValue = (deltaTalent * 1.0) + (deltaSurplus * 0.8) + (deltaFaab * 0.05) - rosterTax;
 
     teamNetValues[i] = netValue;
-
-    perTeamComponents[i] = {
-      deltaTalent,
-      deltaSurplus,
-      deltaFaab,
-      rosterTax,
-      netValue,
-    };
+    perTeamComponents[i] = { deltaTalent, deltaSurplus, deltaFaab, rosterTax, netValue };
 
     teamSummaries[i] = {
       ...teamSummaries[i],
@@ -220,9 +202,6 @@ export function evaluateTrade(
     };
   });
 
-  // -----------------------------
-  // Global imbalance
-  // -----------------------------
   const maxNet = Math.max(...teamNetValues);
   const minNet = Math.min(...teamNetValues);
   const biggestWinnerIndex = teamNetValues.indexOf(maxNet);
@@ -230,21 +209,14 @@ export function evaluateTrade(
   const gap = Math.abs(maxNet - minNet);
 
   const fairnessScore = computeFairnessScore(gap);
-  const isBlackKnight = fairnessScore < 80;
-
-  const global: GlobalComponentSummary = {
-    imbalanceGap: gap,
-    biggestWinnerIndex,
-    biggestLoserIndex,
-  };
 
   return {
     teamSummaries,
     fairnessScore,
     verdict: generateVerdict(fairnessScore),
-    isBlackKnight,
+    isBlackKnight: fairnessScore < 80,
     components: {
-      global,
+      global: { imbalanceGap: gap, biggestWinnerIndex, biggestLoserIndex },
       perTeam: perTeamComponents,
     },
   };

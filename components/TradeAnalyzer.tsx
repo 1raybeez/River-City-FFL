@@ -43,6 +43,9 @@ interface HistoricalPercentiles {
   p75: number; p90: number; p95: number;
 }
 
+// ----------------------------------------------------------------------
+// SORTING & STYLING CONFIG
+// ----------------------------------------------------------------------
 const POS_ORDER: Record<string, number> = {
   QB: 1, RB: 2, WR: 3, TE: 4, K: 5, DEF: 6,
 };
@@ -139,7 +142,6 @@ export default function TradeAnalyzer() {
       })
     );
     loadPlayerValue(playerId);
-    // Clear search if in custom mode
     setSearchTerms(prev => prev.map((t, i) => i === teamIndex ? "" : t));
   };
 
@@ -246,7 +248,6 @@ export default function TradeAnalyzer() {
 
         return {
           ...summary,
-          avatar: teamMeta[teamIdx].avatar,
           playersReceived: received         
         };
       });
@@ -259,7 +260,7 @@ export default function TradeAnalyzer() {
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6 p-4">
-      {/* Top Left Icon Nav */}
+      {/* Theme & Navigation */}
       <div className="flex items-center gap-3 mb-2">
         <Link
           href="/league-info"
@@ -278,40 +279,25 @@ export default function TradeAnalyzer() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg shadow-orange-900/40">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg">
             <Scale className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">River City Trade Analyzer</h1>
-            <p className="text-xs text-slate-500 dark:text-gray-400">Multi-team fairness engine</p>
+            <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-white uppercase italic">Trade Analyzer</h1>
+            <p className="text-[10px] text-slate-500 dark:text-gray-400 font-bold uppercase tracking-widest">Organized Roster View</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em]">
+        <div className="flex items-center gap-2">
           <button
-            className={`px-3 py-1 rounded-full border text-xs ${mode === "league" ? "bg-slate-800 text-white border-slate-800 dark:bg-white dark:text-black dark:border-white" : "bg-transparent text-gray-400 border-gray-600"}`}
+            className={`px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest transition ${mode === "league" ? "bg-slate-800 text-white border-slate-800 dark:bg-white dark:text-black dark:border-white" : "bg-transparent text-gray-400 border-gray-600"}`}
             onClick={() => setMode("league")}
           > League </button>
           <button
-            className={`px-3 py-1 rounded-full border text-xs ${mode === "custom" ? "bg-slate-800 text-white border-slate-800 dark:bg-white dark:text-black dark:border-white" : "bg-transparent text-gray-400 border-gray-600"}`}
+            className={`px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest transition ${mode === "custom" ? "bg-slate-800 text-white border-slate-800 dark:bg-white dark:text-black dark:border-white" : "bg-transparent text-gray-400 border-gray-600"}`}
             onClick={() => setMode("custom")}
           > Custom </button>
         </div>
-      </div>
-
-      {/* Teams Count */}
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 dark:text-gray-400 font-black">
-          Parties: {numTeams} / 4
-        </p>
-        {numTeams < 4 && (
-          <button
-            onClick={handleAddTeam}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-600 text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-lg hover:scale-105 transition-transform"
-          >
-            <Plus className="w-3 h-3" /> Add Team
-          </button>
-        )}
       </div>
 
       {/* Team Cards Grid */}
@@ -322,58 +308,56 @@ export default function TradeAnalyzer() {
           const faabSent = tradeState[idx]?.faabSent || 0;
           const roster = rosters.find((r: any) => r.owner_id === teamSelection);
           const user = users.find((u: any) => u.user_id === teamSelection);
-          const teamName = mode === "league" ? (roster?.metadata?.team_name || user?.metadata?.team_name || `Team ${idx + 1}`) : `Team ${idx + 1}`;
-          const ownerName = mode === "league" ? (user?.display_name || "Unassigned") : "Custom Search";
+          
+          const teamNameLabel = mode === "league" ? (roster?.metadata?.team_name || user?.metadata?.team_name || `Team ${idx + 1}`) : `Team ${idx + 1}`;
+          const ownerNameLabel = mode === "league" ? (user?.display_name || "Unassigned") : "Custom Search";
 
           return (
-            <div key={idx} className="relative rounded-[2.5rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-gradient-to-b dark:from-black/60 dark:to-black/90 p-6 space-y-4 shadow-xl">
-              {idx >= 2 && numTeams > 2 && (
-                <button onClick={() => handleRemoveTeam(idx)} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 hover:bg-red-500 text-slate-500 hover:text-white transition flex items-center justify-center">
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-
-              <div className="flex items-center gap-4 mb-2">
+            <div key={idx} className="relative rounded-[2.5rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-black/40 p-6 space-y-4 shadow-xl">
+              <div className="flex items-center gap-4">
                 {mode === "league" && user?.avatar ? (
-                  <img src={`https://sleepercdn.com/avatars/${user.avatar}`} className="w-14 h-14 rounded-2xl border border-slate-200 dark:border-white/10" alt="avatar" />
+                  <img src={`https://sleepercdn.com/avatars/${user.avatar}`} className="w-14 h-14 rounded-2xl border border-slate-200 dark:border-white/10 shadow-lg" alt="avatar" />
                 ) : (
                   <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center text-[9px] text-gray-400 font-black uppercase tracking-[0.2em]">Team {idx+1}</div>
                 )}
                 <div>
-                  <h2 className="text-xl font-black text-slate-900 dark:text-white leading-tight">{teamName}</h2>
-                  <p className="text-[11px] text-slate-500 dark:text-gray-400 font-semibold uppercase tracking-wider">{ownerName}</p>
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white leading-tight uppercase italic">{teamNameLabel}</h2>
+                  <p className="text-[11px] text-slate-500 dark:text-gray-400 font-semibold uppercase tracking-wider">{ownerNameLabel}</p>
                 </div>
               </div>
 
-              {/* Input logic based on Mode */}
+              {/* Selection Logic */}
               {mode === "league" ? (
-                <div className="space-y-2">
-                  <select
-                    value={teamSelection}
-                    onChange={(e) => setSelections((prev) => prev.map((val, i) => i === idx ? e.target.value : val))}
-                    className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-orange-600"
-                  >
-                    <option value="">Choose a team...</option>
-                    {users.map((u: any) => (
-                      <option key={u.user_id} value={u.user_id}>{u.metadata?.team_name || u.display_name}</option>
-                    ))}
-                  </select>
-                </div>
+                <select
+                  value={teamSelection}
+                  onChange={(e) => setSelections((prev) => prev.map((val, i) => i === idx ? e.target.value : val))}
+                  className="w-full bg-slate-50 dark:bg-black/60 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-orange-600"
+                >
+                  <option value="">Select a team...</option>
+                  {users.map((u: any) => {
+                    const r = rosters.find(rost => rost.owner_id === u.user_id);
+                    return (
+                      <option key={u.user_id} value={u.user_id}>
+                        {r?.metadata?.team_name || u.metadata?.team_name || u.display_name}
+                      </option>
+                    );
+                  })}
+                </select>
               ) : (
                 <div className="relative">
-                  <div className="flex items-center bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3">
+                  <div className="flex items-center bg-slate-50 dark:bg-black/60 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3">
                     <Search size={16} className="text-gray-400 mr-2" />
                     <input 
-                        placeholder="Search NFL player..." 
+                        placeholder="Search NFL Player..." 
                         value={searchTerms[idx]}
                         onChange={(e) => setSearchTerms(prev => prev.map((t, i) => i === idx ? e.target.value : t))}
                         className="bg-transparent text-sm font-bold outline-none w-full text-slate-900 dark:text-white"
                     />
                   </div>
                   {searchTerms[idx] && (
-                    <div className="absolute top-full left-0 right-0 z-50 mt-2 bg-white dark:bg-[#1a1c2e] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+                    <div className="absolute top-full left-0 right-0 z-50 mt-2 bg-white dark:bg-[#1a1c2e] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto">
                         {filteredPlayers(searchTerms[idx]).map(p => (
-                            <button key={p.player_id} onClick={() => handleSelectPlayer(idx, p.player_id!)} className="w-full flex items-center justify-between p-3 hover:bg-slate-50 dark:hover:bg-white/5 border-b border-slate-100 dark:border-white/5 last:border-0">
+                            <button key={p.player_id} onClick={() => handleSelectPlayer(idx, p.player_id!)} className="w-full flex items-center justify-between p-3 hover:bg-slate-50 dark:hover:bg-white/5 border-b border-slate-100 dark:border-white/5">
                                 <div className="flex items-center gap-2">
                                     <span className={`px-2 py-0.5 rounded text-[9px] font-black text-white ${POS_COLORS[p.position || ''] || 'bg-gray-500'}`}>{p.position}</span>
                                     <span className="text-xs font-bold text-slate-700 dark:text-white">{p.full_name}</span>
@@ -386,74 +370,59 @@ export default function TradeAnalyzer() {
                 </div>
               )}
 
-              {/* Roster list (League mode only) */}
-              {mode === "league" && roster && roster.players && (
-                <div className="space-y-2 mt-3">
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Available Roster</p>
-                  <div className="max-h-48 overflow-y-auto rounded-2xl border border-slate-100 dark:border-white/10 bg-slate-50/50 dark:bg-black/40 p-2 custom-scrollbar">
-                    {roster.players.slice().sort((a: string, b: string) => {
-                        const pa = players[a] || {}; const pb = players[b] || {};
-                        const posA = POS_ORDER[pa.position || ""] || 99;
-                        const posB = POS_ORDER[pb.position || ""] || 99;
-                        if (posA !== posB) return posA - posB;
-                        return (pa.full_name || "").localeCompare(pb.full_name || "");
-                      }).map((pid: string) => {
-                        const p = players[pid] || {};
-                        return (
-                          <button key={pid} onClick={() => handleSelectPlayer(idx, pid)} className="w-full flex items-center justify-between px-3 py-2 text-xs text-slate-600 dark:text-gray-300 hover:bg-white dark:hover:bg-white/5 rounded-lg transition-colors text-left">
-                            <div className="flex items-center gap-2">
-                              <span className={`w-8 h-4 rounded-sm text-[9px] font-black flex items-center justify-center text-white ${POS_COLORS[p.position || ""] || "bg-gray-600"}`}>
-                                {p.position || "BN"}
-                              </span>
-                              <span className="font-bold">{p.full_name || p.name}</span>
-                            </div>
-                            <span className="text-[10px] text-slate-400">{p.team || "FA"}</span>
-                          </button>
-                        );
-                      })}
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Trading Away</p>
-                <div className="space-y-2">
-                  {sending.length === 0 && <p className="text-center py-4 text-[10px] text-slate-300 italic">No assets selected...</p>}
-                  {sending.map((asset) => {
-                    const p = players[asset.playerId] || {};
+              {/* ⚡ UPDATED: SORTED ROSTER VIEW */}
+              {mode === "league" && roster && (
+                <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-black/20 p-2 custom-scrollbar">
+                  {roster.players
+                    ?.slice() // Clone to avoid mutating original
+                    .sort((a: string, b: string) => {
+                      const posA = players[a]?.position || "BN";
+                      const posB = players[b]?.position || "BN";
+                      return (POS_ORDER[posA] || 99) - (POS_ORDER[posB] || 99);
+                    })
+                    .map((pid: string) => {
+                    const p = players[pid] || {};
                     return (
-                      <div key={asset.playerId} className="p-4 bg-slate-100 dark:bg-[#2a2a2a] border border-slate-200 dark:border-white/5 rounded-2xl space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <span className={`w-8 h-5 rounded-sm text-[9px] font-black flex items-center justify-center text-white ${POS_COLORS[p.position || ""] || "bg-gray-600"}`}>
-                              {p.position}
-                            </span>
-                            <span className="text-sm font-black text-slate-800 dark:text-white">{p.full_name}</span>
-                          </div>
-                          <button onClick={() => handleRemoveAsset(idx, asset.playerId)} className="text-slate-400 hover:text-red-500">
-                            <X className="w-4 h-4" />
-                          </button>
+                      <button key={pid} onClick={() => handleSelectPlayer(idx, pid)} className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-slate-600 dark:text-gray-300 hover:bg-white dark:hover:bg-white/5 rounded-lg transition-colors mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-8 h-4 rounded-sm text-[8px] font-black flex items-center justify-center text-white ${POS_COLORS[p.position || ""] || "bg-gray-600"}`}>{p.position || "BN"}</span>
+                          <span className="font-bold">{p.full_name || "Unknown Player"}</span>
                         </div>
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-[8px] font-black uppercase text-slate-400">Route To:</label>
-                          <select
-                            value={asset.toTeam}
-                            onChange={(e) => updateAssetDestination(idx, asset.playerId, Number(e.target.value))}
-                            className="w-full bg-white dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-[10px] font-bold text-slate-800 dark:text-white"
-                          >
-                            {Array.from({ length: numTeams }).map((_, tIdx) => (
-                              <option key={tIdx} value={tIdx} disabled={tIdx === idx}>
-                                Team {tIdx + 1} ({mode === "league" ? (users.find(u => u.user_id === selections[tIdx])?.display_name || "Other") : `Team ${tIdx+1}`})
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
+                        <span className="text-[10px] opacity-40">{p.team || "FA"}</span>
+                      </button>
                     );
                   })}
                 </div>
+              )}
+
+              {/* Trade Assets */}
+              <div className="space-y-2">
+                {sending.map((asset) => {
+                  const p = players[asset.playerId] || {};
+                  return (
+                    <div key={asset.playerId} className="p-3 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-black text-white ${POS_COLORS[p.position || ''] || 'bg-gray-500'}`}>{p.position}</span>
+                        <span className="text-xs font-black text-slate-800 dark:text-white">{p.full_name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={asset.toTeam}
+                          onChange={(e) => updateAssetDestination(idx, asset.playerId, Number(e.target.value))}
+                          className="bg-white dark:bg-black/60 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 text-[9px] font-black text-slate-800 dark:text-white"
+                        >
+                          {Array.from({ length: numTeams }).map((_, tIdx) => (
+                            <option key={tIdx} value={tIdx} disabled={tIdx === idx}>Route to Team {tIdx + 1}</option>
+                          ))}
+                        </select>
+                        <button onClick={() => handleRemoveAsset(idx, asset.playerId)} className="text-red-500 hover:scale-110 transition-transform"><X size={14} /></button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
+              {/* FAAB Control */}
               <div className="pt-2 border-t border-slate-100 dark:border-white/5">
                 <button onClick={() => toggleFaab(idx)} className="w-full text-[10px] font-black uppercase py-2 bg-slate-100 dark:bg-white/5 rounded-xl text-slate-500 dark:text-gray-400">
                   {faabSent > 0 ? `FAAB Sent: $${faabSent}` : "+ Include FAAB"}
@@ -472,16 +441,15 @@ export default function TradeAnalyzer() {
           onClick={() => {
             setTradeState(Array(4).fill(null).map(() => ({ sending: [], faabSent: 0 })));
             setSelections(Array(4).fill(""));
-            setSearchTerms(Array(4).fill(""));
           }}
-          className="px-6 py-3 rounded-full bg-slate-200 dark:bg-white/5 text-slate-600 dark:text-gray-300 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-red-500 hover:text-white transition-all"
+          className="px-8 py-3 rounded-full bg-slate-200 dark:bg-white/5 text-slate-600 dark:text-gray-300 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-red-500 hover:text-white transition-all"
         >
           Reset Trade
         </button>
 
         <button
           onClick={() => setIsSummaryOpen(true)}
-          className="px-10 py-4 rounded-full bg-orange-600 text-white text-[13px] font-black uppercase tracking-[0.3em] shadow-2xl hover:scale-105 transition-transform"
+          className="px-12 py-4 rounded-full bg-orange-600 text-white text-[13px] font-black uppercase tracking-[0.3em] shadow-2xl hover:scale-105 transition-transform"
         >
           Analyze Trade
         </button>
