@@ -1,5 +1,20 @@
 // lib/proposals.ts
 
+export interface RuleProposal {
+  id: string;
+  submittedBy: string;
+  sleeperId: string;
+  section: string;
+  title: string;
+  description: string;
+  status: "active" | "passed" | "failed" | "closed";
+  votes: {
+    yes: string[];
+    no: string[];
+  };
+  createdAt: string;
+}
+
 export const INITIAL_PROPOSALS: RuleProposal[] = [
   {
     id: "prop_jordan_2026",

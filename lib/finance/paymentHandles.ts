@@ -20,11 +20,11 @@ export async function calculateWeeklyHighScores(leagueId: string) {
     if (!weekMatchups || weekMatchups.length === 0) return;
 
     // Find the single highest scoring team for that week
-    const highScorer = weekMatchups.reduce((prev, curr) => 
-      (prev.points > curr.points) ? prev : curr
+    const highScorer = weekMatchups.reduce((prev, curr) =>
+      ((prev.points ?? 0) > (curr.points ?? 0)) ? prev : curr
     );
 
-    if (highScorer.points > 0) {
+    if ((highScorer.points ?? 0) > 0) {
       const rid = highScorer.roster_id;
       weeklyWinnerCounts[rid] = (weeklyWinnerCounts[rid] || 0) + 1;
     }

@@ -128,7 +128,7 @@ export default function Treasury() {
                 // CRITICAL CHECK: Ensure we actually have an array of matchups
                 if (!Array.isArray(weekMatchups) || weekMatchups.length === 0) return;
 
-                let highRosterId = null;
+                let highRosterId: number | null = null;
                 let highScore = -1;
 
                 weekMatchups.forEach((m: any) => {
