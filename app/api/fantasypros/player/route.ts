@@ -36,7 +36,7 @@ export async function GET(request: Request) {
       "User-Agent": "Mozilla/5.0",
       Accept: "application/json",
     },
-    cache: "no-store",
+    next: { revalidate: 3600 },
   }
 );
 
@@ -54,9 +54,6 @@ export async function GET(request: Request) {
 
     const data = await fpRes.json();
 
-    // 🔍 DEBUG 1 — What did FantasyPros send back?
-    console.log("FP RAW RESPONSE:", JSON.stringify(data, null, 2));
-
     // FantasyPros returns a list of players under data.players
     const players = data?.players || [];
 
@@ -66,9 +63,6 @@ export async function GET(request: Request) {
         String(p.player_id) === String(playerId) ||
         String(p.id) === String(playerId)
     );
-
-    // 🔍 DEBUG 2 — Did we match a player?
-    console.log("FP MATCHED PLAYER:", fpPlayer);
 
     if (!fpPlayer) {
       return NextResponse.json(
