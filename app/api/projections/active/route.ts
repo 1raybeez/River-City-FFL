@@ -4,6 +4,10 @@
 // ---------------------------------------------------------
 
 import { NextResponse } from "next/server";
+import {
+  getDerivedWeeklyProjections,
+  getSeasonProjections,
+} from "@/lib/projections";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -32,30 +36,26 @@ export async function GET(request: Request) {
       });
     }
 
-    // 2) Fall back to derived weekly projections
-    const derivedUrl = `http://localhost:3000/api/projections/week?week=${week}`;
-    const derivedRes = await fetch(derivedUrl, { cache: "no-store" });
-
-    if (derivedRes.ok) {
-      const derived = await derivedRes.json();
+    try {
+      const projections = await getDerivedWeeklyProjections(week);
       return NextResponse.json({
         source: "derived",
         week,
-        projections: derived.projections,
+        projections,
       });
+    } catch (err) {
+      console.error("Derived weekly projections fallback failed:", err);
     }
 
-    // 3) Final fallback: season projections
-    const seasonUrl = `http://localhost:3000/api/projections/season`;
-    const seasonRes = await fetch(seasonUrl, { cache: "no-store" });
-
-    if (seasonRes.ok) {
-      const season = await seasonRes.json();
+    try {
+      const projections = await getSeasonProjections();
       return NextResponse.json({
         source: "season",
         week,
-        projections: season.projections,
+        projections,
       });
+    } catch (err) {
+      console.error("Season projections fallback failed:", err);
     }
 
     return NextResponse.json(
