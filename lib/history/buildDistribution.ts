@@ -1,7 +1,6 @@
 // lib/history/buildDistribution.ts
 
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { firestore } from "@/lib/firebaseAdmin";
 import {
   TradeRecord,
   computeImbalanceForTrade,
@@ -40,14 +39,11 @@ async function fetchAllNormalizedTrades(): Promise<TradeRecord[]> {
   const trades: TradeRecord[] = [];
 
   for (let year = START_YEAR; year <= END_YEAR; year++) {
-    const yearTradesCol = collection(
-      db,
-      "normalized_trades",
-      String(year),
-      "trades"
-    );
-
-    const snapshot = await getDocs(yearTradesCol);
+    const snapshot = await firestore
+      .collection("normalized_trades")
+      .doc(String(year))
+      .collection("trades")
+      .get();
 
     snapshot.forEach(docSnap => {
       const data = docSnap.data() as any;
@@ -87,10 +83,10 @@ export async function buildHistoricalImbalanceDistribution(): Promise<StoredDist
     generatedAt: new Date().toISOString(),
   };
 
-  // Store distribution in Firestore
-  const { doc, setDoc } = await import("firebase/firestore");
-  const distDocRef = doc(db, "historical_distribution", "imbalance_percentiles");
-  await setDoc(distDocRef, distribution, { merge: true });
+  await firestore
+    .collection("historical_distribution")
+    .doc("imbalance_percentiles")
+    .set(distribution, { merge: true });
 
   return distribution;
 }
