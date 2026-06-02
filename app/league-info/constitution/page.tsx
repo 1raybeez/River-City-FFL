@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useTheme } from "next-themes";
 import { 
   Home, Scale, Search, History, XCircle, 
-  Sun, Moon, Monitor, ChevronRight 
+  Sun, Moon, Monitor, ChevronRight, Gavel
 } from 'lucide-react';
 import { db } from "@/lib/firebase"; 
 import { collection, onSnapshot } from "firebase/firestore";
@@ -24,12 +24,13 @@ export default function ConstitutionPage() {
     setMounted(true);
   }, []);
 
-  // Listen for Live Rule Changes (Firebase)
+  // 1. Listen for Ratified Rule Changes from the Legislative Hub
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "ratified_rules"), (snapshot) => {
       const rules = snapshot.docs.map(doc => ({
         id: doc.id,
-        anchor: doc.data().anchor || `rule-${doc.id}`,
+        // We expect a 'sectionId' field to match against constitutionData (e.g., "1.4")
+        sectionId: doc.data().sectionId || doc.id, 
         ...doc.data()
       }));
       setLiveRules(rules);
@@ -37,7 +38,45 @@ export default function ConstitutionPage() {
     return () => unsubscribe();
   }, []);
 
-  const combinedRules = [...constitutionData, ...liveRules];
+  /**
+   * 2. THE LOGIC BRIDGE:
+   * This merges your static bylaws with the live votes. 
+   * If Section 1.4 or 4.3 exists in Firebase, it overrides the static text.
+   */
+  const combinedRules = useMemo(() => {
+    // Create a lookup map for live rules
+    const liveMap = liveRules.reduce((acc, rule) => {
+      acc[rule.sectionId] = rule;
+      return acc;
+    }, {} as Record<string, any>);
+
+    return constitutionData.map(section => {
+      // Check if this top-level section has a live override
+      const sectionOverride = liveMap[section.id];
+      
+      // Also check if any SUBSECTIONS have overrides (e.g. 1.4 inside 1.0)
+      const updatedSubsections = section.subsections?.map(sub => {
+        const subOverride = liveMap[sub.id];
+        if (subOverride) {
+          return {
+            ...sub,
+            content: subOverride.content || sub.content,
+            title: subOverride.title || sub.title,
+            isRatified: true // Flag to show "New Law" UI if needed
+          };
+        }
+        return sub;
+      });
+
+      return {
+        ...section,
+        subsections: updatedSubsections,
+        // Override top-level content if applicable
+        content: sectionOverride?.content || section.content,
+        isRatified: !!sectionOverride
+      };
+    });
+  }, [liveRules]);
 
   const toggleSection = (id: string) => {
     setOpenSections(prev => 
@@ -67,12 +106,12 @@ export default function ConstitutionPage() {
       if (!openSections.includes(matched.id)) {
         setOpenSections(prev => [...new Set([...prev, matched.id])]);
       }
-      const element = document.getElementById(matched.anchor);
+      const element = document.getElementById(matched.anchor || matched.id);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }
-  }, [searchQuery]);
+  }, [searchQuery, combinedRules]);
 
   const filteredData = combinedRules.filter(section => 
     section.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -87,7 +126,7 @@ export default function ConstitutionPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 pb-20 selection:bg-orange-500 selection:text-white">
       
-      {/* NAVIGATION BAR - Directs back to Info Hub */}
+      {/* NAVIGATION BAR */}
       <nav className="border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
         <div className="flex items-center gap-4">
           <Link 
@@ -112,8 +151,11 @@ export default function ConstitutionPage() {
 
       <main className="max-w-4xl mx-auto px-6 py-10">
         <header className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-600/10 border border-orange-600/20 text-orange-600 text-[9px] font-black uppercase tracking-widest mb-4">
+              <Gavel size={10} /> Live Legislative Sync Active
+            </div>
             <h1 className="text-5xl font-black uppercase italic tracking-tighter mb-4">League Bylaws</h1>
-            <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Last Updated: Feb 2026</p>
+            <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Last Update Refreshed: {new Date().toLocaleDateString()}</p>
         </header>
 
         {/* SEARCH BAR */}
@@ -137,7 +179,7 @@ export default function ConstitutionPage() {
         <div className="space-y-6">
           {filteredData.length > 0 ? (
             filteredData.map((section) => (
-              <div key={section.id} id={section.anchor} className="scroll-mt-32">
+              <div key={section.id} id={section.anchor || section.id} className="scroll-mt-32">
                 <ConstitutionSection
                   title={section.title}
                   icon={section.icon}

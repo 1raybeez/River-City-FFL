@@ -29,7 +29,7 @@ export default function DraftBoard({ data }: DraftBoardProps) {
 
   picks.forEach((pick: any) => {
     const roundIdx = pick.round - 1;
-    let slotIdx = pick.draft_slot - 1;
+    const slotIdx = pick.draft_slot - 1;
     if (grid[roundIdx]) {
         grid[roundIdx][slotIdx] = pick;
     }

@@ -1,3 +1,8 @@
+// ---------------------------------------------------------
+// File: /app/api/fantasypros/player/route.ts
+// CURRENT VERSION + DEBUG LOGS
+// ---------------------------------------------------------
+
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -24,16 +29,23 @@ export async function GET(request: Request) {
 
     // Fetch the full FantasyPros player dataset
     const fpRes = await fetch(
-      "https://api.fantasypros.com/json/nfl/players",
-      {
-        headers: {
-          Cookie: `fptoken=${sessionToken}`,
-        },
-        cache: "no-store",
-      }
-    );
+  "https://partners.fantasypros.com/api/v1/nfl/players",
+  {
+    headers: {
+      Cookie: `fptoken=${sessionToken}`,
+      "User-Agent": "Mozilla/5.0",
+      Accept: "application/json",
+    },
+    cache: "no-store",
+  }
+);
 
     if (!fpRes.ok) {
+      console.error(
+        "FantasyPros fetch failed:",
+        fpRes.status,
+        await fpRes.text()
+      );
       return NextResponse.json(
         { error: "Failed to fetch FantasyPros data" },
         { status: 500 }
@@ -41,6 +53,9 @@ export async function GET(request: Request) {
     }
 
     const data = await fpRes.json();
+
+    // 🔍 DEBUG 1 — What did FantasyPros send back?
+    console.log("FP RAW RESPONSE:", JSON.stringify(data, null, 2));
 
     // FantasyPros returns a list of players under data.players
     const players = data?.players || [];
@@ -51,6 +66,9 @@ export async function GET(request: Request) {
         String(p.player_id) === String(playerId) ||
         String(p.id) === String(playerId)
     );
+
+    // 🔍 DEBUG 2 — Did we match a player?
+    console.log("FP MATCHED PLAYER:", fpPlayer);
 
     if (!fpPlayer) {
       return NextResponse.json(

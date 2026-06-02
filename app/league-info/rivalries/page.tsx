@@ -55,8 +55,8 @@ export default function RivalryHub() {
   const scanHistory = async () => {
     if (!playerA || !playerB) return;
     setLoading(true);
-    let h2h = { aWins: 0, bWins: 0, aPoints: 0, bPoints: 0, totalGames: 0 };
-    let games: any[] = [];
+    const h2h = { aWins: 0, bWins: 0, aPoints: 0, bPoints: 0, totalGames: 0 };
+    const games: any[] = [];
 
     for (const season of LEAGUE_HISTORY) {
       try {
