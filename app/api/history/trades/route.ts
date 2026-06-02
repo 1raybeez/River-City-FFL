@@ -1,8 +1,7 @@
 // app/api/history/trades/route.ts
 
-import { db } from "@/lib/firebase";
+import { firestore } from "@/lib/firebaseAdmin";
 import { LEAGUE_IDS } from "@/lib/sleeper";
-import { collection, doc, getDocs, setDoc } from "firebase/firestore";
 import { NextResponse } from "next/server";
 
 // Helper to fetch NFL state (week + season)
@@ -33,9 +32,11 @@ export async function GET(req: Request) {
 
     // Load from Firebase for past seasons
     if (season < 2026) {
-      const snapshot = await getDocs(
-        collection(db, "trades", season.toString(), "entries")
-      );
+      const snapshot = await firestore
+        .collection("trades")
+        .doc(season.toString())
+        .collection("entries")
+        .get();
       trades = snapshot.docs.map((d) => d.data());
       return NextResponse.json(trades);
     }
@@ -80,11 +81,12 @@ export async function GET(req: Request) {
 
     // Auto-store in Firebase
     for (const trade of trades) {
-      await setDoc(
-        doc(db, "trades", season.toString(), "entries", trade.id),
-        trade,
-        { merge: true }
-      );
+      await firestore
+        .collection("trades")
+        .doc(season.toString())
+        .collection("entries")
+        .doc(trade.id)
+        .set(trade, { merge: true });
     }
 
     return NextResponse.json(trades);
