@@ -1,5 +1,4 @@
-import { collection, doc, setDoc, getDocs } from "firebase/firestore";
-import { db } from "../firebase";
+import { firestore } from "@/lib/firebaseAdmin";
 
 /**
  * Shape of a stored historical trade in Firebase.
@@ -29,7 +28,10 @@ export interface HistoricalTrade {
  * historical_trades/{year}/{tradeId}
  */
 function historicalTradesCollection(year: number) {
-  return collection(db, "historical_trades", String(year), "trades");
+  return firestore
+    .collection("historical_trades")
+    .doc(String(year))
+    .collection("trades");
 }
 
 /**
@@ -44,10 +46,9 @@ export async function saveHistoricalTrade(
     throw new Error("saveHistoricalTrade: trade.tradeId is required");
   }
 
-  const colRef = historicalTradesCollection(year);
-  const docRef = doc(colRef, trade.tradeId);
+  const docRef = historicalTradesCollection(year).doc(trade.tradeId);
 
-  await setDoc(docRef, {
+  await docRef.set({
     ...trade,
     year, // ensure year is consistent with the path
   });
@@ -60,8 +61,7 @@ export async function saveHistoricalTrade(
 export async function getHistoricalTradesForYear(
   year: number
 ): Promise<HistoricalTrade[]> {
-  const colRef = historicalTradesCollection(year);
-  const snap = await getDocs(colRef);
+  const snap = await historicalTradesCollection(year).get();
 
   const trades: HistoricalTrade[] = [];
   snap.forEach((docSnap) => {
