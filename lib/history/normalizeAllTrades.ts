@@ -1,7 +1,6 @@
 // lib/history/normalizeAllTrades.ts
 
-import { collection, getDocs, doc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { firestore } from "@/lib/firebaseAdmin";
 import { normalizeSingleTrade, HistoricalTradeDoc } from "./normalizeTrade";
 
 const START_YEAR = 2018;
@@ -22,13 +21,11 @@ export async function normalizeAllHistoricalTrades() {
   }[] = [];
 
   for (let year = START_YEAR; year <= END_YEAR; year++) {
-    const tradesCol = collection(
-      db,
-      "historical_trades",
-      String(year),
-      "trades"
-    );
-    const snapshot = await getDocs(tradesCol);
+    const snapshot = await firestore
+      .collection("historical_trades")
+      .doc(String(year))
+      .collection("trades")
+      .get();
 
     let total = 0;
     let normalized = 0;
@@ -57,16 +54,13 @@ export async function normalizeAllHistoricalTrades() {
       }
 
       // ✅ FIX: write to normalized_trades/{year}/trades/{tradeId}
-      const outRef = doc(
-        db,
-        "normalized_trades",
-        String(year),
-        "trades",
-        docSnap.id
-      );
+      const outRef = firestore
+        .collection("normalized_trades")
+        .doc(String(year))
+        .collection("trades")
+        .doc(docSnap.id);
 
-      await setDoc(
-        outRef,
+      await outRef.set(
         {
           ...trade,
           imbalanceComponents: components ?? null,
