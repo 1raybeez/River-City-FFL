@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, doc, updateDoc, arrayUnion, getDoc } from "firebase/firestore";
+import { ratifyProposal } from "@/lib/legislativeLogic";
 
 const managers = [
   { name: "Aaron Dogg", id: "583513420586848256" },
@@ -38,11 +39,16 @@ export default function ProposalsPage() {
   const [selectedManagerId, setSelectedManagerId] = useState("");
   const [now, setNow] = useState(new Date());
   const [isOverrideOpen, setIsOverrideOpen] = useState(false);
+  const [isFinalizing, setIsFinalizing] = useState(false);
+  const [finalizeMessage, setFinalizeMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // LOGIC: Voting is open if time is right OR manual override is toggled
   const isVotingOpen = (now >= MEETING_DATE && now <= VOTING_DEADLINE) || isOverrideOpen;
   const isVotingFinished = now > VOTING_DEADLINE && !isOverrideOpen;
   const isPreMeeting = now < MEETING_DATE && !isOverrideOpen;
+  const activeProposals = proposals.filter(
+    (proposal) => String(proposal.status ?? "").toLowerCase() === "active"
+  );
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -70,6 +76,63 @@ export default function ProposalsPage() {
         isOverrideOpen: !isOverrideOpen
       });
     } catch (err) { console.error(err); }
+  };
+
+  const finalizeVoting = async () => {
+    if (selectedManagerId !== "342828350391230464" || activeProposals.length === 0) return;
+
+    const confirmed = window.confirm(
+      `Finalize voting for ${activeProposals.length} active proposal${activeProposals.length === 1 ? "" : "s"}? This will mark proposals as passed or failed.`
+    );
+    if (!confirmed) return;
+
+    setIsFinalizing(true);
+    setFinalizeMessage(null);
+
+    try {
+      let passedCount = 0;
+      let failedCount = 0;
+
+      for (const proposal of activeProposals) {
+        const yesCount = proposal.votes?.yes?.length || 0;
+        const noCount = proposal.votes?.no?.length || 0;
+
+        if (yesCount > noCount) {
+          const result = await ratifyProposal({
+            ...proposal,
+            status: "active",
+            votes: {
+              yes: proposal.votes?.yes ?? [],
+              no: proposal.votes?.no ?? [],
+            },
+          });
+
+          if (!result.success) {
+            throw new Error(`Failed to ratify "${proposal.title}".`);
+          }
+
+          passedCount++;
+        } else {
+          await updateDoc(doc(db, "proposals", proposal.id), {
+            status: "failed",
+          });
+          failedCount++;
+        }
+      }
+
+      setFinalizeMessage({
+        type: "success",
+        text: `Voting finalized: ${passedCount} passed, ${failedCount} failed.`,
+      });
+    } catch (error) {
+      console.error("Finalize voting failed:", error);
+      setFinalizeMessage({
+        type: "error",
+        text: error instanceof Error ? error.message : "Finalize voting failed.",
+      });
+    } finally {
+      setIsFinalizing(false);
+    }
   };
 
   const handleVote = async (proposalId: string, type: 'yes' | 'no') => {
@@ -137,6 +200,36 @@ export default function ProposalsPage() {
             {managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
         </div>
+
+        {selectedManagerId === "342828350391230464" && (
+          <div className="mb-10 rounded-[2rem] border border-orange-600/20 bg-orange-600/10 p-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-3">
+              <ShieldCheck className="text-orange-600" size={20} />
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-600">Commissioner Action</p>
+                <p className="text-sm font-bold opacity-60">{activeProposals.length} active proposal{activeProposals.length === 1 ? "" : "s"} ready for finalization</p>
+              </div>
+            </div>
+            <button
+              onClick={finalizeVoting}
+              disabled={isFinalizing || activeProposals.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-orange-600 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Gavel size={16} />
+              {isFinalizing ? "Finalizing..." : "Finalize Voting"}
+            </button>
+          </div>
+        )}
+
+        {finalizeMessage && (
+          <div className={`mb-10 rounded-2xl border p-4 text-sm font-bold ${
+            finalizeMessage.type === "success"
+              ? "border-emerald-600/20 bg-emerald-600/10 text-emerald-600"
+              : "border-red-600/20 bg-red-600/10 text-red-600"
+          }`}>
+            {finalizeMessage.text}
+          </div>
+        )}
 
         <div className="space-y-10">
           <div className="flex justify-between items-center border-b-2 border-orange-600 pb-2">
