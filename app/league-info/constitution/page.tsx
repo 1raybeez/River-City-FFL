@@ -12,12 +12,37 @@ import { collection, onSnapshot } from "firebase/firestore";
 import constitutionData from '@/lib/constitutionData';
 import ConstitutionSection from '@/components/ConstitutionSection';
 
+type RatifiedRule = {
+  id: string;
+  proposalId: string;
+  sectionId: string;
+  title: string;
+  content: string[];
+  passedAt: string;
+  voteTotals: {
+    yes: number;
+    no: number;
+  };
+};
+
+function formatRatifiedContent(rule: RatifiedRule) {
+  const passedDate = rule.passedAt
+    ? new Date(rule.passedAt).toLocaleDateString()
+    : "date unavailable";
+
+  return [
+    `Ratified Amendment: ${rule.title}`,
+    ...rule.content,
+    `Passed ${rule.voteTotals.yes}-${rule.voteTotals.no} on ${passedDate}.`,
+  ];
+}
+
 export default function ConstitutionPage() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [openSections, setOpenSections] = useState<string[]>([]);
-  const [liveRules, setLiveRules] = useState<any[]>([]);
+  const [liveRules, setLiveRules] = useState<RatifiedRule[]>([]);
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -27,12 +52,18 @@ export default function ConstitutionPage() {
   // 1. Listen for Ratified Rule Changes from the Legislative Hub
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "ratified_rules"), (snapshot) => {
-      const rules = snapshot.docs.map(doc => ({
-        id: doc.id,
-        // We expect a 'sectionId' field to match against constitutionData (e.g., "1.4")
-        sectionId: doc.data().sectionId || doc.id, 
-        ...doc.data()
-      }));
+      const rules = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          proposalId: data.proposalId,
+          sectionId: data.sectionId,
+          title: data.title,
+          content: Array.isArray(data.content) ? data.content : [],
+          passedAt: data.passedAt,
+          voteTotals: data.voteTotals ?? { yes: 0, no: 0 },
+        };
+      });
       setLiveRules(rules);
     });
     return () => unsubscribe();
@@ -40,40 +71,47 @@ export default function ConstitutionPage() {
 
   /**
    * 2. THE LOGIC BRIDGE:
-   * This merges your static bylaws with the live votes. 
-   * If Section 1.4 or 4.3 exists in Firebase, it overrides the static text.
+   * This merges your static bylaws with ratified amendments.
+   * Matching subsection amendments append to the static text.
+   * Matching top-level section amendments are added as generated subsections.
    */
   const combinedRules = useMemo(() => {
-    // Create a lookup map for live rules
-    const liveMap = liveRules.reduce((acc, rule) => {
-      acc[rule.sectionId] = rule;
+    const rulesBySectionId = liveRules.reduce((acc, rule) => {
+      if (!rule.sectionId) return acc;
+      acc[rule.sectionId] = [...(acc[rule.sectionId] ?? []), rule];
       return acc;
-    }, {} as Record<string, any>);
+    }, {} as Record<string, RatifiedRule[]>);
 
     return constitutionData.map(section => {
-      // Check if this top-level section has a live override
-      const sectionOverride = liveMap[section.id];
+      const sectionAmendments = rulesBySectionId[section.id] ?? [];
       
-      // Also check if any SUBSECTIONS have overrides (e.g. 1.4 inside 1.0)
       const updatedSubsections = section.subsections?.map(sub => {
-        const subOverride = liveMap[sub.id];
-        if (subOverride) {
-          return {
-            ...sub,
-            content: subOverride.content || sub.content,
-            title: subOverride.title || sub.title,
-            isRatified: true // Flag to show "New Law" UI if needed
-          };
-        }
-        return sub;
-      });
+        const subAmendments = rulesBySectionId[sub.id] ?? [];
+
+        if (subAmendments.length === 0) return sub;
+
+        return {
+          ...sub,
+          title: `${sub.title} · Ratified Amendment`,
+          content: [
+            ...sub.content,
+            ...subAmendments.flatMap(formatRatifiedContent),
+          ],
+        };
+      }) ?? [];
+
+      const generatedAmendmentSubsections = sectionAmendments.map((rule) => ({
+        id: `${section.id}-ratified-${rule.proposalId}`,
+        title: `${rule.sectionId} ${rule.title} · Ratified Amendment`,
+        content: formatRatifiedContent(rule),
+      }));
 
       return {
         ...section,
-        subsections: updatedSubsections,
-        // Override top-level content if applicable
-        content: sectionOverride?.content || section.content,
-        isRatified: !!sectionOverride
+        subsections: [
+          ...updatedSubsections,
+          ...generatedAmendmentSubsections,
+        ],
       };
     });
   }, [liveRules]);
