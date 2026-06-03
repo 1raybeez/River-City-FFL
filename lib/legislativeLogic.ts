@@ -1,5 +1,5 @@
 import { db } from "./firebase";
-import { doc, updateDoc, collection, addDoc } from "firebase/firestore";
+import { doc, setDoc, updateDoc } from "firebase/firestore";
 import { RuleProposal } from "./proposals";
 
 export const ratifyProposal = async (proposal: RuleProposal) => {
@@ -16,17 +16,17 @@ export const ratifyProposal = async (proposal: RuleProposal) => {
     await updateDoc(proposalRef, { status: "passed" });
 
     // 2. Add the rule to the live Constitution collection.
-    await addDoc(collection(db, "ratified_rules"), {
+    await setDoc(doc(db, "ratified_rules", proposal.id), {
       proposalId: proposal.id,
       sectionId: proposal.section,
       title: proposal.title,
       content: [proposal.description],
       passedAt,
       voteTotals,
-    });
+    }, { merge: true });
 
     // 3. Create a Version History entry
-    await addDoc(collection(db, "version_history_updates"), {
+    await setDoc(doc(db, "version_history_updates", proposal.id), {
       version: "Auto-Update",
       date,
       changes: [
@@ -36,7 +36,7 @@ export const ratifyProposal = async (proposal: RuleProposal) => {
         },
       ],
       proposalId: proposal.id,
-    });
+    }, { merge: true });
 
     return { success: true };
   } catch (error) {
