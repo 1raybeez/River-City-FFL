@@ -1,28 +1,41 @@
 import { db } from "./firebase";
-import { doc, updateDoc, arrayUnion, collection, addDoc } from "firebase/firestore";
+import { doc, updateDoc, collection, addDoc } from "firebase/firestore";
 import { RuleProposal } from "./proposals";
 
 export const ratifyProposal = async (proposal: RuleProposal) => {
   try {
+    const passedAt = new Date().toISOString();
+    const date = new Date().toLocaleDateString();
+    const voteTotals = {
+      yes: proposal.votes.yes.length,
+      no: proposal.votes.no.length,
+    };
+
     // 1. Mark the proposal as 'passed' in Firestore
     const proposalRef = doc(db, "proposals", proposal.id);
-    await updateDoc(proposalRef, { status: 'passed' });
+    await updateDoc(proposalRef, { status: "passed" });
 
-    // 2. Add the rule to a 'passedRules' collection in Firestore
-    // Your Constitution page will fetch from here to show live updates
+    // 2. Add the rule to the live Constitution collection.
     await addDoc(collection(db, "ratified_rules"), {
+      proposalId: proposal.id,
+      sectionId: proposal.section,
       title: proposal.title,
-      content: proposal.description,
-      section: proposal.section,
-      ratifiedAt: new Date().toISOString(),
-      votes: proposal.votes
+      content: [proposal.description],
+      passedAt,
+      voteTotals,
     });
 
     // 3. Create a Version History entry
     await addDoc(collection(db, "version_history_updates"), {
-      version: "Auto-Update", // You can calculate this based on count
-      date: new Date().toLocaleDateString(),
-      change: `${proposal.section}: ${proposal.title} (Passed ${proposal.votes.yes.length}-${proposal.votes.no.length})`
+      version: "Auto-Update",
+      date,
+      changes: [
+        {
+          rule: proposal.section,
+          description: `${proposal.title} (Passed ${voteTotals.yes}-${voteTotals.no})`,
+        },
+      ],
+      proposalId: proposal.id,
     });
 
     return { success: true };
