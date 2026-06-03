@@ -4,6 +4,12 @@ import { firestore } from "@/lib/firebaseAdmin";
 import { LEAGUE_IDS } from "@/lib/sleeper";
 import { NextResponse } from "next/server";
 
+const CURRENT_SEASON = 2026;
+const DEPRECATION_HEADERS = {
+  Deprecation: "true",
+  Warning: '299 - "GET refresh/write behavior is deprecated; use POST."',
+};
+
 // Helper to fetch NFL state (week + season)
 async function fetchNFLState() {
   try {
@@ -15,10 +21,72 @@ async function fetchNFLState() {
   }
 }
 
+async function readStoredTrades(season: number) {
+  const snapshot = await firestore
+    .collection("trades")
+    .doc(season.toString())
+    .collection("entries")
+    .get();
+
+  return snapshot.docs.map((d) => d.data());
+}
+
+async function refreshCurrentSeasonTrades(season: number, leagueId: string) {
+  // Fetch from Sleeper for current season
+  const nflState = await fetchNFLState();
+  const currentWeek = nflState.week > 0 ? nflState.week : 1;
+
+  const weekPromises: Promise<any[]>[] = [];
+
+  for (let week = 1; week <= currentWeek; week++) {
+    const url = `https://api.sleeper.app/v1/league/${leagueId}/transactions/${week}`;
+    const p = fetch(url, { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : []))
+      .catch(() => []);
+    weekPromises.push(p);
+  }
+
+  const weekResults = await Promise.all(weekPromises);
+  const allTransactions = weekResults.flat();
+
+  const acceptedTrades = allTransactions.filter(
+    (tx: any) => tx.type === "trade" && tx.status === "complete"
+  );
+
+  const trades = acceptedTrades.map((tx: any) => {
+    const teams = Object.entries(tx.add || {}).map(([playerId, teamId]) => ({
+      teamId,
+      playersIn: [playerId],
+      playersOut: [],
+      faabIn: 0,
+      faabOut: 0,
+    }));
+
+    return {
+      id: tx.transaction_id,
+      season,
+      timestamp: tx.status_updated,
+      teams,
+    };
+  });
+
+  // Auto-store in Firebase
+  for (const trade of trades) {
+    await firestore
+      .collection("trades")
+      .doc(season.toString())
+      .collection("entries")
+      .doc(trade.id)
+      .set(trade, { merge: true });
+  }
+
+  return trades;
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const season = Number(searchParams.get("season")) || 2026;
+    const season = Number(searchParams.get("season")) || CURRENT_SEASON;
     const leagueId = LEAGUE_IDS[season];
 
     if (!leagueId) {
@@ -28,66 +96,38 @@ export async function GET(req: Request) {
       );
     }
 
-    let trades: any[] = [];
-
     // Load from Firebase for past seasons
-    if (season < 2026) {
-      const snapshot = await firestore
-        .collection("trades")
-        .doc(season.toString())
-        .collection("entries")
-        .get();
-      trades = snapshot.docs.map((d) => d.data());
+    if (season < CURRENT_SEASON) {
+      const trades = await readStoredTrades(season);
       return NextResponse.json(trades);
     }
 
-    // Fetch from Sleeper for current season
-    const nflState = await fetchNFLState();
-    const currentWeek = nflState.week > 0 ? nflState.week : 1;
+    const trades = await refreshCurrentSeasonTrades(season, leagueId);
 
-    const weekPromises: Promise<any[]>[] = [];
-
-    for (let week = 1; week <= currentWeek; week++) {
-      const url = `https://api.sleeper.app/v1/league/${leagueId}/transactions/${week}`;
-      const p = fetch(url, { cache: "no-store" })
-        .then((res) => (res.ok ? res.json() : []))
-        .catch(() => []);
-      weekPromises.push(p);
-    }
-
-    const weekResults = await Promise.all(weekPromises);
-    const allTransactions = weekResults.flat();
-
-    const acceptedTrades = allTransactions.filter(
-      (tx: any) => tx.type === "trade" && tx.status === "complete"
+    return NextResponse.json(trades, { headers: DEPRECATION_HEADERS });
+  } catch (error) {
+    console.error("Trade history route error:", error);
+    return NextResponse.json(
+      { error: "Failed to load trade history." },
+      { status: 500 }
     );
+  }
+}
 
-    trades = acceptedTrades.map((tx: any) => {
-      const teams = Object.entries(tx.add || {}).map(([playerId, teamId]) => ({
-        teamId,
-        playersIn: [playerId],
-        playersOut: [],
-        faabIn: 0,
-        faabOut: 0,
-      }));
+export async function POST(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const season = Number(searchParams.get("season")) || CURRENT_SEASON;
+    const leagueId = LEAGUE_IDS[season];
 
-      return {
-        id: tx.transaction_id,
-        season,
-        timestamp: tx.status_updated,
-        teams,
-      };
-    });
-
-    // Auto-store in Firebase
-    for (const trade of trades) {
-      await firestore
-        .collection("trades")
-        .doc(season.toString())
-        .collection("entries")
-        .doc(trade.id)
-        .set(trade, { merge: true });
+    if (!leagueId) {
+      return NextResponse.json(
+        { error: "Invalid season or missing league ID." },
+        { status: 400 }
+      );
     }
+
+    const trades = await refreshCurrentSeasonTrades(season, leagueId);
 
     return NextResponse.json(trades);
   } catch (error) {
