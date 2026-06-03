@@ -49,7 +49,7 @@ export const activeManagers = [
     "bio": "Husband, Father, Architect, Artist, DJ. Lost 4 Championships and only 1 W.",
     "photo": "/managers/JD.png",
     "fantasyStart": 2012,
-    "favoriteTeam": "WAS",
+    "favoriteTeam": "NYJ",
     "mode": "Win Now",
     "rival": {
       "name": "Tommy",
@@ -75,7 +75,7 @@ export const activeManagers = [
     "shortName": "Jordan",
     "fullName": "Jordan Maslyn",
     "status": "Active",
-    "teamName": "London Calling",
+    "teamName": "The Shake-N-Bakers",
     "tookOver": 2017,
     "location": "London, UK",
     "bio": "I’ve played fantasy since like 2010. I like bikepacking, tabletop games and video games. 2024 League Champion.",

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { BadgeCheck, ShieldCheck } from "lucide-react";
 import { teamColors } from "@/lib/themes/teamColors";
 import { contactIcons } from "@/lib/themes/contactIcons";
 
@@ -13,6 +14,8 @@ interface ManagerCardsProps {
 // Sub-component for individual cards to handle their own flip state
 function ManagerCard({ m, isRetired, colors }: { m: any, isRetired: boolean, colors: any }) {
   const [isFlipped, setIsFlipped] = useState(false);
+  const showRoleBadge = !isRetired && m.status === "Active" && m.role;
+  const RoleIcon = m.role === "Commissioner" ? ShieldCheck : BadgeCheck;
 
   const getAggressionColor = (score: number) => {
     if (score >= 8) return "#4ade80";
@@ -65,6 +68,17 @@ function ManagerCard({ m, isRetired, colors }: { m: any, isRetired: boolean, col
                 <div className="flex items-center gap-2 mt-1">
                   <p className="text-[12px] font-bold text-white/80">{m.fullName}</p>
                 </div>
+                {!isRetired && m.coOwner?.fullName && (
+                  <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-white/50 truncate">
+                    Co-owner: {m.coOwner.fullName}
+                  </p>
+                )}
+                {showRoleBadge && (
+                  <div className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[8px] font-black uppercase tracking-widest text-white/80">
+                    <RoleIcon className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{m.role}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -167,6 +181,21 @@ function ManagerCard({ m, isRetired, colors }: { m: any, isRetired: boolean, col
                 <span className="opacity-50 uppercase font-black text-[10px]">Championships</span>
                 <span className="font-black text-lg text-yellow-500 italic">🏆 {m.championships ?? 0}</span>
               </div>
+              {!isRetired && m.coOwner?.fullName && (
+                <div className="flex justify-between items-end border-b border-white/5 pb-1">
+                  <span className="opacity-50 uppercase font-black text-[10px]">Co-owner</span>
+                  <span className="font-black text-sm italic">{m.coOwner.fullName}</span>
+                </div>
+              )}
+              {showRoleBadge && (
+                <div className="flex justify-between items-end border-b border-white/5 pb-1">
+                  <span className="opacity-50 uppercase font-black text-[10px]">League Office</span>
+                  <span className="inline-flex items-center gap-1.5 font-black text-xs italic">
+                    <RoleIcon className="h-3.5 w-3.5" />
+                    {m.role}
+                  </span>
+                </div>
+              )}
             </div>
             
             <div className="mt-auto">

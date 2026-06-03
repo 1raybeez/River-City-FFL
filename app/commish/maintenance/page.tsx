@@ -31,6 +31,7 @@ type Operation = {
   description: string;
   endpoint: string;
   requiresKey: boolean;
+  requiresConfirmation?: boolean;
   icon: React.ComponentType<{ className?: string }>;
 };
 
@@ -41,6 +42,7 @@ const operations: Operation[] = [
     description: "Pull historical Sleeper trade data into the archive.",
     endpoint: "/api/scrape-trades",
     requiresKey: true,
+    requiresConfirmation: true,
     icon: History,
   },
   {
@@ -57,6 +59,7 @@ const operations: Operation[] = [
     description: "Rebuild the historical imbalance distribution dataset.",
     endpoint: "/api/build-distribution",
     requiresKey: true,
+    requiresConfirmation: true,
     icon: BarChart3,
   },
   {
@@ -89,8 +92,20 @@ function formatOutput(data: unknown) {
 export default function MaintenancePage() {
   const [scraperKey, setScraperKey] = useState("");
   const [operationState, setOperationState] = useState(initialOperationState);
+  const isAnyOperationRunning = Object.values(operationState).some(
+    (state) => state.loading
+  );
 
   const runOperation = async (operation: Operation) => {
+    if (
+      operation.requiresConfirmation &&
+      !window.confirm(`Run "${operation.title}" now?`)
+    ) {
+      return;
+    }
+
+    const trimmedScraperKey = scraperKey.trim();
+
     setOperationState((current) => ({
       ...current,
       [operation.id]: {
@@ -105,7 +120,7 @@ export default function MaintenancePage() {
         method: "POST",
         headers: operation.requiresKey
           ? {
-              "x-scraper-key": scraperKey,
+              "x-scraper-key": trimmedScraperKey,
             }
           : undefined,
       });
@@ -119,7 +134,9 @@ export default function MaintenancePage() {
         [operation.id]: {
           loading: false,
           status: response.ok ? "success" : "error",
-          output: formatOutput(payload),
+          output: response.ok
+            ? formatOutput(payload)
+            : `HTTP ${response.status} ${response.statusText}\n${formatOutput(payload)}`,
         },
       }));
     } catch (error) {
@@ -190,7 +207,8 @@ export default function MaintenancePage() {
             const state = operationState[operation.id];
             const Icon = operation.icon;
             const isDisabled =
-              state.loading || (operation.requiresKey && scraperKey.trim() === "");
+              isAnyOperationRunning ||
+              (operation.requiresKey && scraperKey.trim() === "");
 
             return (
               <article

@@ -28,6 +28,7 @@ export const TeamCode = {
   ATL: "ATL",
   CLE: "CLE",
   WAS: "WAS",
+  NYJ: "NYJ",
   MIN: "MIN",
   NO: "NO",
   GB: "GB",
