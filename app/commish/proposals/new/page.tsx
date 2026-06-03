@@ -47,7 +47,7 @@ export default function NewProposalPage() {
         // CORRECT PATH: No "public" prefix
         managerImage: `/managers/${selectedManager?.img}`, 
         sleeperId: selectedManager?.id,
-        status: 'Active',
+        status: 'active',
         votes: { yes: [], no: [] },
         createdAt: serverTimestamp()
       });
