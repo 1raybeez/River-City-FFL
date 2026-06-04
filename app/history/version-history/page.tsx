@@ -86,7 +86,7 @@ export default function VersionHistoryPage() {
       <nav className="border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
         <div className="flex items-center gap-4">
           <Link
-            href="/league-info"
+            href="/league-info/constitution"
             className="p-2 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:scale-105 transition-all"
             title="Back to Info Hub"
           >

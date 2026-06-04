@@ -82,13 +82,6 @@ export default function ConstitutionPage() {
     }, {} as Record<string, number>);
   }, [liveRules]);
 
-  useEffect(() => {
-    const amendmentSectionIds = Object.keys(amendmentCountsBySection);
-    if (amendmentSectionIds.length === 0) return;
-
-    setOpenSections((prev) => [...new Set([...prev, ...amendmentSectionIds])]);
-  }, [amendmentCountsBySection]);
-
   /**
    * 2. THE LOGIC BRIDGE:
    * This merges your static bylaws with ratified amendments.
