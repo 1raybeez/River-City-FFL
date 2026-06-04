@@ -204,15 +204,20 @@ export default function ConstitutionPage() {
         </div>
       </nav>
 
-      <main className="max-w-4xl mx-auto px-6 py-10">
-        <header className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-600/10 border border-orange-600/20 text-orange-600 text-[9px] font-black uppercase tracking-widest mb-4">
-              <Gavel size={10} /> Live Legislative Sync Active
-            </div>
-            <h1 className="text-5xl font-black uppercase italic tracking-tighter mb-4">League Bylaws</h1>
-            <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Last Update Refreshed: {new Date().toLocaleDateString()}</p>
-        </header>
+      <header className="px-6 py-12 text-center">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-lg text-orange-600">
+          <Scale size={28} />
+        </div>
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-orange-600/20 bg-orange-600/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-orange-600">
+          <Gavel size={10} /> Live Legislative Sync Active
+        </div>
+        <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic leading-none">
+          <span className="text-orange-600">Constitution</span>
+        </h1>
+        <p className="mt-4 text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Bylaws, Scoring & League Rules</p>
+      </header>
 
+      <main className="max-w-4xl mx-auto px-6 py-10">
         {rulesError && (
           <div className="mb-8 rounded-2xl border border-red-600/20 bg-red-600/10 px-5 py-4 text-sm font-bold text-red-700 dark:text-red-300">
             {rulesError}
