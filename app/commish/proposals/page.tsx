@@ -257,13 +257,21 @@ export default function ProposalsPage() {
           </div>
         </div>
 
-        {selectedManagerId === "342828350391230464" && (
-            <button onClick={toggleFloor} className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase italic border transition-all ${isOverrideOpen ? 'bg-red-600 text-white border-red-500 shadow-lg' : 'bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10 opacity-60'}`}>
-                {isOverrideOpen ? <Unlock size={14} /> : <Lock size={14} />}
-                {isOverrideOpen ? "Voting Open" : "Open Floor"}
-            </button>
-        )}
+        <div className="flex items-center gap-2">
+           <Gavel className="text-orange-600 hidden sm:block" size={20} />
+           <span className="text-xs font-black uppercase italic tracking-tighter">Legislative Hub</span>
+        </div>
       </nav>
+
+      <header className="px-6 py-12 text-center">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-lg text-orange-600">
+          <Gavel size={28} />
+        </div>
+        <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic leading-none">
+          Legislative <span className="text-orange-600">Hub</span>
+        </h1>
+        <p className="mt-4 text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Proposals, Voting & Amendments</p>
+      </header>
 
       <main className="max-w-4xl mx-auto px-6 py-10">
         {/* IDENTIFICATION BAR */}
@@ -289,14 +297,23 @@ export default function ProposalsPage() {
                 <p className="text-sm font-bold opacity-60">{activeProposals.length} active proposal{activeProposals.length === 1 ? "" : "s"} ready for finalization</p>
               </div>
             </div>
-            <button
-              onClick={finalizeVoting}
-              disabled={isFinalizing || activeProposals.length === 0}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-orange-600 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Gavel size={16} />
-              {isFinalizing ? "Finalizing..." : "Finalize Voting"}
-            </button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                onClick={toggleFloor}
+                className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-[10px] font-black uppercase tracking-widest transition-all ${isOverrideOpen ? 'border-red-500 bg-red-600 text-white shadow-lg' : 'border-black/10 bg-black/5 opacity-60 dark:border-white/10 dark:bg-white/5'}`}
+              >
+                {isOverrideOpen ? <Unlock size={16} /> : <Lock size={16} />}
+                {isOverrideOpen ? "Voting Open" : "Open Floor"}
+              </button>
+              <button
+                onClick={finalizeVoting}
+                disabled={isFinalizing || activeProposals.length === 0}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-orange-600 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Gavel size={16} />
+                {isFinalizing ? "Finalizing..." : "Finalize Voting"}
+              </button>
+            </div>
           </div>
         )}
 
