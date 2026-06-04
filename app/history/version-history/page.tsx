@@ -38,8 +38,13 @@ function isFirebaseVersionEntry(
 
 export default function VersionHistoryPage() {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [firebaseEntries, setFirebaseEntries] = useState<FirebaseVersionEntry[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -74,6 +79,7 @@ export default function VersionHistoryPage() {
       (a, b) => getEntryTime(b) - getEntryTime(a)
     );
   }, [firebaseEntries]);
+  const activeTheme = mounted ? theme : undefined;
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-20 selection:bg-orange-600">
@@ -88,9 +94,9 @@ export default function VersionHistoryPage() {
           </Link>
 
           <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
-            <button onClick={() => setTheme("light")} className={`p-1.5 rounded-md transition-all ${theme === "light" ? "bg-white text-black shadow-sm" : "opacity-40"}`}><Sun size={14} /></button>
-            <button onClick={() => setTheme("dark")} className={`p-1.5 rounded-md transition-all ${theme === "dark" ? "bg-white/10 text-white shadow-sm" : "opacity-40"}`}><Moon size={14} /></button>
-            <button onClick={() => setTheme("system")} className={`p-1.5 rounded-md transition-all ${theme === "system" ? "bg-white/10 text-white shadow-sm" : "opacity-40"}`}><Monitor size={14} /></button>
+            <button onClick={() => setTheme("light")} className={`p-1.5 rounded-md transition-all ${activeTheme === "light" ? "bg-white text-black shadow-sm" : "opacity-40"}`}><Sun size={14} /></button>
+            <button onClick={() => setTheme("dark")} className={`p-1.5 rounded-md transition-all ${activeTheme === "dark" ? "bg-white/10 text-white shadow-sm" : "opacity-40"}`}><Moon size={14} /></button>
+            <button onClick={() => setTheme("system")} className={`p-1.5 rounded-md transition-all ${activeTheme === "system" ? "bg-white/10 text-white shadow-sm" : "opacity-40"}`}><Monitor size={14} /></button>
           </div>
         </div>
 
