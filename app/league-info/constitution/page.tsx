@@ -25,16 +25,8 @@ type RatifiedRule = {
   };
 };
 
-function formatRatifiedContent(rule: RatifiedRule) {
-  const passedDate = rule.passedAt
-    ? new Date(rule.passedAt).toLocaleDateString()
-    : "date unavailable";
-
-  return [
-    `Ratified Amendment: ${rule.title}`,
-    ...rule.content,
-    `Passed ${rule.voteTotals.yes}-${rule.voteTotals.no} on ${passedDate}.`,
-  ];
+function getRatifiedRuleContent(rule: RatifiedRule) {
+  return rule.content;
 }
 
 export default function ConstitutionPage() {
@@ -120,18 +112,17 @@ export default function ConstitutionPage() {
 
         return {
           ...sub,
-          title: `${sub.title} · Ratified Amendment`,
           content: [
             ...sub.content,
-            ...subAmendments.flatMap(formatRatifiedContent),
+            ...subAmendments.flatMap(getRatifiedRuleContent),
           ],
         };
       }) ?? [];
 
       const generatedAmendmentSubsections = sectionAmendments.map((rule) => ({
         id: `${section.id}-ratified-${rule.proposalId}`,
-        title: `${rule.sectionId} ${rule.title} · Ratified Amendment`,
-        content: formatRatifiedContent(rule),
+        title: `${rule.sectionId} Additional Rule`,
+        content: getRatifiedRuleContent(rule),
       }));
 
       return {
