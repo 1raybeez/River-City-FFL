@@ -42,9 +42,10 @@ interface Props {
   subsections?: Subsection[];
   isOpen: boolean; // Managed by parent now
   onToggle: () => void; // Managed by parent now
+  amendmentCount?: number;
 }
 
-export default function ConstitutionSection({ title, icon, subsections, isOpen, onToggle }: Props) {
+export default function ConstitutionSection({ title, icon, subsections, isOpen, onToggle, amendmentCount = 0 }: Props) {
   
   const renderContentWithLinks = (text: string) => {
     const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
@@ -85,6 +86,11 @@ export default function ConstitutionSection({ title, icon, subsections, isOpen, 
             {IconMap[icon] || <Gavel size={20} />}
           </div>
           <h3 className="text-sm sm:text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{title}</h3>
+          {amendmentCount > 0 && (
+            <span className="rounded-full border border-orange-600/20 bg-orange-600/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-orange-600">
+              {amendmentCount} Amendment{amendmentCount === 1 ? '' : 's'}
+            </span>
+          )}
         </div>
         {isOpen ? <ChevronUp className="text-gray-400" size={18}/> : <ChevronDown className="text-gray-400" size={18}/>}
       </button>

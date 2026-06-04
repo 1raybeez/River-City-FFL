@@ -43,6 +43,7 @@ export default function ConstitutionPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [openSections, setOpenSections] = useState<string[]>([]);
   const [liveRules, setLiveRules] = useState<RatifiedRule[]>([]);
+  const [rulesError, setRulesError] = useState<string | null>(null);
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -51,23 +52,50 @@ export default function ConstitutionPage() {
 
   // 1. Listen for Ratified Rule Changes from the Legislative Hub
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "ratified_rules"), (snapshot) => {
-      const rules = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          proposalId: data.proposalId,
-          sectionId: data.sectionId,
-          title: data.title,
-          content: Array.isArray(data.content) ? data.content : [],
-          passedAt: data.passedAt,
-          voteTotals: data.voteTotals ?? { yes: 0, no: 0 },
-        };
-      });
-      setLiveRules(rules);
-    });
+    const unsubscribe = onSnapshot(
+      collection(db, "ratified_rules"),
+      (snapshot) => {
+        const rules = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            proposalId: data.proposalId,
+            sectionId: data.sectionId,
+            title: data.title,
+            content: Array.isArray(data.content) ? data.content : [],
+            passedAt: data.passedAt,
+            voteTotals: data.voteTotals ?? { yes: 0, no: 0 },
+          };
+        });
+        setLiveRules(rules);
+        setRulesError(null);
+      },
+      (error) => {
+        console.error("Ratified rules listener failed:", error);
+        setRulesError("Live ratified rules could not be loaded. Check Firestore read permissions for ratified_rules.");
+      }
+    );
     return () => unsubscribe();
   }, []);
+
+  const amendmentCountsBySection = useMemo(() => {
+    return constitutionData.reduce((acc, section) => {
+      const subsectionIds = new Set(section.subsections?.map((sub) => sub.id) ?? []);
+      const count = liveRules.filter(
+        (rule) => rule.sectionId === section.id || subsectionIds.has(rule.sectionId)
+      ).length;
+
+      if (count > 0) acc[section.id] = count;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [liveRules]);
+
+  useEffect(() => {
+    const amendmentSectionIds = Object.keys(amendmentCountsBySection);
+    if (amendmentSectionIds.length === 0) return;
+
+    setOpenSections((prev) => [...new Set([...prev, ...amendmentSectionIds])]);
+  }, [amendmentCountsBySection]);
 
   /**
    * 2. THE LOGIC BRIDGE:
@@ -141,9 +169,7 @@ export default function ConstitutionPage() {
     );
 
     if (matched) {
-      if (!openSections.includes(matched.id)) {
-        setOpenSections(prev => [...new Set([...prev, matched.id])]);
-      }
+      setOpenSections(prev => prev.includes(matched.id) ? prev : [...prev, matched.id]);
       const element = document.getElementById(matched.anchor || matched.id);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -196,6 +222,12 @@ export default function ConstitutionPage() {
             <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Last Update Refreshed: {new Date().toLocaleDateString()}</p>
         </header>
 
+        {rulesError && (
+          <div className="mb-8 rounded-2xl border border-red-600/20 bg-red-600/10 px-5 py-4 text-sm font-bold text-red-700 dark:text-red-300">
+            {rulesError}
+          </div>
+        )}
+
         {/* SEARCH BAR */}
         <div className="relative mb-12 group">
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-black/20 dark:text-white/20 group-focus-within:text-orange-600 transition-colors" size={20} />
@@ -224,6 +256,7 @@ export default function ConstitutionPage() {
                   subsections={section.subsections}
                   isOpen={openSections.includes(section.id)}
                   onToggle={() => toggleSection(section.id)}
+                  amendmentCount={amendmentCountsBySection[section.id] ?? 0}
                 />
               </div>
             ))

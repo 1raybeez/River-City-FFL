@@ -21,6 +21,15 @@ function getEntryTime(entry: StaticVersionEntry) {
   return Number.isNaN(timestamp) ? 0 : timestamp;
 }
 
+function getValidEntryDate(value: unknown) {
+  if (typeof value === "string" && value.trim()) {
+    const timestamp = new Date(value).getTime();
+    if (!Number.isNaN(timestamp)) return value;
+  }
+
+  return new Date().toLocaleDateString();
+}
+
 function isFirebaseVersionEntry(
   entry: StaticVersionEntry | FirebaseVersionEntry
 ): entry is FirebaseVersionEntry {
@@ -29,23 +38,32 @@ function isFirebaseVersionEntry(
 
 export default function VersionHistoryPage() {
   const [firebaseEntries, setFirebaseEntries] = useState<FirebaseVersionEntry[]>([]);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "version_history_updates"), (snapshot) => {
-      const entries: FirebaseVersionEntry[] = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          version: data.version ?? "Legislative Update",
-          date: data.date ?? "",
-          changes: Array.isArray(data.changes) ? data.changes : [],
-          proposalId: data.proposalId,
-          isLegislativeUpdate: true as const,
-        };
-      });
+    const unsubscribe = onSnapshot(
+      collection(db, "version_history_updates"),
+      (snapshot) => {
+        const entries: FirebaseVersionEntry[] = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            version: data.version ?? "Legislative Update",
+            date: getValidEntryDate(data.date),
+            changes: Array.isArray(data.changes) ? data.changes : [],
+            proposalId: data.proposalId,
+            isLegislativeUpdate: true as const,
+          };
+        });
 
-      setFirebaseEntries(entries);
-    });
+        setFirebaseEntries(entries);
+        setHistoryError(null);
+      },
+      (error) => {
+        console.error("Version history updates listener failed:", error);
+        setHistoryError("Live version history updates could not be loaded. Check Firestore read permissions for version_history_updates.");
+      }
+    );
 
     return () => unsubscribe();
   }, []);
@@ -71,6 +89,12 @@ export default function VersionHistoryPage() {
       </div>
 
       <main className="container mx-auto px-4 py-10 max-w-3xl">
+        {historyError && (
+          <div className="mb-8 rounded-2xl border border-red-600/20 bg-red-600/10 px-5 py-4 text-sm font-bold text-red-700 dark:text-red-300">
+            {historyError}
+          </div>
+        )}
+
         <div className="space-y-6">
           {combinedHistory.map((entry) => (
             <div key={`${entry.version}-${entry.date}-${"id" in entry ? entry.id : "static"}`}>
