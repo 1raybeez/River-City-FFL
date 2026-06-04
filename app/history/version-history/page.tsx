@@ -5,8 +5,8 @@ import versionHistory from "@/lib/versionHistory";
 import type { VersionEntry as StaticVersionEntry } from "@/lib/versionHistory";
 import VersionEntry from "@/components/VersionEntry";
 import Link from "next/link";
-import { ArrowLeft, History } from "lucide-react";
-import { ModeToggle } from "@/components/ModeToggle";
+import { History, Home, Monitor, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 
@@ -37,6 +37,7 @@ function isFirebaseVersionEntry(
 }
 
 export default function VersionHistoryPage() {
+  const { theme, setTheme } = useTheme();
   const [firebaseEntries, setFirebaseEntries] = useState<FirebaseVersionEntry[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
 
@@ -75,20 +76,41 @@ export default function VersionHistoryPage() {
   }, [firebaseEntries]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#121212] font-sans pb-20">
-      <div className="bg-white dark:bg-[#1e1e1e] border-b border-gray-200 dark:border-white/5 pb-8 pt-4 sticky top-0 z-50 shadow-sm">
-        <div className="container mx-auto px-4 text-center relative">
-          <Link href="/league-info/constitution" className="absolute top-4 left-4 flex items-center gap-2 text-gray-500 hover:text-orange-600 font-bold text-xs uppercase transition-colors">
-            <ArrowLeft size={16} /> Back
+    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-20 selection:bg-orange-600">
+      <nav className="border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
+        <div className="flex items-center gap-4">
+          <Link
+            href="/league-info"
+            className="p-2 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:scale-105 transition-all"
+            title="Back to Info Hub"
+          >
+            <Home size={18} />
           </Link>
-          <div className="absolute top-4 right-4"><ModeToggle /></div>
-          <h1 className="text-2xl font-black uppercase tracking-tighter flex items-center justify-center gap-3 italic text-gray-900 dark:text-white">
-            <History className="text-orange-600" /> Version History
-          </h1>
-        </div>
-      </div>
 
-      <main className="container mx-auto px-4 py-10 max-w-3xl">
+          <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
+            <button onClick={() => setTheme("light")} className={`p-1.5 rounded-md transition-all ${theme === "light" ? "bg-white text-black shadow-sm" : "opacity-40"}`}><Sun size={14} /></button>
+            <button onClick={() => setTheme("dark")} className={`p-1.5 rounded-md transition-all ${theme === "dark" ? "bg-white/10 text-white shadow-sm" : "opacity-40"}`}><Moon size={14} /></button>
+            <button onClick={() => setTheme("system")} className={`p-1.5 rounded-md transition-all ${theme === "system" ? "bg-white/10 text-white shadow-sm" : "opacity-40"}`}><Monitor size={14} /></button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <History className="text-orange-600 hidden sm:block" size={20} />
+          <span className="text-xs font-black uppercase italic tracking-tighter">Version History</span>
+        </div>
+      </nav>
+
+      <header className="px-6 py-12 text-center">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-lg text-orange-600">
+          <History size={28} />
+        </div>
+        <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic leading-none">
+          Version <span className="text-orange-600">History</span>
+        </h1>
+        <p className="mt-4 text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Rules, Amendments & League Changes</p>
+      </header>
+
+      <main className="max-w-3xl mx-auto px-6 py-10">
         {historyError && (
           <div className="mb-8 rounded-2xl border border-red-600/20 bg-red-600/10 px-5 py-4 text-sm font-bold text-red-700 dark:text-red-300">
             {historyError}
