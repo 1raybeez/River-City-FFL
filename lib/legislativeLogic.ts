@@ -2,10 +2,16 @@ import { db } from "./firebase";
 import { doc, setDoc, updateDoc } from "firebase/firestore";
 import { RuleProposal } from "./proposals";
 
+export function getSectionId(section: string): string {
+  const match = section.trim().match(/^\d+(?:\.\d+)*/);
+  return match?.[0] ?? section.trim();
+}
+
 export const ratifyProposal = async (proposal: RuleProposal) => {
   try {
     const passedAt = new Date().toISOString();
     const date = new Date().toLocaleDateString();
+    const sectionId = getSectionId(proposal.section);
     const voteTotals = {
       yes: proposal.votes.yes.length,
       no: proposal.votes.no.length,
@@ -18,7 +24,7 @@ export const ratifyProposal = async (proposal: RuleProposal) => {
     // 2. Add the rule to the live Constitution collection.
     await setDoc(doc(db, "ratified_rules", proposal.id), {
       proposalId: proposal.id,
-      sectionId: proposal.section,
+      sectionId,
       title: proposal.title,
       content: [proposal.description],
       passedAt,
@@ -31,7 +37,7 @@ export const ratifyProposal = async (proposal: RuleProposal) => {
       date,
       changes: [
         {
-          rule: proposal.section,
+          rule: sectionId,
           description: `${proposal.title} (Passed ${voteTotals.yes}-${voteTotals.no})`,
         },
       ],
