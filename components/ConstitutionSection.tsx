@@ -123,7 +123,7 @@ export default function ConstitutionSection({ title, icon, subsections, isOpen, 
                     </h4>
                     <div className="space-y-2 pl-4 border-l-2 border-gray-100 dark:border-white/5">
                       {sub.content.map((line, i) => (
-                        <p key={i} className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed italic last:not-italic">{renderContentWithLinks(line)}</p>
+                        <p key={i} className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed italic">{renderContentWithLinks(line)}</p>
                       ))}
                     </div>
                   </div>

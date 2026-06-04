@@ -10,6 +10,10 @@ interface Props {
 
 const VersionEntry: React.FC<Props> = ({ entry }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const title =
+    entry.version === "Legislative Update"
+      ? entry.version
+      : `Version ${entry.version}`;
 
   return (
     <div className="border border-gray-200 rounded-lg bg-white shadow-sm">
@@ -18,7 +22,7 @@ const VersionEntry: React.FC<Props> = ({ entry }) => {
         className="w-full text-left px-4 py-3 flex justify-between items-center hover:bg-gray-50"
       >
         <span className="text-lg font-semibold">
-          📘 Version {entry.version} — <span className="text-gray-600">{entry.date}</span>
+          📘 {title} — <span className="text-gray-600">{entry.date}</span>
         </span>
         <span className="text-sm text-blue-600 font-medium">
           {isOpen ? "Hide" : "Show"} Changes

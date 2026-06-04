@@ -48,7 +48,7 @@ export default function VersionHistoryPage() {
           const data = doc.data();
           return {
             id: doc.id,
-            version: data.version ?? "Legislative Update",
+            version: "Legislative Update",
             date: getValidEntryDate(data.date),
             changes: Array.isArray(data.changes) ? data.changes : [],
             proposalId: data.proposalId,
