@@ -10,11 +10,20 @@ import { useTheme } from "next-themes";
 
 const COMMISH_ID = "342828350391230464"; 
 const START_YEAR = 2018;
-const CURRENT_YEAR = 2025;
+const MIN_SUPPORTED_CURRENT_YEAR = 2026;
+
+type DraftStatus = 'idle' | 'no-league' | 'no-draft' | 'waiting-picks' | 'ready' | 'error';
+
+const getLatestDraftYear = () => Math.max(new Date().getFullYear(), MIN_SUPPORTED_CURRENT_YEAR);
+const isDraftActive = (status?: string) => status === 'drafting';
 
 export default function DraftBoardPage() {
-  const [selectedYear, setSelectedYear] = useState<number>(CURRENT_YEAR);
+  const latestDraftYear = getLatestDraftYear();
+  const draftYears = Array.from({ length: latestDraftYear - START_YEAR + 1 }, (_, i) => latestDraftYear - i);
+  const [selectedYear, setSelectedYear] = useState<number>(latestDraftYear);
   const [draftData, setDraftData] = useState<any>(null);
+  const [draftStatus, setDraftStatus] = useState<DraftStatus>('idle');
+  const [draftMessage, setDraftMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -25,17 +34,48 @@ export default function DraftBoardPage() {
   }, []);
 
   useEffect(() => {
-    async function fetchDraft() {
-      setLoading(true);
-      setDraftData(null); 
+    let isCancelled = false;
+    let pollId: ReturnType<typeof setInterval> | null = null;
+
+    async function discoverDraftId(league: any) {
+      if (league.draft_id) return league.draft_id;
+
+      const draftsRes = await fetch(`https://api.sleeper.app/v1/league/${league.league_id}/drafts`);
+      if (!draftsRes.ok) return null;
+
+      const drafts = await draftsRes.json();
+      if (!Array.isArray(drafts) || drafts.length === 0) return null;
+
+      const activeDraft = drafts.find((draft: any) => isDraftActive(draft.status));
+      return activeDraft?.draft_id ?? drafts[0]?.draft_id ?? null;
+    }
+
+    async function fetchDraft(showLoading = true) {
+      if (showLoading) setLoading(true);
       try {
         const leagueRes = await fetch(`https://api.sleeper.app/v1/user/${COMMISH_ID}/leagues/nfl/${selectedYear}`);
         if (!leagueRes.ok) throw new Error('Failed to fetch leagues');
         const leagues = await leagueRes.json();
-        const myLeague = leagues.find((l: any) => l.name.includes("River City"));
-        if (!myLeague) { setDraftData(null); setLoading(false); return; }
+        const myLeague = leagues.find((l: any) => l.name?.toLowerCase().includes("river city"));
+        if (!myLeague) {
+          if (!isCancelled) {
+            setDraftData(null);
+            setDraftStatus('no-league');
+            setDraftMessage(`No River City league found for ${selectedYear}.`);
+          }
+          return false;
+        }
 
-        const draftId = myLeague.draft_id;
+        const draftId = await discoverDraftId(myLeague);
+        if (!draftId) {
+          if (!isCancelled) {
+            setDraftData(null);
+            setDraftStatus('no-draft');
+            setDraftMessage('Draft has not been created yet.');
+          }
+          return false;
+        }
+
         const [picksRes, usersRes, draftInfoRes] = await Promise.all([
             fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`),
             fetch(`https://api.sleeper.app/v1/league/${myLeague.league_id}/users`),
@@ -46,9 +86,19 @@ export default function DraftBoardPage() {
         const users = await usersRes.json();
         const draftInfo = await draftInfoRes.json();
 
-        const totalRounds = draftInfo.settings.rounds;
+        const totalRounds = draftInfo.settings?.rounds ?? 0;
         const draftOrder = draftInfo.draft_order || {}; 
         const getUser = (id: string) => users.find((u: any) => u.user_id === id);
+        const shouldPoll = isDraftActive(draftInfo.status);
+
+        if (!Array.isArray(picks) || picks.length === 0) {
+          if (!isCancelled) {
+            setDraftData(null);
+            setDraftStatus('waiting-picks');
+            setDraftMessage('Draft created. Waiting for picks.');
+          }
+          return shouldPoll;
+        }
 
         let teams: any[] = [];
         if (Object.keys(draftOrder).length > 0) {
@@ -65,12 +115,63 @@ export default function DraftBoardPage() {
                     picks: teamPicks
                 };
             });
+        } else {
+            const pickedByIds = Array.from(new Set(picks.map((pick: any) => pick.picked_by).filter(Boolean))) as string[];
+            teams = pickedByIds.map((userId, index) => {
+                const user = getUser(userId);
+                const teamPicks = picks.filter((p: any) => p.picked_by === userId);
+                return {
+                    id: userId,
+                    slot: index + 1,
+                    name: user?.metadata?.team_name || user?.display_name || `Team ${index + 1}`,
+                    avatar: user?.avatar,
+                    picks: teamPicks
+                };
+            });
         } 
 
-        setDraftData({ teams, rounds: totalRounds, hasPicks: picks.length > 0 });
-      } catch (err) { console.error(err); setDraftData(null); } finally { setLoading(false); }
+        if (!isCancelled) {
+          setDraftData({ teams, rounds: totalRounds, hasPicks: true });
+          setDraftStatus('ready');
+          setDraftMessage('');
+        }
+        return shouldPoll;
+      } catch (err) {
+        console.error(err);
+        if (!isCancelled) {
+          setDraftData(null);
+          setDraftStatus('error');
+          setDraftMessage(`Unable to load draft data for ${selectedYear}.`);
+        }
+        return false;
+      } finally {
+        if (!isCancelled && showLoading) setLoading(false);
+      }
     }
-    fetchDraft();
+
+    async function loadAndMaybePoll() {
+      const shouldPoll = await fetchDraft();
+      if (shouldPoll && !pollId) {
+        pollId = setInterval(() => {
+          fetchDraft(false).then((stillActive) => {
+            if (!stillActive && pollId) {
+              clearInterval(pollId);
+              pollId = null;
+            }
+          });
+        }, 30000);
+      }
+    }
+
+    setDraftData(null);
+    setDraftStatus('idle');
+    setDraftMessage('');
+    loadAndMaybePoll();
+
+    return () => {
+      isCancelled = true;
+      if (pollId) clearInterval(pollId);
+    };
   }, [selectedYear]);
 
   if (!mounted) return null;
@@ -135,7 +236,7 @@ export default function DraftBoardPage() {
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
                 className="appearance-none bg-transparent font-black uppercase italic text-xs pr-6 focus:outline-none cursor-pointer"
             >
-                {Array.from({ length: CURRENT_YEAR - START_YEAR + 1 }, (_, i) => CURRENT_YEAR - i).map(year => (
+                {draftYears.map(year => (
                     <option key={year} value={year} className="text-black">{year} Season</option>
                 ))}
             </select>
@@ -151,8 +252,18 @@ export default function DraftBoardPage() {
                 <p className="font-black uppercase tracking-widest text-[10px] animate-pulse">Syncing Sleeper Data...</p>
             </div>
         ) : !draftData || !draftData.teams ? (
-            <div className="text-center py-20 opacity-30 font-black uppercase italic text-xs">
-                No draft record for {selectedYear}
+            <div className="mx-auto max-w-xl px-6 py-20 text-center">
+                <div className="rounded-[2rem] border border-dashed border-black/10 bg-black/5 px-6 py-10 dark:border-white/10 dark:bg-white/5">
+                    <Grid3X3 size={36} className="mx-auto mb-4 text-orange-600 opacity-50" />
+                    <p className="font-black uppercase italic text-xs opacity-50">
+                        {draftMessage || `No draft record for ${selectedYear}.`}
+                    </p>
+                    {draftStatus === 'waiting-picks' && (
+                        <p className="mt-3 text-[9px] font-black uppercase tracking-[0.25em] opacity-30">
+                            Live draft board will update automatically when picks arrive.
+                        </p>
+                    )}
+                </div>
             </div>
         ) : (
             <div className="p-6 inline-block min-w-full">

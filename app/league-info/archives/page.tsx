@@ -1,18 +1,24 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from "next-themes";
 import { 
   Home, Trophy, Loader2, Crown, TrendingUp, Zap, ChevronDown, ChevronUp,
-  ArrowDown, History, Sun, Moon, Monitor
+  ArrowDown, History, Sun, Moon, Monitor, Archive
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
 const COMMISH_ID = "342828350391230464"; 
 const START_YEAR = 2018;
-const END_YEAR = 2025; 
+const MIN_SUPPORTED_CURRENT_YEAR = 2026;
+
+const getLatestArchiveYear = () => Math.max(new Date().getFullYear(), MIN_SUPPORTED_CURRENT_YEAR);
+const getArchiveYears = () => {
+  const latestYear = getLatestArchiveYear();
+  return Array.from({ length: latestYear - START_YEAR + 1 }, (_, i) => latestYear - i);
+};
 
 // --- REAL NAME MAPPING ---
 const REAL_NAMES: Record<string, string> = {
@@ -125,31 +131,52 @@ export default function ArchivesPage() {
   const [seasonRecords, setSeasonRecords] = useState<SeasonRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState("");
+  const [archiveMessage, setArchiveMessage] = useState("");
+  const [archiveNotice, setArchiveNotice] = useState("");
+  const [archiveError, setArchiveError] = useState<string | null>(null);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
+  const archiveYears = useMemo(() => getArchiveYears(), []);
+  const latestArchiveYear = archiveYears[0] ?? MIN_SUPPORTED_CURRENT_YEAR;
+  const activeTheme = mounted ? theme : undefined;
 
   useEffect(() => {
     async function fetchHistory() {
       setLoading(true);
+      setArchiveError(null);
+      setArchiveMessage("");
+      setArchiveNotice("");
       const aggregated: Record<string, ManagerStats> = {};
       const allSeasonsList: SeasonRecord[] = [];
       const masterUserMap: Record<string, { name: string, avatar: string }> = {};
+      const yearsWithoutLeague: number[] = [];
+      let foundLeague = false;
+      let foundHistoricalData = false;
       
       try {
-        for (let year = END_YEAR; year >= START_YEAR; year--) {
+        for (const year of archiveYears) {
             setProgress(`${year} Data Sync...`);
             
             const leagueRes = await fetch(`https://api.sleeper.app/v1/user/${COMMISH_ID}/leagues/nfl/${year}`);
-            const leagues = await leagueRes.json();
-            const myLeague = leagues.find((l: any) => l.name.includes("River City"));
+            if (!leagueRes.ok) throw new Error(`Sleeper leagues request failed for ${year}`);
 
-            if (!myLeague) continue;
+            const leagues = await leagueRes.json();
+            const myLeague = leagues.find((l: any) => l.name?.toLowerCase().includes("river city"));
+
+            if (!myLeague) {
+                yearsWithoutLeague.push(year);
+                continue;
+            }
+
+            foundLeague = true;
 
             const [rostersRes, usersRes] = await Promise.all([
                 fetch(`https://api.sleeper.app/v1/league/${myLeague.league_id}/rosters`),
                 fetch(`https://api.sleeper.app/v1/league/${myLeague.league_id}/users`)
             ]);
+
+            if (!rostersRes.ok || !usersRes.ok) throw new Error(`Sleeper archive request failed for ${year}`);
 
             const rosters = await rostersRes.json();
             const users = await usersRes.json();
@@ -166,6 +193,7 @@ export default function ArchivesPage() {
             rosters.forEach((r: any) => {
                 const uid = r.owner_id;
                 if (!uid) return;
+                foundHistoricalData = true;
 
                 const userProfile = masterUserMap[uid] || { name: "Unknown", avatar: null };
                 const teamName = userProfile.name;
@@ -205,15 +233,26 @@ export default function ArchivesPage() {
         setStats(Object.values(aggregated));
         setSeasonRecords(allSeasonsList);
 
+        if (!foundLeague) {
+          setArchiveMessage("No archive data available.");
+        } else if (yearsWithoutLeague.includes(latestArchiveYear)) {
+          setArchiveNotice(`No league found for selected year ${latestArchiveYear}.`);
+        } else if (!foundHistoricalData) {
+          setArchiveMessage("No historical data available yet.");
+        }
       } catch (error) {
         console.error("Archive Fetch Error:", error);
+        setStats([]);
+        setSeasonRecords([]);
+        setArchiveNotice("");
+        setArchiveError("Sleeper archive data could not be loaded. Please try again later.");
       } finally {
         setLoading(false);
       }
     }
 
     fetchHistory();
-  }, []);
+  }, [archiveYears, latestArchiveYear]);
 
   if (!mounted) return null;
 
@@ -232,26 +271,26 @@ export default function ArchivesPage() {
           </Link>
           
           <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
-            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${theme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
-            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${theme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
-            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${theme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
+            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
+            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
+            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
           </div>
         </div>
         <div className="flex items-center gap-2">
-           <History className="text-orange-600 hidden sm:block" size={20} />
+           <Archive className="text-orange-600 hidden sm:block" size={20} />
            <span className="text-xs font-black uppercase italic tracking-tighter">Archives</span>
         </div>
       </nav>
 
       {/* HEADER */}
       <header className="px-6 py-12 text-center">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 overflow-hidden relative shadow-lg">
-             <Image src="/River City FFL Logo.JPG" alt="Logo" fill className="object-cover" priority unoptimized />
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-lg text-orange-600">
+             <Archive size={28} />
         </div>
         <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic leading-none">
             League <span className="text-orange-600">Archives</span>
         </h1>
-        <p className="mt-4 text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Sleeper Intelligence Data ({START_YEAR}–{END_YEAR})</p>
+        <p className="mt-4 text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Sleeper Intelligence Data ({START_YEAR}-{latestArchiveYear})</p>
       </header>
 
       {/* MAIN CONTENT AREA */}
@@ -261,7 +300,23 @@ export default function ArchivesPage() {
               <Loader2 className="w-12 h-12 animate-spin text-orange-600 mb-6" />
               <p className="font-black opacity-40 uppercase tracking-widest text-[10px] italic">{progress}</p>
             </div>
+        ) : archiveError ? (
+            <div className="mx-auto max-w-xl rounded-[2rem] border border-red-600/20 bg-red-600/10 px-6 py-10 text-center text-red-700 dark:text-red-300">
+              <Archive className="mx-auto mb-4 text-red-600" size={36} />
+              <p className="font-black uppercase italic text-xs">{archiveError}</p>
+            </div>
+        ) : archiveMessage ? (
+            <div className="mx-auto max-w-xl rounded-[2rem] border border-dashed border-black/10 bg-black/5 px-6 py-10 text-center dark:border-white/10 dark:bg-white/5">
+              <Archive className="mx-auto mb-4 text-orange-600 opacity-50" size={36} />
+              <p className="font-black uppercase italic text-xs opacity-50">{archiveMessage}</p>
+            </div>
         ) : (
+          <>
+            {archiveNotice && (
+              <div className="mb-8 rounded-2xl border border-orange-600/20 bg-orange-600/10 px-5 py-4 text-center text-xs font-black uppercase italic tracking-widest text-orange-700 dark:text-orange-300">
+                {archiveNotice}
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in duration-500">
                 
                 <LeaderboardCard 
@@ -316,6 +371,7 @@ export default function ArchivesPage() {
                 />
 
             </div>
+          </>
         )}
       </main>
     </div>
