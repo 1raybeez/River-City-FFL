@@ -341,6 +341,12 @@ export default function RivalryHub() {
                   />
                 ))}
               </div>
+              <button
+                onClick={() => setShowFullHistory(true)}
+                className="mt-6 w-full rounded-full bg-red-600 px-5 py-3 text-[10px] font-black uppercase tracking-[0.25em] text-white shadow-lg shadow-red-900/20 transition-all hover:scale-[1.01] hover:bg-red-700"
+              >
+                View All Matchups
+              </button>
             </div>
 
             <div className="bg-black/5 dark:bg-white/5 rounded-[2.5rem] border border-black/5 dark:border-white/10 shadow-xl overflow-hidden">
