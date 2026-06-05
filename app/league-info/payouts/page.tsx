@@ -4,18 +4,23 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from "next-themes";
+import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { 
-  Home, Landmark, CreditCard, Loader2, 
+  Home, Landmark, CreditCard, Lock, Unlock, Loader2, 
   Sun, Moon, Monitor
 } from 'lucide-react';
 import { 
+  FINANCE_OWNERS_SUBCOLLECTION,
+  FINANCE_SEASONS_COLLECTION,
   getFinanceOwnerLedger,
   getFinanceRules,
   getFinanceSeason,
+  type FinanceAchievementTag,
   type FinanceOwnerLedgerEntry,
   type FinanceRules,
   type FinanceSeason,
 } from '@/lib/finance/firestoreFinance';
+import { db } from '@/lib/firebase';
 
 // --- CONFIGURATION ---
 const FINANCE_SEASON_YEAR = 2026;
@@ -23,8 +28,11 @@ const FINANCE_SEASON_YEAR = 2026;
 export default function PayoutsPage() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [updatingOwnerIds, setUpdatingOwnerIds] = useState<string[]>([]);
   const [financeSeason, setFinanceSeason] = useState<FinanceSeason | null>(null);
   const [financeRules, setFinanceRules] = useState<FinanceRules | null>(null);
   const [managerData, setManagerData] = useState<FinanceOwnerLedgerEntry[]>([]);
@@ -73,6 +81,63 @@ export default function PayoutsPage() {
   const totalOwed = managerData.reduce((sum, m) => 
     m.paid ? sum : sum + m.entryFee, 0
   );
+
+  const getDuesAchievementTags = (
+    tags: FinanceAchievementTag[],
+    paid: boolean
+  ) => {
+    const preservedTags = tags.filter((tag) => tag !== 'Paid' && tag !== 'Owes Dues');
+    return [paid ? 'Paid' : 'Owes Dues', ...preservedTags] as FinanceAchievementTag[];
+  };
+
+  const updateOwnerPaidStatus = async (
+    owner: FinanceOwnerLedgerEntry,
+    paid: boolean
+  ) => {
+    setActionError(null);
+    setUpdatingOwnerIds((prev) => [...prev, owner.id]);
+
+    const achievementTags = getDuesAchievementTags(owner.achievementTags, paid);
+    const netPosition = owner.winnings - (paid ? owner.entryFee : 0);
+
+    try {
+      await updateDoc(
+        doc(
+          db,
+          FINANCE_SEASONS_COLLECTION,
+          String(FINANCE_SEASON_YEAR),
+          FINANCE_OWNERS_SUBCOLLECTION,
+          owner.id
+        ),
+        {
+          paid,
+          duesPaidAt: paid ? serverTimestamp() : null,
+          achievementTags,
+          netPosition,
+          updatedAt: serverTimestamp(),
+        }
+      );
+
+      setManagerData((prev) =>
+        prev.map((entry) =>
+          entry.id === owner.id
+            ? {
+                ...entry,
+                paid,
+                duesPaidAt: paid ? new Date().toISOString() : null,
+                achievementTags,
+                netPosition,
+              }
+            : entry
+        )
+      );
+    } catch (err) {
+      console.error("Paid status update failed:", err);
+      setActionError(`Could not update ${owner.displayName}'s paid status.`);
+    } finally {
+      setUpdatingOwnerIds((prev) => prev.filter((id) => id !== owner.id));
+    }
+  };
 
   if (!mounted) return null;
   const activeTheme = theme;
@@ -128,6 +193,11 @@ export default function PayoutsPage() {
             {loadError}
           </div>
         )}
+        {actionError && (
+          <div className="mb-8 rounded-2xl border border-red-600/20 bg-red-600/10 px-5 py-4 text-sm font-bold text-red-700 dark:text-red-300">
+            {actionError}
+          </div>
+        )}
         
         {/* SUMMARY CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12">
@@ -150,8 +220,19 @@ export default function PayoutsPage() {
             <h2 className="text-2xl font-black uppercase italic tracking-tighter flex items-center gap-2">
                 <CreditCard size={20} className="opacity-30" /> The Ledger
             </h2>
-            <div className="w-full sm:w-auto px-6 py-2 rounded-full text-[10px] font-black uppercase border border-black/10 dark:border-white/10 opacity-40 text-center">
-                {FINANCE_SEASON_YEAR} Firestore Ledger
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                <button
+                    onClick={() => setIsAdmin((prev) => !prev)}
+                    className={`w-full sm:w-auto px-6 py-2 rounded-full text-[10px] font-black uppercase border transition-all ${
+                        isAdmin ? 'bg-red-600 text-white border-red-500 shadow-lg shadow-red-900/40' : 'opacity-40 border-black/10 dark:border-white/10'
+                    }`}
+                >
+                    {isAdmin ? <Unlock className="w-3 h-3 inline mr-2" /> : <Lock className="w-3 h-3 inline mr-2" />}
+                    {isAdmin ? 'Commissioner Controls On' : 'Commissioner Controls'}
+                </button>
+                <div className="w-full sm:w-auto px-6 py-2 rounded-full text-[10px] font-black uppercase border border-black/10 dark:border-white/10 opacity-40 text-center">
+                    {FINANCE_SEASON_YEAR} Firestore Ledger
+                </div>
             </div>
         </div>
 
@@ -159,6 +240,7 @@ export default function PayoutsPage() {
         <div className="bg-black/5 dark:bg-white/5 rounded-[2.5rem] border border-black/5 dark:border-white/10 overflow-hidden shadow-2xl divide-y divide-black/5 dark:divide-white/5">
             {managerData.map((m) => {
                 const isPaid = m.paid;
+                const isUpdating = updatingOwnerIds.includes(m.id);
                 
                 return (
                     <div key={m.id} className="p-6 flex items-center justify-between hover:bg-black/5 dark:hover:bg-white/5 transition-colors group">
@@ -190,7 +272,7 @@ export default function PayoutsPage() {
                                 </div>
                             </div>
                         </div>
-                        <div className="ml-4">
+                        <div className="ml-4 flex flex-col items-end gap-2">
                             <div 
                                 className={`px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase ${
                                     isPaid ? 'bg-emerald-600/10 text-emerald-600 border border-emerald-600/20' : 'bg-red-600/10 text-red-600 border border-red-600/20 animate-pulse'
@@ -198,6 +280,15 @@ export default function PayoutsPage() {
                             >
                                 {isPaid ? 'Paid' : 'Unpaid'}
                             </div>
+                            {isAdmin && (
+                                <button
+                                    onClick={() => updateOwnerPaidStatus(m, !isPaid)}
+                                    disabled={isUpdating}
+                                    className="px-4 py-2 rounded-xl text-[9px] font-black uppercase border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 hover:border-emerald-600/40 disabled:opacity-40 transition-all"
+                                >
+                                    {isUpdating ? 'Updating...' : isPaid ? 'Mark Unpaid' : 'Mark Paid'}
+                                </button>
+                            )}
                         </div>
                     </div>
                 );
