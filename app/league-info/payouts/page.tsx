@@ -532,6 +532,9 @@ export default function PayoutsPage() {
             <div className="mb-6">
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-red-600">Commissioner Controls</p>
               <h3 className="mt-2 text-2xl font-black uppercase italic tracking-tighter">Manual Award Entry</h3>
+              <p className="mt-3 rounded-2xl border border-red-600/20 bg-red-600/10 px-4 py-3 text-xs font-bold leading-relaxed text-red-700 dark:text-red-300">
+                Commissioner controls are intended for league admin use only. Firestore/security rules should restrict writes before public production use.
+              </p>
             </div>
 
             <form onSubmit={addManualAward} className="grid grid-cols-1 gap-4 lg:grid-cols-6">
