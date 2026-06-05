@@ -4,18 +4,20 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from "next-themes";
-import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { collection, doc, serverTimestamp, updateDoc, writeBatch } from "firebase/firestore";
 import { 
   Home, Landmark, CreditCard, Lock, Unlock, Loader2, 
   Sun, Moon, Monitor
 } from 'lucide-react';
 import { 
   FINANCE_OWNERS_SUBCOLLECTION,
+  FINANCE_AWARDS_SUBCOLLECTION,
   FINANCE_SEASONS_COLLECTION,
   getFinanceOwnerLedger,
   getFinanceRules,
   getFinanceSeason,
   type FinanceAchievementTag,
+  type FinanceAwardType,
   type FinanceOwnerLedgerEntry,
   type FinanceRules,
   type FinanceSeason,
@@ -24,6 +26,23 @@ import { db } from '@/lib/firebase';
 
 // --- CONFIGURATION ---
 const FINANCE_SEASON_YEAR = 2026;
+const AWARD_TYPES: FinanceAwardType[] = [
+  'weekly_high_score',
+  'division_winner',
+  'champion',
+  'runner_up',
+  'third_place',
+  'adjustment',
+];
+
+const AWARD_TYPE_LABELS: Record<FinanceAwardType, string> = {
+  weekly_high_score: 'Weekly High Score',
+  division_winner: 'Division Winner',
+  champion: 'Champion',
+  runner_up: 'Runner-Up',
+  third_place: 'Third Place',
+  adjustment: 'Adjustment',
+};
 
 export default function PayoutsPage() {
   const { theme, setTheme } = useTheme();
@@ -36,8 +55,20 @@ export default function PayoutsPage() {
   const [financeSeason, setFinanceSeason] = useState<FinanceSeason | null>(null);
   const [financeRules, setFinanceRules] = useState<FinanceRules | null>(null);
   const [managerData, setManagerData] = useState<FinanceOwnerLedgerEntry[]>([]);
+  const [awardOwnerId, setAwardOwnerId] = useState('');
+  const [awardType, setAwardType] = useState<FinanceAwardType>('weekly_high_score');
+  const [awardAmount, setAwardAmount] = useState('10');
+  const [awardLabel, setAwardLabel] = useState('');
+  const [awardWeek, setAwardWeek] = useState('');
+  const [isSubmittingAward, setIsSubmittingAward] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    if (!awardOwnerId && managerData.length > 0) {
+      setAwardOwnerId(managerData[0].id);
+    }
+  }, [awardOwnerId, managerData]);
 
   useEffect(() => {
     async function fetchFinances() {
@@ -90,6 +121,52 @@ export default function PayoutsPage() {
     return [paid ? 'Paid' : 'Owes Dues', ...preservedTags] as FinanceAchievementTag[];
   };
 
+  const getAwardAchievementTag = (type: FinanceAwardType) => {
+    const tagMap: Partial<Record<FinanceAwardType, FinanceAchievementTag>> = {
+      weekly_high_score: 'Weekly Winner',
+      division_winner: 'Division Winner',
+      champion: 'Champion',
+      runner_up: 'Runner-Up',
+      third_place: '3rd Place',
+    };
+
+    return tagMap[type];
+  };
+
+  const getDefaultAwardAmount = (type: FinanceAwardType) => {
+    if (!financeRules) return '';
+
+    switch (type) {
+      case 'weekly_high_score':
+        return String(financeRules.weeklyHighScore);
+      case 'division_winner':
+        return String(financeRules.divisionWinner);
+      case 'champion':
+        return String(financeRules.champion);
+      case 'runner_up':
+        return String(financeRules.runnerUp);
+      case 'third_place':
+        return String(financeRules.thirdPlace);
+      case 'adjustment':
+        return '';
+    }
+  };
+
+  const getAwardAchievementTags = (
+    tags: FinanceAchievementTag[],
+    type: FinanceAwardType
+  ) => {
+    const awardTag = getAwardAchievementTag(type);
+    if (!awardTag || tags.includes(awardTag)) return tags;
+
+    return [...tags, awardTag];
+  };
+
+  const updateAwardType = (type: FinanceAwardType) => {
+    setAwardType(type);
+    setAwardAmount(getDefaultAwardAmount(type));
+  };
+
   const updateOwnerPaidStatus = async (
     owner: FinanceOwnerLedgerEntry,
     paid: boolean
@@ -136,6 +213,100 @@ export default function PayoutsPage() {
       setActionError(`Could not update ${owner.displayName}'s paid status.`);
     } finally {
       setUpdatingOwnerIds((prev) => prev.filter((id) => id !== owner.id));
+    }
+  };
+
+  const addManualAward = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setActionError(null);
+
+    const owner = managerData.find((entry) => entry.id === awardOwnerId);
+    const amount = Number(awardAmount);
+    const week = awardWeek ? Number(awardWeek) : undefined;
+
+    if (!owner) {
+      setActionError("Choose an owner before adding an award.");
+      return;
+    }
+    if (!Number.isFinite(amount)) {
+      setActionError("Enter a valid award amount.");
+      return;
+    }
+    if (!awardLabel.trim()) {
+      setActionError("Enter an award label.");
+      return;
+    }
+    if (week !== undefined && (!Number.isInteger(week) || week < 1)) {
+      setActionError("Enter a valid week number or leave it blank.");
+      return;
+    }
+
+    const newWinnings = owner.winnings + amount;
+    const netPosition = newWinnings - (owner.paid ? owner.entryFee : 0);
+    const achievementTags = getAwardAchievementTags(owner.achievementTags, awardType);
+    const awardRef = doc(
+      collection(
+        db,
+        FINANCE_SEASONS_COLLECTION,
+        String(FINANCE_SEASON_YEAR),
+        FINANCE_AWARDS_SUBCOLLECTION
+      )
+    );
+    const ownerRef = doc(
+      db,
+      FINANCE_SEASONS_COLLECTION,
+      String(FINANCE_SEASON_YEAR),
+      FINANCE_OWNERS_SUBCOLLECTION,
+      owner.id
+    );
+
+    setIsSubmittingAward(true);
+
+    try {
+      const batch = writeBatch(db);
+
+      batch.set(awardRef, {
+        type: awardType,
+        managerId: owner.managerId,
+        ownerDocId: owner.id,
+        amount,
+        label: awardLabel.trim(),
+        source: 'manual',
+        week: week ?? null,
+        locked: false,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      batch.update(ownerRef, {
+        winnings: newWinnings,
+        netPosition,
+        achievementTags,
+        updatedAt: serverTimestamp(),
+      });
+
+      await batch.commit();
+
+      setManagerData((prev) =>
+        prev.map((entry) =>
+          entry.id === owner.id
+            ? {
+                ...entry,
+                winnings: newWinnings,
+                netPosition,
+                achievementTags,
+                updatedAt: new Date().toISOString(),
+              }
+            : entry
+        )
+      );
+      setAwardLabel('');
+      setAwardWeek('');
+      setAwardAmount(getDefaultAwardAmount(awardType));
+    } catch (err) {
+      console.error("Manual award update failed:", err);
+      setActionError(`Could not add award for ${owner.displayName}.`);
+    } finally {
+      setIsSubmittingAward(false);
     }
   };
 
@@ -309,6 +480,93 @@ export default function PayoutsPage() {
                 </div>
             </div>
         </div>
+
+        {isAdmin && (
+          <section className="mb-8 rounded-[2.5rem] border border-red-600/20 bg-red-600/5 p-6 shadow-xl">
+            <div className="mb-6">
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-red-600">Commissioner Controls</p>
+              <h3 className="mt-2 text-2xl font-black uppercase italic tracking-tighter">Manual Award Entry</h3>
+            </div>
+
+            <form onSubmit={addManualAward} className="grid grid-cols-1 gap-4 lg:grid-cols-6">
+              <label className="lg:col-span-2">
+                <span className="mb-2 block text-[9px] font-black uppercase tracking-widest opacity-40">Owner</span>
+                <select
+                  value={awardOwnerId}
+                  onChange={(event) => setAwardOwnerId(event.target.value)}
+                  className="w-full rounded-2xl border border-black/10 bg-white/70 px-4 py-3 text-sm font-black outline-none transition-all focus:border-emerald-600 dark:border-white/10 dark:bg-black/30"
+                >
+                  {managerData.map((owner) => (
+                    <option key={owner.id} value={owner.id} className="text-black">
+                      {owner.displayName} - {owner.teamName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="lg:col-span-2">
+                <span className="mb-2 block text-[9px] font-black uppercase tracking-widest opacity-40">Type</span>
+                <select
+                  value={awardType}
+                  onChange={(event) => updateAwardType(event.target.value as FinanceAwardType)}
+                  className="w-full rounded-2xl border border-black/10 bg-white/70 px-4 py-3 text-sm font-black outline-none transition-all focus:border-emerald-600 dark:border-white/10 dark:bg-black/30"
+                >
+                  {AWARD_TYPES.map((type) => (
+                    <option key={type} value={type} className="text-black">
+                      {AWARD_TYPE_LABELS[type]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span className="mb-2 block text-[9px] font-black uppercase tracking-widest opacity-40">Amount</span>
+                <input
+                  type="number"
+                  value={awardAmount}
+                  onChange={(event) => setAwardAmount(event.target.value)}
+                  className="w-full rounded-2xl border border-black/10 bg-white/70 px-4 py-3 text-sm font-black outline-none transition-all focus:border-emerald-600 dark:border-white/10 dark:bg-black/30"
+                  placeholder="0"
+                  step="1"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-[9px] font-black uppercase tracking-widest opacity-40">Week</span>
+                <input
+                  type="number"
+                  value={awardWeek}
+                  onChange={(event) => setAwardWeek(event.target.value)}
+                  className="w-full rounded-2xl border border-black/10 bg-white/70 px-4 py-3 text-sm font-black outline-none transition-all focus:border-emerald-600 dark:border-white/10 dark:bg-black/30"
+                  placeholder="Optional"
+                  min="1"
+                  step="1"
+                />
+              </label>
+
+              <label className="lg:col-span-4">
+                <span className="mb-2 block text-[9px] font-black uppercase tracking-widest opacity-40">Label</span>
+                <input
+                  type="text"
+                  value={awardLabel}
+                  onChange={(event) => setAwardLabel(event.target.value)}
+                  className="w-full rounded-2xl border border-black/10 bg-white/70 px-4 py-3 text-sm font-black outline-none transition-all focus:border-emerald-600 dark:border-white/10 dark:bg-black/30"
+                  placeholder="Example: Week 1 High Score"
+                />
+              </label>
+
+              <div className="flex items-end lg:col-span-2">
+                <button
+                  type="submit"
+                  disabled={isSubmittingAward}
+                  className="w-full rounded-2xl border border-emerald-600/20 bg-emerald-600 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition-all hover:scale-[1.02] disabled:opacity-40"
+                >
+                  {isSubmittingAward ? 'Adding Award...' : 'Add Manual Award'}
+                </button>
+              </div>
+            </form>
+          </section>
+        )}
 
         {/* DISTRIBUTION LIST */}
         <div className="bg-black/5 dark:bg-white/5 rounded-[2.5rem] border border-black/5 dark:border-white/10 overflow-hidden shadow-2xl divide-y divide-black/5 dark:divide-white/5">
