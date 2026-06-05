@@ -1,19 +1,38 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from "next-themes";
 import { 
   Home, BookOpen, Music, Mic2, Globe, BarChart3, 
-  ChevronRight, Radio, Sun, Moon, Monitor
+  ChevronRight, Sun, Moon, Monitor
 } from 'lucide-react';
 
 const BROADCAST_FEED = [
-  { year: "2025", label: "Draft Kit", link: "https://music.apple.com/us/playlist/2025-river-city-ffl/pl.u-mJy88LDtBYqpd1" },
-  { year: "2024", label: "Archive", link: "https://music.apple.com/us/playlist/2024-river-city-ffl/pl.u-11zBXZouZKBzgm" },
-  { year: "2023", label: "Archive", link: "https://music.apple.com/us/playlist/2023-river-city-ffl/pl.u-V9D7mXEH1jgmDJ" },
-  { year: "2022", label: "Archive", link: "https://music.apple.com/us/playlist/2022-river-city-ffl/pl.u-11zBJWySZKBzgm" },
+  {
+    year: "2025",
+    label: "Draft Kit",
+    appleMusicUrl: "https://music.apple.com/us/playlist/2025-river-city-ffl/pl.u-mJy88LDtBYqpd1",
+    spotifyUrl: "https://open.spotify.com/playlist/0MJdpr3IjESWqlCIN1e5zr?si=cY2k0tUsTJWfncFPUk14mg&pi=KT9-SpxsSTOm1",
+  },
+  {
+    year: "2024",
+    label: "Archive",
+    appleMusicUrl: "https://music.apple.com/us/playlist/2024-river-city-ffl/pl.u-11zBXZouZKBzgm",
+    spotifyUrl: "https://open.spotify.com/playlist/6Ui2V4cha4SHpaLbcHzm5t?si=zCW7bEbFQHG8hLZxHsQipw&pi=Vamd4QHCTfmjq",
+  },
+  {
+    year: "2023",
+    label: "Archive",
+    appleMusicUrl: "https://music.apple.com/us/playlist/2023-river-city-ffl/pl.u-V9D7mXEH1jgmDJ",
+    spotifyUrl: "https://open.spotify.com/playlist/0QdyNRHcwNu1YbApaXYQ9j?si=LwgE0hsRSgO1uphiT_clTQ&pi=3KFtJWhOR3qwE",
+  },
+  {
+    year: "2022",
+    label: "Archive",
+    appleMusicUrl: "https://music.apple.com/us/playlist/2022-river-city-ffl/pl.u-11zBJWySZKBzgm",
+    spotifyUrl: "https://open.spotify.com/playlist/7vXEJwrFZDiTXwseuCpzYF?si=PWl3ZyCFQBeS5kw24mNPDw&pi=yKzWAf4rRL-Bz",
+  },
 ];
 
 const PODCASTS = [
@@ -56,6 +75,7 @@ export default function ResourcesPage() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
+  const activeTheme = mounted ? theme : undefined;
 
   const ResourceCard = ({ title, desc, url, type }: any) => (
     <a 
@@ -97,9 +117,9 @@ export default function ResourcesPage() {
             <Home size={18} />
           </Link>
           <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
-            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${theme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
-            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${theme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
-            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${theme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
+            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
+            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
+            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -109,8 +129,8 @@ export default function ResourcesPage() {
       </nav>
 
       <header className="px-6 py-12 text-center">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 overflow-hidden relative shadow-lg">
-             <Image src="/River City FFL Logo.JPG" alt="Logo" fill className="object-cover" priority unoptimized />
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-lg text-purple-600">
+             <BookOpen size={28} />
         </div>
         <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic leading-none">
             League <span className="text-purple-600">Resources</span>
@@ -121,8 +141,9 @@ export default function ResourcesPage() {
       <main className="max-w-7xl mx-auto px-6 py-10">
         
         {/* TAB NAV */}
-        <div className="flex justify-center mb-16">
-          <div className="flex overflow-x-auto no-scrollbar gap-2 bg-black/5 dark:bg-white/5 p-1.5 rounded-full border border-black/5 dark:border-white/10 shadow-md">
+        <div className="mb-16">
+          <div className="flex justify-center">
+          <div className="flex max-w-full overflow-x-auto no-scrollbar gap-2 bg-black/5 dark:bg-white/5 p-1.5 rounded-full border border-black/5 dark:border-white/10 shadow-md">
             {[
               { id: 'playlists', icon: Music, label: 'Playlists', color: 'bg-red-600' },
               { id: 'podcasts', icon: Mic2, label: 'Broadcasts', color: 'bg-orange-600' },
@@ -140,6 +161,10 @@ export default function ResourcesPage() {
               </button>
             ))}
           </div>
+          </div>
+          <p className="mt-3 text-center text-[9px] font-black uppercase tracking-[0.25em] opacity-30 sm:hidden">
+            Swipe tabs for more
+          </p>
         </div>
 
         {/* Playlists */}
@@ -151,15 +176,35 @@ export default function ResourcesPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
               {BROADCAST_FEED.map((p) => (
-                <a key={p.year} href={p.link} target="_blank" className="relative overflow-hidden p-10 rounded-[2.5rem] shadow-xl flex items-center justify-between transition-all hover:scale-[1.02] bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 group">
+                <div key={p.year} className="relative overflow-hidden p-10 rounded-[2.5rem] shadow-xl flex items-center justify-between gap-6 transition-all hover:scale-[1.02] bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 group">
                   <div className="relative z-10">
                     <span className="text-6xl font-black tracking-tighter italic uppercase">{p.year}</span>
                     <p className="text-[11px] font-black uppercase tracking-[0.2em] mt-1 text-red-600">{p.label}</p>
+                    <div className="mt-6 flex flex-wrap gap-2">
+                      <a
+                        href={p.appleMusicUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-full bg-black text-white px-4 py-2 text-[9px] font-black uppercase tracking-widest transition-all hover:bg-red-600 dark:bg-white dark:text-black dark:hover:bg-red-600 dark:hover:text-white"
+                      >
+                        Apple Music
+                      </a>
+                      {p.spotifyUrl && (
+                        <a
+                          href={p.spotifyUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-full bg-emerald-600 text-white px-4 py-2 text-[9px] font-black uppercase tracking-widest transition-all hover:bg-emerald-500"
+                        >
+                          Spotify
+                        </a>
+                      )}
+                    </div>
                   </div>
                   <div className="p-5 rounded-2xl bg-black/10 dark:bg-white/5 group-hover:bg-red-600 group-hover:text-white transition-colors">
                      <Music size={32} />
                   </div>
-                </a>
+                </div>
               ))}
             </div>
           </div>
