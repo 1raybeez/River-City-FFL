@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from "next-themes";
 import { 
   Home, Loader2, Swords, X, Calendar, 
-  TrendingUp, TrendingDown, Trophy, Sun, Moon, Monitor
+  TrendingUp, TrendingDown, Trophy, Sun, Moon, Monitor,
+  ChevronDown, ChevronUp, Flame
 } from 'lucide-react';
 
 // --- CONFIGURATION: RIVER CITY DATA ---
@@ -38,6 +39,29 @@ const MANAGER_MAP: Record<string, { name: string; image: string }> = {
   "1260048448384667648": { name: "Stan", image: "/managers/Stan.jpg" }
 };
 
+type RivalryGame = {
+  year: number;
+  week: number;
+  a: any;
+  b: any;
+  diff: number;
+};
+
+const getWinnerSide = (game: RivalryGame) => {
+  if (game.a.points > game.b.points) return 'a';
+  if (game.b.points > game.a.points) return 'b';
+  return 'tie';
+};
+
+const getIntensityLabel = (totalGames: number, aWins: number, bWins: number) => {
+  const recordGap = Math.abs(aWins - bWins);
+
+  if (totalGames >= 10 && recordGap <= 2) return 'Blood Feud';
+  if (totalGames >= 6 && recordGap <= 2) return 'Heated';
+  if (totalGames >= 3 && recordGap <= 4) return 'Competitive';
+  return 'Cold';
+};
+
 export default function RivalryHub() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -47,6 +71,8 @@ export default function RivalryHub() {
   const [hasScanned, setHasScanned] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<any | null>(null);
+  const [showFullHistory, setShowFullHistory] = useState(false);
+  const [matchupHistory, setMatchupHistory] = useState<RivalryGame[]>([]);
   const [stats, setStats] = useState<any>({
     aWins: 0, bWins: 0, aPoints: 0, bPoints: 0, totalGames: 0,
     blowout: null, shave: null
@@ -59,11 +85,13 @@ export default function RivalryHub() {
     const scanId = scanIdRef.current + 1;
     scanIdRef.current = scanId;
     setSelectedMatch(null);
+    setShowFullHistory(false);
     setScanError(null);
     setHasScanned(false);
 
     if (!playerA || !playerB) {
       setLoading(false);
+      setMatchupHistory([]);
       setStats({ aWins: 0, bWins: 0, aPoints: 0, bPoints: 0, totalGames: 0, blowout: null, shave: null });
       return;
     }
@@ -111,13 +139,16 @@ export default function RivalryHub() {
           const blowout = games.reduce((prev, curr) => (prev.diff > curr.diff) ? prev : curr, games[0]);
           const shave = games.reduce((prev, curr) => (prev.diff < curr.diff) ? prev : curr, games[0]);
           setStats({ ...h2h, blowout, shave });
+          setMatchupHistory(games);
         } else {
+          setMatchupHistory([]);
           setStats({ aWins: 0, bWins: 0, aPoints: 0, bPoints: 0, totalGames: 0, blowout: null, shave: null });
         }
         setHasScanned(true);
       } catch (err) {
         console.error("Rivalry scan failed:", err);
         if (scanIdRef.current !== scanId) return;
+        setMatchupHistory([]);
         setStats({ aWins: 0, bWins: 0, aPoints: 0, bPoints: 0, totalGames: 0, blowout: null, shave: null });
         setScanError("Sleeper rivalry data could not be loaded. Please try again later.");
         setHasScanned(true);
@@ -129,12 +160,48 @@ export default function RivalryHub() {
     scanHistory();
   }, [playerA, playerB]);
 
-  if (!mounted) return null;
-
   const managerA = MANAGER_MAP[playerA];
   const managerB = MANAGER_MAP[playerB];
   const aWinPct = stats.totalGames > 0 ? (stats.aWins / stats.totalGames) * 100 : 50;
   const activeTheme = mounted ? theme : undefined;
+  const sortedHistory = useMemo(
+    () => [...matchupHistory].sort((a, b) => b.year - a.year || b.week - a.week),
+    [matchupHistory]
+  );
+  const lastFiveMeetings = sortedHistory.slice(0, 5);
+  const lastMeeting = sortedHistory[0];
+  const currentStreak = useMemo(() => {
+    if (sortedHistory.length === 0 || !managerA || !managerB) return 'No current streak';
+
+    const firstWinner = getWinnerSide(sortedHistory[0]);
+    if (firstWinner === 'tie') return 'No current streak';
+
+    const streakCount = sortedHistory.findIndex((game) => getWinnerSide(game) !== firstWinner);
+    const count = streakCount === -1 ? sortedHistory.length : streakCount;
+    const winnerName = firstWinner === 'a' ? managerA.name : managerB.name;
+    return `${winnerName} has won ${count} straight.`;
+  }, [managerA, managerB, sortedHistory]);
+  const seriesLeader = stats.aWins === stats.bWins
+    ? 'Series tied'
+    : `${stats.aWins > stats.bWins ? managerA?.name : managerB?.name} leads ${Math.max(stats.aWins, stats.bWins)}-${Math.min(stats.aWins, stats.bWins)}`;
+  const lastMeetingWinner = lastMeeting && managerA && managerB
+    ? getWinnerSide(lastMeeting) === 'tie'
+      ? 'Tie'
+      : getWinnerSide(lastMeeting) === 'a'
+        ? managerA.name
+        : managerB.name
+    : 'Unavailable';
+  const rivalryIntensity = getIntensityLabel(stats.totalGames, stats.aWins, stats.bWins);
+
+  const getGameWinnerName = (game: RivalryGame) => {
+    const winner = getWinnerSide(game);
+    if (winner === 'tie') return 'Tie';
+    return winner === 'a' ? managerA?.name : managerB?.name;
+  };
+
+  const formatScore = (score: number) => score.toFixed(2);
+
+  if (!mounted) return null;
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-32 selection:bg-red-600">
@@ -234,6 +301,76 @@ export default function RivalryHub() {
                   <p className="text-4xl font-black italic tracking-tighter">± {stats.shave?.diff.toFixed(1)} Pts</p>
                </button>
             </div>
+
+            <div className="bg-black/5 dark:bg-white/5 rounded-[2.5rem] p-6 sm:p-8 border border-black/5 dark:border-white/10 shadow-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.25em] opacity-40">Rivalry Summary</p>
+                  <h2 className="text-3xl sm:text-4xl font-black uppercase italic tracking-tighter">Tale of the Tape</h2>
+                </div>
+                <div className="inline-flex items-center gap-2 self-start rounded-full bg-red-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-lg">
+                  <Flame size={14} /> {rivalryIntensity}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <SummaryStat label="All-Time Series" value={seriesLeader} />
+                <SummaryStat label="Current Streak" value={currentStreak} />
+                <SummaryStat label="Last Meeting Winner" value={lastMeetingWinner} />
+                <SummaryStat label="Biggest Blowout" value={`${stats.blowout?.diff.toFixed(1)} pts`} />
+                <SummaryStat label="Closest Matchup" value={`${stats.shave?.diff.toFixed(1)} pts`} />
+                <SummaryStat label="Playoff Record" value="Playoff record unavailable" />
+              </div>
+            </div>
+
+            <div className="bg-black/5 dark:bg-white/5 rounded-[2.5rem] p-6 sm:p-8 border border-black/5 dark:border-white/10 shadow-xl">
+              <div className="mb-6">
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] opacity-40">Recent Heat</p>
+                <h2 className="text-3xl sm:text-4xl font-black uppercase italic tracking-tighter">Last 5 Meetings</h2>
+              </div>
+              <div className="space-y-3">
+                {lastFiveMeetings.map((game) => (
+                  <MatchupRow
+                    key={`${game.year}-${game.week}-${game.a.roster_id}-${game.b.roster_id}`}
+                    game={game}
+                    managerA={managerA}
+                    managerB={managerB}
+                    winnerName={getGameWinnerName(game)}
+                    formatScore={formatScore}
+                    onSelect={() => setSelectedMatch(game)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-black/5 dark:bg-white/5 rounded-[2.5rem] border border-black/5 dark:border-white/10 shadow-xl overflow-hidden">
+              <button
+                onClick={() => setShowFullHistory(prev => !prev)}
+                className="w-full p-6 sm:p-8 flex items-center justify-between gap-4 text-left hover:bg-black/5 dark:hover:bg-white/5 transition-all"
+              >
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.25em] opacity-40">Receipts</p>
+                  <h2 className="text-2xl sm:text-4xl font-black uppercase italic tracking-tighter">Full Matchup History</h2>
+                </div>
+                {showFullHistory ? <ChevronUp className="shrink-0 opacity-40" /> : <ChevronDown className="shrink-0 opacity-40" />}
+              </button>
+
+              {showFullHistory && (
+                <div className="px-6 sm:px-8 pb-8 space-y-3 animate-in slide-in-from-top-2 duration-200">
+                  {sortedHistory.map((game) => (
+                    <MatchupRow
+                      key={`full-${game.year}-${game.week}-${game.a.roster_id}-${game.b.roster_id}`}
+                      game={game}
+                      managerA={managerA}
+                      managerB={managerB}
+                      winnerName={getGameWinnerName(game)}
+                      formatScore={formatScore}
+                      onSelect={() => setSelectedMatch(game)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </main>
@@ -274,6 +411,47 @@ export default function RivalryHub() {
         </div>
       )}
     </div>
+  );
+}
+
+function SummaryStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-white/60 dark:bg-black/20 border border-black/5 dark:border-white/10 p-4">
+      <p className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40 mb-2">{label}</p>
+      <p className="text-sm sm:text-base font-black uppercase italic tracking-tight leading-tight">{value}</p>
+    </div>
+  );
+}
+
+function MatchupRow({ game, managerA, managerB, winnerName, formatScore, onSelect }: any) {
+  return (
+    <button
+      onClick={onSelect}
+      className="w-full rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-black/20 p-4 text-left hover:border-red-600/30 hover:bg-red-600/5 transition-all"
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-[0.25em] opacity-40">
+            {game.year} Week {game.week}
+          </p>
+          <p className="mt-1 text-xs sm:text-sm font-black uppercase italic">
+            Winner: <span className="text-red-600">{winnerName}</span>
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-2 sm:gap-4 sm:items-center text-sm">
+          <div className="font-black uppercase italic tracking-tight">
+            {managerA?.name}: {formatScore(game.a.points)}
+          </div>
+          <div className="hidden sm:block text-[10px] font-black opacity-20">VS</div>
+          <div className="font-black uppercase italic tracking-tight sm:text-right">
+            {managerB?.name}: {formatScore(game.b.points)}
+          </div>
+        </div>
+      </div>
+      <p className="mt-3 text-[9px] font-black uppercase tracking-[0.2em] opacity-30">
+        Margin: {game.diff.toFixed(2)} pts
+      </p>
+    </button>
   );
 }
 
