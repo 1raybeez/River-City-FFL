@@ -5,8 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from "next-themes";
 import { 
-  Trophy, Home, Crown, Award, Medal, AlertTriangle, 
-  Sun, Moon, Monitor, ChevronRight 
+  Trophy, Home, Sun, Moon, Monitor
 } from 'lucide-react';
 
 /**
@@ -76,6 +75,7 @@ export default function TrophyRoomPage() {
   }, []);
 
   if (!mounted) return null;
+  const activeTheme = theme;
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-20 selection:bg-orange-500">
@@ -92,48 +92,54 @@ export default function TrophyRoomPage() {
           </Link>
           
           <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
-            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${theme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
-            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${theme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
-            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${theme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
+            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
+            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
+            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
           </div>
         </div>
 
-        <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
-            <button 
-                onClick={() => setActiveTab('champions')} 
-                className={`px-3 sm:px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${activeTab === 'champions' ? 'bg-yellow-500 text-black shadow-lg' : 'opacity-40'}`}
-            >
-                Champions
-            </button>
-            <button 
-                onClick={() => setActiveTab('leaderboard')} 
-                className={`px-3 sm:px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${activeTab === 'leaderboard' ? 'bg-orange-600 text-white shadow-lg' : 'opacity-40'}`}
-            >
-                Podiums
-            </button>
-            <button 
-                onClick={() => setActiveTab('shame')} 
-                className={`px-3 sm:px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${activeTab === 'shame' ? 'bg-gray-800 text-white shadow-lg' : 'opacity-40'}`}
-            >
-                Shame
-            </button>
+        <div className="flex items-center gap-2">
+          <Trophy className="text-orange-600 hidden sm:block" size={20} />
+          <span className="text-xs font-black uppercase italic tracking-tighter">Trophy Room</span>
         </div>
       </nav>
 
       {/* HEADER SECTION */}
       <header className="px-6 py-12 text-center">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 overflow-hidden relative shadow-lg">
-             <Image src="/River City FFL Logo.JPG" alt="Logo" fill className="object-cover" priority unoptimized />
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-lg text-orange-600">
+          <Trophy size={28} />
         </div>
         
         <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic leading-none">
-            The <span className="text-orange-600">Trophy Room</span>
+            Trophy <span className="text-orange-600">Room</span>
         </h1>
         <p className="mt-4 text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Hall of Legends & Walls of Shame</p>
       </header>
 
       {/* MAIN CONTENT AREA */}
       <main className="max-w-7xl mx-auto px-6 py-10">
+        <div className="mb-10 flex justify-center">
+          <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
+              <button 
+                  onClick={() => setActiveTab('champions')} 
+                  className={`px-3 sm:px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${activeTab === 'champions' ? 'bg-yellow-500 text-black shadow-lg' : 'opacity-40'}`}
+              >
+                  Champions
+              </button>
+              <button 
+                  onClick={() => setActiveTab('leaderboard')} 
+                  className={`px-3 sm:px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${activeTab === 'leaderboard' ? 'bg-orange-600 text-white shadow-lg' : 'opacity-40'}`}
+              >
+                  Podiums
+              </button>
+              <button 
+                  onClick={() => setActiveTab('shame')} 
+                  className={`px-3 sm:px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${activeTab === 'shame' ? 'bg-gray-800 text-white shadow-lg' : 'opacity-40'}`}
+              >
+                  Shame
+              </button>
+          </div>
+        </div>
         
         {activeTab === 'champions' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
