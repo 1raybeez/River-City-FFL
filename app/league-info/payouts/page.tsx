@@ -112,6 +112,9 @@ export default function PayoutsPage() {
   const totalOwed = managerData.reduce((sum, m) => 
     m.paid ? sum : sum + m.entryFee, 0
   );
+  const visibleFinanceNotes = financeRules?.notes.filter(
+    (note) => !note.toLowerCase().includes('nameplate')
+  ) ?? [];
 
   const getDuesAchievementTags = (
     tags: FinanceAchievementTag[],
@@ -410,6 +413,7 @@ export default function PayoutsPage() {
                   label: 'Champion',
                   value: `~$${financeRules.champion}`,
                   note: financeRules.championIsApproximate ? 'Approximate' : undefined,
+                  description: 'Remaining pool after fixed payouts and champion ring cost.',
                 },
               ].map((rule) => (
                 <div key={rule.label} className="rounded-3xl border border-black/5 bg-white/60 p-5 dark:border-white/10 dark:bg-black/20">
@@ -422,14 +426,19 @@ export default function PayoutsPage() {
                       </span>
                     )}
                   </div>
+                  {rule.description && (
+                    <p className="mt-2 text-xs font-bold leading-relaxed opacity-50">
+                      {rule.description}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
 
             <div className="mt-6 rounded-3xl border border-black/5 bg-white/60 p-5 dark:border-white/10 dark:bg-black/20">
-              <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Ring / Nameplate Deductions</p>
+              <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Champion Ring Deduction</p>
               <p className="mt-2 text-sm font-bold leading-relaxed opacity-70">
-                Trophy, ring, and nameplate deductions are approximate until final purchase costs are confirmed.
+                Champion ring deduction is approximate until the final purchase cost is confirmed.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {financeRules.ringDeductionIsApproximate && (
@@ -437,19 +446,14 @@ export default function PayoutsPage() {
                     Ring Approximate
                   </span>
                 )}
-                {financeRules.nameplateDeductionIsApproximate && (
-                  <span className="rounded-full border border-emerald-600/20 bg-emerald-600/10 px-3 py-1 text-[8px] font-black uppercase tracking-widest text-emerald-600">
-                    Nameplate Approximate
-                  </span>
-                )}
               </div>
             </div>
 
-            {financeRules.notes.length > 0 && (
+            {visibleFinanceNotes.length > 0 && (
               <div className="mt-6 rounded-3xl border border-black/5 bg-white/60 p-5 dark:border-white/10 dark:bg-black/20">
                 <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Policy Notes</p>
                 <ul className="mt-3 space-y-2">
-                  {financeRules.notes.map((note) => (
+                  {visibleFinanceNotes.map((note) => (
                     <li key={note} className="text-sm font-bold leading-relaxed opacity-70">
                       {note}
                     </li>

@@ -54,7 +54,6 @@ export interface FinanceSeason {
   divisionPrizeTotalAwarded: number;
   championshipPotRemaining: number;
   ringDeduction: number;
-  nameplateDeduction: number;
   notes: string[];
   createdAt: FinanceDateValue;
   updatedAt: FinanceDateValue;
@@ -104,8 +103,6 @@ export interface FinanceRules {
   thirdPlace: number;
   ringDeduction: number;
   ringDeductionIsApproximate: boolean;
-  nameplateDeduction: number;
-  nameplateDeductionIsApproximate: boolean;
   notes: string[];
   updatedAt?: FinanceDateValue;
 }
@@ -142,18 +139,16 @@ export const DEFAULT_2026_FINANCE_RULES = {
   champion: 219,
   championIsApproximate: true,
   championCalculation:
-    "Approximate champion payout. Final champion payout should be calculated from the remaining prize pool after fixed payouts and actual trophy/ring/nameplate costs.",
+    "Approximate champion payout. Final champion payout should be calculated from the remaining prize pool after fixed payouts and actual champion ring cost.",
   runnerUp: 100,
   thirdPlace: 50,
   ringDeduction: 0,
   ringDeductionIsApproximate: true,
-  nameplateDeduction: 0,
-  nameplateDeductionIsApproximate: true,
   notes: [
     "All financial information is official on the Payouts page.",
     "Current season ledger starts fresh with all managers unpaid and winnings at $0.",
-    "Champion payout is an estimate until it can be calculated from the remaining prize pool after fixed payouts and actual trophy/ring/nameplate costs.",
-    "Trophy, ring, and nameplate deductions are flexible estimates until final purchase costs are confirmed.",
+    "Champion payout is an estimate until it can be calculated from the remaining prize pool after fixed payouts and actual champion ring cost.",
+    "Champion ring deduction is a flexible estimate until final purchase cost is confirmed.",
   ],
 };
 
@@ -256,7 +251,6 @@ function mapFinanceSeason(id: string, data: DocumentData): FinanceSeason {
     divisionPrizeTotalAwarded: getNumber(data.divisionPrizeTotalAwarded),
     championshipPotRemaining: getNumber(data.championshipPotRemaining),
     ringDeduction: getNumber(data.ringDeduction),
-    nameplateDeduction: getNumber(data.nameplateDeduction),
     notes: getStringArray(data.notes),
     createdAt: getDateValue(data.createdAt),
     updatedAt: getDateValue(data.updatedAt),
@@ -319,9 +313,6 @@ function mapFinanceRules(id: string, data: DocumentData): FinanceRules {
     thirdPlace: getNumber(data.thirdPlace),
     ringDeduction: getNumber(data.ringDeduction),
     ringDeductionIsApproximate: data.ringDeductionIsApproximate === true,
-    nameplateDeduction: getNumber(data.nameplateDeduction),
-    nameplateDeductionIsApproximate:
-      data.nameplateDeductionIsApproximate === true,
     notes: getStringArray(data.notes),
     updatedAt: getDateValue(data.updatedAt),
   };
@@ -398,7 +389,6 @@ export function buildFinanceSeasonSeedData(
     divisionPrizeTotalAwarded: 0,
     championshipPotRemaining: config.prizePool,
     ringDeduction: 0,
-    nameplateDeduction: 0,
     notes: [],
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
