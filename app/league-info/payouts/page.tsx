@@ -215,6 +215,80 @@ export default function PayoutsPage() {
             </div>
         </div>
 
+        {/* FINANCIAL RULES */}
+        {financeRules && (
+          <section className="mb-12 rounded-[2.5rem] border border-emerald-600/20 bg-emerald-600/5 p-8 shadow-xl">
+            <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-600">Official Policy</p>
+                <h2 className="mt-2 text-3xl font-black uppercase italic tracking-tighter">Financial Rules</h2>
+              </div>
+              <div className="rounded-full border border-emerald-600/20 bg-emerald-600/10 px-4 py-2 text-[9px] font-black uppercase tracking-widest text-emerald-600">
+                {FINANCE_SEASON_YEAR} Season
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {[
+                { label: 'League Fee', value: `$${financeRules.leagueFee}` },
+                { label: 'Weekly High Score', value: `$${financeRules.weeklyHighScore}` },
+                { label: 'Division Winner', value: `$${financeRules.divisionWinner}` },
+                { label: 'Runner-Up', value: `$${financeRules.runnerUp}` },
+                { label: 'Third Place', value: `$${financeRules.thirdPlace}` },
+                {
+                  label: 'Champion',
+                  value: `~$${financeRules.champion}`,
+                  note: financeRules.championIsApproximate ? 'Approximate' : undefined,
+                },
+              ].map((rule) => (
+                <div key={rule.label} className="rounded-3xl border border-black/5 bg-white/60 p-5 dark:border-white/10 dark:bg-black/20">
+                  <p className="text-[9px] font-black uppercase tracking-widest opacity-40">{rule.label}</p>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span className="text-3xl font-black italic tracking-tighter">{rule.value}</span>
+                    {rule.note && (
+                      <span className="rounded-full border border-emerald-600/20 bg-emerald-600/10 px-2 py-0.5 text-[8px] font-black uppercase text-emerald-600">
+                        {rule.note}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 rounded-3xl border border-black/5 bg-white/60 p-5 dark:border-white/10 dark:bg-black/20">
+              <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Ring / Nameplate Deductions</p>
+              <p className="mt-2 text-sm font-bold leading-relaxed opacity-70">
+                Trophy, ring, and nameplate deductions are approximate until final purchase costs are confirmed.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {financeRules.ringDeductionIsApproximate && (
+                  <span className="rounded-full border border-emerald-600/20 bg-emerald-600/10 px-3 py-1 text-[8px] font-black uppercase tracking-widest text-emerald-600">
+                    Ring Approximate
+                  </span>
+                )}
+                {financeRules.nameplateDeductionIsApproximate && (
+                  <span className="rounded-full border border-emerald-600/20 bg-emerald-600/10 px-3 py-1 text-[8px] font-black uppercase tracking-widest text-emerald-600">
+                    Nameplate Approximate
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {financeRules.notes.length > 0 && (
+              <div className="mt-6 rounded-3xl border border-black/5 bg-white/60 p-5 dark:border-white/10 dark:bg-black/20">
+                <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Policy Notes</p>
+                <ul className="mt-3 space-y-2">
+                  {financeRules.notes.map((note) => (
+                    <li key={note} className="text-sm font-bold leading-relaxed opacity-70">
+                      {note}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+        )}
+
         {/* LEDGER HEADER */}
         <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
             <h2 className="text-2xl font-black uppercase italic tracking-tighter flex items-center gap-2">
