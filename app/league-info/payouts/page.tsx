@@ -13,10 +13,12 @@ import {
   FINANCE_OWNERS_SUBCOLLECTION,
   FINANCE_AWARDS_SUBCOLLECTION,
   FINANCE_SEASONS_COLLECTION,
+  getFinanceAwards,
   getFinanceOwnerLedger,
   getFinanceRules,
   getFinanceSeason,
   type FinanceAchievementTag,
+  type FinanceAward,
   type FinanceAwardType,
   type FinanceOwnerLedgerEntry,
   type FinanceRules,
@@ -55,6 +57,7 @@ export default function PayoutsPage() {
   const [financeSeason, setFinanceSeason] = useState<FinanceSeason | null>(null);
   const [financeRules, setFinanceRules] = useState<FinanceRules | null>(null);
   const [managerData, setManagerData] = useState<FinanceOwnerLedgerEntry[]>([]);
+  const [awardHistory, setAwardHistory] = useState<FinanceAward[]>([]);
   const [awardOwnerId, setAwardOwnerId] = useState('');
   const [awardType, setAwardType] = useState<FinanceAwardType>('weekly_high_score');
   const [awardAmount, setAwardAmount] = useState('10');
@@ -75,10 +78,11 @@ export default function PayoutsPage() {
       setLoading(true);
       setLoadError(null);
       try {
-        const [season, rules, owners] = await Promise.all([
+        const [season, rules, owners, awards] = await Promise.all([
           getFinanceSeason(FINANCE_SEASON_YEAR),
           getFinanceRules(FINANCE_SEASON_YEAR),
           getFinanceOwnerLedger(FINANCE_SEASON_YEAR),
+          getFinanceAwards(FINANCE_SEASON_YEAR),
         ]);
 
         if (!season) {
@@ -91,12 +95,14 @@ export default function PayoutsPage() {
         setFinanceSeason(season);
         setFinanceRules(rules);
         setManagerData(owners);
+        setAwardHistory(awards);
       } catch (err) {
         console.error("Finance Load Error:", err);
         setLoadError("The live 2026 finance ledger could not be loaded from Firestore.");
         setFinanceSeason(null);
         setFinanceRules(null);
         setManagerData([]);
+        setAwardHistory([]);
       } finally {
         setLoading(false);
       }
@@ -115,6 +121,28 @@ export default function PayoutsPage() {
   const visibleFinanceNotes = financeRules?.notes.filter(
     (note) => !note.toLowerCase().includes('nameplate')
   ) ?? [];
+
+  const getAwardTime = (award: FinanceAward) => {
+    const value = award.createdAt ?? award.updatedAt;
+    if (!value) return 0;
+    if (typeof value === 'string') {
+      const timestamp = new Date(value).getTime();
+      return Number.isNaN(timestamp) ? 0 : timestamp;
+    }
+    if (value instanceof Date) return value.getTime();
+    if (typeof value === 'object' && 'toMillis' in value && typeof value.toMillis === 'function') {
+      return value.toMillis();
+    }
+    return 0;
+  };
+
+  const sortedAwardHistory = [...awardHistory].sort(
+    (a, b) => getAwardTime(b) - getAwardTime(a)
+  );
+
+  const getAwardOwner = (award: FinanceAward) => {
+    return managerData.find((owner) => owner.managerId === award.managerId);
+  };
 
   const getDuesAchievementTags = (
     tags: FinanceAchievementTag[],
@@ -289,6 +317,19 @@ export default function PayoutsPage() {
 
       await batch.commit();
 
+      const localAward: FinanceAward = {
+        id: awardRef.id,
+        type: awardType,
+        managerId: owner.managerId,
+        amount,
+        label: awardLabel.trim(),
+        source: 'manual',
+        week,
+        locked: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
       setManagerData((prev) =>
         prev.map((entry) =>
           entry.id === owner.id
@@ -302,6 +343,7 @@ export default function PayoutsPage() {
             : entry
         )
       );
+      setAwardHistory((prev) => [localAward, ...prev]);
       setAwardLabel('');
       setAwardWeek('');
       setAwardAmount(getDefaultAwardAmount(awardType));
@@ -571,6 +613,70 @@ export default function PayoutsPage() {
             </form>
           </section>
         )}
+
+        {/* AWARD HISTORY */}
+        <section className="mb-8 rounded-[2.5rem] border border-black/5 bg-black/5 p-6 shadow-xl dark:border-white/10 dark:bg-white/5">
+          <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-600">Payout Activity</p>
+              <h3 className="mt-2 text-2xl font-black uppercase italic tracking-tighter">Award History</h3>
+            </div>
+            <div className="rounded-full border border-black/10 px-4 py-2 text-[9px] font-black uppercase tracking-widest opacity-40 dark:border-white/10">
+              Newest First
+            </div>
+          </div>
+
+          {sortedAwardHistory.length > 0 ? (
+            <div className="space-y-3">
+              {sortedAwardHistory.map((award) => {
+                const owner = getAwardOwner(award);
+
+                return (
+                  <div key={award.id} className="rounded-3xl border border-black/5 bg-white/60 p-5 dark:border-white/10 dark:bg-black/20">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-black uppercase italic tracking-tighter">
+                            {owner?.teamName ?? award.managerId}
+                          </span>
+                          {owner && (
+                            <span className="text-[8px] font-black uppercase tracking-widest opacity-30">
+                              {owner.displayName}
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-2 text-sm font-bold opacity-70">{award.label}</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <span className="rounded-full border border-emerald-600/20 bg-emerald-600/10 px-3 py-1 text-[8px] font-black uppercase tracking-widest text-emerald-600">
+                            {AWARD_TYPE_LABELS[award.type]}
+                          </span>
+                          {award.week && (
+                            <span className="rounded-full border border-black/10 px-3 py-1 text-[8px] font-black uppercase tracking-widest opacity-50 dark:border-white/10">
+                              Week {award.week}
+                            </span>
+                          )}
+                          <span className="rounded-full border border-black/10 px-3 py-1 text-[8px] font-black uppercase tracking-widest opacity-50 dark:border-white/10">
+                            {award.source}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-left sm:text-right">
+                        <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Amount</p>
+                        <p className={`text-3xl font-black italic tracking-tighter ${award.amount < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                          {award.amount < 0 ? '-' : ''}${Math.abs(award.amount)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-3xl border border-dashed border-black/10 p-8 text-center dark:border-white/10">
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-30">No payout activity yet</p>
+            </div>
+          )}
+        </section>
 
         {/* DISTRIBUTION LIST */}
         <div className="bg-black/5 dark:bg-white/5 rounded-[2.5rem] border border-black/5 dark:border-white/10 overflow-hidden shadow-2xl divide-y divide-black/5 dark:divide-white/5">
