@@ -142,7 +142,7 @@ export const DEFAULT_2026_FINANCE_RULES = {
   champion: 219,
   championIsApproximate: true,
   championCalculation:
-    "Approximate champion payout. Final champion payout should be calculated from the remaining prize pool after fixed payouts and final ring/nameplate costs.",
+    "Approximate champion payout. Final champion payout should be calculated from the remaining prize pool after fixed payouts and actual trophy/ring/nameplate costs.",
   runnerUp: 100,
   thirdPlace: 50,
   ringDeduction: 0,
@@ -152,8 +152,8 @@ export const DEFAULT_2026_FINANCE_RULES = {
   notes: [
     "All financial information is official on the Payouts page.",
     "Current season ledger starts fresh with all managers unpaid and winnings at $0.",
-    "Champion payout is an estimate until final season costs and fixed payouts are known.",
-    "Ring and nameplate deductions are flexible estimates until final purchase costs are confirmed.",
+    "Champion payout is an estimate until it can be calculated from the remaining prize pool after fixed payouts and actual trophy/ring/nameplate costs.",
+    "Trophy, ring, and nameplate deductions are flexible estimates until final purchase costs are confirmed.",
   ],
 };
 
