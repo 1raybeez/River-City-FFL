@@ -99,7 +99,7 @@ export default function ConstitutionSection({ title, icon, subsections, isOpen, 
         <div className="px-4 sm:px-8 pb-8 pt-2 border-t dark:border-white/10 bg-gray-50/30 dark:bg-black/10 animate-in slide-in-from-top-2 duration-200">
           <div className="space-y-8 mt-4">
             {subsections?.map((sub) => (
-              <div key={sub.id}>
+              <div key={sub.id} id={`constitution-subsection-${sub.id}`} className="scroll-mt-32">
                 {(sub.type === 'loophole' || sub.type === 'alert') ? (
                   <div className="p-5 bg-yellow-50 dark:bg-yellow-900/10 rounded-xl border border-yellow-100 dark:border-yellow-800/30 shadow-sm">
                     <h5 className="font-black text-xs sm:text-sm text-yellow-800 dark:text-yellow-500 uppercase flex items-center gap-2 mb-3">

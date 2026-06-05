@@ -25,8 +25,36 @@ type RatifiedRule = {
   };
 };
 
+type SearchResult = {
+  id: string;
+  sectionId: string;
+  sectionTitle: string;
+  subsectionId?: string;
+  subsectionTitle?: string;
+  matchType: 'Section' | 'Subsection' | 'Rule Text';
+  snippet: string;
+};
+
 function getRatifiedRuleContent(rule: RatifiedRule) {
   return rule.content;
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function highlightMatch(text: string, query: string) {
+  if (!query.trim()) return text;
+
+  const regex = new RegExp(`(${escapeRegExp(query.trim())})`, 'ig');
+  const exactMatch = new RegExp(`^${escapeRegExp(query.trim())}$`, 'i');
+  return text.split(regex).map((part, index) => (
+    exactMatch.test(part) ? (
+      <mark key={`${part}-${index}`} className="rounded bg-orange-500/20 px-1 text-orange-700 dark:text-orange-300">
+        {part}
+      </mark>
+    ) : part
+  ));
 }
 
 export default function ConstitutionPage() {
@@ -139,35 +167,87 @@ export default function ConstitutionPage() {
     setOpenSections([]);
   };
 
-  // Auto-scroll and expand on search match
-  useEffect(() => {
-    if (searchQuery.length < 3) return;
-    const q = searchQuery.toLowerCase();
-    
-    const matched = combinedRules.find(section => 
-      section.title.toLowerCase().includes(q) ||
-      section.subsections?.some((sub: any) => 
-        sub.title.toLowerCase().includes(q) || 
-        sub.content.some((text: string) => text.toLowerCase().includes(q))
-      )
-    );
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const isSearchActive = normalizedSearchQuery.length >= 3;
 
-    if (matched) {
-      setOpenSections(prev => prev.includes(matched.id) ? prev : [...prev, matched.id]);
-      const element = document.getElementById(matched.anchor || matched.id);
+  const searchResults = useMemo(() => {
+    if (!isSearchActive) return [];
+
+    const results: SearchResult[] = [];
+
+    combinedRules.forEach((section) => {
+      if (section.title.toLowerCase().includes(normalizedSearchQuery)) {
+        results.push({
+          id: `${section.id}-section`,
+          sectionId: section.id,
+          sectionTitle: section.title,
+          matchType: 'Section',
+          snippet: section.title,
+        });
+      }
+
+      section.subsections?.forEach((sub: any) => {
+        if (sub.title.toLowerCase().includes(normalizedSearchQuery)) {
+          results.push({
+            id: `${section.id}-${sub.id}-subsection`,
+            sectionId: section.id,
+            sectionTitle: section.title,
+            subsectionId: sub.id,
+            subsectionTitle: sub.title,
+            matchType: 'Subsection',
+            snippet: sub.title,
+          });
+        }
+
+        const matchingLine = sub.content.find((text: string) => text.toLowerCase().includes(normalizedSearchQuery));
+        if (matchingLine) {
+          results.push({
+            id: `${section.id}-${sub.id}-content`,
+            sectionId: section.id,
+            sectionTitle: section.title,
+            subsectionId: sub.id,
+            subsectionTitle: sub.title,
+            matchType: 'Rule Text',
+            snippet: matchingLine,
+          });
+        }
+      });
+    });
+
+    return results;
+  }, [combinedRules, isSearchActive, normalizedSearchQuery]);
+
+  const scrollToResult = (result: SearchResult) => {
+    setOpenSections(prev => prev.includes(result.sectionId) ? prev : [...prev, result.sectionId]);
+
+    window.setTimeout(() => {
+      const targetId = result.subsectionId
+        ? `constitution-subsection-${result.subsectionId}`
+        : `constitution-section-${result.sectionId}`;
+      const element = document.getElementById(targetId);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
-    }
-  }, [searchQuery, combinedRules]);
+    }, 0);
+  };
 
-  const filteredData = combinedRules.filter(section => 
-    section.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  // Auto-open the first matching section once search is active.
+  useEffect(() => {
+    if (!isSearchActive || searchResults.length === 0) return;
+
+    const firstSectionId = searchResults[0].sectionId;
+    if (firstSectionId) {
+      setOpenSections(prev => prev.includes(firstSectionId) ? prev : [...prev, firstSectionId]);
+    }
+  }, [isSearchActive, searchResults]);
+
+  const filteredData = isSearchActive ? combinedRules.filter(section => 
+    section.title.toLowerCase().includes(normalizedSearchQuery) ||
     section.subsections?.some((sub: any) => 
-      sub.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sub.content.some((text: string) => text.toLowerCase().includes(searchQuery.toLowerCase()))
+      sub.title.toLowerCase().includes(normalizedSearchQuery) ||
+      sub.content.some((text: string) => text.toLowerCase().includes(normalizedSearchQuery))
     )
-  );
+  ) : combinedRules;
 
   if (!mounted) return null;
 
@@ -218,7 +298,7 @@ export default function ConstitutionPage() {
         )}
 
         {/* SEARCH BAR */}
-        <div className="relative mb-12 group">
+        <div className="relative group">
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-black/20 dark:text-white/20 group-focus-within:text-orange-600 transition-colors" size={20} />
           <input 
             type="text" 
@@ -234,11 +314,54 @@ export default function ConstitutionPage() {
           )}
         </div>
 
+        {searchQuery && (
+          <div className="mt-4 mb-8 text-center">
+            {isSearchActive ? (
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-orange-600">
+                {searchResults.length > 0 ? `${searchResults.length} matches found` : 'No rules found'}
+              </p>
+            ) : (
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30">
+                Type at least 3 characters to search rules
+              </p>
+            )}
+          </div>
+        )}
+
+        {isSearchActive && searchResults.length > 0 && (
+          <div className="mb-10 space-y-3">
+            {searchResults.map((result) => (
+              <button
+                key={result.id}
+                onClick={() => scrollToResult(result)}
+                className="w-full rounded-2xl border border-black/5 bg-black/[0.03] px-5 py-4 text-left transition-all hover:border-orange-500/30 hover:bg-orange-500/5 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-orange-500/10"
+              >
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-orange-600/20 bg-orange-600/10 px-2.5 py-1 text-[8px] font-black uppercase tracking-widest text-orange-600">
+                    {result.matchType}
+                  </span>
+                  <span className="text-[10px] font-black uppercase tracking-widest opacity-40">
+                    {result.subsectionTitle ? result.subsectionTitle : result.sectionTitle}
+                  </span>
+                </div>
+                {result.subsectionTitle && (
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-widest opacity-30">
+                    {result.sectionTitle}
+                  </p>
+                )}
+                <p className="text-sm font-semibold leading-relaxed text-gray-700 dark:text-gray-300">
+                  {highlightMatch(result.snippet, searchQuery)}
+                </p>
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* REGULATION SECTIONS */}
         <div className="space-y-6">
           {filteredData.length > 0 ? (
             filteredData.map((section) => (
-              <div key={section.id} id={section.anchor || section.id} className="scroll-mt-32">
+              <div key={section.id} id={`constitution-section-${section.id}`} className="scroll-mt-32">
                 <ConstitutionSection
                   title={section.title}
                   icon={section.icon}
