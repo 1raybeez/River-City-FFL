@@ -6,9 +6,8 @@ import Link from 'next/link';
 import { useTheme } from "next-themes";
 import { 
   Home, Landmark, CreditCard, Lock, Unlock, Loader2, 
-  Sun, Moon, Monitor, ArrowRight, DollarSign
+  Sun, Moon, Monitor
 } from 'lucide-react';
-import { ModeToggle } from '@/components/ModeToggle';
 import { 
   calculateWeeklyHighScores, 
   getDivisionWinners, 
@@ -94,6 +93,7 @@ export default function PayoutsPage() {
   );
 
   if (!mounted) return null;
+  const activeTheme = theme;
 
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#0a0a0a] text-center">
@@ -117,27 +117,27 @@ export default function PayoutsPage() {
           </Link>
           
           <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
-            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${theme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
-            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${theme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
-            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${theme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
+            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
+            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
+            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
            <Landmark className="text-emerald-600 hidden sm:block" size={20} />
-           <span className="text-xs font-black uppercase italic tracking-tighter">Owner's Money</span>
+           <span className="text-xs font-black uppercase italic tracking-tighter">Payouts</span>
         </div>
       </nav>
 
       {/* HEADER SECTION */}
       <header className="px-6 py-12 text-center">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 overflow-hidden relative shadow-lg">
-             <Image src="/River City FFL Logo.JPG" alt="Logo" fill className="object-cover" priority unoptimized />
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-lg text-emerald-600">
+             <Landmark size={28} />
         </div>
         <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic leading-none">
-            The <span className="text-emerald-600">Vault</span>
+            <span className="text-emerald-600">Payouts</span>
         </h1>
-        <p className="mt-4 text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Treasury & Payout Distribution</p>
+        <p className="mt-4 text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">League Money, Prizes & Distribution</p>
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-10">
