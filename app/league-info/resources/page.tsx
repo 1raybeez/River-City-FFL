@@ -36,13 +36,53 @@ const BROADCAST_FEED = [
 ];
 
 const PODCASTS = [
-  { name: "The Fantasy Footballers", desc: "Award-winning analysis and entertaining start/sit advice.", url: "https://music.apple.com/us/podcast/the-fantasy-footballers-fantasy-football-podcast/id1023761733", type: "Free" },
-  { name: "The Ringer Fantasy Show", desc: "High-energy draft strategy and weekly waiver wire deep dives.", url: "https://music.apple.com/us/podcast/the-ringer-fantasy-football-show/id1524039715", type: "Free" },
-  { name: "Fantasy Pros Podcast", desc: "Consensus rankings and expert advice hub in audio form.", url: "https://music.apple.com/us/podcast/fantasypros-fantasy-football-podcast/id1138942145", type: "Free" },
-  { name: "Fantasy Football Focus", desc: "Daily news and strategic advice from the ESPN crew.", url: "https://music.apple.com/us/podcast/fantasy-football-focus/id263252794", type: "Free" },
-  { name: "Fantasy Football Today", desc: "CBS Sports' daily breakdown of every game and every player.", url: "https://music.apple.com/us/podcast/fantasy-football-today/id261735167", type: "Free" },
-  { name: "Establish the Run", desc: "Elite analytics and projections from Evan Silva and Adam Levitan.", url: "https://music.apple.com/us/podcast/establish-the-run-fantasy-football/id1473533244", type: "Free" },
-  { name: "The Late-Round Podcast", desc: "JJ Zachariason's data-driven approach to finding sleepers.", url: "https://music.apple.com/us/podcast/the-late-round-fantasy-football-podcast/id1224964045", type: "Free" },
+  {
+    name: "The Fantasy Footballers",
+    desc: "Award-winning analysis and entertaining start/sit advice.",
+    applePodcastUrl: "https://podcasts.apple.com/us/podcast/fantasy-footballers-fantasy-football-podcast/id917453719",
+    spotifyUrl: "https://open.spotify.com/show/5RaNsb5sKEBleahQa4MVC5",
+    type: "Free",
+  },
+  {
+    name: "The Ringer Fantasy Show",
+    desc: "High-energy draft strategy and weekly waiver wire deep dives.",
+    applePodcastUrl: "https://podcasts.apple.com/us/podcast/the-ringer-fantasy-football-show/id1523722173",
+    spotifyUrl: "https://open.spotify.com/show/0XLPhMzcKmxoNziHkVkYpR",
+    type: "Free",
+  },
+  {
+    name: "Fantasy Pros Podcast",
+    desc: "Consensus rankings and expert advice hub in audio form.",
+    applePodcastUrl: "https://podcasts.apple.com/us/podcast/fantasypros-fantasy-football-podcast/id1138942145",
+    spotifyUrl: "https://open.spotify.com/show/1YM5ymt3vWVfdHzVAEzq2w",
+    type: "Free",
+  },
+  {
+    name: "Fantasy Football Focus",
+    desc: "Daily news and strategic advice from the ESPN crew.",
+    applePodcastUrl: "https://podcasts.apple.com/us/podcast/fantasy-focus-football/id260537420",
+    spotifyUrl: "https://open.spotify.com/show/55toF30GeLKhJYGr3JPQpG",
+    type: "Free",
+  },
+  {
+    name: "Fantasy Football Today",
+    desc: "CBS Sports' daily breakdown of every game and every player.",
+    applePodcastUrl: "https://podcasts.apple.com/us/podcast/fantasy-football-today/id261735167",
+    spotifyUrl: "https://open.spotify.com/show/2fEvGGxwXqSM8xuSNgxjFR",
+    type: "Free",
+  },
+  {
+    name: "Establish the Run",
+    desc: "Elite analytics and projections from Evan Silva and Adam Levitan.",
+    applePodcastUrl: "https://podcasts.apple.com/us/podcast/establish-the-run-fantasy-football/id1473055758",
+    type: "Free",
+  },
+  {
+    name: "The Late-Round Podcast",
+    desc: "JJ Zachariason's data-driven approach to finding sleepers.",
+    applePodcastUrl: "https://podcasts.apple.com/us/podcast/the-late-round-fantasy-football-podcast/id1224965828",
+    type: "Free",
+  },
 ];
 
 const WEBSITES = [
@@ -103,6 +143,42 @@ export default function ResourcesPage() {
         Open Resource <ChevronRight size={14} />
       </div>
     </a>
+  );
+
+  const BroadcastCard = ({ name, desc, applePodcastUrl, spotifyUrl, type }: any) => (
+    <div className="group bg-black/5 dark:bg-white/5 p-6 rounded-[2.5rem] border border-black/5 dark:border-white/10 shadow-lg hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300 flex flex-col h-full relative overflow-hidden">
+      <div className="flex justify-between items-start mb-4">
+        <h3 className="text-xl font-black uppercase italic tracking-tighter leading-none pr-12">
+          {name}
+        </h3>
+        {type && (
+          <span className="absolute top-6 right-6 text-[8px] font-black uppercase px-2 py-0.5 rounded-full border shadow-sm tracking-[0.2em] bg-emerald-600 text-white border-emerald-500">
+            {type}
+          </span>
+        )}
+      </div>
+      <p className="text-sm font-medium opacity-50 leading-relaxed flex-grow">{desc}</p>
+      <div className="mt-6 flex flex-wrap gap-2">
+        <a
+          href={applePodcastUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-full bg-black text-white px-4 py-2 text-[9px] font-black uppercase tracking-widest transition-all hover:bg-orange-600 dark:bg-white dark:text-black dark:hover:bg-orange-600 dark:hover:text-white"
+        >
+          Apple Podcasts
+        </a>
+        {spotifyUrl && (
+          <a
+            href={spotifyUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-full bg-emerald-600 text-white px-4 py-2 text-[9px] font-black uppercase tracking-widest transition-all hover:bg-emerald-500"
+          >
+            Spotify
+          </a>
+        )}
+      </div>
+    </div>
   );
 
   if (!mounted) return null;
@@ -218,7 +294,7 @@ export default function ResourcesPage() {
                 <p className="text-[10px] font-black opacity-30 uppercase tracking-widest mt-1">In-Season Analysis</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {PODCASTS.map(pod => <ResourceCard key={pod.name} title={pod.name} desc={pod.desc} url={pod.url} type={pod.type} />)}
+              {PODCASTS.map(pod => <BroadcastCard key={pod.name} {...pod} />)}
             </div>
           </div>
         )}

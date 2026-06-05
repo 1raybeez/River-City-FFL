@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from "next-themes";
@@ -44,66 +44,97 @@ export default function RivalryHub() {
   const [playerA, setPlayerA] = useState('');
   const [playerB, setPlayerB] = useState('');
   const [loading, setLoading] = useState(false);
+  const [hasScanned, setHasScanned] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<any | null>(null);
   const [stats, setStats] = useState<any>({
     aWins: 0, bWins: 0, aPoints: 0, bPoints: 0, totalGames: 0,
     blowout: null, shave: null
   });
+  const scanIdRef = useRef(0);
 
   useEffect(() => { setMounted(true); }, []);
 
-  const scanHistory = async () => {
-    if (!playerA || !playerB) return;
-    setLoading(true);
-    const h2h = { aWins: 0, bWins: 0, aPoints: 0, bPoints: 0, totalGames: 0 };
-    const games: any[] = [];
+  useEffect(() => {
+    const scanId = scanIdRef.current + 1;
+    scanIdRef.current = scanId;
+    setSelectedMatch(null);
+    setScanError(null);
+    setHasScanned(false);
 
-    for (const season of LEAGUE_HISTORY) {
+    if (!playerA || !playerB) {
+      setLoading(false);
+      setStats({ aWins: 0, bWins: 0, aPoints: 0, bPoints: 0, totalGames: 0, blowout: null, shave: null });
+      return;
+    }
+
+    async function scanHistory() {
+      setLoading(true);
+      const h2h = { aWins: 0, bWins: 0, aPoints: 0, bPoints: 0, totalGames: 0 };
+      const games: any[] = [];
+
       try {
-        const rosterRes = await fetch(`https://api.sleeper.app/v1/league/${season.id}/rosters`);
-        const rosters = await rosterRes.json();
-        
-        const ridA = rosters.find((r: any) => r.owner_id === playerA || r.co_owners?.includes(playerA))?.roster_id;
-        const ridB = rosters.find((r: any) => r.owner_id === playerB || r.co_owners?.includes(playerB))?.roster_id;
-        
-        if (!ridA || !ridB || ridA === ridB) continue;
+        for (const season of LEAGUE_HISTORY) {
+          const rosterRes = await fetch(`https://api.sleeper.app/v1/league/${season.id}/rosters`);
+          if (!rosterRes.ok) throw new Error(`Failed to load rosters for ${season.year}`);
 
-        for (let w = 1; w <= 17; w++) {
-          const mRes = await fetch(`https://api.sleeper.app/v1/league/${season.id}/matchups/${w}`);
-          const matchups = await mRes.json();
-          const matchA = matchups.find((m: any) => m.roster_id === ridA);
-          const matchB = matchups.find((m: any) => m.roster_id === ridB);
+          const rosters = await rosterRes.json();
+          
+          const ridA = rosters.find((r: any) => r.owner_id === playerA || r.co_owners?.includes(playerA))?.roster_id;
+          const ridB = rosters.find((r: any) => r.owner_id === playerB || r.co_owners?.includes(playerB))?.roster_id;
+          
+          if (!ridA || !ridB || ridA === ridB) continue;
 
-          if (matchA?.matchup_id === matchB?.matchup_id && matchA && matchB && matchA.points !== undefined) {
-            const diff = Math.abs(matchA.points - matchB.points);
-            games.push({ year: season.year, week: w, a: matchA, b: matchB, diff });
-            h2h.totalGames++;
-            h2h.aPoints += (matchA.points || 0);
-            h2h.bPoints += (matchB.points || 0);
-            if (matchA.points > matchB.points) h2h.aWins++;
-            else if (matchB.points > matchA.points) h2h.bWins++;
+          for (let w = 1; w <= 17; w++) {
+            const mRes = await fetch(`https://api.sleeper.app/v1/league/${season.id}/matchups/${w}`);
+            if (!mRes.ok) throw new Error(`Failed to load ${season.year} week ${w} matchups`);
+
+            const matchups = await mRes.json();
+            const matchA = matchups.find((m: any) => m.roster_id === ridA);
+            const matchB = matchups.find((m: any) => m.roster_id === ridB);
+
+            if (matchA?.matchup_id === matchB?.matchup_id && matchA && matchB && matchA.points !== undefined) {
+              const diff = Math.abs(matchA.points - matchB.points);
+              games.push({ year: season.year, week: w, a: matchA, b: matchB, diff });
+              h2h.totalGames++;
+              h2h.aPoints += (matchA.points || 0);
+              h2h.bPoints += (matchB.points || 0);
+              if (matchA.points > matchB.points) h2h.aWins++;
+              else if (matchB.points > matchA.points) h2h.bWins++;
+            }
           }
         }
-      } catch (err) { console.error(err); }
+
+        if (scanIdRef.current !== scanId) return;
+
+        if (games.length > 0) {
+          const blowout = games.reduce((prev, curr) => (prev.diff > curr.diff) ? prev : curr, games[0]);
+          const shave = games.reduce((prev, curr) => (prev.diff < curr.diff) ? prev : curr, games[0]);
+          setStats({ ...h2h, blowout, shave });
+        } else {
+          setStats({ aWins: 0, bWins: 0, aPoints: 0, bPoints: 0, totalGames: 0, blowout: null, shave: null });
+        }
+        setHasScanned(true);
+      } catch (err) {
+        console.error("Rivalry scan failed:", err);
+        if (scanIdRef.current !== scanId) return;
+        setStats({ aWins: 0, bWins: 0, aPoints: 0, bPoints: 0, totalGames: 0, blowout: null, shave: null });
+        setScanError("Sleeper rivalry data could not be loaded. Please try again later.");
+        setHasScanned(true);
+      } finally {
+        if (scanIdRef.current === scanId) setLoading(false);
+      }
     }
 
-    if (games.length > 0) {
-      const blowout = games.reduce((prev, curr) => (prev.diff > curr.diff) ? prev : curr, games[0]);
-      const shave = games.reduce((prev, curr) => (prev.diff < curr.diff) ? prev : curr, games[0]);
-      setStats({ ...h2h, blowout, shave });
-    } else {
-      setStats({ aWins: 0, bWins: 0, aPoints: 0, bPoints: 0, totalGames: 0, blowout: null, shave: null });
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => { scanHistory(); }, [playerA, playerB]);
+    scanHistory();
+  }, [playerA, playerB]);
 
   if (!mounted) return null;
 
   const managerA = MANAGER_MAP[playerA];
   const managerB = MANAGER_MAP[playerB];
   const aWinPct = stats.totalGames > 0 ? (stats.aWins / stats.totalGames) * 100 : 50;
+  const activeTheme = mounted ? theme : undefined;
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-32 selection:bg-red-600">
@@ -116,9 +147,9 @@ export default function RivalryHub() {
           </Link>
           
           <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
-            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${theme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
-            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${theme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
-            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${theme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
+            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
+            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
+            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
           </div>
         </div>
         
@@ -129,13 +160,13 @@ export default function RivalryHub() {
       </nav>
 
       <header className="px-6 py-10 text-center">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 overflow-hidden relative shadow-lg">
-             <Image src="/River City FFL Logo.JPG" alt="Logo" fill className="object-cover" priority unoptimized />
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-lg text-red-600">
+             <Swords size={28} />
         </div>
         <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic leading-none">
-            Head-To-<span className="text-red-600">Head</span>
+            Rivalry <span className="text-red-600">Hub</span>
         </h1>
-        <p className="mt-4 text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Historical Matchup Analyzer</p>
+        <p className="mt-4 text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Head-To-Head History & Rivalries</p>
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-12">
@@ -150,27 +181,44 @@ export default function RivalryHub() {
             <Loader2 className="animate-spin text-red-600 mb-4" size={48} />
             <p className="font-black uppercase tracking-widest text-[10px] opacity-40">Scanning archives...</p>
           </div>
+        ) : scanError ? (
+          <div className="mx-auto max-w-xl rounded-[2rem] border border-red-600/20 bg-red-600/10 px-6 py-10 text-center text-red-700 dark:text-red-300">
+            <Swords className="mx-auto mb-4 text-red-600" size={36} />
+            <p className="font-black uppercase italic text-xs">{scanError}</p>
+          </div>
+        ) : !playerA || !playerB ? (
+          <div className="mx-auto max-w-xl rounded-[2rem] border border-dashed border-black/10 bg-black/5 px-6 py-10 text-center dark:border-white/10 dark:bg-white/5">
+            <Swords className="mx-auto mb-4 text-red-600 opacity-50" size={36} />
+            <p className="font-black uppercase italic text-xs opacity-50">Select two managers to scan their rivalry history.</p>
+          </div>
+        ) : hasScanned && stats.totalGames === 0 ? (
+          <div className="mx-auto max-w-xl rounded-[2rem] border border-dashed border-black/10 bg-black/5 px-6 py-10 text-center dark:border-white/10 dark:bg-white/5">
+            <Swords className="mx-auto mb-4 text-red-600 opacity-50" size={36} />
+            <p className="font-black uppercase italic text-xs opacity-50">
+              No head-to-head matchups found for {managerA?.name} and {managerB?.name}.
+            </p>
+          </div>
         ) : stats.totalGames > 0 && (
           <div className="space-y-12 animate-in fade-in duration-500">
             {/* Stat Bar and Numbers */}
-            <div className="bg-black/5 dark:bg-white/5 rounded-[2.5rem] p-10 border border-black/5 dark:border-white/10 shadow-2xl relative overflow-hidden">
+            <div className="bg-black/5 dark:bg-white/5 rounded-[2.5rem] p-6 sm:p-10 border border-black/5 dark:border-white/10 shadow-2xl relative overflow-hidden">
               <div className="h-5 w-full bg-black/10 dark:bg-white/10 rounded-full overflow-hidden flex border border-black/5 dark:border-white/5 shadow-inner">
                 <div className="h-full bg-red-600 transition-all duration-1000 ease-out" style={{ width: `${aWinPct}%` }} />
                 <div className="h-full bg-blue-600 transition-all duration-1000 ease-out" style={{ width: `${100 - aWinPct}%` }} />
               </div>
-              <div className="grid grid-cols-2 gap-12 text-center mt-12">
+              <div className="grid grid-cols-2 gap-4 sm:gap-12 text-center mt-10 sm:mt-12">
                 <div>
                   <p className="text-[10px] font-black uppercase opacity-40 tracking-widest mb-2 flex items-center justify-center gap-2">
                     {managerA.name} Wins {stats.aWins > stats.bWins && <Trophy size={12} className="text-yellow-500" />}
                   </p>
-                  <h4 className="text-7xl font-black italic">{stats.aWins}</h4>
+                  <h4 className="text-5xl sm:text-7xl font-black italic">{stats.aWins}</h4>
                   <p className="text-xs font-black mt-4 text-red-600 uppercase italic">Avg: {(stats.aPoints / stats.totalGames).toFixed(1)} PPG</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-black uppercase opacity-40 tracking-widest mb-2 flex items-center justify-center gap-2">
                     {managerB.name} Wins {stats.bWins > stats.aWins && <Trophy size={12} className="text-yellow-500" />}
                   </p>
-                  <h4 className="text-7xl font-black italic">{stats.bWins}</h4>
+                  <h4 className="text-5xl sm:text-7xl font-black italic">{stats.bWins}</h4>
                   <p className="text-xs font-black mt-4 text-blue-600 uppercase italic">Avg: {(stats.bPoints / stats.totalGames).toFixed(1)} PPG</p>
                 </div>
               </div>
@@ -193,7 +241,7 @@ export default function RivalryHub() {
       {/* MATCH MODAL */}
       {selectedMatch && managerA && managerB && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-6" onClick={() => setSelectedMatch(null)}>
-          <div className="bg-white dark:bg-[#1a1a1a] rounded-[3rem] w-full max-w-lg p-10 relative shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+          <div className="bg-white dark:bg-[#1a1a1a] rounded-[2rem] sm:rounded-[3rem] w-full max-w-lg p-6 sm:p-10 relative shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
             <button onClick={() => setSelectedMatch(null)} className="absolute top-8 right-8 opacity-40 hover:opacity-100 hover:text-red-600 transition-all"><X /></button>
             <h2 className="text-xl font-black italic uppercase mb-8 border-b border-black/5 dark:border-white/10 pb-4 text-center flex items-center justify-center gap-3 tracking-tighter">
                 <Calendar className="w-5 h-5 opacity-40" /> {selectedMatch.year} Week {selectedMatch.week}
