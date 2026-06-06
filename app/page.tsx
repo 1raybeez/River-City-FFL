@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useTheme } from "next-themes";
 import { 
   Trophy, Users, BookOpen, Swords, ArrowRight, 
-  MessageCircle, TrendingUp, X, FileText, Calendar, Crown, Book,
+  MessageCircle, TrendingUp, X, FileText, Calendar, Crown, Book, Menu,
   CalendarDays, MapPin, Video, UserCheck, Sun, Moon, Monitor, BrainCircuit
 } from 'lucide-react';
 
@@ -36,12 +36,22 @@ const managers = [
   { name: "Wade Cameron", id: "342838548870762496" }
 ];
 
+const mobileNavLinks = [
+  { label: "Managers", href: "/managers", group: "Core" },
+  { label: "Info Hub", href: "/league-info", group: "Core" },
+  { label: "Matchups", href: "/matchups", group: "Core" },
+  { label: "Draft Board", href: "/league-info/draft", group: "League Info" },
+  { label: "Legislative Hub", href: "/commish/proposals", group: "League Info" },
+  { label: "Payouts", href: "/league-info/payouts", group: "League Info" },
+];
+
 export default function Home() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [showRecap, setShowRecap] = useState(false);
   const [showProjections, setShowProjections] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false); 
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [projections, setProjections] = useState<any[]>([]);
   const [liveRecap, setLiveRecap] = useState("Loading latest trash talk..."); 
 
@@ -172,11 +182,11 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-20 selection:bg-orange-500">
       
-      <nav className="border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
+      <nav className="relative border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
         <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
-          <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${theme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
-          <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${theme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
-          <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${theme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
+          <button type="button" aria-label="Use light theme" onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${theme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
+          <button type="button" aria-label="Use dark theme" onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${theme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
+          <button type="button" aria-label="Use system theme" onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${theme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
         </div>
 
         <div className="hidden sm:flex bg-black/5 dark:bg-white/5 p-1 rounded-xl border border-black/10 dark:border-white/10">
@@ -184,6 +194,42 @@ export default function Home() {
           <Link href="/league-info" className="px-4 py-1.5 bg-orange-600 text-white rounded-lg text-[10px] font-black uppercase italic shadow-lg shadow-orange-900/20">Info Hub</Link>
           <Link href="/matchups" className="px-4 py-1.5 text-[10px] font-black uppercase italic opacity-40 hover:opacity-100 transition-all">Matchups</Link>
         </div>
+
+        <button
+          type="button"
+          aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={isMobileMenuOpen}
+          aria-controls="home-mobile-navigation"
+          onClick={() => setIsMobileMenuOpen((open) => !open)}
+          className="sm:hidden rounded-lg border border-black/10 bg-black/5 p-2 transition-all hover:scale-105 dark:border-white/10 dark:bg-white/5"
+        >
+          {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+        </button>
+
+        {isMobileMenuOpen && (
+          <div
+            id="home-mobile-navigation"
+            className="absolute left-4 right-4 top-full mt-3 rounded-[2rem] border border-black/10 bg-white p-4 shadow-2xl dark:border-white/10 dark:bg-[#111] sm:hidden"
+          >
+            <div className="grid grid-cols-2 gap-3">
+              {mobileNavLinks.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-widest transition-all ${
+                    item.href === "/league-info"
+                      ? "border-orange-600 bg-orange-600 text-white shadow-lg shadow-orange-900/20"
+                      : "border-black/5 bg-black/5 hover:border-orange-600/30 hover:text-orange-600 dark:border-white/10 dark:bg-white/5"
+                  }`}
+                >
+                  <span className="mb-1 block text-[8px] opacity-40">{item.group}</span>
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </nav>
 
       <header className="px-4 pt-12 pb-8 text-center">
