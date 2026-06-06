@@ -114,7 +114,8 @@ export const retiredManagers: RetiredManager[] = [
     record: "49-47",
     championships: 0,
     podiums: 1,
-    bestFinish: "5th"
+    bestFinish: "2nd",
+    toiletBowls: 3
   },
   {
     shortName: "Zach",
@@ -130,7 +131,8 @@ export const retiredManagers: RetiredManager[] = [
     fantasyStart: 2011,
     championships: 0,
     podiums: 1, // 2011 3rd Place
-    bestFinish: "3rd"
+    bestFinish: "3rd",
+    toiletBowls: 1
   },
   {
     shortName: "Nicholas",
@@ -162,7 +164,7 @@ export const retiredManagers: RetiredManager[] = [
     fantasyStart: 2014,
     championships: 0,
     podiums: 0,
-    bestFinish: "N/A"
+    bestFinish: "11th"
   },
   {
     shortName: "Ricky",
@@ -179,7 +181,7 @@ export const retiredManagers: RetiredManager[] = [
     record: "6-6",
     championships: 0,
     podiums: 0,
-    bestFinish: "N/A"
+    bestFinish: "9th"
   },
   {
     shortName: "Patrick",
@@ -196,7 +198,7 @@ export const retiredManagers: RetiredManager[] = [
     record: "12-17",
     championships: 0,
     podiums: 0,
-    bestFinish: "N/A"
+    bestFinish: "4th"
   },
   {
     shortName: "Darren",
@@ -212,7 +214,7 @@ export const retiredManagers: RetiredManager[] = [
     fantasyStart: 2011,
     championships: 0,
     podiums: 0,
-    bestFinish: "N/A"
+    bestFinish: "10th"
   },
   {
     shortName: "Billy",
@@ -245,7 +247,7 @@ export const retiredManagers: RetiredManager[] = [
     fantasyStart: 2011,
     record: "17-16",
     championships: 0,
-    podiums: 0,
-    bestFinish: "4th"
+    podiums: 1,
+    bestFinish: "3rd"
   }
 ];

@@ -63,36 +63,37 @@ export default function ManagersPage() {
 
   return (
     <div className="min-h-screen w-full bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300">
-      <nav className="border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
-        <div className="flex items-center gap-4">
+      <nav className="border-b border-black/5 dark:border-white/10 px-4 sm:px-6 py-3 sm:py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
+        <div className="flex w-full items-center justify-between gap-4 sm:w-auto sm:justify-start">
           <Link
             href="/"
+            aria-label="Back to Home"
             className="p-2 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:scale-105 transition-all"
           >
             <Home size={18} />
           </Link>
 
           <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
-            <button onClick={() => setTheme("light")} className={`p-1.5 rounded-md transition-all ${theme === "light" ? "bg-white text-black shadow-sm" : "opacity-40"}`}>
+            <button type="button" aria-label="Use light theme" onClick={() => setTheme("light")} className={`p-1.5 rounded-md transition-all ${theme === "light" ? "bg-white text-black shadow-sm" : "opacity-40"}`}>
               <Sun size={14} />
             </button>
-            <button onClick={() => setTheme("dark")} className={`p-1.5 rounded-md transition-all ${theme === "dark" ? "bg-white/10 text-white shadow-sm" : "opacity-40"}`}>
+            <button type="button" aria-label="Use dark theme" onClick={() => setTheme("dark")} className={`p-1.5 rounded-md transition-all ${theme === "dark" ? "bg-white/10 text-white shadow-sm" : "opacity-40"}`}>
               <Moon size={14} />
             </button>
-            <button onClick={() => setTheme("system")} className={`p-1.5 rounded-md transition-all ${theme === "system" ? "bg-white/10 text-white shadow-sm" : "opacity-40"}`}>
+            <button type="button" aria-label="Use system theme" onClick={() => setTheme("system")} className={`p-1.5 rounded-md transition-all ${theme === "system" ? "bg-white/10 text-white shadow-sm" : "opacity-40"}`}>
               <Monitor size={14} />
             </button>
           </div>
         </div>
 
-        <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
-          <button onClick={() => setView("active")} className={`px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${view === "active" ? "bg-red-600 text-white shadow-lg" : "opacity-40"}`}>
+        <div className="grid w-full grid-cols-3 bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10 sm:flex sm:w-auto">
+          <button type="button" aria-pressed={view === "active"} onClick={() => setView("active")} className={`min-w-0 px-2 sm:px-4 py-2 sm:py-1.5 rounded-md text-[9px] sm:text-[10px] font-black uppercase transition-all ${view === "active" ? "bg-red-600 text-white shadow-lg" : "opacity-40"}`}>
             Active Owners
           </button>
-          <button onClick={() => setView("retired")} className={`px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${view === "retired" ? "bg-gray-600 text-white shadow-lg" : "opacity-40"}`}>
+          <button type="button" aria-pressed={view === "retired"} onClick={() => setView("retired")} className={`min-w-0 px-2 sm:px-4 py-2 sm:py-1.5 rounded-md text-[9px] sm:text-[10px] font-black uppercase transition-all ${view === "retired" ? "bg-gray-600 text-white shadow-lg" : "opacity-40"}`}>
             Hall of Fame
           </button>
-          <button onClick={() => setView("staff")} className={`px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${view === "staff" ? "bg-yellow-600 text-white shadow-lg" : "opacity-40"}`}>
+          <button type="button" aria-pressed={view === "staff"} onClick={() => setView("staff")} className={`min-w-0 px-2 sm:px-4 py-2 sm:py-1.5 rounded-md text-[9px] sm:text-[10px] font-black uppercase transition-all ${view === "staff" ? "bg-yellow-600 text-white shadow-lg" : "opacity-40"}`}>
             Staff
           </button>
         </div>

@@ -16,4 +16,5 @@ export const teamColors: Record<
   SF: { primary: "#AA0000", secondary: "#B3995D" },
   DET: { primary: "#0076B6", secondary: "#B0B7BC" },
   TB: { primary: "#D50A0A", secondary: "#0A0A08" },
+  PIT: { primary: "#101820", secondary: "#FFB612" },
 };

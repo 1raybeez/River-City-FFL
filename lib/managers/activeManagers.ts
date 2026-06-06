@@ -33,7 +33,7 @@ export const activeManagers = [
       "fullName": "Jeffrey Hudgins"
     },
     "championships": 0,
-    "podiums": 4,
+    "podiums": 3,
     "bestFinish": "3rd",
     "toiletBowls": 1,
     "tradeAggression": 9
@@ -65,7 +65,7 @@ export const activeManagers = [
     "record": "57-69",
     "currentWinnings": 30,
     "championships": 1,
-    "podiums": 6,
+    "podiums": 5,
     "bestFinish": "1st",
     "toiletBowls": 1,
     "tradeAggression": 5
@@ -100,7 +100,7 @@ export const activeManagers = [
       "fullName": "Landon Elliott"
     },
     "championships": 1,
-    "podiums": 2,
+    "podiums": 1,
     "bestFinish": "1st",
     "toiletBowls": 1,
     "tradeAggression": 7
@@ -132,7 +132,7 @@ export const activeManagers = [
     "record": "60-65",
     "currentWinnings": 0,
     "championships": 5,
-    "podiums": 8,
+    "podiums": 7,
     "bestFinish": "1st",
     "toiletBowls": 2,
     "tradeAggression": 10
@@ -165,8 +165,8 @@ export const activeManagers = [
     "currentWinnings": 0,
     "championships": 0,
     "podiums": 0,
-    "bestFinish": "12th",
-    "toiletBowls": 1,
+    "bestFinish": "6th",
+    "toiletBowls": 0,
     "tradeAggression": 2
   },
   {
@@ -231,7 +231,7 @@ export const activeManagers = [
     "championships": 0,
     "podiums": 1,
     "bestFinish": "3rd",
-    "toiletBowls": 1,
+    "toiletBowls": 0,
     "tradeAggression": 1
   },
   {
@@ -261,7 +261,7 @@ export const activeManagers = [
     "record": "58-65",
     "currentWinnings": 0,
     "championships": 0,
-    "podiums": 3,
+    "podiums": 2,
     "bestFinish": "2nd",
     "toiletBowls": 2,
     "tradeAggression": 4
@@ -294,7 +294,7 @@ export const activeManagers = [
     "currentWinnings": 0,
     "championships": 0,
     "podiums": 0,
-    "bestFinish": "12th",
+    "bestFinish": "5th",
     "toiletBowls": 1,
     "tradeAggression": 5
   },
@@ -389,7 +389,7 @@ export const activeManagers = [
     "record": "67-46",
     "currentWinnings": 0,
     "championships": 1,
-    "podiums": 4,
+    "podiums": 3,
     "bestFinish": "1st",
     "toiletBowls": 0,
     "tradeAggression": 7

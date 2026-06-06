@@ -28,7 +28,7 @@ avatar: "/managers/Aaron.png",
 
 sleeperId: "583513420586848256",
 
-favoriteTeam: "atl",
+favoriteTeam: "sf",
 
 bio: "The 2025 Champ. Fear the Nudas Priest."
 
@@ -42,7 +42,7 @@ avatar: "/managers/Brian.png",
 
 sleeperId: "343129212162523136",
 
-favoriteTeam: "nyj",
+favoriteTeam: "cle",
 
 bio: "Jets fan by choice, champion by nature."
 
@@ -56,7 +56,7 @@ avatar: "/managers/Dave.png",
 
 sleeperId: "466663208728391680",
 
-favoriteTeam: "cle",
+favoriteTeam: "det",
 
 bio: "The Schmendrick himself."
 
@@ -70,7 +70,7 @@ avatar: "/managers/Doug.jpg",
 
 sleeperId: "73400761740312576",
 
-favoriteTeam: "was",
+favoriteTeam: "nyg",
 
 bio: "Steady hands, consistent rosters."
 
@@ -84,7 +84,7 @@ avatar: "/managers/JD.png",
 
 sleeperId: "342850391018356736",
 
-favoriteTeam: "dal",
+favoriteTeam: "nyj",
 
 bio: "The 2020 Champion and resident Cowboys faithful."
 
@@ -112,7 +112,7 @@ avatar: "/managers/Landon.png",
 
 sleeperId: "469199353672626176",
 
-favoriteTeam: "min",
+favoriteTeam: "cle",
 
 bio: "Building the purple dynasty."
 
@@ -128,7 +128,7 @@ sleeperId: "342828350391230464",
 
 title: "Commish",
 
-favoriteTeam: "sf",
+favoriteTeam: "atl",
 
 bio: "The Commish. Managing the chaos since 2011."
 
@@ -156,7 +156,7 @@ avatar: "/managers/Rashad.png",
 
 sleeperId: "864186418971418624",
 
-favoriteTeam: "det",
+favoriteTeam: "was",
 
 bio: "The Lions are roaring."
 
@@ -170,7 +170,7 @@ avatar: "/managers/Stan.jpg",
 
 sleeperId: "1260048448384667648",
 
-favoriteTeam: "nyj",
+favoriteTeam: "gb",
 
 bio: "Veteran manager, elite strategist."
 
@@ -184,7 +184,7 @@ avatar: "/managers/Travis.png",
 
 sleeperId: "342831451382841344",
 
-favoriteTeam: "pit",
+favoriteTeam: "was",
 
 bio: "Steel City values, fantasy results."
 
@@ -214,7 +214,7 @@ sleeperId: "342838548870762496",
 
 title: "Asst. to the Commish",
 
-favoriteTeam: "sf",
+favoriteTeam: "car",
 
 bio: "The Witchdoctor. 2019 Champion."
 
@@ -232,7 +232,7 @@ avatar: "/managers/Damon.png",
 
 sleeperId: "737878619958947840",
 
-favoriteTeam: "car",
+favoriteTeam: "tb",
 
 bio: "Staff management and logistics."
 
@@ -250,7 +250,7 @@ avatar: "/managers/Adam.png",
 
 sleeperId: "556676922517524480",
 
-favoriteTeam: "min",
+favoriteTeam: "sf",
 
 bio: "Retired legend."
 
@@ -264,7 +264,7 @@ avatar: "/managers/Billy.png",
 
 sleeperId: "470428278931320832",
 
-favoriteTeam: "nyj",
+favoriteTeam: "atl",
 
 bio: "Past competitor."
 
@@ -276,7 +276,7 @@ name: "Bryan",
 
 avatar: "/managers/Bryan.png",
 
-favoriteTeam: "min",
+favoriteTeam: "was",
 
 bio: "Viking at heart."
 
@@ -290,7 +290,7 @@ avatar: "/managers/Chris.png",
 
 sleeperId: "345934777502699520",
 
-favoriteTeam: "was",
+favoriteTeam: "tb",
 
 bio: "Area 10 Veteran."
 
@@ -302,7 +302,7 @@ name: "Darren",
 
 avatar: null,
 
-favoriteTeam: "dal",
+favoriteTeam: "was",
 
 bio: "Retired owner."
 
@@ -314,7 +314,7 @@ name: "Garet",
 
 avatar: "/managers/Garet.png",
 
-favoriteTeam: "atl",
+favoriteTeam: "cle",
 
 bio: "The Prior dynasty legacy."
 
@@ -326,7 +326,7 @@ name: "Gordie",
 
 avatar: "/managers/Gordie.png",
 
-favoriteTeam: "min",
+favoriteTeam: "gb",
 
 bio: "Original 2011 Champion."
 
@@ -338,7 +338,7 @@ name: "James",
 
 avatar: "/managers/James.png",
 
-favoriteTeam: "nyj",
+favoriteTeam: "pit",
 
 bio: "Retired manager."
 
@@ -350,7 +350,7 @@ name: "Keith",
 
 avatar: "/managers/Keith.png",
 
-favoriteTeam: "cle",
+favoriteTeam: "was",
 
 bio: "Former title holder."
 
@@ -362,7 +362,7 @@ name: "Nicholas",
 
 avatar: "/managers/Nicholas.png",
 
-favoriteTeam: "sf",
+favoriteTeam: "gb",
 
 bio: "Retired owner."
 
@@ -372,11 +372,11 @@ bio: "Retired owner."
 
 name: "Patrick",
 
-avatar: "/managers/Patrick.png",
+avatar: "/managers/Patrick.jpg",
 
 sleeperId: "342831898403377152",
 
-favoriteTeam: "nyj",
+favoriteTeam: "was",
 
 bio: "Past league member."
 
@@ -402,7 +402,7 @@ avatar: "/managers/Ricky.png",
 
 sleeperId: "98907192333582336",
 
-favoriteTeam: "sf",
+favoriteTeam: "was",
 
 bio: "Legacy manager."
 

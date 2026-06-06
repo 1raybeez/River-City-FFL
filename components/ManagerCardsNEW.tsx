@@ -40,6 +40,7 @@ function ManagerCard({ m, isRetired, colors }: { m: any, isRetired: boolean, col
         >
           {/* FLIP BUTTON - Now Functional */}
           <button 
+            type="button"
             onClick={handleFlip}
             className="absolute top-4 right-4 z-30 bg-white/10 p-2.5 rounded-full backdrop-blur-md border border-white/20 opacity-100 hover:bg-white/20 transition-all cursor-pointer"
             aria-label="Flip Card"
@@ -162,8 +163,10 @@ function ManagerCard({ m, isRetired, colors }: { m: any, isRetired: boolean, col
         >
           {/* FLIP BACK BUTTON */}
           <button 
+            type="button"
             onClick={handleFlip}
             className="absolute top-4 right-4 z-30 bg-white/10 p-2.5 rounded-full backdrop-blur-md border border-white/20 opacity-100 cursor-pointer"
+            aria-label="Flip back to manager summary"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/>
