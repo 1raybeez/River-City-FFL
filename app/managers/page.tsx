@@ -5,7 +5,7 @@ import { useTheme } from "next-themes";
 import Link from "next/link";
 import { Home, Sun, Moon, Monitor } from "lucide-react";
 
-import ManagerCards from "@/components/ManagerCardsNEW";
+import ManagerPortraitCard from "@/components/ManagerPortraitCard";
 import { activeManagers } from "@/lib/managers/activeManagers";
 import { retiredManagers } from "@/lib/managers/retiredManagers";
 import { staffManagers } from "@/lib/managers/staff";
@@ -61,6 +61,60 @@ export default function ManagersPage() {
 
   if (!mounted) return null;
 
+  const sectionCopy = {
+    active: {
+      title: "League Owners",
+      accent: "border-red-600",
+      kicker: "Active Legends",
+      copy: "Current keepers of River City legacy, rivalries, and weekly chaos.",
+    },
+    retired: {
+      title: "Hall of Fame",
+      accent: "border-gray-600",
+      kicker: "Legacy Wing",
+      copy: "Former managers whose teams and seasons still live in the record books.",
+    },
+    staff: {
+      title: "Staff",
+      accent: "border-yellow-500",
+      kicker: "League Office",
+      copy: "The people who keep draft night, league culture, and the room moving.",
+    },
+  };
+
+  const renderPortraitWall = (
+    managers: any[],
+    group: "active" | "retired" | "staff"
+  ) => {
+    const section = sectionCopy[group];
+
+    return (
+      <section>
+        <div className={`mb-10 border-l-4 ${section.accent} pl-4`}>
+          <p className="mb-2 text-[10px] font-black uppercase tracking-[0.25em] text-gray-400">
+            {section.kicker}
+          </p>
+          <h2 className="text-4xl font-black uppercase italic">
+            {section.title}
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm font-medium text-gray-500 dark:text-gray-400">
+            {section.copy}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          {managers.map((manager) => (
+            <ManagerPortraitCard
+              key={manager.shortName}
+              manager={manager}
+              group={group}
+            />
+          ))}
+        </div>
+      </section>
+    );
+  };
+
   return (
     <div className="min-h-screen w-full bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300">
       <nav className="border-b border-black/5 dark:border-white/10 px-4 sm:px-6 py-3 sm:py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
@@ -100,26 +154,9 @@ export default function ManagersPage() {
       </nav>
 
       <main className="px-6 py-10 max-w-7xl mx-auto">
-        {view === "active" && (
-          <section>
-            <h2 className="text-4xl font-black uppercase italic mb-10 border-l-4 border-red-600 pl-4 tracking-tighter">League Owners</h2>
-            <ManagerCards managers={activeData} isRetired={false} />
-          </section>
-        )}
-
-        {view === "retired" && (
-          <section>
-            <h2 className="text-4xl font-black uppercase italic mb-10 border-l-4 border-gray-600 pl-4 tracking-tighter">Retired Legends</h2>
-            <ManagerCards managers={retiredManagers as any} isRetired={true} />
-          </section>
-        )}
-
-        {view === "staff" && (
-          <section>
-            <h2 className="text-4xl font-black uppercase italic mb-10 border-l-4 border-yellow-500 pl-4 tracking-tighter">Staff</h2>
-            <ManagerCards managers={staffManagers as any} isRetired={false} />
-          </section>
-        )}
+        {view === "active" && renderPortraitWall(activeData, "active")}
+        {view === "retired" && renderPortraitWall(retiredManagers as any, "retired")}
+        {view === "staff" && renderPortraitWall(staffManagers as any, "staff")}
       </main>
     </div>
   );
