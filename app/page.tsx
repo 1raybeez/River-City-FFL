@@ -7,7 +7,7 @@ import { useTheme } from "next-themes";
 import { 
   Trophy, Users, BookOpen, Swords, ArrowRight, 
   MessageCircle, TrendingUp, X, FileText, Calendar, Crown, Book,
-  CalendarDays, MapPin, Vote, Video, Gavel, UserCheck, Sun, Moon, Monitor, BrainCircuit
+  CalendarDays, MapPin, Video, UserCheck, Sun, Moon, Monitor, BrainCircuit
 } from 'lucide-react';
 
 // --- FIREBASE IMPORTS ---
@@ -48,6 +48,7 @@ export default function Home() {
   // --- AI PREDICTOR STATE ---
   const [predictorTeams, setPredictorTeams] = useState<any[]>([]);
   const [loadingPredictor, setLoadingPredictor] = useState(true);
+  const [predictorError, setPredictorError] = useState<string | null>(null);
 
   // --- RSVP STATE ---
   const [selectedManagerId, setSelectedManagerId] = useState("");
@@ -86,13 +87,23 @@ export default function Home() {
 
     async function loadPredictorData() {
         try {
+            setPredictorError(null);
             const [uRes, rRes, players] = await Promise.all([
                 fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID_2026}/users`),
                 fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID_2026}/rosters`),
                 getAllPlayers()
             ]);
+
+            if (!uRes.ok || !rRes.ok) {
+                throw new Error("Sleeper predictor request failed.");
+            }
+
             const users = await uRes.json();
             const rosters = await rRes.json();
+            if (!Array.isArray(users) || !Array.isArray(rosters) || rosters.length === 0) {
+                throw new Error("Predictor roster data is unavailable.");
+            }
+
             let total = 0;
             const scores = rosters.map((r: any) => {
                 const val = r.players?.reduce((acc: number, pId: string) => acc + (players[pId]?.totalValueScore || 0), 0) || 0;
@@ -102,11 +113,16 @@ export default function Home() {
                 const score = (val * 0.5) + (r.settings.fpts * 0.3) + (winPct * 1000);
                 total += score;
                 const user = users.find((u: any) => u.user_id === r.owner_id);
-                return { name: user?.metadata?.team_name || user?.display_name || 'Team', score };
+                return { name: user?.metadata?.team_name || user?.display_name || 'Team', score, rosterValue: val };
             });
             setPredictorTeams(scores.map((s: any) => ({ ...s, winProb: total > 0 ? (s.score / total) * 100 : 0 })).sort((a: any, b: any) => b.winProb - a.winProb));
+        } catch (e) {
+            console.error(e);
+            setPredictorError("Predictor data could not be loaded.");
+            setPredictorTeams([]);
+        } finally {
             setLoadingPredictor(false);
-        } catch (e) { console.error(e); }
+        }
     }
     loadPredictorData();
 
@@ -135,26 +151,23 @@ export default function Home() {
 
   const events = [
     { 
-      date: "March 21, 2026", event: "Spring Owners Meeting", desc: "9:30 AM start. Zoom Passcode: r727dL. Rule debates & Draft planning.", 
-      icon: Gavel, color: "orange", start: "20260321T093000", end: "20260321T110000",
-      link: "https://us04web.zoom.us/j/79182897961?pwd=fEGKPcKevhR5utbDk0K30nZzSI4yRg.1",
-      gCalLink: "https://www.google.com/calendar/render?action=TEMPLATE&text=River+City+FFL+Spring+Meeting&dates=20260321T143000Z/20260321T160000Z"
-    },
-    { 
-      date: "Mar 21 - Mar 28", event: "Official Voting Window", desc: "7-day window to cast ballots in the Legislative Hub before results lock.", 
-      icon: Vote, color: "red", start: "20260321T110000", end: "20260328T235959",
-      gCalLink: "https://www.google.com/calendar/render?action=TEMPLATE&text=FFL+Voting+Deadline&dates=20260321T160000Z/20260329T040000Z"
-    },
-    { 
-      date: "Sept 4 - Sept 7", event: "2026 Draft Weekend", desc: "Labor Day Weekend Draft. Final location TBD at Spring Meeting.", 
-      icon: MapPin, color: "emerald", start: "20260904T090000", end: "20260907T235900",
-      gCalLink: "https://www.google.com/calendar/render?action=TEMPLATE&text=River+City+FFL+Draft+Weekend&dates=20260904/20260908"
+      date: "August 29, 2026", event: "2026 Draft Day", desc: "10:00 AM - 3:00 PM. Location: TBD. The Legislative Hub is preparing for the 2027 Winter Owners Meeting.", 
+      icon: MapPin, color: "emerald", start: "20260829T100000", end: "20260829T150000",
+      link: "",
+      gCalLink: "https://calendar.app.google/QYqFqoGATsB9rkxb8"
     }
   ];
 
   if (!mounted) return null;
 
   const hasSelectedRsvp = rsvpList.some(r => r.id === selectedManagerId);
+  const predictorOddsAreEqual = predictorTeams.length > 1 && predictorTeams.every(
+    (team) => Math.abs((team.winProb ?? 0) - (predictorTeams[0].winProb ?? 0)) < 0.05
+  );
+  const predictorValuesAreZero = predictorTeams.length > 0 && predictorTeams.every(
+    (team) => (team.rosterValue ?? 0) === 0
+  );
+  const isPredictorPlaceholder = predictorTeams.length > 0 && (predictorOddsAreEqual || predictorValuesAreZero);
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-20 selection:bg-orange-500">
@@ -228,32 +241,52 @@ export default function Home() {
                 <BrainCircuit size={100} className="absolute -top-4 -right-4 opacity-5 group-hover:scale-110 transition-transform duration-500" />
                 
                 <div className="flex justify-between items-start mb-6">
-                    <div>
-                        <h3 className="text-xs font-black uppercase italic tracking-widest text-fuchsia-400">AI Predictor</h3>
-                        <p className="text-[10px] font-black uppercase opacity-40 italic">Championship Odds</p>
-                    </div>
+	                    <div>
+	                        <h3 className="text-xs font-black uppercase italic tracking-widest text-fuchsia-400">AI Predictor</h3>
+	                        <p className="text-[10px] font-black uppercase opacity-40 italic">
+	                          {isPredictorPlaceholder ? "Preseason outlook" : "Championship Odds"}
+	                        </p>
+	                    </div>
                     <TrendingUp size={16} className="text-fuchsia-500" />
                 </div>
 
-                <div className="space-y-4 mb-8">
-                    {loadingPredictor ? (
-                        <div className="animate-pulse flex items-center gap-2 opacity-20 font-black uppercase text-[10px]">Crunching Odds...</div>
-                    ) : (
-                        predictorTeams.slice(0, 5).map((team: any, idx: number) => (
-                            <Link key={idx} href="/predictor" className="flex items-center justify-between border-b border-white/5 pb-2 hover:bg-white/5 transition-colors group/row">
-                                <div className="flex items-center gap-3">
-                                    <span className="text-[10px] font-black opacity-30 italic">#{idx + 1}</span>
-                                    <span className="text-xs font-black uppercase italic truncate max-w-[140px] group-hover/row:text-fuchsia-400 transition-colors">{team.name}</span>
-                                </div>
-                                <span className="text-xs font-black text-fuchsia-400">{team.winProb.toFixed(1)}%</span>
-                            </Link>
-                        ))
-                    )}
-                </div>
+	                <div className="space-y-4 mb-8">
+	                    {loadingPredictor ? (
+	                        <div className="animate-pulse flex items-center gap-2 opacity-20 font-black uppercase text-[10px]">Crunching Odds...</div>
+	                    ) : predictorError ? (
+	                        <div className="rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/10 p-4 text-[10px] font-black uppercase tracking-widest text-fuchsia-200">
+	                            {predictorError}
+	                        </div>
+	                    ) : predictorTeams.length === 0 ? (
+	                        <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[10px] font-black uppercase tracking-widest text-white/40">
+	                            Predictor data unavailable.
+	                        </div>
+	                    ) : (
+	                        <>
+	                            {isPredictorPlaceholder && (
+	                                <div className="rounded-2xl border border-fuchsia-400/25 bg-fuchsia-400/10 p-4">
+	                                    <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-300">Preseason Placeholder</p>
+	                                    <p className="mt-2 text-[10px] font-bold uppercase leading-relaxed tracking-widest text-white/35">
+	                                        Odds are equalized until roster values, projections, and schedule strength are wired in.
+	                                    </p>
+	                                </div>
+	                            )}
+	                            {predictorTeams.slice(0, 5).map((team: any, idx: number) => (
+	                                <Link key={idx} href="/predictor" className="flex items-center justify-between border-b border-white/5 pb-2 hover:bg-white/5 transition-colors group/row">
+	                                    <div className="flex items-center gap-3">
+	                                        <span className="text-[10px] font-black opacity-30 italic">#{idx + 1}</span>
+	                                        <span className="text-xs font-black uppercase italic truncate max-w-[140px] group-hover/row:text-fuchsia-400 transition-colors">{team.name}</span>
+	                                    </div>
+	                                    <span className="text-xs font-black text-fuchsia-400">{team.winProb.toFixed(1)}%</span>
+	                                </Link>
+	                            ))}
+	                        </>
+	                    )}
+	                </div>
 
-                <Link href="/predictor" className="flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-fuchsia-400 transition-colors">
-                    See Full League Odds <ArrowRight size={14} />
-                </Link>
+	                <Link href="/predictor" className="flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-fuchsia-400 transition-colors">
+	                    {isPredictorPlaceholder ? "View Placeholder Odds" : "See Full League Odds"} <ArrowRight size={14} />
+	                </Link>
             </div>
           </div>
         </div>
@@ -265,7 +298,7 @@ export default function Home() {
                     <CalendarDays className="text-orange-600" size={40} />
                     <h2 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter leading-none">2026 Schedule</h2>
                 </div>
-                <p className="text-[10px] font-black opacity-30 uppercase tracking-[0.4em] ml-1">The Legislative & Draft Cycle</p>
+                <p className="text-[10px] font-black opacity-30 uppercase tracking-[0.4em] ml-1">Draft Day & 2027 Winter Meeting Prep</p>
             </div>
 
             <div className="bg-black/5 dark:bg-white/5 p-5 rounded-[2.5rem] border border-black/5 dark:border-white/10 flex flex-col lg:flex-row items-center gap-5 w-full md:w-auto shadow-xl">
@@ -308,10 +341,14 @@ export default function Home() {
             <div className="bg-white dark:bg-[#0a0a0a] w-full max-w-2xl rounded-[3rem] p-10 md:p-14 relative shadow-2xl border border-white/10" onClick={e => e.stopPropagation()}>
                 <button onClick={() => setShowHistoryModal(false)} className="absolute top-8 right-8 text-gray-400 hover:text-orange-600 transition-colors"><X size={32} /></button>
                 <div className="max-h-[75vh] overflow-y-auto space-y-8 pr-4 custom-scrollbar">
-                    <h3 className="text-4xl font-black uppercase italic tracking-tighter underline decoration-orange-600 decoration-8 underline-offset-4 mb-10">The Annals</h3>
+                    <h3 className="text-4xl font-black italic tracking-tighter underline decoration-orange-600 decoration-8 underline-offset-4 mb-10">Our History: From Roots to RVA</h3>
                     <div className="space-y-6 text-lg leading-relaxed opacity-70 italic font-medium">
-                        <p>Area 10 FFL was born in 2011, founded by a small group from Area 10 church with a simple goal: connect over fantasy football. As members moved, the bond held firm, leading to the 2019 rebrand to River City FFL.</p>
-                        <p>Tommy Moore reigns as the five-time king, while Landon Elliott holds the infamous record of three Toilet Bowl apologies. To this day, the league remains a testament to enduring Richmond friendships.</p>
+                        <p>Area 10 FFL was born in 2011, founded by a small group from Area 10 church with a simple goal: to create a community beyond Sunday services and small groups. It was a space for new members and longtime attendees to connect over a shared passion for fantasy football.</p>
+                        <p>As time passed, life happened. Core members moved away, but the bond forged over draft picks and weekly matchups held firm. In 2019, to keep our league together and honor our enduring friendships, we decided to rebrand. We shed the church affiliation and became River City FFL, a name that proudly ties us to the heart of Richmond, Virginia—the RVA.</p>
+                        <h4 className="text-2xl font-black uppercase tracking-tighter text-orange-600">The Stakes</h4>
+                        <p>Every season, our managers compete for a place in the record books. The ultimate champion walks away with a $219 payout, a custom championship ring, and all the bragging rights they can handle. So far, Tommy Moore is the one to beat, holding an impressive five league titles.</p>
+                        <p>But not every story has a happy ending. Our league has its own unique form of punishment: the Toilet Bowl. The loser is tasked with writing a cringe-worthy apology letter to the league, a tradition that started in 2022. No one knows this struggle better than Landon Elliott, who has endured this particular brand of humiliation a record three times.</p>
+                        <p>While the competition gets more intense each year, our core values of community and friendly rivalry remain the same. The trophy, the payout, and the shame are all just bonuses to the friendships we've built along the way.</p>
                     </div>
                 </div>
             </div>
