@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTheme } from "next-themes";
-import { ArrowLeft, Send, Home, Sun, Moon, Monitor, Gavel } from 'lucide-react';
+import { ArrowLeft, Send, Sun, Moon, Monitor, Gavel } from 'lucide-react';
 import { db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
@@ -24,6 +24,8 @@ const managers = [
   { name: "Travis Miller", id: "342831451382841344", img: "Travis.png" },
   { name: "Wade Cameron", id: "342838548870762496", img: "Wade.png" }
 ];
+
+const CURRENT_LEGISLATIVE_SESSION_YEAR = 2027;
 
 export default function NewProposalPage() {
   const router = useRouter();
@@ -47,6 +49,7 @@ export default function NewProposalPage() {
         // CORRECT PATH: No "public" prefix
         managerImage: `/managers/${selectedManager?.img}`, 
         sleeperId: selectedManager?.id,
+        sessionYear: CURRENT_LEGISLATIVE_SESSION_YEAR,
         status: 'active',
         votes: { yes: [], no: [] },
         createdAt: serverTimestamp()

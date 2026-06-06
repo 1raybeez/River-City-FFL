@@ -1,16 +1,21 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from "next-themes";
 import { 
   Home, Gavel, Check, X, Lock, Unlock, PlusCircle, Clock, 
-  Sun, Moon, Monitor, ShieldCheck
+  Sun, Moon, Monitor, ShieldCheck, Archive
 } from 'lucide-react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, doc, updateDoc, arrayUnion, getDoc } from "firebase/firestore";
 import { ratifyProposal } from "@/lib/legislativeLogic";
+import {
+  ArchivedProposal,
+  getArchiveSession,
+  LEGISLATIVE_ARCHIVE_YEARS,
+} from "@/lib/legislativeArchive";
 
 const managers = [
   { name: "Aaron Dogg", id: "583513420586848256" },
@@ -29,7 +34,8 @@ const managers = [
   { name: "Wade Cameron", id: "342838548870762496" }
 ];
 
-const MEETING_DATE = new Date('2026-03-20T20:30:00');
+const CURRENT_LEGISLATIVE_SESSION_YEAR = 2027;
+const MEETING_DATE = new Date(`${CURRENT_LEGISLATIVE_SESSION_YEAR}-03-20T20:30:00`);
 const VOTING_DEADLINE = new Date(MEETING_DATE.getTime() + 7 * 24 * 60 * 60 * 1000);
 
 export default function ProposalsPage() {
@@ -41,16 +47,27 @@ export default function ProposalsPage() {
   const [isOverrideOpen, setIsOverrideOpen] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [finalizeMessage, setFinalizeMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [selectedArchiveYear, setSelectedArchiveYear] = useState<number>(LEGISLATIVE_ARCHIVE_YEARS[0]);
+  const [selectedArchivedProposal, setSelectedArchivedProposal] = useState<ArchivedProposal | null>(null);
 
   // LOGIC: Voting is open if time is right OR manual override is toggled
   const isVotingOpen = (now >= MEETING_DATE && now <= VOTING_DEADLINE) || isOverrideOpen;
   const isVotingFinished = now > VOTING_DEADLINE && !isOverrideOpen;
   const isPreMeeting = now < MEETING_DATE && !isOverrideOpen;
-  const activeProposals = proposals.filter(
+  const currentSessionProposals = proposals.filter(
+    (proposal) => proposal.sessionYear === CURRENT_LEGISLATIVE_SESSION_YEAR
+  );
+  const activeProposals = currentSessionProposals.filter(
     (proposal) => String(proposal.status ?? "").toLowerCase() === "active"
   );
-  const finalizedProposals = proposals.filter((proposal) =>
+  const finalizedProposals = currentSessionProposals.filter((proposal) =>
     ["passed", "failed"].includes(String(proposal.status ?? "").toLowerCase())
+  );
+  const archiveSession = useMemo(() => getArchiveSession(selectedArchiveYear), [selectedArchiveYear]);
+  const archivedPassedProposals = archiveSession.proposals.filter((proposal) => proposal.status === "passed");
+  const archivedFailedProposals = archiveSession.proposals.filter((proposal) => proposal.status === "failed");
+  const archivedOtherProposals = archiveSession.proposals.filter((proposal) =>
+    ["tied", "unclear", "informational"].includes(proposal.status)
   );
 
   useEffect(() => { setMounted(true); }, []);
@@ -176,8 +193,69 @@ export default function ProposalsPage() {
     if (status === "failed") {
       return "border-red-600/20 bg-red-600/10 text-red-600";
     }
+    if (status === "tied") {
+      return "border-blue-600/20 bg-blue-600/10 text-blue-600";
+    }
+    if (status === "unclear") {
+      return "border-yellow-600/20 bg-yellow-600/10 text-yellow-600";
+    }
+    if (status === "informational") {
+      return "border-zinc-500/20 bg-zinc-500/10 text-zinc-500";
+    }
     return "border-orange-600/20 bg-orange-600/10 text-orange-600";
   };
+
+  const formatArchiveVoteTotal = (proposal: ArchivedProposal) => {
+    const yes = proposal.voteTotals?.yes;
+    const no = proposal.voteTotals?.no;
+    const absent = proposal.voteTotals?.absent;
+    if (typeof yes === "number" && typeof no === "number") {
+      return `${yes} Yes / ${no} No${typeof absent === "number" ? ` / ${absent} Absent` : ""}`;
+    }
+    if (typeof yes === "number") return `${yes} Yes`;
+    if (typeof no === "number") return `${no} No`;
+    if (proposal.winningOption) return `Winner: ${proposal.winningOption}`;
+    return "Vote total unavailable";
+  };
+
+  const renderArchivedProposalCard = (proposal: ArchivedProposal) => (
+    <button
+      key={proposal.id}
+      type="button"
+      onClick={() => setSelectedArchivedProposal(proposal)}
+      className="w-full rounded-[2rem] border border-black/5 bg-black/[0.03] p-6 text-left shadow-lg transition hover:-translate-y-0.5 hover:border-orange-600/30 hover:bg-orange-600/5 dark:border-white/10 dark:bg-white/[0.03]"
+    >
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="mb-2 text-[9px] font-black uppercase tracking-[0.25em] opacity-40">
+            {proposal.section ?? "General Business"}
+          </p>
+          <h4 className="text-xl font-black uppercase italic leading-none tracking-tighter text-orange-600">
+            {proposal.title}
+          </h4>
+        </div>
+        <span className={`w-fit rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-widest ${getStatusBadgeClass(proposal.status)}`}>
+          {proposal.status}
+        </span>
+      </div>
+      <p className="mb-5 line-clamp-3 text-sm font-bold leading-relaxed opacity-60">
+        {proposal.description}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-full bg-black/5 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest opacity-60 dark:bg-white/10">
+          {formatArchiveVoteTotal(proposal)}
+        </span>
+        {proposal.sponsor && (
+          <span className="rounded-full bg-black/5 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest opacity-60 dark:bg-white/10">
+            Sponsor: {proposal.sponsor}
+          </span>
+        )}
+        <span className="rounded-full bg-orange-600/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-orange-600">
+          Informational archive only
+        </span>
+      </div>
+    </button>
+  );
 
   const renderProposalCard = (prop: any, isActiveProposal: boolean) => {
     const yesCount = prop.votes?.yes?.length || 0;
@@ -271,6 +349,9 @@ export default function ProposalsPage() {
           Legislative <span className="text-orange-600">Hub</span>
         </h1>
         <p className="mt-4 text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Proposals, Voting & Amendments</p>
+        <p className="mt-3 text-[10px] font-black uppercase tracking-[0.35em] text-orange-600">
+          {CURRENT_LEGISLATIVE_SESSION_YEAR} Winter Owners Meeting
+        </p>
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-10">
@@ -337,7 +418,7 @@ export default function ProposalsPage() {
             activeProposals.map((prop) => renderProposalCard(prop, true))
           ) : (
             <div className="rounded-[2rem] border border-dashed border-black/10 dark:border-white/10 p-10 text-center text-xs font-black uppercase tracking-[0.2em] opacity-30">
-              No active proposals
+              No active proposals currently on the floor.
             </div>
           )}
 
@@ -349,8 +430,169 @@ export default function ProposalsPage() {
               {finalizedProposals.map((prop) => renderProposalCard(prop, false))}
             </div>
           )}
+
+          <section className="space-y-8 pt-10">
+            <div className="flex flex-col gap-5 border-b-2 border-black/10 pb-4 dark:border-white/10 md:flex-row md:items-end md:justify-between">
+              <div>
+                <div className="mb-2 flex items-center gap-2 text-orange-600">
+                  <Archive size={18} />
+                  <p className="text-[10px] font-black uppercase tracking-[0.25em]">Historical Records</p>
+                </div>
+                <h2 className="text-2xl font-black uppercase italic tracking-tighter">Session Archive</h2>
+                <p className="mt-2 text-xs font-bold uppercase tracking-widest opacity-40">Informational archive only</p>
+              </div>
+              <select
+                value={selectedArchiveYear}
+                onChange={(event) => setSelectedArchiveYear(Number(event.target.value))}
+                className="w-full rounded-2xl border border-black/10 bg-black/5 px-5 py-3 text-xs font-black uppercase outline-none dark:border-white/10 dark:bg-white/5 md:w-48"
+              >
+                {LEGISLATIVE_ARCHIVE_YEARS.map((year) => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-4">
+              <div className="rounded-2xl border border-black/5 bg-black/[0.03] p-5 dark:border-white/10 dark:bg-white/[0.03]">
+                <p className="text-[9px] font-black uppercase tracking-[0.25em] opacity-40">Total Proposals</p>
+                <p className="mt-2 text-3xl font-black tracking-tighter">{archiveSession.proposals.length}</p>
+              </div>
+              <div className="rounded-2xl border border-emerald-600/20 bg-emerald-600/10 p-5 text-emerald-600">
+                <p className="text-[9px] font-black uppercase tracking-[0.25em] opacity-70">Passed</p>
+                <p className="mt-2 text-3xl font-black tracking-tighter">{archivedPassedProposals.length}</p>
+              </div>
+              <div className="rounded-2xl border border-red-600/20 bg-red-600/10 p-5 text-red-600">
+                <p className="text-[9px] font-black uppercase tracking-[0.25em] opacity-70">Failed</p>
+                <p className="mt-2 text-3xl font-black tracking-tighter">{archivedFailedProposals.length}</p>
+              </div>
+              <div className="rounded-2xl border border-orange-600/20 bg-orange-600/10 p-5 text-orange-600">
+                <p className="text-[9px] font-black uppercase tracking-[0.25em] opacity-70">Other</p>
+                <p className="mt-2 text-3xl font-black tracking-tighter">{archivedOtherProposals.length}</p>
+              </div>
+            </div>
+
+            {archiveSession.notes && (
+              <div className="rounded-2xl border border-orange-600/20 bg-orange-600/10 p-4 text-xs font-bold leading-relaxed text-orange-700 dark:text-orange-400">
+                {archiveSession.notes}
+              </div>
+            )}
+
+            {archiveSession.proposals.length === 0 ? (
+              <div className="rounded-[2rem] border border-dashed border-black/10 p-10 text-center dark:border-white/10">
+                <p className="text-sm font-black uppercase tracking-[0.2em] opacity-40">No archived proposals digitized for {archiveSession.year}</p>
+                <p className="mx-auto mt-3 max-w-xl text-sm font-bold leading-relaxed opacity-50">
+                  This year is reserved in the Session Archive, but the local Master Archive import does not include proposal-level records yet.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-8 lg:grid-cols-2">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-black uppercase italic tracking-tighter text-emerald-600">Passed Proposals</h3>
+                  {archivedPassedProposals.length > 0 ? (
+                    archivedPassedProposals.map(renderArchivedProposalCard)
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-black/10 p-6 text-center text-[10px] font-black uppercase tracking-[0.2em] opacity-30 dark:border-white/10">
+                      No passed proposals recorded
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-4">
+                  <h3 className="text-lg font-black uppercase italic tracking-tighter text-red-600">Failed Proposals</h3>
+                  {archivedFailedProposals.length > 0 ? (
+                    archivedFailedProposals.map(renderArchivedProposalCard)
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-black/10 p-6 text-center text-[10px] font-black uppercase tracking-[0.2em] opacity-30 dark:border-white/10">
+                      No failed proposals recorded
+                    </div>
+                  )}
+                </div>
+                {archivedOtherProposals.length > 0 && (
+                  <div className="space-y-4 lg:col-span-2">
+                    <h3 className="text-lg font-black uppercase italic tracking-tighter text-orange-600">Tied, Unclear & Informational Items</h3>
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      {archivedOtherProposals.map(renderArchivedProposalCard)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
         </div>
       </main>
+
+      {selectedArchivedProposal && (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm sm:items-center">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] border border-black/10 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#111] sm:p-8">
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.25em] text-orange-600">
+                  {selectedArchivedProposal.year} Session Archive
+                </p>
+                <h3 className="text-3xl font-black uppercase italic leading-none tracking-tighter text-orange-600">
+                  {selectedArchivedProposal.title}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedArchivedProposal(null)}
+                className="rounded-full border border-black/10 bg-black/5 p-2 transition hover:scale-105 dark:border-white/10 dark:bg-white/5"
+                aria-label="Close archive proposal details"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mb-6 flex flex-wrap gap-2">
+              <span className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-widest ${getStatusBadgeClass(selectedArchivedProposal.status)}`}>
+                {selectedArchivedProposal.status}
+              </span>
+              <span className="rounded-full bg-black/5 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest opacity-60 dark:bg-white/10">
+                {formatArchiveVoteTotal(selectedArchivedProposal)}
+              </span>
+              {selectedArchivedProposal.section && (
+                <span className="rounded-full bg-black/5 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest opacity-60 dark:bg-white/10">
+                  {selectedArchivedProposal.section}
+                </span>
+              )}
+              {selectedArchivedProposal.sponsor && (
+                <span className="rounded-full bg-black/5 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest opacity-60 dark:bg-white/10">
+                  Sponsor: {selectedArchivedProposal.sponsor}
+                </span>
+              )}
+              <span className="rounded-full bg-black/5 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest opacity-60 dark:bg-white/10">
+                Source: {selectedArchivedProposal.sourceFile}
+              </span>
+              <span className="rounded-full bg-orange-600/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-orange-600">
+                Informational archive only
+              </span>
+            </div>
+
+            <div className="rounded-3xl border-l-4 border-orange-600 bg-black/5 p-6 text-sm font-bold leading-relaxed opacity-75 dark:bg-black/40">
+              {selectedArchivedProposal.description}
+            </div>
+
+            {selectedArchivedProposal.options && selectedArchivedProposal.options.length > 0 && (
+              <div className="mt-6 rounded-2xl border border-black/5 bg-black/[0.03] p-4 dark:border-white/10 dark:bg-white/[0.03]">
+                <p className="mb-3 text-[10px] font-black uppercase tracking-[0.25em] opacity-40">Recorded Options</p>
+                <div className="space-y-2">
+                  {selectedArchivedProposal.options.map((option) => (
+                    <div key={option.label} className="flex items-start justify-between gap-4 text-xs font-bold">
+                      <span className="opacity-60">{option.label}</span>
+                      <span className="shrink-0 text-orange-600">{option.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {selectedArchivedProposal.notes && (
+              <p className="mt-6 rounded-2xl border border-black/5 bg-black/[0.03] p-4 text-xs font-bold leading-relaxed opacity-60 dark:border-white/10 dark:bg-white/[0.03]">
+                {selectedArchivedProposal.notes}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
