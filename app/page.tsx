@@ -90,6 +90,8 @@ export default function Home() {
 
   useEffect(() => {
     setMounted(true);
+
+    // TODO: Future Commish Corner = Generate Draft -> Review/Edit -> Publish -> Home displays latest published article.
     async function fetchRecap() {
       try {
         const docSnap = await getDoc(doc(db, "siteContent", "recap")); 
@@ -270,6 +272,7 @@ export default function Home() {
             <div className="bg-[#0b1527] text-white p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden border border-white/10 group">
                 <MessageCircle size={100} className="absolute -top-4 -right-4 opacity-5 group-hover:scale-110 transition-transform" />
                 <h3 className="text-xs font-black uppercase italic tracking-widest text-blue-400 mb-4">Commish Corner</h3>
+                <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-white/35">Manual commissioner briefing</p>
                 <h4 className="text-3xl font-black uppercase italic mb-4 leading-none">2026 Draft Briefing</h4>
                 <p className="text-sm text-white/50 italic mb-8 leading-relaxed line-clamp-3">{liveRecap}</p>
                 <button onClick={() => setShowRecap(true)} className="w-full bg-blue-600 text-white text-[10px] font-black uppercase py-4 rounded-2xl hover:bg-blue-500 transition-all italic tracking-widest">Read Full Story</button>
@@ -433,7 +436,8 @@ export default function Home() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm animate-in fade-in" onClick={() => setShowRecap(false)}>
             <div className="bg-[#0b1527] w-full max-w-lg rounded-[2.5rem] p-10 border border-blue-500/30 text-white relative" onClick={e => e.stopPropagation()}>
                 <button onClick={() => setShowRecap(false)} className="absolute top-6 right-6 opacity-40 hover:opacity-100"><X size={24} /></button>
-                <div className="flex items-center gap-3 mb-8"><MessageCircle className="text-blue-400" size={32} /><h3 className="text-2xl font-black uppercase italic tracking-tighter">Commish Recap</h3></div>
+                <div className="flex items-center gap-3 mb-3"><MessageCircle className="text-blue-400" size={32} /><h3 className="text-2xl font-black uppercase italic tracking-tighter">Latest Commissioner Briefing</h3></div>
+                <p className="mb-8 text-[10px] font-black uppercase tracking-[0.2em] text-white/35">Manual recap from siteContent/recap.text</p>
                 <div className="text-sm italic text-white/70 whitespace-pre-wrap leading-loose max-h-[50vh] overflow-y-auto pr-4 custom-scrollbar">{liveRecap}</div>
             </div>
         </div>
