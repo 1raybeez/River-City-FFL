@@ -5,8 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from "next-themes";
 import { 
-  Trophy, Users, BookOpen, Swords, ArrowRight, 
-  MessageCircle, TrendingUp, X, FileText, Calendar, Crown, Book, Menu,
+  ArrowRight, 
+  MessageCircle, TrendingUp, X, Calendar, Book, Menu,
   CalendarDays, MapPin, Video, UserCheck, Sun, Moon, Monitor, BrainCircuit
 } from 'lucide-react';
 
@@ -16,9 +16,9 @@ import { doc, getDoc, collection, onSnapshot, setDoc, serverTimestamp } from "fi
 import { getAllPlayers } from '@/lib/sleeper'; 
 
 // --- CONFIGURATION ---
-const COMMISH_ID = "342828350391230464"; 
-const CURRENT_YEAR = 2025; 
 const LEAGUE_ID_2026 = "1312149033254416384";
+const RECAP_LOADING_TEXT = "Loading latest league note...";
+const RECAP_FALLBACK_TEXT = "Commish recap could not be loaded. Check back soon for the latest league update.";
 
 // UPDATED: Removed Jeffrey Hudgins and Landon Elliott (Co-owners)
 const managers = [
@@ -45,15 +45,22 @@ const mobileNavLinks = [
   { label: "Payouts", href: "/league-info/payouts", group: "League Info" },
 ];
 
+const homeShortcutLinks = [
+  { label: "League Info Hub", href: "/league-info", group: "Core" },
+  { label: "Managers", href: "/managers", group: "Core" },
+  { label: "Matchups", href: "/matchups", group: "Core" },
+  { label: "Draft Board", href: "/league-info/draft", group: "League Info" },
+  { label: "Legislative Hub", href: "/commish/proposals", group: "League Info" },
+  { label: "Payouts", href: "/league-info/payouts", group: "League Info" },
+];
+
 export default function Home() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [showRecap, setShowRecap] = useState(false);
-  const [showProjections, setShowProjections] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false); 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [projections, setProjections] = useState<any[]>([]);
-  const [liveRecap, setLiveRecap] = useState("Loading latest trash talk..."); 
+  const [liveRecap, setLiveRecap] = useState(RECAP_LOADING_TEXT); 
 
   // --- AI PREDICTOR STATE ---
   const [predictorTeams, setPredictorTeams] = useState<any[]>([]);
@@ -86,8 +93,17 @@ export default function Home() {
     async function fetchRecap() {
       try {
         const docSnap = await getDoc(doc(db, "siteContent", "recap")); 
-        if (docSnap.exists()) setLiveRecap(docSnap.data().text); 
-      } catch (err) { console.error(err); }
+        if (!docSnap.exists()) {
+          setLiveRecap(RECAP_FALLBACK_TEXT);
+          return;
+        }
+
+        const recapText = docSnap.data().text;
+        setLiveRecap(typeof recapText === "string" && recapText.trim() ? recapText : RECAP_FALLBACK_TEXT);
+      } catch (err) {
+        console.error(err);
+        setLiveRecap(RECAP_FALLBACK_TEXT);
+      }
     }
     fetchRecap();
     
@@ -136,13 +152,6 @@ export default function Home() {
     }
     loadPredictorData();
 
-    setProjections([
-      { name: "Aaron Hawkins", status: "Champion", rank: 1 },
-      { name: "Travis Miller", status: "Runner Up", rank: 2 },
-      { name: "JD Dowling", status: "3rd Place", rank: 3 },
-      { name: "Ray Long", status: "Toilet Bowl", rank: 12 }
-    ]);
-
     return () => unsubRsvp();
   }, []);
 
@@ -162,7 +171,7 @@ export default function Home() {
   const events = [
     { 
       date: "August 29, 2026", event: "2026 Draft Day", desc: "10:00 AM - 3:00 PM. Location: TBD. The Legislative Hub is preparing for the 2027 Winter Owners Meeting.", 
-      icon: MapPin, color: "emerald", start: "20260829T100000", end: "20260829T150000",
+      icon: MapPin, start: "20260829T100000", end: "20260829T150000",
       link: "",
       gCalLink: "https://calendar.app.google/QYqFqoGATsB9rkxb8"
     }
@@ -261,7 +270,7 @@ export default function Home() {
             <div className="bg-[#0b1527] text-white p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden border border-white/10 group">
                 <MessageCircle size={100} className="absolute -top-4 -right-4 opacity-5 group-hover:scale-110 transition-transform" />
                 <h3 className="text-xs font-black uppercase italic tracking-widest text-blue-400 mb-4">Commish Corner</h3>
-                <h4 className="text-3xl font-black uppercase italic mb-4 leading-none">2026: The New Era</h4>
+                <h4 className="text-3xl font-black uppercase italic mb-4 leading-none">2026 Draft Briefing</h4>
                 <p className="text-sm text-white/50 italic mb-8 leading-relaxed line-clamp-3">{liveRecap}</p>
                 <button onClick={() => setShowRecap(true)} className="w-full bg-blue-600 text-white text-[10px] font-black uppercase py-4 rounded-2xl hover:bg-blue-500 transition-all italic tracking-widest">Read Full Story</button>
             </div>
@@ -337,6 +346,25 @@ export default function Home() {
           </div>
         </div>
 
+        <section aria-label="Home shortcuts" className="mb-20">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {homeShortcutLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`rounded-2xl border px-4 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${
+                  item.href === "/league-info"
+                    ? "border-orange-600 bg-orange-600 text-white shadow-lg shadow-orange-900/20"
+                    : "border-black/5 bg-black/5 hover:border-orange-600/30 hover:text-orange-600 dark:border-white/10 dark:bg-white/5"
+                }`}
+              >
+                <span className="mb-1 block text-[8px] opacity-40">{item.group}</span>
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </section>
+
         <section className="mt-24 border-t border-black/5 dark:border-white/10 pt-16">
           <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-12 px-2">
             <div>
@@ -407,15 +435,6 @@ export default function Home() {
                 <button onClick={() => setShowRecap(false)} className="absolute top-6 right-6 opacity-40 hover:opacity-100"><X size={24} /></button>
                 <div className="flex items-center gap-3 mb-8"><MessageCircle className="text-blue-400" size={32} /><h3 className="text-2xl font-black uppercase italic tracking-tighter">Commish Recap</h3></div>
                 <div className="text-sm italic text-white/70 whitespace-pre-wrap leading-loose max-h-[50vh] overflow-y-auto pr-4 custom-scrollbar">{liveRecap}</div>
-            </div>
-        </div>
-      )}
-
-      {showProjections && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 animate-in fade-in" onClick={() => setShowProjections(false)}>
-            <div className="bg-white dark:bg-[#0a0a0a] w-full max-w-lg rounded-[2.5rem] overflow-hidden border border-white/10" onClick={e => e.stopPropagation()}>
-                <div className="p-6 bg-purple-900 text-white flex justify-between items-center"><h3 className="text-xl font-black uppercase italic tracking-widest">2025 Final Standings</h3><button onClick={() => setShowProjections(false)}><X size={24} /></button></div>
-                <div className="p-4"><table className="w-full text-left text-sm"><tbody className="divide-y divide-black/5 dark:divide-white/5">{projections.map(team => (<tr key={team.rank} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors"><td className="py-4 font-mono opacity-40">#{team.rank}</td><td className="py-4 font-black uppercase italic text-orange-600">{team.name}</td><td className="py-4 text-right uppercase font-black text-xs opacity-60 tracking-widest">{team.status}</td></tr>))}</tbody></table></div>
             </div>
         </div>
       )}
