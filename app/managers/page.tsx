@@ -69,10 +69,10 @@ export default function ManagersPage() {
       copy: "Current keepers of River City legacy, rivalries, and weekly chaos.",
     },
     retired: {
-      title: "Hall of Fame",
+      title: "Retired Owners",
       accent: "border-gray-600",
       kicker: "Legacy Wing",
-      copy: "Former managers whose teams and seasons still live in the record books.",
+      copy: "Former owners whose teams and seasons still live in the record books.",
     },
     staff: {
       title: "Staff",
@@ -145,7 +145,7 @@ export default function ManagersPage() {
             Active Owners
           </button>
           <button type="button" aria-pressed={view === "retired"} onClick={() => setView("retired")} className={`min-w-0 px-2 sm:px-4 py-2 sm:py-1.5 rounded-md text-[9px] sm:text-[10px] font-black uppercase transition-all ${view === "retired" ? "bg-gray-600 text-white shadow-lg" : "opacity-40"}`}>
-            Hall of Fame
+            Retired Owners
           </button>
           <button type="button" aria-pressed={view === "staff"} onClick={() => setView("staff")} className={`min-w-0 px-2 sm:px-4 py-2 sm:py-1.5 rounded-md text-[9px] sm:text-[10px] font-black uppercase transition-all ${view === "staff" ? "bg-yellow-600 text-white shadow-lg" : "opacity-40"}`}>
             Staff
