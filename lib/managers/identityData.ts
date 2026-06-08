@@ -56,6 +56,20 @@ const fullNameByShortName = new Map<string, string>(
 );
 fullNameByShortName.set("Jeffrey", "Jeffrey Hudgins");
 
+const FAVORITE_PLAYER_NAMES: Record<number, string> = {
+  254: "Darrelle Revis",
+  1181: "Luke Kuechly",
+  3973: "Myles Garrett",
+  4073: "Taco Charlton",
+  4137: "James Conner",
+  5991: "Maxx Crosby",
+  6794: "Justin Jefferson",
+  8161: "Malik Willis",
+  9509: "Bijan Robinson",
+  12481: "Cam Skattebo",
+  12508: "Jaxson Dart",
+};
+
 function slugify(value: string) {
   return value
     .toLowerCase()
@@ -105,12 +119,22 @@ function getRivalName(manager: RawManagerRecord) {
   return typeof name === "string" ? name : undefined;
 }
 
+function getRivalImage(manager: RawManagerRecord) {
+  const rival = asRecord(manager).rival;
+
+  if (!rival || typeof rival !== "object") return undefined;
+
+  const image = (rival as Record<string, unknown>).image;
+  return typeof image === "string" ? image : undefined;
+}
+
 function getStartSeason(manager: RawManagerRecord) {
   return getNumber(manager, "tookOver") ?? getNumber(manager, "fantasyStart") ?? 2011;
 }
 
 function buildSurveyProfile(manager: RawManagerRecord): OwnerSurveyProfile {
   const rivalName = getRivalName(manager);
+  const favoritePlayerId = getNumber(manager, "favoritePlayer");
   const tradeAggression =
     getNumber(manager, "tradeAggression") ??
     RETIRED_TRADE_SCORES[manager.fullName];
@@ -125,9 +149,13 @@ function buildSurveyProfile(manager: RawManagerRecord): OwnerSurveyProfile {
     bio: manager.bio,
     philosophy: manager.philosophy,
     favoriteNflTeam: getString(manager, "favoriteTeam") as TeamCode | undefined,
-    favoritePlayerId: getNumber(manager, "favoritePlayer"),
+    favoritePlayerId,
+    favoritePlayerName: favoritePlayerId
+      ? FAVORITE_PLAYER_NAMES[favoritePlayerId]
+      : undefined,
     rivalOwnerId: rivalName ? ownerIdFromShortName(rivalName) : undefined,
     rivalName,
+    rivalImage: getRivalImage(manager),
     valuePosition: getString(manager, "valuePosition") as ValuePosition | undefined,
     draftPreference: getString(manager, "rookieOrVets") as
       | DraftPreference

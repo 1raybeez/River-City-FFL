@@ -40,14 +40,21 @@ export interface Matchup {
   [key: string]: unknown;
 }
 
+export interface BracketSource {
+  w?: number | null;
+  l?: number | null;
+}
+
 export interface BracketMatch {
   r?: number;
   m?: number;
-  t1?: number;
-  t2?: number;
-  w?: number;
-  l?: number;
+  t1?: number | null;
+  t2?: number | null;
+  w?: number | null;
+  l?: number | null;
   p?: number;
+  t1_from?: BracketSource | null;
+  t2_from?: BracketSource | null;
   [key: string]: unknown;
 }
 
@@ -55,6 +62,10 @@ export interface LeagueInfo {
   settings: {
     leg: number;
     playoff_week_start?: number;
+    playoff_teams?: number;
+    playoff_seed_type?: number | null;
+    playoff_round_type?: number | null;
+    playoff_type?: number | null;
     [key: string]: unknown;
   };
   [key: string]: unknown;

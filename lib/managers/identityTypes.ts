@@ -51,8 +51,10 @@ export interface OwnerSurveyProfile {
   philosophy?: string;
   favoriteNflTeam?: TeamCode;
   favoritePlayerId?: number;
+  favoritePlayerName?: string;
   rivalOwnerId?: string;
   rivalName?: string;
+  rivalImage?: string;
   valuePosition?: ValuePosition;
   draftPreference?: DraftPreference;
   teamBuildingMode?: string;

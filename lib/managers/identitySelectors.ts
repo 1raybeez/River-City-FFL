@@ -31,6 +31,15 @@ export type ProfileTimelineItem = {
   detail?: string;
 };
 
+export type ProfileRelationship = {
+  ownerId: string;
+  fullName: string;
+  roleLabel: string;
+  detail: string;
+  franchiseName: string;
+  href?: string;
+};
+
 export type OwnerProfileViewModel = {
   owner: OwnerProfile;
   heroFranchise?: Franchise;
@@ -41,7 +50,8 @@ export type OwnerProfileViewModel = {
   statSummaries: FranchiseStatSummary[];
   statusLabel: string;
   primaryTeamLabel: string;
-  coOwnerDisplay: string[];
+  coOwnerDisplay: ProfileRelationship[];
+  rivalProfilePath?: string;
   yearsActiveLabel: string;
   timeline: ProfileTimelineItem[];
 };
@@ -68,6 +78,11 @@ function formatRole(role: OwnershipRole) {
   if (role === OwnershipRole.CoOwner) return "Co-owner";
   if (role === OwnershipRole.LegacyOwner) return "Retired Owner Legacy";
   return "League Staff";
+}
+
+function getOwnerProfilePath(ownerId: string) {
+  const owner = ownerProfilesById[ownerId];
+  return owner ? `/managers/owners/${owner.slug}` : undefined;
 }
 
 function formatTenureYears(tenure: OwnershipTenure) {
@@ -125,6 +140,60 @@ function buildRelatedOwnerLabels(ownerId: string, franchise?: Franchise) {
   }
 
   return labels;
+}
+
+function getRelationshipTiming(franchiseId: string) {
+  if (franchiseId === "prestigio-mundial") return "Co-owners since 2013";
+  if (franchiseId === "shake-n-bakers") return "Co-owner since 2025-2026";
+  return "Current ownership relationship";
+}
+
+function buildCoOwnerRelationships(
+  ownerId: string,
+  currentTenures: ProfileTenure[]
+) {
+  const relationships = new Map<string, ProfileRelationship>();
+
+  currentTenures.forEach((tenure) => {
+    const franchise = tenure.franchise;
+    if (!franchise) return;
+
+    const franchiseName = franchise.currentTeamName;
+    const addRelationship = (relatedOwnerId: string, roleLabel: string) => {
+      const relatedOwner = ownerProfilesById[relatedOwnerId];
+      if (!relatedOwner) return;
+
+      relationships.set(`${tenure.franchiseId}-${relatedOwnerId}`, {
+        ownerId: relatedOwnerId,
+        fullName: relatedOwner.fullName,
+        roleLabel,
+        detail: getRelationshipTiming(tenure.franchiseId),
+        franchiseName,
+        href: getOwnerProfilePath(relatedOwnerId),
+      });
+    };
+
+    if (franchise.primaryOwnerIds.includes(ownerId)) {
+      franchise.coOwnerIds
+        .filter((relatedOwnerId) => relatedOwnerId !== ownerId)
+        .forEach((relatedOwnerId) => addRelationship(relatedOwnerId, "Co-owner"));
+      return;
+    }
+
+    if (franchise.coOwnerIds.includes(ownerId)) {
+      franchise.primaryOwnerIds
+        .filter((relatedOwnerId) => relatedOwnerId !== ownerId)
+        .forEach((relatedOwnerId) =>
+          addRelationship(relatedOwnerId, "Primary owner")
+        );
+
+      franchise.coOwnerIds
+        .filter((relatedOwnerId) => relatedOwnerId !== ownerId)
+        .forEach((relatedOwnerId) => addRelationship(relatedOwnerId, "Co-owner"));
+    }
+  });
+
+  return Array.from(relationships.values());
 }
 
 function buildProfileTenure(ownerId: string, tenure: OwnershipTenure) {
@@ -317,6 +386,9 @@ export function getOwnerProfileViewModelBySlug(
     .filter((franchise): franchise is Franchise => Boolean(franchise));
   const statSummaries = getOwnerStatSummaries(owner.id);
   const heroFranchise = currentFranchises[0] ?? legacyFranchises[0];
+  const rivalProfilePath = owner.survey.rivalOwnerId
+    ? getOwnerProfilePath(owner.survey.rivalOwnerId)
+    : undefined;
 
   return {
     owner,
@@ -328,7 +400,8 @@ export function getOwnerProfileViewModelBySlug(
     statSummaries,
     statusLabel: getStatusLabel(owner, currentTenures),
     primaryTeamLabel: getPrimaryTeamLabel(heroFranchise, tenures),
-    coOwnerDisplay: currentTenures.flatMap((tenure) => tenure.relatedOwnerLabels),
+    coOwnerDisplay: buildCoOwnerRelationships(owner.id, currentTenures),
+    rivalProfilePath,
     yearsActiveLabel: getYearsActiveLabel(tenures),
     timeline: buildTimeline(owner, tenures, statSummaries),
   };

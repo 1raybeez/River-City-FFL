@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
+  ArrowRight,
   Award,
   Crown,
   Flame,
@@ -18,9 +19,11 @@ import { teamColors } from "@/lib/themes/teamColors";
 import {
   AccomplishmentAttribution,
   type FranchiseStatSummary,
+  type OwnerSurveyProfile,
 } from "@/lib/managers/identityTypes";
 import type {
   OwnerProfileViewModel,
+  ProfileRelationship,
   ProfileTenure,
 } from "@/lib/managers/identitySelectors";
 
@@ -49,6 +52,12 @@ function getAccentColor(profile: OwnerProfileViewModel) {
 function getNflTeamLabel(teamCode?: string) {
   if (!teamCode) return "Not on file";
   return NFL_TEAM_NAMES[teamCode] ?? teamCode;
+}
+
+function getFavoritePlayerLabel(survey: OwnerSurveyProfile) {
+  if (survey.favoritePlayerName) return survey.favoritePlayerName;
+  if (survey.favoritePlayerId) return "Player on file";
+  return "Not on file";
 }
 
 function getStatLabel(summary: FranchiseStatSummary) {
@@ -132,6 +141,48 @@ function SectionShell({
   );
 }
 
+function CoOwnerRelationshipCard({
+  relationship,
+  accentColor,
+}: {
+  relationship: ProfileRelationship;
+  accentColor: string;
+}) {
+  const content = (
+    <div
+      className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-black/10 bg-black/[0.03] px-4 py-3 text-left transition hover:bg-black/[0.05] dark:border-white/10 dark:bg-white/[0.06] dark:hover:bg-white/[0.08]"
+      style={{ borderLeftColor: accentColor, borderLeftWidth: 4 }}
+    >
+      <div className="min-w-0">
+        <p className="text-[10px] font-black uppercase tracking-widest text-black/40 dark:text-white/40">
+          {relationship.roleLabel}
+        </p>
+        <p className="mt-1 truncate text-sm font-black uppercase">
+          {relationship.fullName}
+        </p>
+        <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-black/45 dark:text-white/45">
+          {relationship.detail}
+        </p>
+      </div>
+      {relationship.href && (
+        <ArrowRight className="h-4 w-4 shrink-0 text-black/35 dark:text-white/35" />
+      )}
+    </div>
+  );
+
+  if (!relationship.href) return content;
+
+  return (
+    <Link
+      href={relationship.href}
+      aria-label={`View ${relationship.fullName} profile`}
+      className="block min-w-0 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-4 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#121212]"
+    >
+      {content}
+    </Link>
+  );
+}
+
 function HeroSection({ profile }: { profile: OwnerProfileViewModel }) {
   const { owner } = profile;
   const accentColor = getAccentColor(profile);
@@ -194,14 +245,13 @@ function HeroSection({ profile }: { profile: OwnerProfileViewModel }) {
           </p>
 
           {profile.coOwnerDisplay.length > 0 && (
-            <div className="mt-6 flex flex-wrap gap-2">
-              {profile.coOwnerDisplay.map((label) => (
-                <span
-                  key={label}
-                  className="rounded-md border border-black/10 bg-black/[0.03] px-3 py-2 text-[10px] font-black uppercase tracking-widest text-black/60 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/60"
-                >
-                  {label}
-                </span>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              {profile.coOwnerDisplay.map((relationship) => (
+                <CoOwnerRelationshipCard
+                  key={`${relationship.ownerId}-${relationship.franchiseName}`}
+                  relationship={relationship}
+                  accentColor={accentColor}
+                />
               ))}
             </div>
           )}
@@ -366,11 +416,7 @@ function Personality({ profile }: { profile: OwnerProfileViewModel }) {
         />
         <PersonalityField
           label="Favorite Player"
-          value={
-            survey.favoritePlayerId
-              ? `Sleeper player #${survey.favoritePlayerId}`
-              : "Not on file"
-          }
+          value={getFavoritePlayerLabel(survey)}
         />
         <PersonalityField
           label="Team Mode"
@@ -435,28 +481,58 @@ function PersonalityField({ label, value }: { label: string; value: string }) {
 }
 
 function Rivalry({ profile }: { profile: OwnerProfileViewModel }) {
-  const rivalName = profile.owner.survey.rivalName;
+  const { rivalImage, rivalName } = profile.owner.survey;
 
   return (
     <SectionShell title="Rivalry" icon={<Swords size={16} />}>
       {rivalName ? (
-        <div>
-          <p className="text-2xl font-black uppercase italic">{rivalName}</p>
-          <p className="mt-2 text-sm font-medium leading-7 text-black/55 dark:text-white/55">
-            Primary rival on the owner survey.
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-black/10 bg-black/10 dark:border-white/10 dark:bg-white/10">
+            {rivalImage ? (
+              <Image
+                src={rivalImage}
+                alt={`${rivalName} avatar`}
+                fill
+                sizes="56px"
+                className="object-cover"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-xl font-black text-black/30 dark:text-white/30">
+                {rivalName[0]}
+              </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-2xl font-black uppercase italic">
+              {rivalName}
+            </p>
+            <p className="mt-1 text-sm font-medium leading-7 text-black/55 dark:text-white/55">
+              Primary rival on the owner survey.
+            </p>
+          </div>
         </div>
       ) : (
         <p className="text-sm font-medium leading-7 text-black/55 dark:text-white/55">
           No primary rival is on file yet.
         </p>
       )}
-      <Link
-        href="/league-info/rivalries"
-        className="mt-5 inline-flex rounded-md border border-black/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-black/50 transition hover:text-black dark:border-white/10 dark:text-white/50 dark:hover:text-white"
-      >
-        Rivalry Hub
-      </Link>
+      <div className="mt-5 flex flex-wrap gap-2">
+        {profile.rivalProfilePath && (
+          <Link
+            href={profile.rivalProfilePath}
+            className="inline-flex items-center gap-2 rounded-md bg-black px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80"
+          >
+            View Rival Profile
+            <ArrowRight size={13} />
+          </Link>
+        )}
+        <Link
+          href="/league-info/rivalries"
+          className="inline-flex rounded-md border border-black/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-black/50 transition hover:text-black dark:border-white/10 dark:text-white/50 dark:hover:text-white"
+        >
+          Rivalry Hub
+        </Link>
+      </div>
     </SectionShell>
   );
 }
