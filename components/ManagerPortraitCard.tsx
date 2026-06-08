@@ -1,8 +1,10 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { Award, Crown, ShieldCheck, Skull } from "lucide-react";
 import { teamColors } from "@/lib/themes/teamColors";
+import { getOwnerProfilePathByFullName } from "@/lib/managers/identitySelectors";
 
 type ManagerPortraitCardProps = {
   manager: any;
@@ -11,7 +13,7 @@ type ManagerPortraitCardProps = {
 
 function getLegacyLabel(group: ManagerPortraitCardProps["group"], manager: any) {
   if (group === "staff") return manager.role || "League Staff";
-  if (group === "retired") return "Hall of Fame";
+  if (group === "retired") return "Retired Owner";
   return manager.mode || "Active Owner";
 }
 
@@ -26,8 +28,9 @@ export default function ManagerPortraitCard({
   const isStaff = group === "staff";
   const footerLabel = isStaff ? "League Role" : "Best Finish";
   const footerValue = isStaff ? manager.role || "Staff" : manager.bestFinish || "N/A";
+  const profilePath = getOwnerProfilePathByFullName(manager.fullName);
 
-  return (
+  const card = (
     <article
       className="group overflow-hidden rounded-3xl border border-black/10 bg-white shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl dark:border-white/10 dark:bg-[#121212]"
       style={{ borderTopColor: colors.primary, borderTopWidth: 6 }}
@@ -125,5 +128,17 @@ export default function ManagerPortraitCard({
         </div>
       </div>
     </article>
+  );
+
+  if (!profilePath) return card;
+
+  return (
+    <Link
+      href={profilePath}
+      aria-label={`View ${manager.fullName} profile`}
+      className="block rounded-3xl focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-4 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#0a0a0a]"
+    >
+      {card}
+    </Link>
   );
 }
