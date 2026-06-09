@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
+  ArrowLeft,
   ArrowRight,
   Award,
   Crown,
@@ -43,6 +44,15 @@ const NFL_TEAM_NAMES: Record<string, string> = {
   WAS: "Washington Commanders",
 };
 
+const VALUE_POSITION_LABELS: Record<string, string> = {
+  QB: "Quarterback (QB)",
+  RB: "Running Back (RB)",
+  WR: "Wide Receiver (WR)",
+  TE: "Tight End (TE)",
+  K: "Kicker (K)",
+  DEF: "Defense / Special Teams (DEF)",
+};
+
 function getAccentColor(profile: OwnerProfileViewModel) {
   const teamCode =
     profile.heroFranchise?.colorTeamCode ?? profile.owner.survey.favoriteNflTeam;
@@ -58,6 +68,11 @@ function getFavoritePlayerLabel(survey: OwnerSurveyProfile) {
   if (survey.favoritePlayerName) return survey.favoritePlayerName;
   if (survey.favoritePlayerId) return "Player on file";
   return "Not on file";
+}
+
+function getValuePositionLabel(valuePosition?: string) {
+  if (!valuePosition) return "Not on file";
+  return VALUE_POSITION_LABELS[valuePosition] ?? valuePosition;
 }
 
 function getStatLabel(summary: FranchiseStatSummary) {
@@ -213,9 +228,10 @@ function HeroSection({ profile }: { profile: OwnerProfileViewModel }) {
         <div className="p-6 sm:p-8 lg:p-10">
           <Link
             href="/managers"
-            className="mb-8 inline-flex text-[10px] font-black uppercase tracking-widest text-black/40 transition hover:text-black dark:text-white/40 dark:hover:text-white"
+            className="mb-8 inline-flex items-center gap-2 rounded-md border border-black/10 bg-black/[0.03] px-3 py-2 text-[10px] font-black uppercase tracking-widest text-black/55 transition hover:text-black dark:border-white/10 dark:bg-white/[0.06] dark:text-white/55 dark:hover:text-white"
           >
-            Managers
+            <ArrowLeft size={13} />
+            Back to Managers
           </Link>
           <div className="mb-5 flex flex-wrap gap-2">
             <span
@@ -428,7 +444,7 @@ function Personality({ profile }: { profile: OwnerProfileViewModel }) {
         />
         <PersonalityField
           label="Value Position"
-          value={survey.valuePosition ?? "Not on file"}
+          value={getValuePositionLabel(survey.valuePosition)}
         />
         <PersonalityField
           label="Trade Aggression"
@@ -486,12 +502,12 @@ function Rivalry({ profile }: { profile: OwnerProfileViewModel }) {
   return (
     <SectionShell title="Rivalry" icon={<Swords size={16} />}>
       {rivalName ? (
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]">
           <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-black/10 bg-black/10 dark:border-white/10 dark:bg-white/10">
             {rivalImage ? (
               <Image
                 src={rivalImage}
-                alt={`${rivalName} avatar`}
+                alt={`${rivalName} profile photo`}
                 fill
                 sizes="56px"
                 className="object-cover"
@@ -503,11 +519,11 @@ function Rivalry({ profile }: { profile: OwnerProfileViewModel }) {
             )}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-2xl font-black uppercase italic">
-              {rivalName}
+            <p className="text-[10px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+              Primary Rival
             </p>
-            <p className="mt-1 text-sm font-medium leading-7 text-black/55 dark:text-white/55">
-              Primary rival on the owner survey.
+            <p className="mt-1 truncate text-2xl font-black uppercase italic">
+              {rivalName}
             </p>
           </div>
         </div>

@@ -321,7 +321,8 @@ const constitutionData: ConstitutionSection[] = [
           "6 teams qualify.",
           "Seeds 1–3: Division winners.",
           "Seed 4: Best remaining record.",
-          "Seeds 5–6: Highest remaining Points For."
+          "Seeds 5–6: Highest remaining Points For.",
+          "Click here to view the live [Playoff Bracket and Toilet Bowl in the Matchups Hub](/matchups?tab=playoffs)."
         ]
       },
       {

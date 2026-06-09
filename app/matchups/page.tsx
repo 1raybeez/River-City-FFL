@@ -995,6 +995,8 @@ export default function MatchupsPage() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab === "playoffs") setActiveTab("playoffs");
     setMounted(true);
   }, []);
 

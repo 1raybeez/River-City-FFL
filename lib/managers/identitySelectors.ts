@@ -80,6 +80,14 @@ function formatRole(role: OwnershipRole) {
   return "League Staff";
 }
 
+function formatRoleForTenure(ownerId: string, tenure: OwnershipTenure) {
+  if (ownerId === "landon-elliott" && tenure.franchiseId === "special-brownies") {
+    return "Owner";
+  }
+
+  return formatRole(tenure.role);
+}
+
 function getOwnerProfilePath(ownerId: string) {
   const owner = ownerProfilesById[ownerId];
   return owner ? `/managers/owners/${owner.slug}` : undefined;
@@ -117,6 +125,12 @@ function buildRelatedOwnerLabels(ownerId: string, franchise?: Franchise) {
   if (!franchise) return [];
 
   const labels: string[] = [];
+
+  if (ownerId === "jordan-maslyn" && franchise.id === "shake-n-bakers") {
+    labels.push("Primary owner");
+    return labels;
+  }
+
   const otherCoOwners = franchise.coOwnerIds.filter((id) => id !== ownerId);
   const otherPrimaryOwners = franchise.primaryOwnerIds.filter(
     (id) => id !== ownerId
@@ -202,7 +216,7 @@ function buildProfileTenure(ownerId: string, tenure: OwnershipTenure) {
   return {
     ...tenure,
     franchise,
-    roleLabel: formatRole(tenure.role),
+    roleLabel: formatRoleForTenure(ownerId, tenure),
     yearLabel: formatTenureYears(tenure),
     relatedOwnerLabels: buildRelatedOwnerLabels(ownerId, franchise),
     statSummary: getStatSummaryForOwnerAndFranchise(
@@ -273,8 +287,40 @@ function buildTimeline(
     });
   }
 
+  if (owner.id === "ray-long") {
+    items.push({
+      year: "2012",
+      title: "Season away from league",
+      detail: "Ray took off 2012 before rejoining in 2013.",
+    });
+  }
+
   tenures.forEach((tenure) => {
     const franchiseName = tenure.franchise?.currentTeamName ?? tenure.franchiseId;
+
+    if (owner.id === "landon-elliott" && tenure.franchiseId === "special-brownies") {
+      items.push({
+        year: tenure.startLabel ?? `${tenure.startSeason}`,
+        title: "Special Brownies ownership begins",
+        detail: "Active owner through the 2024 season.",
+      });
+
+      items.push({
+        year: tenure.endLabel ?? `${tenure.endSeason ?? 2024}`,
+        title: "Final season as Special Brownies owner",
+        detail: "Retired Owner legacy begins after 2024.",
+      });
+      return;
+    }
+
+    if (owner.id === "landon-elliott" && tenure.franchiseId === "shake-n-bakers") {
+      items.push({
+        year: tenure.startLabel ?? `${tenure.startSeason}`,
+        title: "Joins The Shake-N-Bakers as co-owner",
+        detail: tenure.relatedOwnerLabels.join(" | ") || undefined,
+      });
+      return;
+    }
 
     items.push({
       year: tenure.startLabel ?? `${tenure.startSeason}`,
@@ -292,6 +338,14 @@ function buildTimeline(
       });
     }
   });
+
+  if (owner.id === "jordan-maslyn") {
+    items.push({
+      year: "2025-2026",
+      title: "Landon Elliott joins as co-owner",
+      detail: "Jordan remains primary owner of The Shake-N-Bakers.",
+    });
+  }
 
   statSummaries.forEach((summary) => {
     const franchise = franchisesById[summary.franchiseId];
