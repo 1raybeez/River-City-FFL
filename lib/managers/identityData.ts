@@ -15,6 +15,7 @@ import {
   OwnershipRole,
   type Franchise,
   type FranchiseStatSummary,
+  type LeagueServiceTenure,
   type OwnerProfile,
   type OwnerSurveyProfile,
   type OwnershipTenure,
@@ -68,6 +69,39 @@ const FAVORITE_PLAYER_NAMES: Record<number, string> = {
   9509: "Bijan Robinson",
   12481: "Cam Skattebo",
   12508: "Jaxson Dart",
+};
+
+const OWNER_MEMBERSHIP_HISTORY: Record<
+  string,
+  { startSeason: number; endSeason?: number }
+> = {
+  "ray-long": { startSeason: 2011 },
+  "jeffrey-hudgins": { startSeason: 2013 },
+  "tommy-moore": { startSeason: 2012 },
+  "jd-dowling": { startSeason: 2012 },
+  "wade-cameron": { startSeason: 2011 },
+  "doug-fordham": { startSeason: 2019 },
+  "rashad-gresham": { startSeason: 2022 },
+  "aaron-hawkins": { startSeason: 2025 },
+  "stan-schoppe": { startSeason: 2025 },
+  "jordan-maslyn": { startSeason: 2017 },
+  "brian-stevens": { startSeason: 2016 },
+  "david-besedich": { startSeason: 2019 },
+  "landon-elliott": { startSeason: 2013 },
+  "travis-miller": { startSeason: 2013 },
+  "adam-lind": { startSeason: 2020, endSeason: 2021 },
+  "billy-biddle": { startSeason: 2018, endSeason: 2024 },
+  "patrick-leahey": { startSeason: 2017, endSeason: 2019 },
+  "chris-barras": { startSeason: 2011, endSeason: 2018 },
+  "james-minnix": { startSeason: 2012, endSeason: 2017 },
+  "keith-polarek": { startSeason: 2011, endSeason: 2015 },
+  "garet-prior": { startSeason: 2013, endSeason: 2017 },
+  "gordie-gahagan": { startSeason: 2011, endSeason: 2016 },
+  "zach-woolard": { startSeason: 2011, endSeason: 2013 },
+  "nicholas-bates": { startSeason: 2012, endSeason: 2012 },
+  "darren-kusaj": { startSeason: 2011, endSeason: 2011 },
+  "rachel-woolard": { startSeason: 2011, endSeason: 2011 },
+  "bryan-doane": { startSeason: 2011, endSeason: 2016 },
 };
 
 function slugify(value: string) {
@@ -132,6 +166,20 @@ function getStartSeason(manager: RawManagerRecord) {
   return getNumber(manager, "tookOver") ?? getNumber(manager, "fantasyStart") ?? 2011;
 }
 
+function getMembershipHistory(ownerId: string) {
+  return OWNER_MEMBERSHIP_HISTORY[ownerId];
+}
+
+function getMembershipStartSeason(manager: RawManagerRecord) {
+  const ownerId = ownerIdFromName(manager.fullName);
+  return getMembershipHistory(ownerId)?.startSeason ?? getStartSeason(manager);
+}
+
+function getMembershipEndSeason(manager: RawManagerRecord) {
+  const ownerId = ownerIdFromName(manager.fullName);
+  return getMembershipHistory(ownerId)?.endSeason;
+}
+
 function buildSurveyProfile(manager: RawManagerRecord): OwnerSurveyProfile {
   const rivalName = getRivalName(manager);
   const favoritePlayerId = getNumber(manager, "favoritePlayer");
@@ -186,7 +234,7 @@ function buildOwnerProfile(
       ? [getString(manager, "sleeperId") as string]
       : [],
     location: getString(manager, "location"),
-    fantasyStart: getNumber(manager, "fantasyStart"),
+    fantasyStart: getMembershipStartSeason(manager),
     roles: role ? [role] : [],
     landingGroups,
     currentFranchiseIds:
@@ -235,6 +283,7 @@ const jeffreyOwnerProfile: OwnerProfile = {
 const OWNER_PROFILE_OVERRIDES: Record<string, OwnerProfileOverride> = {
   "ray-long": {
     currentFranchiseIds: ["prestigio-mundial"],
+    location: "Richmond, VA",
     survey: {
       favoriteNflTeam: "ATL" as TeamCode,
     },
@@ -243,15 +292,48 @@ const OWNER_PROFILE_OVERRIDES: Record<string, OwnerProfileOverride> = {
       "Ray's favorite NFL team is the Atlanta Falcons.",
     ],
   },
+  "jeffrey-hudgins": {
+    location: "Greenville, SC",
+  },
+  "jd-dowling": {
+    location: "Richmond, VA",
+  },
   "jordan-maslyn": {
     currentFranchiseIds: ["shake-n-bakers"],
+    location: "London, UK",
     notes: [
       "Jordan is the primary owner of The Shake-N-Bakers.",
       "Landon Elliott's Special Brownies legacy should not be merged into Jordan's franchise record.",
     ],
   },
+  "tommy-moore": {
+    location: "Shreveport, LA",
+  },
+  "wade-cameron": {
+    location: "Raleigh, NC",
+    roles: ["Assistant to the Commish"],
+  },
+  "doug-fordham": {
+    location: "Richmond, VA",
+  },
+  "rashad-gresham": {
+    location: "Henrico, VA",
+  },
+  "brian-stevens": {
+    location: "Westerville, OH",
+  },
+  "aaron-hawkins": {
+    location: "Moseley, VA",
+  },
+  "david-besedich": {
+    location: "Chesterfield, VA",
+  },
+  "stan-schoppe": {
+    location: "Richmond, VA",
+  },
   "landon-elliott": {
     status: OwnerProfileStatus.Active,
+    location: "Richmond, VA",
     landingGroups: [
       ManagerLandingGroup.Active,
       ManagerLandingGroup.RetiredOwners,
@@ -259,9 +341,12 @@ const OWNER_PROFILE_OVERRIDES: Record<string, OwnerProfileOverride> = {
     currentFranchiseIds: ["shake-n-bakers"],
     legacyFranchiseIds: ["special-brownies"],
     notes: [
-      "Landon joined Jordan Maslyn as co-owner of The Shake-N-Bakers beginning with the 2025-2026 season.",
+      "Landon joined Jordan Maslyn as co-owner of The Shake-N-Bakers beginning in 2025.",
       "Landon's historical Special Brownies accomplishments remain a separate retired-owner legacy.",
     ],
+  },
+  "damon-davis": {
+    location: "Glen Allen, VA",
   },
 };
 
@@ -341,7 +426,7 @@ function getSpecialFranchiseOwnerRules(ownerId: string, franchiseId: string) {
       statOwnerIds: ["jordan-maslyn"],
       notes: [
         "Jordan Maslyn is the primary owner of The Shake-N-Bakers.",
-        "Landon Elliott joined as co-owner beginning with the 2025-2026 season.",
+        "Landon Elliott joined as co-owner beginning in 2025.",
         "Landon's prior Special Brownies accomplishments stay separate from this franchise record.",
       ],
     };
@@ -411,13 +496,14 @@ function buildStandardActiveTenure(
 ): OwnershipTenure {
   const ownerId = ownerIdFromName(manager.fullName);
   const franchiseId = franchiseIdFromTeamName(manager.teamName);
+  const startSeason = getMembershipStartSeason(manager);
 
   return {
-    id: `${ownerId}-${franchiseId}-${getStartSeason(manager)}`,
+    id: `${ownerId}-${franchiseId}-${startSeason}`,
     ownerId,
     franchiseId,
     role: OwnershipRole.Primary,
-    startSeason: getStartSeason(manager),
+    startSeason,
     isActive: true,
     showOnActiveLanding: true,
     showUnderRetiredOwners: false,
@@ -480,7 +566,6 @@ const activeOwnershipTenures: OwnershipTenure[] = activeManagers.flatMap(
           franchiseId,
           role: OwnershipRole.CoOwner,
           startSeason: LANDON_SHAKE_START_SEASON,
-          startLabel: "2025-2026",
           isActive: true,
           showOnActiveLanding: true,
           showUnderRetiredOwners: false,
@@ -503,15 +588,19 @@ const retiredOwnershipTenures: OwnershipTenure[] = retiredManagers.map(
     const franchiseId = franchiseIdFromTeamName(manager.teamName);
     const isLandonSpecialBrownies =
       ownerId === "landon-elliott" && franchiseId === "special-brownies";
+    const startSeason = getMembershipStartSeason(manager);
+    const endSeason = isLandonSpecialBrownies
+      ? 2024
+      : getMembershipEndSeason(manager);
 
     return {
       id: `${ownerId}-${franchiseId}-legacy`,
       ownerId,
       franchiseId,
       role: OwnershipRole.LegacyOwner,
-      startSeason: getStartSeason(manager),
-      endSeason: isLandonSpecialBrownies ? 2024 : undefined,
-      endLabel: isLandonSpecialBrownies ? "2024" : undefined,
+      startSeason,
+      endSeason,
+      endLabel: endSeason ? `${endSeason}` : undefined,
       isActive: false,
       showOnActiveLanding: false,
       showUnderRetiredOwners: true,
@@ -528,6 +617,39 @@ const retiredOwnershipTenures: OwnershipTenure[] = retiredManagers.map(
 export const ownershipTenures: OwnershipTenure[] = [
   ...activeOwnershipTenures,
   ...retiredOwnershipTenures,
+];
+
+export const leagueServiceTenures: LeagueServiceTenure[] = [
+  {
+    id: "zach-woolard-commissioner-2011",
+    ownerId: "zach-woolard",
+    title: "Commissioner",
+    startSeason: 2011,
+    endSeason: 2012,
+    isActive: false,
+  },
+  {
+    id: "tommy-moore-commissioner-2013",
+    ownerId: "tommy-moore",
+    title: "Commissioner",
+    startSeason: 2013,
+    endSeason: 2013,
+    isActive: false,
+  },
+  {
+    id: "ray-long-commissioner-2014",
+    ownerId: "ray-long",
+    title: "Commissioner",
+    startSeason: 2014,
+    isActive: true,
+  },
+  {
+    id: "wade-cameron-assistant-to-the-commish-2018",
+    ownerId: "wade-cameron",
+    title: "Assistant to the Commish",
+    startSeason: 2018,
+    isActive: true,
+  },
 ];
 
 export const ownershipTenuresByOwnerId: Record<string, OwnershipTenure[]> =

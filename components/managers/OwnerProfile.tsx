@@ -8,7 +8,9 @@ import {
   Crown,
   Flame,
   History,
+  MapPin,
   Medal,
+  MessageCircle,
   Quote,
   Shield,
   Skull,
@@ -19,6 +21,7 @@ import {
 import { teamColors } from "@/lib/themes/teamColors";
 import {
   AccomplishmentAttribution,
+  OwnerProfileStatus,
   type FranchiseStatSummary,
   type OwnerSurveyProfile,
 } from "@/lib/managers/identityTypes";
@@ -53,6 +56,17 @@ const VALUE_POSITION_LABELS: Record<string, string> = {
   DEF: "Defense / Special Teams (DEF)",
 };
 
+type ContactMethodDisplay = {
+  label: string;
+  icon?: string;
+};
+
+const CONTACT_METHODS: Record<string, ContactMethodDisplay> = {
+  Text: { label: "iMessage", icon: "/logos/iMessage.png" },
+  WhatsApp: { label: "WhatsApp", icon: "/logos/WhatsApp.png" },
+  Sleeper: { label: "Sleeper DM", icon: "/logos/Sleeper.png" },
+};
+
 function getAccentColor(profile: OwnerProfileViewModel) {
   const teamCode =
     profile.heroFranchise?.colorTeamCode ?? profile.owner.survey.favoriteNflTeam;
@@ -60,19 +74,53 @@ function getAccentColor(profile: OwnerProfileViewModel) {
 }
 
 function getNflTeamLabel(teamCode?: string) {
-  if (!teamCode) return "Not on file";
+  if (!teamCode) return undefined;
   return NFL_TEAM_NAMES[teamCode] ?? teamCode;
 }
 
 function getFavoritePlayerLabel(survey: OwnerSurveyProfile) {
   if (survey.favoritePlayerName) return survey.favoritePlayerName;
-  if (survey.favoritePlayerId) return "Player on file";
-  return "Not on file";
+  return undefined;
 }
 
 function getValuePositionLabel(valuePosition?: string) {
-  if (!valuePosition) return "Not on file";
+  if (!valuePosition) return undefined;
   return VALUE_POSITION_LABELS[valuePosition] ?? valuePosition;
+}
+
+function getContactMethod(preferredContact?: string) {
+  if (!preferredContact) return undefined;
+  return CONTACT_METHODS[preferredContact] ?? { label: preferredContact };
+}
+
+function clampTradeAggression(value: number) {
+  return Math.min(10, Math.max(0, value));
+}
+
+function getTradeAggressionColor(value: number) {
+  const score = clampTradeAggression(value);
+
+  if (score <= 2) return "#dc2626";
+  if (score <= 4) return "#ea580c";
+  if (score <= 7) return "#eab308";
+  return "#16a34a";
+}
+
+function hasTradeReadinessData(survey: OwnerSurveyProfile) {
+  return Boolean(
+    survey.preferredContact ||
+      typeof survey.tradeAggression === "number" ||
+      survey.valuePosition ||
+      survey.teamBuildingMode ||
+      survey.draftPreference
+  );
+}
+
+function shouldShowTradeCard(profile: OwnerProfileViewModel) {
+  return (
+    profile.owner.status === OwnerProfileStatus.Active &&
+    hasTradeReadinessData(profile.owner.survey)
+  );
 }
 
 function getStatLabel(summary: FranchiseStatSummary) {
@@ -207,15 +255,15 @@ function HeroSection({ profile }: { profile: OwnerProfileViewModel }) {
       className="overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/10 dark:bg-[#121212]"
       style={{ borderTopColor: accentColor, borderTopWidth: 6 }}
     >
-      <div className="grid gap-0 lg:grid-cols-[minmax(260px,360px)_1fr]">
-        <div className="relative aspect-[4/5] bg-black/10 dark:bg-white/5 lg:aspect-auto lg:min-h-[420px]">
+      <div className="grid gap-0 lg:grid-cols-[minmax(280px,320px)_1fr]">
+        <div className="relative h-[300px] max-h-[42vh] bg-black/10 dark:bg-white/5 sm:h-[340px] lg:h-auto lg:max-h-none lg:min-h-[360px]">
           {owner.photo ? (
             <Image
               src={owner.photo}
               alt={owner.fullName}
               fill
-              sizes="(min-width: 1024px) 360px, 100vw"
-              className="object-cover"
+              sizes="(min-width: 1024px) 320px, 100vw"
+              className="object-cover object-top"
               priority
             />
           ) : (
@@ -251,6 +299,12 @@ function HeroSection({ profile }: { profile: OwnerProfileViewModel }) {
                 {role}
               </span>
             ))}
+            {owner.location && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-black/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-black/50 dark:border-white/10 dark:text-white/50">
+                <MapPin size={12} />
+                {owner.location}
+              </span>
+            )}
           </div>
 
           <h1 className="text-4xl font-black uppercase italic leading-none sm:text-5xl">
@@ -286,46 +340,73 @@ function HeroSection({ profile }: { profile: OwnerProfileViewModel }) {
 function CareerSnapshot({ profile }: { profile: OwnerProfileViewModel }) {
   const accentColor = getAccentColor(profile);
   const primarySummary = profile.statSummaries[0];
+  const tiles: Array<{
+    label: string;
+    value: string | number;
+    icon: ReactNode;
+  }> = [];
+
+  if (primarySummary) {
+    tiles.push(
+      {
+        label: "Titles",
+        value: primarySummary.championships,
+        icon: <Crown size={16} />,
+      },
+      {
+        label: "Podiums",
+        value: primarySummary.podiums,
+        icon: <Award size={16} />,
+      }
+    );
+
+    if (primarySummary.bestFinish && primarySummary.bestFinish !== "N/A") {
+      tiles.push({
+        label: "Best Finish",
+        value: primarySummary.bestFinish,
+        icon: <Medal size={16} />,
+      });
+    }
+
+    if (typeof primarySummary.toiletBowls === "number") {
+      tiles.push({
+        label: "Toilet Bowls",
+        value: primarySummary.toiletBowls,
+        icon: <Skull size={16} />,
+      });
+    }
+  }
+
+  if (profile.yearsActiveLabel !== "N/A") {
+    tiles.push({
+      label: "Years Active",
+      value: profile.yearsActiveLabel,
+      icon: <History size={16} />,
+    });
+  }
+
+  if (primarySummary?.displayedRecord) {
+    tiles.push({
+      label: "Record",
+      value: primarySummary.displayedRecord,
+      icon: <Shield size={16} />,
+    });
+  }
+
+  if (tiles.length === 0) return null;
 
   return (
     <SectionShell title="Career Snapshot" icon={<Trophy size={16} />}>
       <div className="grid grid-cols-2 gap-3">
-        <StatTile
-          label="Titles"
-          value={primarySummary?.championships ?? 0}
-          accentColor={accentColor}
-          icon={<Crown size={16} />}
-        />
-        <StatTile
-          label="Podiums"
-          value={primarySummary?.podiums ?? 0}
-          accentColor={accentColor}
-          icon={<Award size={16} />}
-        />
-        <StatTile
-          label="Best Finish"
-          value={primarySummary?.bestFinish ?? "N/A"}
-          accentColor={accentColor}
-          icon={<Medal size={16} />}
-        />
-        <StatTile
-          label="Toilet Bowls"
-          value={primarySummary?.toiletBowls ?? 0}
-          accentColor={accentColor}
-          icon={<Skull size={16} />}
-        />
-        <StatTile
-          label="Years Active"
-          value={profile.yearsActiveLabel}
-          accentColor={accentColor}
-          icon={<History size={16} />}
-        />
-        <StatTile
-          label="Record"
-          value={primarySummary?.displayedRecord ?? "N/A"}
-          accentColor={accentColor}
-          icon={<Shield size={16} />}
-        />
+        {tiles.map((tile) => (
+          <StatTile
+            key={tile.label}
+            label={tile.label}
+            value={tile.value}
+            accentColor={accentColor}
+            icon={tile.icon}
+          />
+        ))}
       </div>
     </SectionShell>
   );
@@ -333,6 +414,8 @@ function CareerSnapshot({ profile }: { profile: OwnerProfileViewModel }) {
 
 function TeamLegacy({ profile }: { profile: OwnerProfileViewModel }) {
   const tenureGroups = [...profile.currentTenures, ...profile.legacyTenures];
+
+  if (tenureGroups.length === 0) return null;
 
   return (
     <SectionShell title="Team Legacy" icon={<Shield size={16} />}>
@@ -345,8 +428,36 @@ function TeamLegacy({ profile }: { profile: OwnerProfileViewModel }) {
   );
 }
 
+function getTenureFallbackCopy(tenure: ProfileTenure) {
+  if (
+    tenure.ownerId === "landon-elliott" &&
+    tenure.franchiseId === "shake-n-bakers"
+  ) {
+    return "Current co-owner role; Shake-N-Bakers stats remain attributed to Jordan Maslyn.";
+  }
+
+  return undefined;
+}
+
 function LegacyRow({ tenure }: { tenure: ProfileTenure }) {
   const summary = tenure.statSummary;
+  const fallbackCopy = getTenureFallbackCopy(tenure);
+  const metrics: Array<{ label: string; value: string | number }> = [];
+
+  if (summary) {
+    metrics.push(
+      { label: "Titles", value: summary.championships },
+      { label: "Podiums", value: summary.podiums }
+    );
+
+    if (summary.bestFinish && summary.bestFinish !== "N/A") {
+      metrics.push({ label: "Best", value: summary.bestFinish });
+    }
+
+    if (typeof summary.toiletBowls === "number") {
+      metrics.push({ label: "Toilets", value: summary.toiletBowls });
+    }
+  }
 
   return (
     <div className="rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]">
@@ -379,19 +490,21 @@ function LegacyRow({ tenure }: { tenure: ProfileTenure }) {
         </div>
       )}
 
-      {summary ? (
+      {summary && metrics.length > 0 ? (
         <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-          <LegacyMetric label="Titles" value={summary.championships} />
-          <LegacyMetric label="Podiums" value={summary.podiums} />
-          <LegacyMetric label="Best" value={summary.bestFinish} />
-          <LegacyMetric label="Toilets" value={summary.toiletBowls ?? 0} />
+          {metrics.map((metric) => (
+            <LegacyMetric
+              key={metric.label}
+              label={metric.label}
+              value={metric.value}
+            />
+          ))}
         </div>
-      ) : (
+      ) : fallbackCopy ? (
         <p className="mt-4 text-sm font-medium leading-7 text-black/55 dark:text-white/55">
-          Current ownership role on file. No separate stat attribution is
-          attached to this owner for this franchise yet.
+          {fallbackCopy}
         </p>
-      )}
+      ) : null}
 
       {summary && getSharedStatCopy(summary) && (
         <p className="mt-4 text-sm font-medium leading-7 text-black/55 dark:text-white/55">
@@ -422,49 +535,65 @@ function LegacyMetric({
 function Personality({ profile }: { profile: OwnerProfileViewModel }) {
   const { survey } = profile.owner;
   const accentColor = getAccentColor(profile);
+  const showTradeCard = shouldShowTradeCard(profile);
+  const fields: Array<{ label: string; value: string }> = [];
+  const favoriteNflTeam = getNflTeamLabel(survey.favoriteNflTeam);
+  const favoritePlayer = getFavoritePlayerLabel(survey);
+  const valuePosition = getValuePositionLabel(survey.valuePosition);
+
+  if (favoriteNflTeam) {
+    fields.push({ label: "Favorite NFL Team", value: favoriteNflTeam });
+  }
+
+  if (favoritePlayer) {
+    fields.push({ label: "Favorite Player", value: favoritePlayer });
+  }
+
+  if (!showTradeCard) {
+    if (survey.teamBuildingMode) {
+      fields.push({ label: "Team Mode", value: survey.teamBuildingMode });
+    }
+
+    if (survey.draftPreference) {
+      fields.push({ label: "Draft Style", value: survey.draftPreference });
+    }
+
+    if (valuePosition) {
+      fields.push({ label: "Value Position", value: valuePosition });
+    }
+  }
+
+  const showPersonalityTradeMeter =
+    !showTradeCard && typeof survey.tradeAggression === "number";
+
+  if (fields.length === 0 && !survey.philosophy && !showPersonalityTradeMeter) {
+    return null;
+  }
 
   return (
-    <SectionShell title="Owner Personality" icon={<UserRound size={16} />}>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <PersonalityField
-          label="Favorite NFL Team"
-          value={getNflTeamLabel(survey.favoriteNflTeam)}
-        />
-        <PersonalityField
-          label="Favorite Player"
-          value={getFavoritePlayerLabel(survey)}
-        />
-        <PersonalityField
-          label="Team Mode"
-          value={survey.teamBuildingMode ?? "Not on file"}
-        />
-        <PersonalityField
-          label="Draft Style"
-          value={survey.draftPreference ?? "Not on file"}
-        />
-        <PersonalityField
-          label="Value Position"
-          value={getValuePositionLabel(survey.valuePosition)}
-        />
-        <PersonalityField
-          label="Trade Aggression"
-          value={
-            typeof survey.tradeAggression === "number"
-              ? `${survey.tradeAggression}/10`
-              : "Not on file"
-          }
-        />
-      </div>
+    <SectionShell
+      title={
+        profile.owner.status === OwnerProfileStatus.Staff
+          ? "Profile Details"
+          : "Owner Personality"
+      }
+      icon={<UserRound size={16} />}
+    >
+      {fields.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {fields.map((field) => (
+            <PersonalityField
+              key={field.label}
+              label={field.label}
+              value={field.value}
+            />
+          ))}
+        </div>
+      )}
 
-      {typeof survey.tradeAggression === "number" && (
-        <div className="mt-5 h-2 overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
-          <div
-            className="h-full rounded-full"
-            style={{
-              width: `${Math.min(100, Math.max(0, survey.tradeAggression * 10))}%`,
-              backgroundColor: accentColor,
-            }}
-          />
+      {showPersonalityTradeMeter && (
+        <div className="mt-5">
+          <TradeAggressionMeter value={survey.tradeAggression as number} />
         </div>
       )}
 
@@ -496,42 +625,155 @@ function PersonalityField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Rivalry({ profile }: { profile: OwnerProfileViewModel }) {
-  const { rivalImage, rivalName } = profile.owner.survey;
+function TradeReadinessField({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div>
+      <p className="text-[10px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-black">{value}</p>
+    </div>
+  );
+}
+
+function TradeAggressionMeter({ value }: { value: number }) {
+  const score = clampTradeAggression(value);
+  const meterColor = getTradeAggressionColor(score);
+  const fillWidth = score === 0 ? 8 : score * 10;
 
   return (
-    <SectionShell title="Rivalry" icon={<Swords size={16} />}>
-      {rivalName ? (
-        <div className="flex items-center gap-4 rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]">
-          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-black/10 bg-black/10 dark:border-white/10 dark:bg-white/10">
-            {rivalImage ? (
-              <Image
-                src={rivalImage}
-                alt={`${rivalName} profile photo`}
-                fill
-                sizes="56px"
-                className="object-cover"
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center text-xl font-black text-black/30 dark:text-white/30">
-                {rivalName[0]}
-              </div>
-            )}
-          </div>
+    <div className="mb-4 rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="text-[10px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+          Trade Aggression
+        </p>
+        <p className="text-sm font-black">{score}/10</p>
+      </div>
+      <div
+        className="h-3 overflow-hidden rounded-full bg-black/10 dark:bg-white/15"
+        aria-label={`Trade aggression ${score} out of 10`}
+        role="meter"
+        aria-valuemin={0}
+        aria-valuemax={10}
+        aria-valuenow={score}
+      >
+        <div
+          className="h-full rounded-full transition-[width]"
+          style={{
+            width: `${fillWidth}%`,
+            backgroundColor: meterColor,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function BestWayToTalkTrades({ profile }: { profile: OwnerProfileViewModel }) {
+  if (!shouldShowTradeCard(profile)) return null;
+
+  const { survey } = profile.owner;
+  const accentColor = getAccentColor(profile);
+  const contactMethod = getContactMethod(survey.preferredContact);
+  const valuePosition = getValuePositionLabel(survey.valuePosition);
+  const fields: Array<{ label: string; value: string }> = [];
+
+  if (valuePosition) {
+    fields.push({ label: "Value Position", value: valuePosition });
+  }
+
+  if (survey.teamBuildingMode) {
+    fields.push({ label: "Team Mode", value: survey.teamBuildingMode });
+  }
+
+  if (survey.draftPreference) {
+    fields.push({ label: "Draft Style", value: survey.draftPreference });
+  }
+
+  return (
+    <SectionShell title="Best Way to Talk Trades" icon={<MessageCircle size={16} />}>
+      {contactMethod && (
+        <div
+          className="mb-4 flex items-center gap-3 rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]"
+          style={{ borderLeftColor: accentColor, borderLeftWidth: 4 }}
+        >
+          {contactMethod.icon && (
+            <Image
+              src={contactMethod.icon}
+              alt={`${contactMethod.label} icon`}
+              width={28}
+              height={28}
+              className="h-7 w-7 object-contain"
+            />
+          )}
           <div className="min-w-0">
             <p className="text-[10px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
-              Primary Rival
+              Preferred Contact
             </p>
-            <p className="mt-1 truncate text-2xl font-black uppercase italic">
-              {rivalName}
+            <p className="mt-1 truncate text-sm font-black">
+              {contactMethod.label}
             </p>
           </div>
         </div>
-      ) : (
-        <p className="text-sm font-medium leading-7 text-black/55 dark:text-white/55">
-          No primary rival is on file yet.
-        </p>
       )}
+
+      {typeof survey.tradeAggression === "number" && (
+        <TradeAggressionMeter value={survey.tradeAggression} />
+      )}
+
+      {fields.length > 0 && (
+        <div className="grid grid-cols-2 gap-4 rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]">
+          {fields.map((field) => (
+            <TradeReadinessField
+              key={field.label}
+              label={field.label}
+              value={field.value}
+            />
+          ))}
+        </div>
+      )}
+    </SectionShell>
+  );
+}
+
+function Rivalry({ profile }: { profile: OwnerProfileViewModel }) {
+  const { rivalImage, rivalName } = profile.owner.survey;
+
+  if (!rivalName) return null;
+
+  return (
+    <SectionShell title="Rivalry" icon={<Swords size={16} />}>
+      <div className="flex items-center gap-4 rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]">
+        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-black/10 bg-black/10 dark:border-white/10 dark:bg-white/10">
+          {rivalImage ? (
+            <Image
+              src={rivalImage}
+              alt={`${rivalName} profile photo`}
+              fill
+              sizes="56px"
+              className="object-cover"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-xl font-black text-black/30 dark:text-white/30">
+              {rivalName[0]}
+            </div>
+          )}
+        </div>
+        <div className="min-w-0">
+          <p className="text-[10px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+            Primary Rival
+          </p>
+          <p className="mt-1 truncate text-2xl font-black uppercase italic">
+            {rivalName}
+          </p>
+        </div>
+      </div>
       <div className="mt-5 flex flex-wrap gap-2">
         {profile.rivalProfilePath && (
           <Link
@@ -554,6 +796,8 @@ function Rivalry({ profile }: { profile: OwnerProfileViewModel }) {
 }
 
 function Timeline({ profile }: { profile: OwnerProfileViewModel }) {
+  if (profile.timeline.length === 0) return null;
+
   return (
     <SectionShell title="Timeline" icon={<Flame size={16} />}>
       <div className="space-y-4">
@@ -585,22 +829,38 @@ export default function OwnerProfile({
 }: {
   profile: OwnerProfileViewModel;
 }) {
+  const isStaff = profile.owner.status === OwnerProfileStatus.Staff;
+  const hasTenures =
+    profile.currentTenures.length > 0 || profile.legacyTenures.length > 0;
+  const showTimeline = !isStaff && profile.timeline.length > 0;
+  const showMainColumn = hasTenures || showTimeline;
+  const sidebarContent = (
+    <>
+      <CareerSnapshot profile={profile} />
+      <BestWayToTalkTrades profile={profile} />
+      <Personality profile={profile} />
+      <Rivalry profile={profile} />
+    </>
+  );
+
   return (
     <main className="min-h-screen bg-white px-4 py-6 text-black dark:bg-[#0a0a0a] dark:text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
         <HeroSection profile={profile} />
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
-          <div className="space-y-6">
-            <TeamLegacy profile={profile} />
-            <Timeline profile={profile} />
+        {showMainColumn ? (
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
+            <div className="space-y-6">
+              <TeamLegacy profile={profile} />
+              {showTimeline && <Timeline profile={profile} />}
+            </div>
+            <aside className="space-y-6">{sidebarContent}</aside>
           </div>
-          <aside className="space-y-6">
-            <CareerSnapshot profile={profile} />
-            <Personality profile={profile} />
-            <Rivalry profile={profile} />
-          </aside>
-        </div>
+        ) : (
+          <div className="grid gap-6 lg:grid-cols-2">
+            {sidebarContent}
+          </div>
+        )}
       </div>
     </main>
   );

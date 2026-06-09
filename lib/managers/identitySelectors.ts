@@ -1,6 +1,7 @@
 import {
   franchisesById,
   franchiseStatSummaries,
+  leagueServiceTenures,
   ownerProfiles,
   ownerProfilesById,
   ownershipTenures,
@@ -11,6 +12,7 @@ import {
   OwnershipRole,
   type Franchise,
   type FranchiseStatSummary,
+  type LeagueServiceTenure,
   type OwnerProfile,
   type OwnershipTenure,
 } from "@/lib/managers/identityTypes";
@@ -80,8 +82,8 @@ function formatRole(role: OwnershipRole) {
   return "League Staff";
 }
 
-function formatRoleForTenure(ownerId: string, tenure: OwnershipTenure) {
-  if (ownerId === "landon-elliott" && tenure.franchiseId === "special-brownies") {
+function formatRoleForTenure(tenure: OwnershipTenure) {
+  if (tenure.role === OwnershipRole.LegacyOwner) {
     return "Owner";
   }
 
@@ -96,8 +98,16 @@ function getOwnerProfilePath(ownerId: string) {
 function formatTenureYears(tenure: OwnershipTenure) {
   if (tenure.startLabel) return tenure.startLabel;
   if (tenure.isActive) return `${tenure.startSeason}-present`;
-  if (tenure.endLabel) return `${tenure.startSeason}-${tenure.endLabel}`;
-  if (tenure.endSeason) return `${tenure.startSeason}-${tenure.endSeason}`;
+  if (tenure.endLabel) {
+    return tenure.endLabel === `${tenure.startSeason}`
+      ? `${tenure.startSeason}`
+      : `${tenure.startSeason}-${tenure.endLabel}`;
+  }
+  if (tenure.endSeason) {
+    return tenure.endSeason === tenure.startSeason
+      ? `${tenure.startSeason}`
+      : `${tenure.startSeason}-${tenure.endSeason}`;
+  }
   return `${tenure.startSeason}`;
 }
 
@@ -158,7 +168,7 @@ function buildRelatedOwnerLabels(ownerId: string, franchise?: Franchise) {
 
 function getRelationshipTiming(franchiseId: string) {
   if (franchiseId === "prestigio-mundial") return "Co-owners since 2013";
-  if (franchiseId === "shake-n-bakers") return "Co-owner since 2025-2026";
+  if (franchiseId === "shake-n-bakers") return "Co-owner since 2025";
   return "Current ownership relationship";
 }
 
@@ -216,7 +226,7 @@ function buildProfileTenure(ownerId: string, tenure: OwnershipTenure) {
   return {
     ...tenure,
     franchise,
-    roleLabel: formatRoleForTenure(ownerId, tenure),
+    roleLabel: formatRoleForTenure(tenure),
     yearLabel: formatTenureYears(tenure),
     relatedOwnerLabels: buildRelatedOwnerLabels(ownerId, franchise),
     statSummary: getStatSummaryForOwnerAndFranchise(
@@ -247,8 +257,27 @@ function getStatusLabel(owner: OwnerProfile, currentTenures: ProfileTenure[]) {
   return "Owner";
 }
 
-function getYearsActiveLabel(tenures: ProfileTenure[]) {
+function formatSeasonRange(startSeason: number, endSeason: number) {
+  return startSeason === endSeason
+    ? `${startSeason}`
+    : `${startSeason}-${endSeason}`;
+}
+
+function formatServiceYears(service: LeagueServiceTenure) {
+  if (service.isActive) return `${service.startSeason}-present`;
+  if (service.endSeason) {
+    return formatSeasonRange(service.startSeason, service.endSeason);
+  }
+  return `${service.startSeason}`;
+}
+
+function getYearsActiveLabel(owner: OwnerProfile, tenures: ProfileTenure[]) {
   if (tenures.length === 0) return "N/A";
+
+  if (owner.id === "ray-long") {
+    const seasons = 1 + (CURRENT_SEASON - 2013 + 1);
+    return `2011, 2013-present (${seasons} seasons)`;
+  }
 
   const startSeason = Math.min(...tenures.map((tenure) => tenure.startSeason));
   const active = tenures.some((tenure) => tenure.isActive);
@@ -267,7 +296,9 @@ function getYearsActiveLabel(tenures: ProfileTenure[]) {
 
   if (endSeasons.length > 0) {
     const endSeason = Math.max(...endSeasons);
-    return `${startSeason}-${endSeason} (${formatSeasonCount(endSeason)})`;
+    return `${formatSeasonRange(startSeason, endSeason)} (${formatSeasonCount(
+      endSeason
+    )})`;
   }
   return `${startSeason}`;
 }
@@ -341,11 +372,23 @@ function buildTimeline(
 
   if (owner.id === "jordan-maslyn") {
     items.push({
-      year: "2025-2026",
+      year: "2025",
       title: "Landon Elliott joins as co-owner",
       detail: "Jordan remains primary owner of The Shake-N-Bakers.",
     });
   }
+
+  const ownerServiceTenures = leagueServiceTenures.filter(
+    (service) => service.ownerId === owner.id
+  );
+
+  ownerServiceTenures.forEach((service) => {
+    items.push({
+      year: formatServiceYears(service),
+      title: service.title,
+      detail: service.notes?.[0] ?? "League service.",
+    });
+  });
 
   statSummaries.forEach((summary) => {
     const franchise = franchisesById[summary.franchiseId];
@@ -372,13 +415,19 @@ function buildTimeline(
     }
   });
 
-  owner.roles.forEach((role) => {
-    items.push({
-      year: "League",
-      title: role,
-      detail: "League contribution on file.",
+  const serviceTitles = new Set(
+    ownerServiceTenures.map((service) => service.title)
+  );
+
+  owner.roles
+    .filter((role) => !serviceTitles.has(role))
+    .forEach((role) => {
+      items.push({
+        year: "League",
+        title: role,
+        detail: "League contribution on file.",
+      });
     });
-  });
 
   return items.sort((a, b) => {
     const aYear = Number.parseInt(a.year, 10);
@@ -414,6 +463,13 @@ export function getOwnerSlugByFullName(fullName: string) {
 export function getOwnerProfilePathByFullName(fullName: string) {
   const slug = getOwnerSlugByFullName(fullName);
   return slug ? `/managers/owners/${slug}` : undefined;
+}
+
+export function getOwnerCurrentTeamNameByFullName(fullName: string) {
+  const slug = getOwnerSlugByFullName(fullName);
+  if (!slug) return undefined;
+
+  return getOwnerProfileViewModelBySlug(slug)?.primaryTeamLabel;
 }
 
 export function getOwnerProfileStaticParams() {
@@ -456,7 +512,7 @@ export function getOwnerProfileViewModelBySlug(
     primaryTeamLabel: getPrimaryTeamLabel(heroFranchise, tenures),
     coOwnerDisplay: buildCoOwnerRelationships(owner.id, currentTenures),
     rivalProfilePath,
-    yearsActiveLabel: getYearsActiveLabel(tenures),
+    yearsActiveLabel: getYearsActiveLabel(owner, tenures),
     timeline: buildTimeline(owner, tenures, statSummaries),
   };
 }

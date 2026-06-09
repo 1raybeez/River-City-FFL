@@ -123,6 +123,16 @@ export interface SeasonResult {
   notes?: string[];
 }
 
+export interface LeagueServiceTenure {
+  id: string;
+  ownerId: string;
+  title: string;
+  startSeason: number;
+  endSeason?: number;
+  isActive: boolean;
+  notes?: string[];
+}
+
 export interface FranchiseStatSummary {
   id: string;
   franchiseId: string;

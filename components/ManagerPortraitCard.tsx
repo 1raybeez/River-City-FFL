@@ -4,7 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { Award, Crown, ShieldCheck, Skull } from "lucide-react";
 import { teamColors } from "@/lib/themes/teamColors";
-import { getOwnerProfilePathByFullName } from "@/lib/managers/identitySelectors";
+import {
+  getOwnerCurrentTeamNameByFullName,
+  getOwnerProfilePathByFullName,
+} from "@/lib/managers/identitySelectors";
 
 type ManagerPortraitCardProps = {
   manager: any;
@@ -29,6 +32,10 @@ export default function ManagerPortraitCard({
   const footerLabel = isStaff ? "League Role" : "Best Finish";
   const footerValue = isStaff ? manager.role || "Staff" : manager.bestFinish || "N/A";
   const profilePath = getOwnerProfilePathByFullName(manager.fullName);
+  const displayTeamName =
+    group === "active"
+      ? getOwnerCurrentTeamNameByFullName(manager.fullName) ?? manager.teamName
+      : manager.teamName;
 
   const card = (
     <article
@@ -58,7 +65,7 @@ export default function ManagerPortraitCard({
             {manager.fullName}
           </h3>
           <p className="mt-2 text-xs font-black uppercase tracking-widest text-white/65">
-            {manager.teamName}
+            {displayTeamName}
           </p>
         </div>
       </div>
