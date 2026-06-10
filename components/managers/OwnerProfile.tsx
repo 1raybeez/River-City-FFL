@@ -1,6 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -67,6 +69,37 @@ const CONTACT_METHODS: Record<string, ContactMethodDisplay> = {
   Sleeper: { label: "Sleeper DM", icon: "/logos/Sleeper.png" },
 };
 
+const SLEEPER_LEAGUE_ID = "1312149033254416384";
+
+type SleeperFetchStatus = "idle" | "loading" | "ready" | "error";
+
+type SleeperLeagueInfo = {
+  season?: string;
+  metadata?: Record<string, string | undefined>;
+};
+
+type SleeperRoster = {
+  owner_id?: string;
+  roster_id?: number;
+  settings?: {
+    division?: number | string | null;
+    wins?: number;
+    losses?: number;
+    ties?: number;
+    fpts?: number;
+    fpts_decimal?: number;
+  };
+};
+
+type CurrentDivisionData = {
+  divisionName: string;
+  seasonLabel: string;
+  standingsReady: boolean;
+  rank?: number;
+  record?: string;
+  pointsFor?: string;
+};
+
 function getAccentColor(profile: OwnerProfileViewModel) {
   const teamCode =
     profile.heroFranchise?.colorTeamCode ?? profile.owner.survey.favoriteNflTeam;
@@ -91,6 +124,103 @@ function getValuePositionLabel(valuePosition?: string) {
 function getContactMethod(preferredContact?: string) {
   if (!preferredContact) return undefined;
   return CONTACT_METHODS[preferredContact] ?? { label: preferredContact };
+}
+
+function getDivisionName(
+  leagueInfo: SleeperLeagueInfo | null,
+  divisionId: number
+) {
+  const metadataName = leagueInfo?.metadata?.[`division_${divisionId}`]?.trim();
+  return metadataName || `Division ${divisionId}`;
+}
+
+function getRosterDivisionId(roster: SleeperRoster) {
+  const division = Number(roster.settings?.division);
+  return Number.isFinite(division) && division > 0 ? division : null;
+}
+
+function getRosterPointsFor(roster: SleeperRoster) {
+  const wholePoints = Number(roster.settings?.fpts) || 0;
+  const decimalPoints = Number(roster.settings?.fpts_decimal) || 0;
+  return wholePoints + decimalPoints / 100;
+}
+
+function getRosterRecord(roster: SleeperRoster) {
+  const wins = Number(roster.settings?.wins) || 0;
+  const losses = Number(roster.settings?.losses) || 0;
+  const ties = Number(roster.settings?.ties) || 0;
+
+  return ties > 0 ? `${wins}-${losses}-${ties}` : `${wins}-${losses}`;
+}
+
+function hasStartedStandings(rosters: SleeperRoster[]) {
+  return rosters.some((roster) => {
+    const wins = Number(roster.settings?.wins) || 0;
+    const losses = Number(roster.settings?.losses) || 0;
+    const ties = Number(roster.settings?.ties) || 0;
+    return wins + losses + ties > 0 || getRosterPointsFor(roster) > 0;
+  });
+}
+
+function buildCurrentDivisionData({
+  profile,
+  leagueInfo,
+  rosters,
+}: {
+  profile: OwnerProfileViewModel;
+  leagueInfo: SleeperLeagueInfo | null;
+  rosters: SleeperRoster[];
+}): CurrentDivisionData | null {
+  const sleeperIds = new Set(profile.owner.sleeperIds);
+  const currentRosterIds = new Set(
+    profile.currentFranchises
+      .map((franchise) => franchise.currentSleeperRosterId)
+      .filter((rosterId): rosterId is number => typeof rosterId === "number")
+  );
+  const roster = rosters.find(
+    (candidate) =>
+      (candidate.owner_id && sleeperIds.has(candidate.owner_id)) ||
+      (typeof candidate.roster_id === "number" &&
+        currentRosterIds.has(candidate.roster_id))
+  );
+
+  if (!roster) return null;
+
+  const divisionId = getRosterDivisionId(roster);
+  if (!divisionId) return null;
+
+  const divisionRosters = rosters.filter(
+    (candidate) => getRosterDivisionId(candidate) === divisionId
+  );
+  const standingsReady = hasStartedStandings(divisionRosters);
+  const data: CurrentDivisionData = {
+    divisionName: getDivisionName(leagueInfo, divisionId),
+    seasonLabel: leagueInfo?.season ?? "2026",
+    standingsReady,
+  };
+
+  if (!standingsReady) return data;
+
+  const rankedRosters = [...divisionRosters].sort((a, b) => {
+    const winsDiff = (Number(b.settings?.wins) || 0) - (Number(a.settings?.wins) || 0);
+    if (winsDiff !== 0) return winsDiff;
+
+    const pointsDiff = getRosterPointsFor(b) - getRosterPointsFor(a);
+    if (pointsDiff !== 0) return pointsDiff;
+
+    return (Number(a.settings?.losses) || 0) - (Number(b.settings?.losses) || 0);
+  });
+  const rankIndex = rankedRosters.findIndex(
+    (candidate) => candidate.roster_id === roster.roster_id
+  );
+  const pointsFor = getRosterPointsFor(roster);
+
+  return {
+    ...data,
+    rank: rankIndex >= 0 ? rankIndex + 1 : undefined,
+    record: getRosterRecord(roster),
+    pointsFor: pointsFor > 0 ? pointsFor.toFixed(2) : undefined,
+  };
 }
 
 function clampTradeAggression(value: number) {
@@ -424,6 +554,151 @@ function TeamLegacy({ profile }: { profile: OwnerProfileViewModel }) {
           <LegacyRow key={tenure.id} tenure={tenure} />
         ))}
       </div>
+    </SectionShell>
+  );
+}
+
+function CurrentDivisionCard({ profile }: { profile: OwnerProfileViewModel }) {
+  const shouldShow =
+    profile.owner.status === OwnerProfileStatus.Active &&
+    profile.currentFranchises.some(
+      (franchise) => typeof franchise.currentSleeperRosterId === "number"
+    );
+  const accentColor = getAccentColor(profile);
+  const [status, setStatus] = useState<SleeperFetchStatus>("idle");
+  const [leagueInfo, setLeagueInfo] = useState<SleeperLeagueInfo | null>(null);
+  const [rosters, setRosters] = useState<SleeperRoster[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!shouldShow) return;
+
+    let cancelled = false;
+
+    async function fetchCurrentDivision() {
+      setStatus("loading");
+      setError(null);
+
+      try {
+        const [leagueResponse, rostersResponse] = await Promise.all([
+          fetch(`https://api.sleeper.app/v1/league/${SLEEPER_LEAGUE_ID}`),
+          fetch(
+            `https://api.sleeper.app/v1/league/${SLEEPER_LEAGUE_ID}/rosters`
+          ),
+        ]);
+
+        if (!leagueResponse.ok || !rostersResponse.ok) {
+          throw new Error("Sleeper division context is unavailable.");
+        }
+
+        const [nextLeagueInfo, nextRosters] = await Promise.all([
+          leagueResponse.json() as Promise<SleeperLeagueInfo>,
+          rostersResponse.json() as Promise<SleeperRoster[]>,
+        ]);
+
+        if (cancelled) return;
+
+        setLeagueInfo(nextLeagueInfo);
+        setRosters(Array.isArray(nextRosters) ? nextRosters : []);
+        setStatus("ready");
+      } catch (caughtError) {
+        console.error("Sleeper owner division fetch failed:", caughtError);
+        if (cancelled) return;
+
+        setStatus("error");
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Sleeper division context is unavailable."
+        );
+      }
+    }
+
+    fetchCurrentDivision();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [shouldShow]);
+
+  const divisionData = useMemo(
+    () => buildCurrentDivisionData({ profile, leagueInfo, rosters }),
+    [leagueInfo, profile, rosters]
+  );
+
+  if (!shouldShow) return null;
+
+  if (status === "loading" || status === "idle") {
+    return (
+      <SectionShell title="Current Division" icon={<Shield size={16} />}>
+        <p className="text-sm font-medium text-black/55 dark:text-white/55">
+          Loading current Sleeper division context...
+        </p>
+      </SectionShell>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <SectionShell title="Current Division" icon={<Shield size={16} />}>
+        <p className="text-sm font-medium text-black/55 dark:text-white/55">
+          {error || "Current division context is unavailable right now."}
+        </p>
+      </SectionShell>
+    );
+  }
+
+  if (!divisionData) return null;
+
+  const standingsFields: Array<{ label: string; value: string | number }> = [];
+
+  if (typeof divisionData.rank === "number") {
+    standingsFields.push({
+      label: "Division Rank",
+      value: `${divisionData.rank}`,
+    });
+  }
+
+  if (divisionData.record) {
+    standingsFields.push({ label: "Record", value: divisionData.record });
+  }
+
+  if (divisionData.pointsFor) {
+    standingsFields.push({
+      label: "Points For",
+      value: divisionData.pointsFor,
+    });
+  }
+
+  return (
+    <SectionShell title="Current Division" icon={<Shield size={16} />}>
+      <div
+        className="rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]"
+        style={{ borderLeftColor: accentColor, borderLeftWidth: 4 }}
+      >
+        <p className="text-[10px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+          Sleeper season {divisionData.seasonLabel}
+        </p>
+        <p className="mt-2 text-2xl font-black uppercase italic">
+          {divisionData.divisionName}
+        </p>
+      </div>
+
+      {divisionData.standingsReady && standingsFields.length > 0 ? (
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {standingsFields.map((field) => (
+            <LegacyMetric
+              key={field.label}
+              label={field.label}
+              value={field.value}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="mt-4 rounded-lg border border-black/10 bg-black/[0.02] p-4 text-sm font-medium text-black/55 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/55">
+          Standings available once the season begins.
+        </p>
+      )}
     </SectionShell>
   );
 }
@@ -853,6 +1128,7 @@ export default function OwnerProfile({
             <div className="space-y-6">
               <TeamLegacy profile={profile} />
               {showTimeline && <Timeline profile={profile} />}
+              <CurrentDivisionCard profile={profile} />
             </div>
             <aside className="space-y-6">{sidebarContent}</aside>
           </div>
