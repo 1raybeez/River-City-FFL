@@ -309,6 +309,59 @@ const OWNER_PROFILE_OVERRIDES: Record<string, OwnerProfileOverride> = {
   "tommy-moore": {
     location: "Shreveport, LA",
   },
+  "chris-barras": {
+    location: "Richmond, VA",
+  },
+  "gordie-gahagan": {
+    location: "Richmond, VA",
+    survey: {
+      favoriteNflTeam: "GB" as TeamCode,
+      bio: "Remembered as an original league owner, devoted Packers fan, and one of the league's strongest trade skeptics.",
+      philosophy:
+        "Gordie preferred a steady roster and rarely met a trade proposal he trusted.",
+    },
+    notes: [
+      "Gordie passed away on 12/31/2021.",
+      "Remembered as an original league owner, devoted Packers fan, and one of the league's strongest trade skeptics.",
+      "The league's modern trade-heavy era would have made everyone smile because Gordie hated trades.",
+    ],
+  },
+  "bryan-doane": {
+    location: "Mechanicsville, VA",
+  },
+  "keith-polarek": {
+    location: "Richmond, VA",
+  },
+  "james-minnix": {
+    location: "Carlisle, PA",
+  },
+  "zach-woolard": {
+    location: "Richmond, VA",
+  },
+  "nicholas-bates": {
+    location: "Richmond, VA",
+  },
+  "rachel-woolard": {
+    location: "Richmond, VA",
+  },
+  "ricky-taylor": {
+    location: "Richmond, VA",
+  },
+  "patrick-leahey": {
+    location: "Ashland, VA",
+  },
+  "darren-kusaj": {
+    location: "Richmond, VA",
+  },
+  "billy-biddle": {
+    location: "Frederick, MD",
+  },
+  "adam-lind": {
+    location: "Atlee, VA",
+  },
+  "garet-prior": {
+    location: "Wilsonville, OR",
+  },
   "wade-cameron": {
     location: "Raleigh, NC",
     roles: ["Assistant to the Commish"],

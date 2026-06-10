@@ -378,6 +378,21 @@ function buildTimeline(
     });
   }
 
+  if (owner.id === "gordie-gahagan") {
+    items.push({
+      year: "2021",
+      title: "Remembered by River City",
+      detail: "Gordie passed away on 12/31/2021.",
+    });
+
+    items.push({
+      year: "Legacy",
+      title: "Original owner and devoted Packers fan",
+      detail:
+        "Remembered as an original league owner, devoted Packers fan, and one of the league's strongest trade skeptics.",
+    });
+  }
+
   const ownerServiceTenures = leagueServiceTenures.filter(
     (service) => service.ownerId === owner.id
   );
