@@ -46,12 +46,12 @@ const mobileNavLinks = [
 ];
 
 const homeShortcutLinks = [
-  { label: "League Info Hub", href: "/league-info", group: "Core" },
-  { label: "Managers", href: "/managers", group: "Core" },
-  { label: "Matchups", href: "/matchups", group: "Core" },
   { label: "Draft Board", href: "/league-info/draft", group: "League Info" },
   { label: "Legislative Hub", href: "/commish/proposals", group: "League Info" },
   { label: "Payouts", href: "/league-info/payouts", group: "League Info" },
+  { label: "Rivalry Hub", href: "/league-info/rivalries", group: "League Info" },
+  { label: "Trophy Room", href: "/league-info/trophy-room", group: "League Info" },
+  { label: "Constitution", href: "/league-info/constitution", group: "League Info" },
 ];
 
 export default function Home() {
@@ -243,8 +243,8 @@ export default function Home() {
         )}
       </nav>
 
-      <header className="px-4 pt-12 pb-8 text-center">
-        <div className="mx-auto mb-6 flex h-20 w-20 md:h-24 md:w-24 items-center justify-center rounded-full bg-white dark:bg-black shadow-xl border-2 border-black/5 dark:border-white/10 overflow-hidden relative">
+      <header className="px-4 pt-8 pb-5 text-center">
+        <div className="mx-auto mb-5 flex h-20 w-20 md:h-24 md:w-24 items-center justify-center rounded-full bg-white dark:bg-black shadow-xl border-2 border-black/5 dark:border-white/10 overflow-hidden relative">
             <Image src="/River City FFL Logo.JPG" alt="Logo" fill className="object-cover" priority unoptimized />
         </div>
         <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic leading-none">
@@ -253,8 +253,27 @@ export default function Home() {
         <p className="mt-2 text-[10px] font-bold opacity-30 uppercase tracking-[0.4em]">Est. 2011 • Richmond, VA</p>
       </header>
 
-      <main className="container mx-auto px-6 py-8 md:py-12 max-w-7xl">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start mb-20">
+      <main className="container mx-auto px-6 pt-2 pb-8 md:pt-4 md:pb-10 max-w-7xl">
+        <section aria-label="Home shortcuts" className="mb-10 md:mb-12">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {homeShortcutLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`rounded-2xl border px-4 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${
+                  item.href === "/league-info"
+                    ? "border-orange-600 bg-orange-600 text-white shadow-lg shadow-orange-900/20"
+                    : "border-black/5 bg-black/5 hover:border-orange-600/30 hover:text-orange-600 dark:border-white/10 dark:bg-white/5"
+                }`}
+              >
+                <span className="mb-1 block text-[8px] opacity-40">{item.group}</span>
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start mb-12 md:mb-16">
           
           <div className="lg:col-span-2 space-y-6">
             {/* MAIN HERO CARD */}
@@ -349,26 +368,7 @@ export default function Home() {
           </div>
         </div>
 
-        <section aria-label="Home shortcuts" className="mb-20">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {homeShortcutLinks.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`rounded-2xl border px-4 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${
-                  item.href === "/league-info"
-                    ? "border-orange-600 bg-orange-600 text-white shadow-lg shadow-orange-900/20"
-                    : "border-black/5 bg-black/5 hover:border-orange-600/30 hover:text-orange-600 dark:border-white/10 dark:bg-white/5"
-                }`}
-              >
-                <span className="mb-1 block text-[8px] opacity-40">{item.group}</span>
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        <section className="mt-24 border-t border-black/5 dark:border-white/10 pt-16">
+        <section className="mt-12 md:mt-16 border-t border-black/5 dark:border-white/10 pt-12 md:pt-16">
           <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-12 px-2">
             <div>
                 <div className="flex items-center gap-3 mb-2">
