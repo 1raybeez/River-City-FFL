@@ -28,6 +28,12 @@ import {
   getAllOwnerFinancialSeasons,
   getAllTimeOwnerFinancialSummaries,
 } from '@/lib/finance/payoutHistorySelectors';
+import {
+  JORDAN_SHAKE_N_BAKERS_PAYOUT_ATTRIBUTION_NOTE,
+  LANDON_SPECIAL_BROWNIES_PAYOUT_ATTRIBUTION_NOTE,
+  RAY_JEFFREY_PAYOUT_ATTRIBUTION_NOTE,
+} from '@/lib/finance/payoutHistoryData';
+import type { OwnerFinancialSeason } from '@/lib/finance/payoutHistoryTypes';
 import { db } from '@/lib/firebase';
 import { ownerProfilesById } from '@/lib/managers/identityData';
 import { OwnerProfileStatus } from '@/lib/managers/identityTypes';
@@ -67,11 +73,13 @@ type EarningsHistoryRow = {
   totalDuesPaid: number;
   totalGrossWon: number;
   totalNetEarnings: number;
+  hasLiveData: boolean;
   seasonEntries: {
     season: number;
     duesPaid: number;
     grossWon: number;
     netEarnings: number;
+    isLive: boolean;
   }[];
   notes?: string[];
 };
@@ -119,11 +127,13 @@ const PAYOUT_OWNER_DISPLAY_NAMES: Record<string, string> = {
   'bryan-doane': 'Bryan Doane',
 };
 
-const payoutHistoryAllTimeSummaries = getAllTimeOwnerFinancialSummaries();
-const payoutHistoryOwnerSeasons = getAllOwnerFinancialSeasons();
-const payoutHistorySeasonOptions = [
-  ...new Set(payoutHistoryOwnerSeasons.map((entry) => entry.season)),
+const staticPayoutHistoryOwnerSeasons = getAllOwnerFinancialSeasons();
+const staticPayoutHistorySeasons = [
+  ...new Set(staticPayoutHistoryOwnerSeasons.map((entry) => entry.season)),
 ].sort((a, b) => b - a);
+const staticPayoutHistoryHasCurrentSeason = staticPayoutHistorySeasons.includes(
+  FINANCE_SEASON_YEAR
+);
 
 function formatCurrency(value: number) {
   return `${value < 0 ? '-' : ''}$${Math.abs(value).toLocaleString('en-US')}`;
@@ -154,20 +164,42 @@ function getNetToneClass(value: number) {
   return 'border-black/10 bg-black/5 text-black/50 dark:border-white/10 dark:bg-white/5 dark:text-white/50';
 }
 
-function getOwnerActivitySeasonCount(ownerId: string) {
-  return payoutHistoryOwnerSeasons.filter(
+function getOwnerActivitySeasonCount(
+  ownerId: string,
+  entries: OwnerFinancialSeason[]
+) {
+  return entries.filter(
     (entry) =>
       entry.ownerId === ownerId && (entry.duesPaid > 0 || entry.grossWon > 0)
   ).length;
 }
 
-function getOwnerActiveFinancialSeasons(ownerId: string) {
-  return payoutHistoryOwnerSeasons
+function getOwnerActiveFinancialSeasons(
+  ownerId: string,
+  entries: OwnerFinancialSeason[]
+) {
+  return entries
     .filter(
       (entry) =>
         entry.ownerId === ownerId && (entry.duesPaid > 0 || entry.grossWon > 0)
     )
     .sort((a, b) => b.season - a.season);
+}
+
+function getLivePayoutAttributionNotes(ownerId: string) {
+  if (ownerId === 'ray-long') {
+    return [RAY_JEFFREY_PAYOUT_ATTRIBUTION_NOTE];
+  }
+
+  if (ownerId === 'jordan-maslyn') {
+    return [JORDAN_SHAKE_N_BAKERS_PAYOUT_ATTRIBUTION_NOTE];
+  }
+
+  if (ownerId === 'landon-elliott') {
+    return [LANDON_SPECIAL_BROWNIES_PAYOUT_ATTRIBUTION_NOTE];
+  }
+
+  return undefined;
 }
 
 function ownerMatchesStatusFilter(
@@ -277,19 +309,59 @@ export default function PayoutsPage() {
   const visibleFinanceNotes = financeRules?.notes.filter(
     (note) => !note.toLowerCase().includes('nameplate')
   ) ?? [];
+  const livePayoutHistoryRows = useMemo<OwnerFinancialSeason[]>(() => {
+    if (staticPayoutHistoryHasCurrentSeason) return [];
+
+    return managerData.map((owner) => {
+      const duesPaid = owner.paid ? owner.entryFee : 0;
+      const notes = getLivePayoutAttributionNotes(owner.managerId);
+
+      return {
+        season: FINANCE_SEASON_YEAR,
+        ownerId: owner.managerId,
+        sourceLabel: owner.displayName,
+        duesPaid,
+        grossWon: owner.winnings,
+        netEarnings: owner.winnings - duesPaid,
+        sourceSheet: 'Firestore_Current_Ledger',
+        ...(notes ? { notes } : {}),
+      };
+    });
+  }, [managerData]);
+  const includesLivePayoutHistory = livePayoutHistoryRows.length > 0;
+  const payoutHistoryOwnerSeasons = useMemo(
+    () => [...staticPayoutHistoryOwnerSeasons, ...livePayoutHistoryRows],
+    [livePayoutHistoryRows]
+  );
+  const payoutHistoryAllTimeSummaries = useMemo(
+    () => getAllTimeOwnerFinancialSummaries(payoutHistoryOwnerSeasons),
+    [payoutHistoryOwnerSeasons]
+  );
+  const payoutHistorySeasonOptions = useMemo(
+    () =>
+      [...new Set(payoutHistoryOwnerSeasons.map((entry) => entry.season))].sort(
+        (a, b) => b - a
+      ),
+    [payoutHistoryOwnerSeasons]
+  );
   const earningsHistoryRows = useMemo(() => {
     const rows: EarningsHistoryRow[] =
       earningsHistorySeason === 'all'
         ? payoutHistoryAllTimeSummaries.map((summary) => {
-            const activeSeasonCount = getOwnerActivitySeasonCount(summary.ownerId);
+            const activeSeasonCount = getOwnerActivitySeasonCount(
+              summary.ownerId,
+              payoutHistoryOwnerSeasons
+            );
             const ownerProfile = ownerProfilesById[summary.ownerId];
             const seasonEntries = getOwnerActiveFinancialSeasons(
-              summary.ownerId
+              summary.ownerId,
+              payoutHistoryOwnerSeasons
             ).map((entry) => ({
               season: entry.season,
               duesPaid: entry.duesPaid,
               grossWon: entry.grossWon,
               netEarnings: entry.netEarnings,
+              isLive: entry.sourceSheet === 'Firestore_Current_Ledger',
             }));
 
             return {
@@ -307,6 +379,7 @@ export default function PayoutsPage() {
               totalDuesPaid: summary.totalDuesPaid,
               totalGrossWon: summary.totalGrossWon,
               totalNetEarnings: summary.totalNetEarnings,
+              hasLiveData: seasonEntries.some((entry) => entry.isLive),
               seasonEntries,
               notes: summary.notes,
             };
@@ -332,12 +405,14 @@ export default function PayoutsPage() {
                 totalDuesPaid: entry.duesPaid,
                 totalGrossWon: entry.grossWon,
                 totalNetEarnings: entry.netEarnings,
+                hasLiveData: entry.sourceSheet === 'Firestore_Current_Ledger',
                 seasonEntries: [
                   {
                     season: entry.season,
                     duesPaid: entry.duesPaid,
                     grossWon: entry.grossWon,
                     netEarnings: entry.netEarnings,
+                    isLive: entry.sourceSheet === 'Firestore_Current_Ledger',
                   },
                 ],
                 notes: entry.notes,
@@ -355,7 +430,13 @@ export default function PayoutsPage() {
 
         return a.displayName.localeCompare(b.displayName);
       });
-  }, [earningsHistoryMetric, earningsHistorySeason, ownerStatusFilter]);
+  }, [
+    earningsHistoryMetric,
+    earningsHistorySeason,
+    ownerStatusFilter,
+    payoutHistoryAllTimeSummaries,
+    payoutHistoryOwnerSeasons,
+  ]);
   const selectedMetricLabel =
     EARNINGS_HISTORY_METRICS.find(
       (metric) => metric.key === earningsHistoryMetric
@@ -1009,6 +1090,9 @@ export default function PayoutsPage() {
                 <h2 className="mt-2 text-3xl font-black uppercase italic tracking-tighter">Earnings History</h2>
                 <p className="mt-3 text-sm font-bold leading-relaxed opacity-60">
                   Historical payout data from the Paid_Earnings workbook tab. Data currently covers 2016-2025.
+                  {includesLivePayoutHistory
+                    ? ` ${FINANCE_SEASON_YEAR} values are live from the current Firestore ledger and may change.`
+                    : ''}
                 </p>
               </div>
 
@@ -1097,6 +1181,10 @@ export default function PayoutsPage() {
                       {payoutHistorySeasonOptions.map((season) => (
                         <option key={season} value={season}>
                           {season}
+                          {includesLivePayoutHistory &&
+                          season === FINANCE_SEASON_YEAR
+                            ? ' Live'
+                            : ''}
                         </option>
                       ))}
                     </select>
@@ -1139,6 +1227,11 @@ export default function PayoutsPage() {
                                 <span className="rounded-full border border-black/10 px-3 py-1 text-[8px] font-black uppercase tracking-widest opacity-40 dark:border-white/10">
                                   {row.seasonsLabel}
                                 </span>
+                                {row.hasLiveData && (
+                                  <span className="rounded-full border border-emerald-600/20 bg-emerald-600/10 px-3 py-1 text-[8px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+                                    2026 Live
+                                  </span>
+                                )}
                               </div>
                               <p className="mt-1 text-[9px] font-black uppercase tracking-widest opacity-30">
                                 Source: {row.sourceLabels.join(', ')} · {isExpanded ? 'Hide Details' : 'View Details'}
@@ -1246,7 +1339,14 @@ export default function PayoutsPage() {
                                   <tbody>
                                     {row.seasonEntries.map((entry) => (
                                       <tr key={`${row.ownerId}-${entry.season}`} className="border-b border-black/5 last:border-0 dark:border-white/5">
-                                        <td className="px-4 py-3 text-sm font-black">{entry.season}</td>
+                                        <td className="px-4 py-3 text-sm font-black">
+                                          <span>{entry.season}</span>
+                                          {entry.isLive && (
+                                            <span className="ml-2 rounded-full border border-emerald-600/20 bg-emerald-600/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+                                              Live
+                                            </span>
+                                          )}
+                                        </td>
                                         <td className="px-4 py-3 text-right text-sm font-bold">{formatCurrency(entry.duesPaid)}</td>
                                         <td className="px-4 py-3 text-right text-sm font-bold text-emerald-700 dark:text-emerald-300">{formatCurrency(entry.grossWon)}</td>
                                         <td className={`px-4 py-3 text-right text-sm font-black ${entry.netEarnings < 0 ? 'text-red-600 dark:text-red-300' : entry.netEarnings > 0 ? 'text-emerald-700 dark:text-emerald-300' : 'opacity-50'}`}>

@@ -1,4 +1,6 @@
-export type PayoutHistorySourceSheet = "Paid_Earnings";
+export type PayoutHistorySourceSheet =
+  | "Paid_Earnings"
+  | "Firestore_Current_Ledger";
 
 export interface PayoutOwnerAlias {
   sourceLabel: string;

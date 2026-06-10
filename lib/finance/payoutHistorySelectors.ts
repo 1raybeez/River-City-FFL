@@ -38,6 +38,24 @@ function summarizeOwnerEntries(
   };
 }
 
+export function summarizeOwnerFinancialSeasons(
+  entries: OwnerFinancialSeason[] = ownerFinancialSeasons
+) {
+  const entriesByOwnerId = new Map<string, OwnerFinancialSeason[]>();
+
+  entries.forEach((entry) => {
+    const ownerEntries = entriesByOwnerId.get(entry.ownerId) ?? [];
+    ownerEntries.push(entry);
+    entriesByOwnerId.set(entry.ownerId, ownerEntries);
+  });
+
+  return [...entriesByOwnerId.entries()]
+    .map(([ownerId, ownerEntries]) =>
+      summarizeOwnerEntries(ownerId, ownerEntries)
+    )
+    .sort((a, b) => b.totalNetEarnings - a.totalNetEarnings);
+}
+
 export function getAllOwnerFinancialSeasons() {
   return [...ownerFinancialSeasons];
 }
@@ -48,18 +66,10 @@ export function getOwnerFinancialSeasonsByOwnerId(ownerId: string) {
     .sort((a, b) => b.season - a.season);
 }
 
-export function getAllTimeOwnerFinancialSummaries() {
-  const entriesByOwnerId = new Map<string, OwnerFinancialSeason[]>();
-
-  ownerFinancialSeasons.forEach((entry) => {
-    const entries = entriesByOwnerId.get(entry.ownerId) ?? [];
-    entries.push(entry);
-    entriesByOwnerId.set(entry.ownerId, entries);
-  });
-
-  return [...entriesByOwnerId.entries()]
-    .map(([ownerId, entries]) => summarizeOwnerEntries(ownerId, entries))
-    .sort((a, b) => b.totalNetEarnings - a.totalNetEarnings);
+export function getAllTimeOwnerFinancialSummaries(
+  entries: OwnerFinancialSeason[] = ownerFinancialSeasons
+) {
+  return summarizeOwnerFinancialSeasons(entries);
 }
 
 export function getAllTimeOwnerFinancialSummaryByOwnerId(ownerId: string) {
