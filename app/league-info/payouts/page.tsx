@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from "next-themes";
@@ -24,7 +24,13 @@ import {
   type FinanceRules,
   type FinanceSeason,
 } from '@/lib/finance/firestoreFinance';
+import {
+  getAllOwnerFinancialSeasons,
+  getAllTimeOwnerFinancialSummaries,
+} from '@/lib/finance/payoutHistorySelectors';
 import { db } from '@/lib/firebase';
+import { ownerProfilesById } from '@/lib/managers/identityData';
+import { OwnerProfileStatus } from '@/lib/managers/identityTypes';
 
 // --- CONFIGURATION ---
 const FINANCE_SEASON_YEAR = 2026;
@@ -46,6 +52,142 @@ const AWARD_TYPE_LABELS: Record<FinanceAwardType, string> = {
   adjustment: 'Adjustment',
 };
 
+type PayoutView = 'current' | 'history';
+type EarningsHistoryMetric = 'net' | 'gross' | 'paid';
+type EarningsHistorySeasonFilter = 'all' | number;
+type OwnerStatusFilter = 'all' | 'active' | 'retired';
+
+type EarningsHistoryRow = {
+  ownerId: string;
+  sourceLabels: string[];
+  displayName: string;
+  photo?: string | null;
+  status?: OwnerProfileStatus;
+  seasonsLabel: string;
+  totalDuesPaid: number;
+  totalGrossWon: number;
+  totalNetEarnings: number;
+  seasonEntries: {
+    season: number;
+    duesPaid: number;
+    grossWon: number;
+    netEarnings: number;
+  }[];
+  notes?: string[];
+};
+
+const EARNINGS_HISTORY_METRICS: {
+  key: EarningsHistoryMetric;
+  label: string;
+}[] = [
+  { key: 'net', label: 'Net Earnings' },
+  { key: 'gross', label: 'Gross Won' },
+  { key: 'paid', label: 'Dues Paid' },
+];
+
+const OWNER_STATUS_FILTERS: {
+  key: OwnerStatusFilter;
+  label: string;
+}[] = [
+  { key: 'all', label: 'All Owners' },
+  { key: 'active', label: 'Active Owners' },
+  { key: 'retired', label: 'Retired Owners' },
+];
+
+const PAYOUT_OWNER_DISPLAY_NAMES: Record<string, string> = {
+  'tommy-moore': 'Tommy Moore',
+  'david-besedich': 'David Besedich',
+  'jordan-maslyn': 'Jordan Maslyn',
+  'jd-dowling': 'JD Dowling',
+  'aaron-hawkins': 'Aaron Hawkins',
+  'rashad-gresham': 'Rashad Gresham',
+  'brian-stevens': 'Brian Stevens',
+  'wade-cameron': 'Wade Cameron',
+  'travis-miller': 'Travis Miller',
+  'ray-long': 'Ray Long',
+  'doug-fordham': 'Doug Fordham',
+  'stan-schoppe': 'Stan Schoppe',
+  'billy-biddle': 'Billy Biddle',
+  'landon-elliott': 'Landon Elliott',
+  'adam-lind': 'Adam Lind',
+  'patrick-leahey': 'Patrick Leahey',
+  'chris-barras': 'Chris Barras',
+  'ricky-taylor': 'Ricky Taylor',
+  'garet-prior': 'Garet Prior',
+  'james-minnix': 'James Minnix',
+  'gordie-gahagan': 'Gordie Gahagan',
+  'bryan-doane': 'Bryan Doane',
+};
+
+const payoutHistoryAllTimeSummaries = getAllTimeOwnerFinancialSummaries();
+const payoutHistoryOwnerSeasons = getAllOwnerFinancialSeasons();
+const payoutHistorySeasonOptions = [
+  ...new Set(payoutHistoryOwnerSeasons.map((entry) => entry.season)),
+].sort((a, b) => b - a);
+
+function formatCurrency(value: number) {
+  return `${value < 0 ? '-' : ''}$${Math.abs(value).toLocaleString('en-US')}`;
+}
+
+function getPayoutOwnerDisplayName(ownerId: string, sourceLabels: string[]) {
+  return (
+    ownerProfilesById[ownerId]?.fullName ??
+    PAYOUT_OWNER_DISPLAY_NAMES[ownerId] ??
+    sourceLabels[0] ??
+    ownerId
+  );
+}
+
+function getMetricValue(row: EarningsHistoryRow, metric: EarningsHistoryMetric) {
+  if (metric === 'gross') return row.totalGrossWon;
+  if (metric === 'paid') return row.totalDuesPaid;
+  return row.totalNetEarnings;
+}
+
+function getNetToneClass(value: number) {
+  if (value > 0) {
+    return 'border-emerald-600/20 bg-emerald-600/10 text-emerald-700 dark:text-emerald-300';
+  }
+  if (value < 0) {
+    return 'border-red-600/20 bg-red-600/10 text-red-700 dark:text-red-300';
+  }
+  return 'border-black/10 bg-black/5 text-black/50 dark:border-white/10 dark:bg-white/5 dark:text-white/50';
+}
+
+function getOwnerActivitySeasonCount(ownerId: string) {
+  return payoutHistoryOwnerSeasons.filter(
+    (entry) =>
+      entry.ownerId === ownerId && (entry.duesPaid > 0 || entry.grossWon > 0)
+  ).length;
+}
+
+function getOwnerActiveFinancialSeasons(ownerId: string) {
+  return payoutHistoryOwnerSeasons
+    .filter(
+      (entry) =>
+        entry.ownerId === ownerId && (entry.duesPaid > 0 || entry.grossWon > 0)
+    )
+    .sort((a, b) => b.season - a.season);
+}
+
+function ownerMatchesStatusFilter(
+  ownerId: string,
+  statusFilter: OwnerStatusFilter
+) {
+  if (statusFilter === 'all') return true;
+
+  const status = ownerProfilesById[ownerId]?.status;
+  if (statusFilter === 'active') return status === OwnerProfileStatus.Active;
+  return status === OwnerProfileStatus.Retired;
+}
+
+function getOwnerStatusLabel(status?: OwnerProfileStatus) {
+  if (status === OwnerProfileStatus.Active) return 'Active';
+  if (status === OwnerProfileStatus.Retired) return 'Retired';
+  if (status === OwnerProfileStatus.Staff) return 'Staff';
+  return 'Owner';
+}
+
 export default function PayoutsPage() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -64,6 +206,16 @@ export default function PayoutsPage() {
   const [awardLabel, setAwardLabel] = useState('');
   const [awardWeek, setAwardWeek] = useState('');
   const [isSubmittingAward, setIsSubmittingAward] = useState(false);
+  const [payoutView, setPayoutView] = useState<PayoutView>('current');
+  const [earningsHistoryMetric, setEarningsHistoryMetric] =
+    useState<EarningsHistoryMetric>('net');
+  const [earningsHistorySeason, setEarningsHistorySeason] =
+    useState<EarningsHistorySeasonFilter>('all');
+  const [ownerStatusFilter, setOwnerStatusFilter] =
+    useState<OwnerStatusFilter>('all');
+  const [expandedPayoutOwnerId, setExpandedPayoutOwnerId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -72,6 +224,10 @@ export default function PayoutsPage() {
       setAwardOwnerId(managerData[0].id);
     }
   }, [awardOwnerId, managerData]);
+
+  useEffect(() => {
+    setExpandedPayoutOwnerId(null);
+  }, [earningsHistoryMetric, earningsHistorySeason, ownerStatusFilter]);
 
   useEffect(() => {
     async function fetchFinances() {
@@ -121,6 +277,89 @@ export default function PayoutsPage() {
   const visibleFinanceNotes = financeRules?.notes.filter(
     (note) => !note.toLowerCase().includes('nameplate')
   ) ?? [];
+  const earningsHistoryRows = useMemo(() => {
+    const rows: EarningsHistoryRow[] =
+      earningsHistorySeason === 'all'
+        ? payoutHistoryAllTimeSummaries.map((summary) => {
+            const activeSeasonCount = getOwnerActivitySeasonCount(summary.ownerId);
+            const ownerProfile = ownerProfilesById[summary.ownerId];
+            const seasonEntries = getOwnerActiveFinancialSeasons(
+              summary.ownerId
+            ).map((entry) => ({
+              season: entry.season,
+              duesPaid: entry.duesPaid,
+              grossWon: entry.grossWon,
+              netEarnings: entry.netEarnings,
+            }));
+
+            return {
+              ownerId: summary.ownerId,
+              sourceLabels: summary.sourceLabels,
+              displayName: getPayoutOwnerDisplayName(
+                summary.ownerId,
+                summary.sourceLabels
+              ),
+              photo: ownerProfile?.photo,
+              status: ownerProfile?.status,
+              seasonsLabel: `${activeSeasonCount} season${
+                activeSeasonCount === 1 ? '' : 's'
+              } included`,
+              totalDuesPaid: summary.totalDuesPaid,
+              totalGrossWon: summary.totalGrossWon,
+              totalNetEarnings: summary.totalNetEarnings,
+              seasonEntries,
+              notes: summary.notes,
+            };
+          })
+        : payoutHistoryOwnerSeasons
+            .filter(
+              (entry) =>
+                entry.season === earningsHistorySeason &&
+                (entry.duesPaid > 0 || entry.grossWon > 0)
+            )
+            .map((entry) => {
+              const ownerProfile = ownerProfilesById[entry.ownerId];
+
+              return {
+                ownerId: entry.ownerId,
+                sourceLabels: [entry.sourceLabel],
+                displayName: getPayoutOwnerDisplayName(entry.ownerId, [
+                  entry.sourceLabel,
+                ]),
+                photo: ownerProfile?.photo,
+                status: ownerProfile?.status,
+                seasonsLabel: `${entry.season} season`,
+                totalDuesPaid: entry.duesPaid,
+                totalGrossWon: entry.grossWon,
+                totalNetEarnings: entry.netEarnings,
+                seasonEntries: [
+                  {
+                    season: entry.season,
+                    duesPaid: entry.duesPaid,
+                    grossWon: entry.grossWon,
+                    netEarnings: entry.netEarnings,
+                  },
+                ],
+                notes: entry.notes,
+              };
+            });
+
+    return rows
+      .filter((row) => ownerMatchesStatusFilter(row.ownerId, ownerStatusFilter))
+      .sort((a, b) => {
+        const metricDifference =
+          getMetricValue(b, earningsHistoryMetric) -
+          getMetricValue(a, earningsHistoryMetric);
+
+        if (metricDifference !== 0) return metricDifference;
+
+        return a.displayName.localeCompare(b.displayName);
+      });
+  }, [earningsHistoryMetric, earningsHistorySeason, ownerStatusFilter]);
+  const selectedMetricLabel =
+    EARNINGS_HISTORY_METRICS.find(
+      (metric) => metric.key === earningsHistoryMetric
+    )?.label ?? 'Net Earnings';
 
   const getAwardTime = (award: FinanceAward) => {
     const value = award.createdAt ?? award.updatedAt;
@@ -404,6 +643,27 @@ export default function PayoutsPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-10">
+        <div className="mb-8 grid grid-cols-1 gap-2 rounded-2xl border border-black/10 bg-black/5 p-1 dark:border-white/10 dark:bg-white/5 sm:grid-cols-2">
+          {[
+            { key: 'current' as PayoutView, label: 'Current Ledger' },
+            { key: 'history' as PayoutView, label: 'Earnings History' },
+          ].map((view) => (
+            <button
+              key={view.key}
+              type="button"
+              onClick={() => setPayoutView(view.key)}
+              className={`rounded-xl px-5 py-3 text-[10px] font-black uppercase tracking-widest transition-all ${
+                payoutView === view.key
+                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20'
+                  : 'opacity-50 hover:opacity-100'
+              }`}
+            >
+              {view.label}
+            </button>
+          ))}
+        </div>
+
+        <div className={payoutView === 'current' ? 'block' : 'hidden'}>
         {loadError && (
           <div className="mb-8 rounded-2xl border border-red-600/20 bg-red-600/10 px-5 py-4 text-sm font-bold text-red-700 dark:text-red-300">
             {loadError}
@@ -739,6 +999,275 @@ export default function PayoutsPage() {
                 );
             })}
         </div>
+        </div>
+
+        {payoutView === 'history' && (
+          <div className="space-y-8">
+            <section className="rounded-[2.5rem] border border-emerald-600/20 bg-emerald-600/5 p-6 shadow-xl sm:p-8">
+              <div className="mb-6">
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-600">Historical Ledger</p>
+                <h2 className="mt-2 text-3xl font-black uppercase italic tracking-tighter">Earnings History</h2>
+                <p className="mt-3 text-sm font-bold leading-relaxed opacity-60">
+                  Historical payout data from the Paid_Earnings workbook tab. Data currently covers 2016-2025.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {[
+                  { label: 'Paid', value: 'Dues paid' },
+                  { label: 'Won', value: 'Gross payouts' },
+                  { label: 'Net', value: 'Won - Paid' },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-3xl border border-black/5 bg-white/60 p-5 dark:border-white/10 dark:bg-black/20">
+                    <p className="text-[9px] font-black uppercase tracking-widest opacity-40">{item.label}</p>
+                    <p className="mt-2 text-sm font-black uppercase tracking-tight">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="rounded-[2.5rem] border border-black/5 bg-black/5 p-6 shadow-xl dark:border-white/10 dark:bg-white/5 sm:p-8">
+              <div className="mb-6 flex flex-col gap-5">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-600">Leaderboard</p>
+                    <h3 className="mt-2 text-2xl font-black uppercase italic tracking-tighter">
+                      Ranked by {selectedMetricLabel}
+                    </h3>
+                  </div>
+                  <div className="rounded-full border border-black/10 px-4 py-2 text-[9px] font-black uppercase tracking-widest opacity-40 dark:border-white/10">
+                    {earningsHistoryRows.length} owner{earningsHistoryRows.length === 1 ? '' : 's'}
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-black/10 bg-white/60 p-4 dark:border-white/10 dark:bg-black/20">
+                  <p className="mb-3 text-[9px] font-black uppercase tracking-widest opacity-40">Metric</p>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    {EARNINGS_HISTORY_METRICS.map((metric) => (
+                      <button
+                        key={metric.key}
+                        type="button"
+                        onClick={() => setEarningsHistoryMetric(metric.key)}
+                        className={`min-h-11 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest transition-all ${
+                          earningsHistoryMetric === metric.key
+                            ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20'
+                            : 'border border-black/10 bg-black/5 opacity-60 hover:opacity-100 dark:border-white/10 dark:bg-white/5'
+                        }`}
+                      >
+                        {metric.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_280px]">
+                  <div className="rounded-3xl border border-black/10 bg-white/60 p-4 dark:border-white/10 dark:bg-black/20">
+                    <p className="mb-3 text-[9px] font-black uppercase tracking-widest opacity-40">Owner Status</p>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      {OWNER_STATUS_FILTERS.map((filter) => (
+                        <button
+                          key={filter.key}
+                          type="button"
+                          onClick={() => setOwnerStatusFilter(filter.key)}
+                          className={`min-h-11 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest transition-all ${
+                            ownerStatusFilter === filter.key
+                              ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20'
+                              : 'border border-black/10 bg-black/5 opacity-60 hover:opacity-100 dark:border-white/10 dark:bg-white/5'
+                          }`}
+                        >
+                          {filter.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <label className="rounded-3xl border border-black/10 bg-white/60 p-4 dark:border-white/10 dark:bg-black/20">
+                    <span className="mb-3 block text-[9px] font-black uppercase tracking-widest opacity-40">Season</span>
+                    <select
+                      value={earningsHistorySeason}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setEarningsHistorySeason(
+                          value === 'all' ? 'all' : Number(value)
+                        );
+                      }}
+                      className="min-h-11 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm font-black uppercase outline-none transition-all focus:border-emerald-600 dark:border-white/10 dark:bg-black"
+                    >
+                      <option value="all">All Time</option>
+                      {payoutHistorySeasonOptions.map((season) => (
+                        <option key={season} value={season}>
+                          {season}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {earningsHistoryRows.map((row, index) => {
+                  const isExpanded = expandedPayoutOwnerId === row.ownerId;
+
+                  return (
+                    <article
+                      key={`${row.ownerId}-${earningsHistorySeason}`}
+                      className="overflow-hidden rounded-3xl border border-black/5 bg-white/70 shadow-sm dark:border-white/10 dark:bg-black/20"
+                    >
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedPayoutOwnerId((current) =>
+                            current === row.ownerId ? null : row.ownerId
+                          )
+                        }
+                        aria-expanded={isExpanded}
+                        className="w-full p-5 text-left transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                      >
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                          <div className="flex min-w-0 gap-4">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-emerald-600/20 bg-emerald-600/10 text-sm font-black italic text-emerald-600">
+                              #{index + 1}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h4 className="text-lg font-black uppercase italic tracking-tighter">
+                                  {row.displayName}
+                                </h4>
+                                <span className="rounded-full border border-black/10 px-3 py-1 text-[8px] font-black uppercase tracking-widest opacity-40 dark:border-white/10">
+                                  {getOwnerStatusLabel(row.status)}
+                                </span>
+                                <span className="rounded-full border border-black/10 px-3 py-1 text-[8px] font-black uppercase tracking-widest opacity-40 dark:border-white/10">
+                                  {row.seasonsLabel}
+                                </span>
+                              </div>
+                              <p className="mt-1 text-[9px] font-black uppercase tracking-widest opacity-30">
+                                Source: {row.sourceLabels.join(', ')} · {isExpanded ? 'Hide Details' : 'View Details'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:min-w-[360px]">
+                            {[
+                              {
+                                key: 'paid' as EarningsHistoryMetric,
+                                label: 'Paid',
+                                value: row.totalDuesPaid,
+                                className: 'border-black/10 bg-black/5 dark:border-white/10 dark:bg-white/5',
+                              },
+                              {
+                                key: 'gross' as EarningsHistoryMetric,
+                                label: 'Won',
+                                value: row.totalGrossWon,
+                                className: 'border-emerald-600/20 bg-emerald-600/10 text-emerald-700 dark:text-emerald-300',
+                              },
+                              {
+                                key: 'net' as EarningsHistoryMetric,
+                                label: 'Net',
+                                value: row.totalNetEarnings,
+                                className: getNetToneClass(row.totalNetEarnings),
+                              },
+                            ].map((item) => (
+                              <div
+                                key={item.key}
+                                className={`rounded-2xl border px-4 py-3 ${
+                                  item.className
+                                } ${
+                                  earningsHistoryMetric === item.key
+                                    ? 'ring-2 ring-emerald-600/30'
+                                    : ''
+                                }`}
+                              >
+                                <p className="text-[8px] font-black uppercase tracking-widest opacity-50">{item.label}</p>
+                                <p className="mt-1 text-xl font-black italic tracking-tighter">
+                                  {formatCurrency(item.value)}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="border-t border-black/5 bg-black/[0.03] p-5 dark:border-white/10 dark:bg-white/[0.03]">
+                          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[160px_1fr]">
+                            <div className="flex items-center gap-4 lg:block">
+                              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-3xl border border-black/10 bg-black/10 shadow-sm dark:border-white/10 dark:bg-white/10 lg:h-36 lg:w-full">
+                                {row.photo ? (
+                                  <Image
+                                    src={row.photo}
+                                    alt={`${row.displayName} profile photo`}
+                                    fill
+                                    className="object-cover object-top"
+                                    sizes="160px"
+                                    unoptimized
+                                  />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center text-3xl font-black opacity-30">
+                                    {row.displayName[0]}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="lg:mt-3">
+                                <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Expanded Owner</p>
+                                <p className="mt-1 text-sm font-black uppercase italic tracking-tight">{row.displayName}</p>
+                              </div>
+                            </div>
+
+                            <div className="min-w-0 space-y-4">
+                              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                                {[
+                                  { label: 'Total Paid', value: row.totalDuesPaid },
+                                  { label: 'Total Won', value: row.totalGrossWon },
+                                  { label: 'Total Net', value: row.totalNetEarnings },
+                                ].map((item) => (
+                                  <div key={item.label} className={`rounded-2xl border px-4 py-3 ${item.label === 'Total Net' ? getNetToneClass(item.value) : 'border-black/10 bg-white/60 dark:border-white/10 dark:bg-black/20'}`}>
+                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-50">{item.label}</p>
+                                    <p className="mt-1 text-xl font-black italic tracking-tighter">{formatCurrency(item.value)}</p>
+                                  </div>
+                                ))}
+                              </div>
+
+                              {row.notes?.map((note) => (
+                                <p key={note} className="rounded-2xl border border-emerald-600/20 bg-emerald-600/10 px-4 py-3 text-xs font-bold leading-relaxed text-emerald-700 dark:text-emerald-300">
+                                  {note}
+                                </p>
+                              ))}
+
+                              <div className="overflow-x-auto rounded-2xl border border-black/10 bg-white/60 dark:border-white/10 dark:bg-black/20">
+                                <table className="w-full min-w-[460px] text-left">
+                                  <thead>
+                                    <tr className="border-b border-black/10 text-[8px] font-black uppercase tracking-widest opacity-40 dark:border-white/10">
+                                      <th className="px-4 py-3">Season</th>
+                                      <th className="px-4 py-3 text-right">Paid</th>
+                                      <th className="px-4 py-3 text-right">Won</th>
+                                      <th className="px-4 py-3 text-right">Net</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {row.seasonEntries.map((entry) => (
+                                      <tr key={`${row.ownerId}-${entry.season}`} className="border-b border-black/5 last:border-0 dark:border-white/5">
+                                        <td className="px-4 py-3 text-sm font-black">{entry.season}</td>
+                                        <td className="px-4 py-3 text-right text-sm font-bold">{formatCurrency(entry.duesPaid)}</td>
+                                        <td className="px-4 py-3 text-right text-sm font-bold text-emerald-700 dark:text-emerald-300">{formatCurrency(entry.grossWon)}</td>
+                                        <td className={`px-4 py-3 text-right text-sm font-black ${entry.netEarnings < 0 ? 'text-red-600 dark:text-red-300' : entry.netEarnings > 0 ? 'text-emerald-700 dark:text-emerald-300' : 'opacity-50'}`}>
+                                          {formatCurrency(entry.netEarnings)}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          </div>
+        )}
       </main>
     </div>
   );
