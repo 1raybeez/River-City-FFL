@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useTheme } from "next-themes";
 import {
   AlertTriangle,
   ArrowRight,
@@ -11,14 +10,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Crown,
-  Home,
   Info,
   Loader2,
-  Monitor,
-  Moon,
   Shield,
   Swords,
-  Sun,
   Trophy,
 } from "lucide-react";
 import {
@@ -402,31 +397,6 @@ function getSlotStatus(match: BracketMatch, rosterId: number, kind: BracketKind)
 
 function hasCompletedBracketGame(matches: BracketMatch[]) {
   return matches.some((match) => getNumber(match.w) !== null || getNumber(match.l) !== null);
-}
-
-function ThemeButton({
-  active,
-  label,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      onClick={onClick}
-      className={`rounded-md p-1.5 transition-all ${
-        active ? "bg-white text-black shadow-sm dark:bg-white/10 dark:text-white" : "opacity-40"
-      }`}
-    >
-      {children}
-    </button>
-  );
 }
 
 function TeamPanel({
@@ -991,7 +961,6 @@ export default function MatchupsPage() {
   const [playoffLoading, setPlayoffLoading] = useState(false);
   const [playoffError, setPlayoffError] = useState<string | null>(null);
   const [playoffsLoaded, setPlayoffsLoaded] = useState(false);
-  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -1110,42 +1079,14 @@ export default function MatchupsPage() {
 
   return (
     <div className="min-h-screen bg-white text-black transition-colors duration-300 dark:bg-[#0a0a0a] dark:text-white">
-      <nav className="sticky top-0 z-50 flex flex-col gap-3 border-b border-black/5 bg-white/80 px-4 py-3 backdrop-blur-md dark:border-white/10 dark:bg-[#0a0a0a]/80 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
-        <div className="flex w-full items-center justify-between gap-4 sm:w-auto sm:justify-start">
+      <nav className="sticky top-0 z-50 flex flex-col gap-3 border-b border-black/5 bg-white/80 px-4 py-3 backdrop-blur-md dark:border-white/10 dark:bg-[#0a0a0a]/80 sm:flex-row sm:items-center sm:justify-end sm:px-6 sm:py-4">
+        <div className="grid w-full grid-cols-4 rounded-lg border border-black/10 bg-black/5 p-1 dark:border-white/10 dark:bg-white/5 sm:flex sm:w-auto">
           <Link
             href="/"
-            aria-label="Back to Home"
-            className="rounded-lg border border-black/10 bg-black/5 p-2 transition-all hover:scale-105 dark:border-white/10 dark:bg-white/5"
+            className="min-w-0 rounded-md px-2 py-2 text-center text-[9px] font-black uppercase opacity-40 transition-all hover:opacity-100 sm:px-4 sm:py-1.5 sm:text-[10px]"
           >
-            <Home size={18} />
+            Home
           </Link>
-
-          <div className="flex rounded-lg border border-black/10 bg-black/5 p-1 dark:border-white/10 dark:bg-white/5">
-            <ThemeButton
-              active={theme === "light"}
-              label="Use light theme"
-              onClick={() => setTheme("light")}
-            >
-              <Sun size={14} />
-            </ThemeButton>
-            <ThemeButton
-              active={theme === "dark"}
-              label="Use dark theme"
-              onClick={() => setTheme("dark")}
-            >
-              <Moon size={14} />
-            </ThemeButton>
-            <ThemeButton
-              active={theme === "system"}
-              label="Use system theme"
-              onClick={() => setTheme("system")}
-            >
-              <Monitor size={14} />
-            </ThemeButton>
-          </div>
-        </div>
-
-        <div className="grid w-full grid-cols-3 rounded-lg border border-black/10 bg-black/5 p-1 dark:border-white/10 dark:bg-white/5 sm:flex sm:w-auto">
           <Link
             href="/managers"
             className="min-w-0 rounded-md px-2 py-2 text-center text-[9px] font-black uppercase opacity-40 transition-all hover:opacity-100 sm:px-4 sm:py-1.5 sm:text-[10px]"
@@ -1156,7 +1097,7 @@ export default function MatchupsPage() {
             href="/league-info"
             className="min-w-0 rounded-md px-2 py-2 text-center text-[9px] font-black uppercase opacity-40 transition-all hover:opacity-100 sm:px-4 sm:py-1.5 sm:text-[10px]"
           >
-            Info Hub
+            League Info
           </Link>
           <Link
             href="/matchups"

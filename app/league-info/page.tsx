@@ -3,15 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useTheme } from "next-themes";
 import { 
-  Trophy, Users, BookOpen, Swords, Home, 
+  Trophy, Swords,
   Scale, Grid3X3, DollarSign, FileText, Archive,
-  Gavel, ArrowRightLeft, Sun, Moon, Monitor, ArrowRight
+  Gavel, ArrowRightLeft, ArrowRight
 } from 'lucide-react';
 
 export default function LeagueInfoPage() {
-  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   // Prevent hydration mismatch
@@ -37,26 +35,12 @@ export default function LeagueInfoPage() {
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans selection:bg-orange-500">
       
       {/* NAVIGATION BAR - Consistent Header */}
-      <nav className="border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
-        <div className="flex items-center gap-4">
-          <Link 
-            href="/" 
-            className="p-2 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:scale-105 transition-all"
-          >
-            <Home size={18} />
-          </Link>
-          
-          <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
-            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${theme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
-            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${theme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
-            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${theme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
-          </div>
-        </div>
-        
-        <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
-          <Link href="/managers" className="px-4 py-1.5 rounded-md text-[10px] font-black uppercase opacity-40 hover:opacity-100 transition-all">Managers</Link>
-          <Link href="/league-info" className="px-4 py-1.5 rounded-md text-[10px] font-black uppercase bg-orange-600 text-white shadow-lg shadow-orange-900/40">Info Hub</Link>
-          <Link href="/matchups" className="px-4 py-1.5 rounded-md text-[10px] font-black uppercase opacity-40 hover:opacity-100 transition-all">Matchups</Link>
+      <nav className="border-b border-black/5 dark:border-white/10 px-4 sm:px-6 py-3 sm:py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
+        <div className="grid w-full grid-cols-4 bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10 sm:flex sm:w-auto">
+          <Link href="/" className="min-w-0 px-2 sm:px-4 py-2 sm:py-1.5 rounded-md text-center text-[9px] sm:text-[10px] font-black uppercase transition-all opacity-40 hover:opacity-100">Home</Link>
+          <Link href="/managers" className="min-w-0 px-2 sm:px-4 py-2 sm:py-1.5 rounded-md text-center text-[9px] sm:text-[10px] font-black uppercase transition-all opacity-40 hover:opacity-100">Managers</Link>
+          <Link href="/league-info" aria-current="page" className="min-w-0 px-2 sm:px-4 py-2 sm:py-1.5 rounded-md text-center text-[9px] sm:text-[10px] font-black uppercase transition-all bg-orange-600 text-white shadow-lg shadow-orange-900/40">League Info</Link>
+          <Link href="/matchups" className="min-w-0 px-2 sm:px-4 py-2 sm:py-1.5 rounded-md text-center text-[9px] sm:text-[10px] font-black uppercase transition-all opacity-40 hover:opacity-100">Matchups</Link>
         </div>
       </nav>
 

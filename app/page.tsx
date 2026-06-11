@@ -3,11 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useTheme } from "next-themes";
 import { 
   ArrowRight, 
   MessageCircle, TrendingUp, X, Calendar, Book, Menu,
-  CalendarDays, MapPin, Video, UserCheck, Sun, Moon, Monitor, BrainCircuit
+  CalendarDays, MapPin, Video, UserCheck, BrainCircuit
 } from 'lucide-react';
 
 // --- FIREBASE IMPORTS ---
@@ -37,8 +36,9 @@ const managers = [
 ];
 
 const mobileNavLinks = [
+  { label: "Home", href: "/", group: "Core" },
   { label: "Managers", href: "/managers", group: "Core" },
-  { label: "Info Hub", href: "/league-info", group: "Core" },
+  { label: "League Info", href: "/league-info", group: "Core" },
   { label: "Matchups", href: "/matchups", group: "Core" },
   { label: "Draft Board", href: "/league-info/draft", group: "League Info" },
   { label: "Legislative Hub", href: "/commish/proposals", group: "League Info" },
@@ -55,7 +55,6 @@ const homeShortcutLinks = [
 ];
 
 export default function Home() {
-  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [showRecap, setShowRecap] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false); 
@@ -193,16 +192,11 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-20 selection:bg-orange-500">
       
-      <nav className="relative border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
-        <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
-          <button type="button" aria-label="Use light theme" onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${theme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
-          <button type="button" aria-label="Use dark theme" onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${theme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
-          <button type="button" aria-label="Use system theme" onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${theme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
-        </div>
-
+      <nav className="relative border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-end sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
         <div className="hidden sm:flex bg-black/5 dark:bg-white/5 p-1 rounded-xl border border-black/10 dark:border-white/10">
+          <Link href="/" aria-current="page" className="px-4 py-1.5 bg-orange-600 text-white rounded-lg text-[10px] font-black uppercase italic shadow-lg shadow-orange-900/20">Home</Link>
           <Link href="/managers" className="px-4 py-1.5 text-[10px] font-black uppercase italic opacity-40 hover:opacity-100 transition-all">Managers</Link>
-          <Link href="/league-info" className="px-4 py-1.5 bg-orange-600 text-white rounded-lg text-[10px] font-black uppercase italic shadow-lg shadow-orange-900/20">Info Hub</Link>
+          <Link href="/league-info" className="px-4 py-1.5 text-[10px] font-black uppercase italic opacity-40 hover:opacity-100 transition-all">League Info</Link>
           <Link href="/matchups" className="px-4 py-1.5 text-[10px] font-black uppercase italic opacity-40 hover:opacity-100 transition-all">Matchups</Link>
         </div>
 
@@ -229,7 +223,7 @@ export default function Home() {
                   href={item.href}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={`rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-widest transition-all ${
-                    item.href === "/league-info"
+                    item.href === "/"
                       ? "border-orange-600 bg-orange-600 text-white shadow-lg shadow-orange-900/20"
                       : "border-black/5 bg-black/5 hover:border-orange-600/30 hover:text-orange-600 dark:border-white/10 dark:bg-white/5"
                   }`}
