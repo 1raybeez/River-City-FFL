@@ -120,10 +120,16 @@ export async function getAllPlayers() {
     Object.keys(sleeperPlayers).forEach((id) => {
       const s = sleeperPlayers[id];
       const v = valuations[id] || {};
+      const firestoreValue = Number(v.totalValueScore || 0);
+      const hasFirestoreValue = firestoreValue > 0;
       mergedPlayers[id] = {
         ...s,
-        totalValueScore: v.totalValueScore || 0,
+        totalValueScore: firestoreValue,
         keeperCost: v.keeperCost || 0,
+        valueSource: hasFirestoreValue ? "Firestore" : "Missing",
+        generatedAt: v.generatedAt ?? null,
+        sourceDetail: v.sourceDetail ?? null,
+        sourceVersion: v.sourceVersion ?? null,
         full_name: s.full_name || `${s.first_name} ${s.last_name}`,
       };
     });

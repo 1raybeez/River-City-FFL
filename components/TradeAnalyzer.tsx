@@ -15,13 +15,13 @@ import {
   Sun,
   Moon,
   Monitor,
+  AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { getLeagueRosters, getAllPlayers, LEAGUE_ID } from "@/lib/sleeper";
 import TradeSummaryModal from "./transactions/TradeSummaryModal";
 import { evaluateTrade } from "@/lib/tradeFairnessEngine";
-import { calculatePlayerValue } from "@/lib/trade/playerValuations";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
@@ -38,6 +38,10 @@ interface PlayerData {
   totalValueScore?: number;
   keeperCost?: number;
   value?: number;
+  valueSource?: ValueSource;
+  generatedAt?: ValueTimestamp;
+  sourceDetail?: string;
+  sourceVersion?: string;
 }
 
 interface TradeAsset {
@@ -111,6 +115,22 @@ interface TradeComponents {
   [key: string]: any;
 }
 
+type ValueSource =
+  | "Firestore"
+  | "FantasyPros"
+  | "Projection"
+  | "Missing"
+  | "Unverified";
+
+type ValueTimestamp =
+  | string
+  | number
+  | Date
+  | {
+      toDate?: () => Date;
+      seconds?: number;
+    };
+
 interface TradeEvaluationResult {
   teamSummaries: TeamSummary[];
   fairnessScore: number;
@@ -136,6 +156,47 @@ const POS_COLORS: Record<string, string> = {
   K: "bg-[#bd7af5]",
   DEF: "bg-[#81a1c1]",
 };
+
+type HistoricalCalibrationStatus = "loading" | "loaded" | "fallback";
+
+const VERIFIED_VALUE_SOURCES = new Set<ValueSource>([
+  "Firestore",
+  "FantasyPros",
+  "Projection",
+]);
+
+function getPlayerValueSource(player?: PlayerData): ValueSource {
+  if (!player) return "Missing";
+  const value = player.totalValueScore ?? player.value ?? 0;
+  if (value <= 0) return "Missing";
+  return player.valueSource ?? "Unverified";
+}
+
+function isVerifiedValueSource(source: ValueSource) {
+  return VERIFIED_VALUE_SOURCES.has(source);
+}
+
+function getValueDate(value?: ValueTimestamp): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  if (typeof value === "string" || typeof value === "number") {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  if (typeof value.toDate === "function") return value.toDate();
+  if (typeof value.seconds === "number") return new Date(value.seconds * 1000);
+  return null;
+}
+
+function formatValueDate(value?: ValueTimestamp) {
+  const date = getValueDate(value);
+  if (!date) return null;
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 // ----------------------------------------------------------------------
 // SMALL PRESENTATIONAL SUBCOMPONENTS
@@ -370,9 +431,20 @@ const TradeAssetRow: React.FC<TradeAssetRowProps> = ({
   onRemove,
 }) => {
   const p = players[asset.playerId] || {};
+  const rawValue = p.totalValueScore ?? p.value ?? 0;
+  const valueSource = getPlayerValueSource(p);
+  const hasVerifiedValue = rawValue > 0 && isVerifiedValueSource(valueSource);
+  const generatedLabel = formatValueDate(p.generatedAt);
+  const sourceTone =
+    valueSource === "Missing"
+      ? "bg-red-500/10 text-red-700 dark:text-red-300"
+      : hasVerifiedValue
+      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
+      : "bg-amber-500/10 text-amber-700 dark:text-amber-300";
+
   return (
-    <div className="p-3 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl flex items-center justify-between">
-      <div className="flex items-center gap-3">
+    <div className="p-3 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl flex items-center justify-between gap-3">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         <span
           className={`px-2 py-0.5 rounded text-[9px] font-black text-white ${
             POS_COLORS[p.position || ""] || "bg-gray-500"
@@ -383,8 +455,19 @@ const TradeAssetRow: React.FC<TradeAssetRowProps> = ({
         <span className="text-xs font-black text-slate-800 dark:text-white uppercase">
           {p.full_name || "Unknown Player"}
         </span>
+        <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest ${sourceTone}`}>
+          {hasVerifiedValue ? `Val ${rawValue.toFixed(0)}` : "Value pending"}
+        </span>
+        <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest ${sourceTone}`}>
+          {valueSource}
+        </span>
+        {generatedLabel && (
+          <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-slate-500 dark:bg-white/10 dark:text-gray-300">
+            {generatedLabel}
+          </span>
+        )}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         <select
           value={asset.toTeam}
           onChange={(e) => onUpdateDestination(Number(e.target.value))}
@@ -470,29 +553,14 @@ export default function TradeAnalyzer() {
 
   const [historicalPercentiles, setHistoricalPercentiles] =
     useState<HistoricalPercentiles | null>(null);
+  const [historicalCalibrationStatus, setHistoricalCalibrationStatus] =
+    useState<HistoricalCalibrationStatus>("loading");
 
   const isGridLayout = numTeams >= 2;
 
   // -----------------------------
   // Helpers
   // -----------------------------
-
-  const loadPlayerValue = async (playerId: string) => {
-    try {
-      const value = await calculatePlayerValue(playerId);
-      setPlayers((prev: Record<string, PlayerData>) => ({
-        ...prev,
-        [playerId]: {
-          ...(prev[playerId] || {}),
-          totalValueScore: value.totalValueScore,
-          keeperCost: value.keeperCost,
-          value: value.value,
-        },
-      }));
-    } catch (err) {
-      console.error("Failed to load player value", err);
-    }
-  };
 
   const handleAddTeam = () => {
     setNumTeams((prev) => (prev >= 4 ? prev : prev + 1));
@@ -553,7 +621,6 @@ export default function TradeAnalyzer() {
         };
       })
     );
-    loadPlayerValue(playerId);
     setSearchTerms((prev) =>
       prev.map((t, i) => (i === teamIndex ? "" : t))
     );
@@ -626,9 +693,15 @@ export default function TradeAnalyzer() {
         const snap = await getDoc(distRef);
         if (snap.exists()) {
           const data = snap.data() as { percentiles?: HistoricalPercentiles };
-          if (data?.percentiles) setHistoricalPercentiles(data.percentiles);
+          if (data?.percentiles) {
+            setHistoricalPercentiles(data.percentiles);
+            setHistoricalCalibrationStatus("loaded");
+            return;
+          }
         }
+        setHistoricalCalibrationStatus("fallback");
       } catch (e) {
+        setHistoricalCalibrationStatus("fallback");
         console.error("Failed to load historical distribution", e);
       }
     }
@@ -659,18 +732,6 @@ export default function TradeAnalyzer() {
     if (sides.every((s) => s.players.length === 0 && s.faabSent === 0)) {
       return null;
     }
-
-    // Ensure all players in the trade have valuations loaded (lazy, on-demand)
-    const allPlayerIds = sides.flatMap((s) =>
-      s.players.map((p) => p.playerId)
-    );
-    allPlayerIds.forEach((pid) => {
-      const p = players[pid];
-      if (!p?.totalValueScore) {
-        // fire and forget; state update will trigger re-render
-        loadPlayerValue(pid);
-      }
-    });
 
     const teamMeta: TeamMeta[] = Array.from({ length: numTeams }).map(
       (_, idx) => {
@@ -737,6 +798,60 @@ export default function TradeAnalyzer() {
     mode,
   ]);
 
+  const activeTradeState = tradeState.slice(0, numTeams);
+  const selectedTradeAssets = activeTradeState.flatMap((side) => side.sending);
+
+  const hasTradeInputs =
+    selectedTradeAssets.length > 0 ||
+    activeTradeState.some((side) => side.faabSent > 0);
+  const assetsWithoutVerifiedValues = selectedTradeAssets.filter((asset) => {
+    const p = players[asset.playerId];
+    const valueSource = getPlayerValueSource(p);
+    return !isVerifiedValueSource(valueSource);
+  });
+  const hasFaabAsset = activeTradeState.some((side) => side.faabSent > 0);
+  const hasVerifiedPlayerAsset =
+    selectedTradeAssets.length > assetsWithoutVerifiedValues.length;
+  const canAnalyze = Boolean(
+    currentAnalysis &&
+      hasTradeInputs &&
+      (hasVerifiedPlayerAsset || hasFaabAsset)
+  );
+  const rosterValueCoverage = useMemo(() => {
+    const rosterPlayerIds = new Set<string>();
+    rosters.forEach((roster) => {
+      (roster.players || []).forEach((playerId: string) => {
+        rosterPlayerIds.add(playerId);
+      });
+    });
+
+    const valueDates: Date[] = [];
+    let verifiedCount = 0;
+    let missingCount = 0;
+
+    rosterPlayerIds.forEach((playerId) => {
+      const player = players[playerId];
+      const source = getPlayerValueSource(player);
+      if (isVerifiedValueSource(source)) {
+        verifiedCount++;
+        const date = getValueDate(player?.generatedAt);
+        if (date) valueDates.push(date);
+      } else {
+        missingCount++;
+      }
+    });
+
+    valueDates.sort((a, b) => a.getTime() - b.getTime());
+
+    return {
+      totalCount: rosterPlayerIds.size,
+      verifiedCount,
+      missingCount,
+      oldestGeneratedAt: valueDates[0],
+      newestGeneratedAt: valueDates[valueDates.length - 1],
+    };
+  }, [rosters, players]);
+
   if (!mounted) return null;
 
   // -----------------------------
@@ -794,6 +909,64 @@ export default function TradeAnalyzer() {
             Custom
           </button>
         </div>
+      </div>
+
+      <div className="space-y-3">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-gray-400">
+          Historical calibration:{" "}
+          <span
+            className={
+              historicalCalibrationStatus === "loaded"
+                ? "text-emerald-600 dark:text-emerald-300"
+                : historicalCalibrationStatus === "loading"
+                ? "text-slate-500 dark:text-gray-400"
+                : "text-amber-700 dark:text-amber-300"
+            }
+          >
+            {historicalCalibrationStatus === "loaded"
+              ? "Loaded from league trade history"
+              : historicalCalibrationStatus === "loading"
+              ? "Checking league trade history"
+              : "Static fallback thresholds"}
+          </span>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-gray-400">
+          Active roster values:{" "}
+          <span className="text-emerald-600 dark:text-emerald-300">
+            {rosterValueCoverage.verifiedCount} verified
+          </span>
+          {" / "}
+          <span className="text-amber-700 dark:text-amber-300">
+            {rosterValueCoverage.missingCount} missing
+          </span>
+          {rosterValueCoverage.oldestGeneratedAt &&
+            rosterValueCoverage.newestGeneratedAt && (
+              <span className="block pt-1 text-[10px] text-slate-400 dark:text-gray-500">
+                Freshness:{" "}
+                {formatValueDate(rosterValueCoverage.oldestGeneratedAt)} to{" "}
+                {formatValueDate(rosterValueCoverage.newestGeneratedAt)}
+              </span>
+            )}
+        </div>
+
+        {!hasTradeInputs && (
+          <div className="flex items-start gap-3 rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-xs font-bold text-slate-500 dark:border-white/10 dark:bg-black/30 dark:text-gray-400">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
+            Select at least one player or FAAB asset before running the analyzer.
+          </div>
+        )}
+
+        {assetsWithoutVerifiedValues.length > 0 && (
+          <div className="flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs font-bold leading-relaxed text-amber-800 dark:text-amber-200">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            {assetsWithoutVerifiedValues.length} selected asset
+            {assetsWithoutVerifiedValues.length === 1 ? "" : "s"} have
+            Missing or Unverified player values. Missing values are treated as
+            0, and unverified values limit analyzer confidence until a Firestore
+            player_stats value is confirmed.
+          </div>
+        )}
       </div>
 
       {/* Parties Count */}
@@ -959,8 +1132,11 @@ export default function TradeAnalyzer() {
 
         <button
           type="button"
-          onClick={() => setIsSummaryOpen(true)}
-          className="px-12 py-4 rounded-full bg-orange-600 text-white text-[13px] font-black uppercase tracking-[0.3em] shadow-2xl hover:scale-105 transition-transform"
+          onClick={() => {
+            if (canAnalyze) setIsSummaryOpen(true);
+          }}
+          disabled={!canAnalyze}
+          className="px-12 py-4 rounded-full bg-orange-600 text-white text-[13px] font-black uppercase tracking-[0.3em] shadow-2xl hover:scale-105 transition-transform disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
         >
           Analyze Trade
         </button>
