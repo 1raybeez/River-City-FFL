@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { 
-  Home, Scale, Search, History, XCircle, 
+  ArrowLeft, Scale, Search, History, XCircle, 
   ChevronRight, Gavel
 } from 'lucide-react';
 import { db } from "@/lib/firebase"; 
@@ -257,9 +257,10 @@ export default function ConstitutionPage() {
         <div className="flex items-center gap-4">
           <Link 
             href="/league-info" 
-            className="p-2 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:scale-105 transition-all"
+            className="inline-flex items-center gap-2 rounded-lg bg-black/5 px-3 py-2 text-[10px] font-black uppercase italic tracking-tight transition-all hover:text-orange-600 dark:bg-white/5 border border-black/10 dark:border-white/10"
           >
-            <Home size={18} />
+            <ArrowLeft size={16} />
+            Back to League Info Hub
           </Link>
         </div>
 

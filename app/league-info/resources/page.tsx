@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
-  Home, BookOpen, Music, Mic2, Globe, BarChart3, 
+  ArrowLeft, BookOpen, Music, Mic2, Globe, BarChart3, 
   ChevronRight
 } from 'lucide-react';
 
@@ -186,8 +186,9 @@ export default function ResourcesPage() {
       {/* NAVIGATION BAR */}
       <nav className="border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
         <div className="flex items-center gap-4">
-          <Link href="/league-info" className="p-2 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:scale-105 transition-all">
-            <Home size={18} />
+          <Link href="/league-info" className="inline-flex items-center gap-2 rounded-lg bg-black/5 px-3 py-2 text-[10px] font-black uppercase italic tracking-tight transition-all hover:text-purple-600 dark:bg-white/5 border border-black/10 dark:border-white/10">
+            <ArrowLeft size={16} />
+            Back to League Info Hub
           </Link>
         </div>
         <div className="flex items-center gap-2">

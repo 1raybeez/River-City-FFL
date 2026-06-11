@@ -121,7 +121,7 @@ export default function PredictorPage() {
 	    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-20">
       <div className="container mx-auto px-6 pt-10 flex justify-between items-center mb-12">
         <Link href="/" className="group flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-fuchsia-500 transition-all italic">
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Back to War Room
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Back to Home
         </Link>
         <ModeToggle />
       </div>

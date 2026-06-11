@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { 
-  Trophy, Home
+  Trophy, ArrowLeft
 } from 'lucide-react';
 
 /**
@@ -82,10 +82,11 @@ export default function TrophyRoomPage() {
         <div className="flex items-center gap-4">
           <Link 
             href="/league-info" 
-            className="p-2 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:scale-105 transition-all"
-            title="Back to Info Hub"
+            className="inline-flex items-center gap-2 rounded-lg bg-black/5 px-3 py-2 text-[10px] font-black uppercase italic tracking-tight transition-all hover:text-orange-600 dark:bg-white/5 border border-black/10 dark:border-white/10"
+            title="Back to League Info Hub"
           >
-            <Home size={18} />
+            <ArrowLeft size={16} />
+            Back to League Info Hub
           </Link>
         </div>
 

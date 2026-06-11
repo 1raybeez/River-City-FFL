@@ -40,12 +40,14 @@ const mobileNavLinks = [
   { label: "Managers", href: "/managers", group: "Core" },
   { label: "League Info", href: "/league-info", group: "Core" },
   { label: "Matchups", href: "/matchups", group: "Core" },
+  { label: "AI Predictor", href: "/predictor", group: "War Room" },
   { label: "Draft Board", href: "/league-info/draft", group: "League Info" },
   { label: "Legislative Hub", href: "/commish/proposals", group: "League Info" },
   { label: "Payouts", href: "/league-info/payouts", group: "League Info" },
 ];
 
 const homeShortcutLinks = [
+  { label: "AI Predictor", href: "/predictor", group: "War Room" },
   { label: "Draft Board", href: "/league-info/draft", group: "League Info" },
   { label: "Legislative Hub", href: "/commish/proposals", group: "League Info" },
   { label: "Payouts", href: "/league-info/payouts", group: "League Info" },

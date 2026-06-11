@@ -69,8 +69,9 @@ export default function NewProposalPage() {
     <div className="min-h-screen bg-[#0a0a0a] text-white transition-colors duration-300 font-sans pb-20 selection:bg-orange-600">
       <nav className="border-b border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-[#0a0a0a]/80 backdrop-blur-md z-50">
         <div className="flex items-center gap-4">
-          <Link href="/commish/proposals" className="p-2 rounded-lg bg-white/5 border border-white/10 hover:scale-105 transition-all">
-            <ArrowLeft size={18} />
+          <Link href="/commish/proposals" className="inline-flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-[10px] font-black uppercase italic tracking-tight transition-all hover:text-orange-500 border border-white/10">
+            <ArrowLeft size={16} />
+            Back to Legislative Hub
           </Link>
           <div className="flex bg-white/5 p-1 rounded-lg border border-white/10">
             <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${theme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
