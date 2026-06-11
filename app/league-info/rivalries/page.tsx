@@ -3,10 +3,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useTheme } from "next-themes";
 import { 
   Home, Loader2, Swords, X, Calendar, 
-  TrendingUp, TrendingDown, Trophy, Sun, Moon, Monitor,
+  TrendingUp, TrendingDown, Trophy,
   ChevronDown, ChevronUp, Flame
 } from 'lucide-react';
 
@@ -63,7 +62,6 @@ const getIntensityLabel = (totalGames: number, aWins: number, bWins: number) => 
 };
 
 export default function RivalryHub() {
-  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [playerA, setPlayerA] = useState('');
   const [playerB, setPlayerB] = useState('');
@@ -163,7 +161,6 @@ export default function RivalryHub() {
   const managerA = MANAGER_MAP[playerA];
   const managerB = MANAGER_MAP[playerB];
   const aWinPct = stats.totalGames > 0 ? (stats.aWins / stats.totalGames) * 100 : 50;
-  const activeTheme = mounted ? theme : undefined;
   const sortedHistory = useMemo(
     () => [...matchupHistory].sort((a, b) => b.year - a.year || b.week - a.week),
     [matchupHistory]
@@ -212,12 +209,6 @@ export default function RivalryHub() {
           <Link href="/league-info" className="p-2 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:scale-105 transition-all">
             <Home size={18} />
           </Link>
-          
-          <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
-            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
-            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
-            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
-          </div>
         </div>
         
         <div className="flex items-center gap-2">

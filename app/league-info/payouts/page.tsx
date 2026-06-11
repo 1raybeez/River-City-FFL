@@ -3,11 +3,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useTheme } from "next-themes";
 import { collection, doc, serverTimestamp, updateDoc, writeBatch } from "firebase/firestore";
 import { 
-  Home, Landmark, CreditCard, Lock, Unlock, Loader2, 
-  Sun, Moon, Monitor
+  Home, Landmark, CreditCard, Lock, Unlock, Loader2
 } from 'lucide-react';
 import { 
   FINANCE_OWNERS_SUBCOLLECTION,
@@ -221,7 +219,6 @@ function getOwnerStatusLabel(status?: OwnerProfileStatus) {
 }
 
 export default function PayoutsPage() {
-  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -676,7 +673,6 @@ export default function PayoutsPage() {
   };
 
   if (!mounted) return null;
-  const activeTheme = theme;
 
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#0a0a0a] text-center">
@@ -698,12 +694,6 @@ export default function PayoutsPage() {
           >
             <Home size={18} />
           </Link>
-          
-          <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
-            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
-            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
-            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
-          </div>
         </div>
 
         <div className="flex items-center gap-2">

@@ -2,10 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useTheme } from "next-themes";
 import { 
   Home, BookOpen, Music, Mic2, Globe, BarChart3, 
-  ChevronRight, Sun, Moon, Monitor
+  ChevronRight
 } from 'lucide-react';
 
 const BROADCAST_FEED = [
@@ -111,11 +110,9 @@ const ANALYZERS = [
 
 export default function ResourcesPage() {
   const [activeTab, setActiveTab] = useState('playlists');
-  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
-  const activeTheme = mounted ? theme : undefined;
 
   const ResourceCard = ({ title, desc, url, type }: any) => (
     <a 
@@ -192,11 +189,6 @@ export default function ResourcesPage() {
           <Link href="/league-info" className="p-2 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:scale-105 transition-all">
             <Home size={18} />
           </Link>
-          <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
-            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
-            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
-            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
-          </div>
         </div>
         <div className="flex items-center gap-2">
            <BookOpen className="text-purple-600 hidden sm:block" size={20} />

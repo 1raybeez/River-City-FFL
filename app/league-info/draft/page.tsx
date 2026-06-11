@@ -4,9 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { 
-  Home, ChevronDown, Loader2, Sun, Moon, Monitor, Grid3X3
+  Home, ChevronDown, Loader2, Grid3X3
 } from 'lucide-react';
-import { useTheme } from "next-themes";
 
 const COMMISH_ID = "342828350391230464"; 
 const START_YEAR = 2018;
@@ -25,7 +24,6 @@ export default function DraftBoardPage() {
   const [draftStatus, setDraftStatus] = useState<DraftStatus>('idle');
   const [draftMessage, setDraftMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   // Prevent hydration mismatch
@@ -175,7 +173,6 @@ export default function DraftBoardPage() {
   }, [selectedYear]);
 
   if (!mounted) return null;
-  const activeTheme = theme;
 
   const getPositionColor = (pos: string) => {
     switch (pos) {
@@ -207,12 +204,6 @@ export default function DraftBoardPage() {
           >
             <Home size={18} />
           </Link>
-          
-          <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
-            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
-            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
-            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
-          </div>
         </div>
 
         <div className="flex items-center gap-2">

@@ -2,10 +2,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { useTheme } from "next-themes";
 import { 
   Home, Scale, Search, History, XCircle, 
-  Sun, Moon, Monitor, ChevronRight, Gavel
+  ChevronRight, Gavel
 } from 'lucide-react';
 import { db } from "@/lib/firebase"; 
 import { collection, onSnapshot } from "firebase/firestore";
@@ -58,7 +57,6 @@ function highlightMatch(text: string, query: string) {
 }
 
 export default function ConstitutionPage() {
-  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [openSections, setOpenSections] = useState<string[]>([]);
@@ -263,12 +261,6 @@ export default function ConstitutionPage() {
           >
             <Home size={18} />
           </Link>
-          
-          <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
-            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${theme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
-            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${theme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
-            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${theme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
-          </div>
         </div>
 
         <div className="flex items-center gap-2">

@@ -3,10 +3,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useTheme } from "next-themes";
 import { 
   Home, Trophy, Loader2, Crown, TrendingUp, Zap, ChevronDown, ChevronUp,
-  ArrowDown, History, Sun, Moon, Monitor, Archive
+  ArrowDown, History, Archive
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
@@ -125,7 +124,6 @@ const LeaderboardCard = ({ id, title, icon: Icon, data, valueKey, label, colorCl
 };
 
 export default function ArchivesPage() {
-  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [stats, setStats] = useState<ManagerStats[]>([]);
   const [seasonRecords, setSeasonRecords] = useState<SeasonRecord[]>([]);
@@ -139,7 +137,6 @@ export default function ArchivesPage() {
   useEffect(() => { setMounted(true); }, []);
   const archiveYears = useMemo(() => getArchiveYears(), []);
   const latestArchiveYear = archiveYears[0] ?? MIN_SUPPORTED_CURRENT_YEAR;
-  const activeTheme = mounted ? theme : undefined;
 
   useEffect(() => {
     async function fetchHistory() {
@@ -269,12 +266,6 @@ export default function ArchivesPage() {
           >
             <Home size={18} />
           </Link>
-          
-          <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
-            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
-            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
-            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${activeTheme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
-          </div>
         </div>
         <div className="flex items-center gap-2">
            <Archive className="text-orange-600 hidden sm:block" size={20} />
