@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "import-player-stats": "tsx scripts/importPlayerStatsToFirestore.mts",
     "start": "next start",
     "lint": "eslint"
   },
@@ -29,6 +30,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.0.10",
     "tailwindcss": "^4",
+    "tsx": "^4.22.4",
     "typescript": "^5"
   }
 }
