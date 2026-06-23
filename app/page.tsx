@@ -46,16 +46,6 @@ const mobileNavLinks = [
   { label: "Payouts", href: "/league-info/payouts", group: "League Info" },
 ];
 
-const homeShortcutLinks = [
-  { label: "AI Predictor", href: "/predictor", group: "War Room" },
-  { label: "Draft Board", href: "/league-info/draft", group: "League Info" },
-  { label: "Legislative Hub", href: "/commish/proposals", group: "League Info" },
-  { label: "Payouts", href: "/league-info/payouts", group: "League Info" },
-  { label: "Rivalry Hub", href: "/league-info/rivalries", group: "League Info" },
-  { label: "Trophy Room", href: "/league-info/trophy-room", group: "League Info" },
-  { label: "Constitution", href: "/league-info/constitution", group: "League Info" },
-];
-
 export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [showRecap, setShowRecap] = useState(false);
@@ -190,6 +180,8 @@ export default function Home() {
     (team) => (team.rosterValue ?? 0) === 0
   );
   const isPredictorPlaceholder = predictorTeams.length > 0 && (predictorOddsAreEqual || predictorValuesAreZero);
+  const nextLeagueEvent = events[0];
+  const nextLeagueEventTime = "10:00 AM ET";
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-20 selection:bg-orange-500">
@@ -250,22 +242,36 @@ export default function Home() {
       </header>
 
       <main className="container mx-auto px-6 pt-2 pb-8 md:pt-4 md:pb-10 max-w-7xl">
-        <section aria-label="Home shortcuts" className="mb-10 md:mb-12">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {homeShortcutLinks.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`rounded-2xl border px-4 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${
-                  item.href === "/league-info"
-                    ? "border-orange-600 bg-orange-600 text-white shadow-lg shadow-orange-900/20"
-                    : "border-black/5 bg-black/5 hover:border-orange-600/30 hover:text-orange-600 dark:border-white/10 dark:bg-white/5"
-                }`}
+        <section aria-label={nextLeagueEvent ? "Next league event" : "League status"} className="mb-10 md:mb-12">
+          <div className="mx-auto flex max-w-3xl flex-col gap-4 rounded-[2rem] border border-black/5 bg-black/5 px-5 py-4 shadow-xl dark:border-white/10 dark:bg-white/5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4 text-left">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-600 text-white shadow-lg shadow-orange-900/20">
+                <CalendarDays size={20} />
+              </div>
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.35em] text-orange-600">
+                  {nextLeagueEvent ? "Next League Event" : "League Status"}
+                </p>
+                <p className="mt-1 text-sm font-black uppercase italic tracking-tight text-black dark:text-white md:text-base">
+                  {nextLeagueEvent
+                    ? `2026 Draft • ${nextLeagueEvent.date} • ${nextLeagueEventTime}`
+                    : "Offseason • Preparing for 2026 Draft"}
+                </p>
+                <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-black/35 dark:text-white/35">
+                  RSVP through the Google Calendar invite.
+                </p>
+              </div>
+            </div>
+            {nextLeagueEvent?.gCalLink && (
+              <a
+                href={nextLeagueEvent.gCalLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center rounded-full border border-black/5 bg-white px-4 py-2 text-[9px] font-black uppercase tracking-widest text-black/45 transition-all hover:border-orange-600/30 hover:text-orange-600 dark:border-white/10 dark:bg-black/30 dark:text-white/45 dark:hover:text-orange-400"
               >
-                <span className="mb-1 block text-[8px] opacity-40">{item.group}</span>
-                {item.label}
-              </Link>
-            ))}
+                View Calendar Invite
+              </a>
+            )}
           </div>
         </section>
 
