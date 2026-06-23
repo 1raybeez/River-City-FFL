@@ -214,13 +214,13 @@ function buildKeeperLedgerResults(
       timelineBadge = "Keeper-Cost Edge";
       primaryExplanation = `${team.teamName} takes less raw player value, but gains the keeper-cost edge through a stronger surplus position.`;
     } else if (winsTalent && winsSurplus) {
-      timelineBadge = "Ledger Edge";
+      timelineBadge = "Complete Edge";
       primaryExplanation = `${team.teamName} gains both immediate talent and keeper-cost advantage, improving the roster value and the keeper ledger.`;
     } else if (losesTalent && losesSurplus) {
       timelineBadge = "Cost Risk";
       primaryExplanation = `${team.teamName} loses both raw player value and keeper-cost advantage, leaving less surplus cushion in the keeper ledger.`;
     } else if (!roughlyEven && netValue > LEDGER_EVEN_THRESHOLD) {
-      timelineBadge = deltaSurplus > 0 ? "Keeper-Cost Edge" : "Ledger Edge";
+      timelineBadge = deltaSurplus > 0 ? "Keeper-Cost Edge" : "Talent Edge";
       primaryExplanation = `${team.teamName} comes out ahead once player value, keeper-cost surplus, FAAB, and roster tax are combined.`;
     } else if (!roughlyEven && netValue < -LEDGER_EVEN_THRESHOLD) {
       timelineBadge = "Cost Risk";
