@@ -44,11 +44,21 @@ export interface GlobalComponentSummary {
   biggestLoserIndex: number;
 }
 
+export interface HistoricalPercentiles {
+  p05: number;
+  p10: number;
+  p25: number;
+  p50: number;
+  p75: number;
+  p90: number;
+  p95: number;
+}
+
 // Mirrors /lib/timeline/timelineTypes TimelineResult
 export interface TimelineResult {
   timelineScore: number;
   timelinePercent: number;
-  timelineTag: "contender" | "bubble" | "rebuilder";
+  timelineTag: "ledgerGain" | "ledgerNeutral" | "ledgerRisk";
   timelineBadge: string;
   timelineExplanation: string[];
 }
@@ -64,6 +74,7 @@ type Props = {
     global: GlobalComponentSummary;
     perTeam: TeamComponentBreakdown[];
   };
+  historicalPercentiles?: HistoricalPercentiles | null;
   timelineResults?: TimelineResult[]; // ← now optional
 };
 
@@ -75,6 +86,7 @@ export default function TradeSummaryModal({
   verdict,
   isSadBuddyJesus,
   components,
+  historicalPercentiles,
   timelineResults,
 }: Props) {
   const [showLegend, setShowLegend] = useState(false);
@@ -89,29 +101,77 @@ export default function TradeSummaryModal({
     ? "/logos/Trade Approval Seal.png"
     : "/logos/Sad Buddy Jesus Seal.png";
 
+  const getTeamName = (index: number) =>
+    teamSummaries[index]?.teamName || `Team ${index + 1}`;
+
+  const getComponentLeaderIndex = (
+    key: keyof Pick<TeamComponentBreakdown, "deltaTalent" | "deltaSurplus">
+  ) => {
+    if (!perTeam.length) return -1;
+
+    return perTeam.reduce((leaderIndex, current, currentIndex) => {
+      const leader = perTeam[leaderIndex];
+      return current[key] > leader[key] ? currentIndex : leaderIndex;
+    }, 0);
+  };
+
   const getDetailedAnalysis = () => {
-    const winner = teamSummaries[global.biggestWinnerIndex];
     const gap = global.imbalanceGap || 0;
+    const p25 = historicalPercentiles?.p25;
+    const materiallyComparable =
+      typeof p25 === "number" ? gap < p25 : Number(fairnessScore || 0) >= 95;
+
+    if (materiallyComparable) {
+      return "Both sides are exchanging comparable talent and keeper-cost position. Buddy Jesus sees a trade where keeper cost, surplus value, and immediate player value stay in balance.";
+    }
+
+    const talentWinnerIndex = getComponentLeaderIndex("deltaTalent");
+    const surplusWinnerIndex = getComponentLeaderIndex("deltaSurplus");
+    const talentWinner = perTeam[talentWinnerIndex];
+    const surplusWinner = perTeam[surplusWinnerIndex];
+    const winnerName = getTeamName(global.biggestWinnerIndex);
+    const loserName = getTeamName(global.biggestLoserIndex);
+
+    if (
+      talentWinnerIndex >= 0 &&
+      surplusWinnerIndex >= 0 &&
+      talentWinnerIndex !== surplusWinnerIndex &&
+      talentWinner.deltaTalent > 0 &&
+      surplusWinner.deltaSurplus > 0
+    ) {
+      return `${getTeamName(
+        talentWinnerIndex
+      )} acquires the stronger player package, but ${getTeamName(
+        surplusWinnerIndex
+      )} gains the keeper-cost edge at a better future price. Buddy Jesus reads this as talent versus keeper-cost advantage, not a simple one-sided value grab.`;
+    }
+
+    if (
+      talentWinnerIndex >= 0 &&
+      talentWinnerIndex === surplusWinnerIndex &&
+      talentWinner.deltaTalent > 0 &&
+      talentWinner.deltaSurplus > 0
+    ) {
+      return `${getTeamName(
+        talentWinnerIndex
+      )} gains both immediate talent and keeper-cost advantage, creating a meaningful imbalance in River City terms. Buddy Jesus is weighing a stronger roster today plus a cleaner keeper ledger tomorrow.`;
+    }
 
     if (isSadBuddyJesus)
-      return `Sad Buddy Jesus lowers his glowing thumbs and sighs softly. ${
-        winner?.teamName || "One side"
-      } is walking away with roughly ${gap.toFixed(
+      return `Sad Buddy Jesus lowers his glowing thumbs and sighs softly. ${winnerName} is walking away with roughly ${gap.toFixed(
         1
-      )} points of unreturned value, and the spirit of fairness weeps.`;
+      )} points of unreturned value after immediate talent, surplus value, keeper cost, and roster tax are combined. ${loserName} is left short on keeper-cost advantage.`;
 
-    return `${
-      winner?.teamName || "One side"
-    } wins the talent acquisition phase, but the other side is likely prioritizing future flexibility. Buddy Jesus sees a path to victory for both sides.`;
+    return `${winnerName} has the larger overall keeper-economics gain, but the deal is still within a tolerable River City range. Buddy Jesus sees enough offsetting talent, surplus value, and keeper portfolio logic for both sides to defend the move.`;
   };
 
   const getTimelineTagColor = (tag: TimelineResult["timelineTag"]) => {
     switch (tag) {
-      case "contender":
+      case "ledgerGain":
         return "text-emerald-400 bg-emerald-500/10 border-emerald-500/40";
-      case "bubble":
+      case "ledgerNeutral":
         return "text-amber-300 bg-amber-500/10 border-amber-500/40";
-      case "rebuilder":
+      case "ledgerRisk":
         return "text-red-300 bg-red-500/10 border-red-500/40";
       default:
         return "text-gray-300 bg-white/5 border-white/10";
@@ -120,11 +180,11 @@ export default function TradeSummaryModal({
 
   const getTimelineBarColor = (tag: TimelineResult["timelineTag"]) => {
     switch (tag) {
-      case "contender":
+      case "ledgerGain":
         return "from-emerald-400 to-emerald-600";
-      case "bubble":
+      case "ledgerNeutral":
         return "from-amber-300 to-amber-500";
-      case "rebuilder":
+      case "ledgerRisk":
         return "from-red-400 to-red-600";
       default:
         return "from-slate-400 to-slate-600";
@@ -191,10 +251,10 @@ export default function TradeSummaryModal({
             <div className="flex items-center justify-between gap-4 mb-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">
-                  Timeline Identity
+                  Keeper Ledger
                 </p>
                 <h2 className="mt-1 text-xl md:text-2xl font-black uppercase italic tracking-tight text-white">
-                  Window Alignment & Competitive Posture
+                  Talent & Keeper-Cost Position
                 </h2>
               </div>
               <button
@@ -254,7 +314,7 @@ export default function TradeSummaryModal({
 
                     <p className="text-[11px] text-gray-400 leading-snug">
                       {timeline.timelineExplanation[0] ??
-                        "This team’s current construction, history, and risk profile define its competitive window."}
+                        "This team's current talent base, keeper portfolio, and risk profile define its River City keeper position."}
                     </p>
                   </div>
                 );
@@ -267,10 +327,10 @@ export default function TradeSummaryModal({
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">
-                  Timeline Rationale
+                  Keeper Rationale
                 </p>
                 <h3 className="text-lg md:text-xl font-black uppercase italic tracking-tight text-white">
-                  Why Each Team Is Where It Is
+                  Why Each Ledger Looks This Way
                 </h3>
               </div>
             </div>
@@ -307,7 +367,7 @@ export default function TradeSummaryModal({
             <div className="flex items-center gap-2 mb-1">
               <ScrollText className="w-4 h-4 text-blue-400" />
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">
-                Trade Impact On Window
+                Trade Impact On Keeper Ledger
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -318,8 +378,8 @@ export default function TradeSummaryModal({
 
                 const direction =
                   comp.netValue >= 0
-                    ? "strengthens their current window"
-                    : "introduces risk to their current window";
+                    ? "strengthens their keeper portfolio"
+                    : "adds keeper-cost risk to their portfolio";
 
                 return (
                   <div
@@ -335,14 +395,14 @@ export default function TradeSummaryModal({
                         {comp.netValue >= 0 ? "+" : ""}
                         {comp.netValue.toFixed(1)}
                       </span>{" "}
-                      and a timeline score sitting at{" "}
+                      and a keeper portfolio score sitting at{" "}
                       <span className="font-mono font-bold text-blue-300">
                         {timeline.timelineScore.toFixed(0)}
                       </span>
                       . In context, this trade{" "}
                       {comp.netValue >= 0
-                        ? "pushes them further into their declared posture."
-                        : "forces them to navigate a tighter margin for error."}
+                        ? "adds keeper-cost advantage to the ledger."
+                        : "leaves less surplus value cushion in the ledger."}
                     </p>
                   </div>
                 );
@@ -358,7 +418,7 @@ export default function TradeSummaryModal({
                   Side-By-Side Snapshot
                 </p>
                 <h3 className="text-lg md:text-xl font-black uppercase italic tracking-tight text-white">
-                  Value, Surplus, And Timeline
+                  Value, Surplus, And Keeper Cost
                 </h3>
               </div>
             </div>
@@ -427,7 +487,7 @@ export default function TradeSummaryModal({
                   </tr>
                   <tr>
                     <td className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 pr-4">
-                      Timeline Score
+                      Keeper Score
                     </td>
                     {safeTimeline.map((timeline, idx) => (
                       <td

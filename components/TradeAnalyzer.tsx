@@ -20,7 +20,10 @@ import {
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { getLeagueRosters, getAllPlayers, LEAGUE_ID } from "@/lib/sleeper";
-import TradeSummaryModal from "./transactions/TradeSummaryModal";
+import TradeSummaryModal, {
+  type TeamComponentBreakdown,
+  type TimelineResult,
+} from "./transactions/TradeSummaryModal";
 import { evaluateTrade } from "@/lib/tradeFairnessEngine";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
@@ -109,7 +112,7 @@ interface TeamSummary {
 }
 
 interface TradeComponents {
-  perTeam: any[];
+  perTeam: TeamComponentBreakdown[];
   global: any;
   timeline?: any;
   [key: string]: any;
@@ -164,6 +167,92 @@ const VERIFIED_VALUE_SOURCES = new Set<ValueSource>([
   "FantasyPros",
   "Projection",
 ]);
+
+const LEDGER_EVEN_THRESHOLD = 2.5;
+
+function safeLedgerNumber(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function formatSignedLedgerNumber(value: number): string {
+  return `${value >= 0 ? "+" : ""}${value.toFixed(1)}`;
+}
+
+function isRoughlyEven(value: number): boolean {
+  return Math.abs(value) < LEDGER_EVEN_THRESHOLD;
+}
+
+function buildKeeperLedgerResults(
+  teamSummaries: TeamSummary[],
+  components: TradeComponents
+): TimelineResult[] {
+  return teamSummaries.map((team, idx) => {
+    const comp = components.perTeam[idx];
+    const deltaTalent = safeLedgerNumber(comp?.deltaTalent);
+    const deltaSurplus = safeLedgerNumber(
+      comp?.deltaSurplus ?? team.netSurplus
+    );
+    const netValue = safeLedgerNumber(comp?.netValue);
+    const netSurplus = safeLedgerNumber(team.netSurplus);
+
+    const winsTalent = deltaTalent > LEDGER_EVEN_THRESHOLD;
+    const losesTalent = deltaTalent < -LEDGER_EVEN_THRESHOLD;
+    const winsSurplus = deltaSurplus > LEDGER_EVEN_THRESHOLD;
+    const losesSurplus = deltaSurplus < -LEDGER_EVEN_THRESHOLD;
+    const roughlyEven =
+      isRoughlyEven(deltaTalent) &&
+      isRoughlyEven(deltaSurplus) &&
+      isRoughlyEven(netValue);
+
+    let timelineBadge = "Balanced";
+    let primaryExplanation = `${team.teamName} is exchanging comparable player value and keeper-cost position.`;
+
+    if (winsTalent && losesSurplus) {
+      timelineBadge = "Talent Edge";
+      primaryExplanation = `${team.teamName} gets the stronger player package, but gives back keeper-cost advantage through a weaker surplus position.`;
+    } else if (losesTalent && winsSurplus) {
+      timelineBadge = "Keeper-Cost Edge";
+      primaryExplanation = `${team.teamName} takes less raw player value, but gains the keeper-cost edge through a stronger surplus position.`;
+    } else if (winsTalent && winsSurplus) {
+      timelineBadge = "Ledger Edge";
+      primaryExplanation = `${team.teamName} gains both immediate talent and keeper-cost advantage, improving the roster value and the keeper ledger.`;
+    } else if (losesTalent && losesSurplus) {
+      timelineBadge = "Cost Risk";
+      primaryExplanation = `${team.teamName} loses both raw player value and keeper-cost advantage, leaving less surplus cushion in the keeper ledger.`;
+    } else if (!roughlyEven && netValue > LEDGER_EVEN_THRESHOLD) {
+      timelineBadge = deltaSurplus > 0 ? "Keeper-Cost Edge" : "Ledger Edge";
+      primaryExplanation = `${team.teamName} comes out ahead once player value, keeper-cost surplus, FAAB, and roster tax are combined.`;
+    } else if (!roughlyEven && netValue < -LEDGER_EVEN_THRESHOLD) {
+      timelineBadge = "Cost Risk";
+      primaryExplanation = `${team.teamName} is paying a keeper-ledger cost once player value, keeper-cost surplus, FAAB, and roster tax are combined.`;
+    }
+
+    const timelineScore = Math.max(5, Math.min(95, 50 + netValue));
+    const timelineTag: TimelineResult["timelineTag"] = roughlyEven
+      ? "ledgerNeutral"
+      : netValue > 0
+        ? "ledgerGain"
+        : "ledgerRisk";
+
+    return {
+      timelineScore,
+      timelinePercent: timelineScore / 100,
+      timelineTag,
+      timelineBadge,
+      timelineExplanation: [
+        primaryExplanation,
+        `Ledger read: net value ${formatSignedLedgerNumber(
+          netValue
+        )}, talent ${formatSignedLedgerNumber(
+          deltaTalent
+        )}, keeper-cost surplus ${formatSignedLedgerNumber(deltaSurplus)}.`,
+        `Keeper-cost position: ${formatSignedLedgerNumber(
+          netSurplus
+        )} net surplus value after the exchange.`,
+      ],
+    };
+  });
+}
 
 function getPlayerValueSource(player?: PlayerData): ValueSource {
   if (!player) return "Missing";
@@ -798,6 +887,15 @@ export default function TradeAnalyzer() {
     mode,
   ]);
 
+  const keeperLedgerResults = useMemo<TimelineResult[]>(() => {
+    if (!currentAnalysis) return [];
+
+    return buildKeeperLedgerResults(
+      currentAnalysis.teamSummaries,
+      currentAnalysis.components
+    );
+  }, [currentAnalysis]);
+
   const activeTradeState = tradeState.slice(0, numTeams);
   const selectedTradeAssets = activeTradeState.flatMap((side) => side.sending);
 
@@ -948,6 +1046,14 @@ export default function TradeAnalyzer() {
                 {formatValueDate(rosterValueCoverage.newestGeneratedAt)}
               </span>
             )}
+          <span className="block pt-1 text-[10px] text-slate-400 dark:text-gray-500">
+            Values powered by FantasyCalc snapshot. River City keeper costs are
+            based on 2025 auction/waiver prices.
+          </span>
+          <span className="block pt-1 text-[10px] text-slate-400 dark:text-gray-500">
+            Missing values are labeled Missing, including kickers, defenses,
+            Philip Rivers, and Taysom Hill.
+          </span>
         </div>
 
         {!hasTradeInputs && (
@@ -962,9 +1068,9 @@ export default function TradeAnalyzer() {
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             {assetsWithoutVerifiedValues.length} selected asset
             {assetsWithoutVerifiedValues.length === 1 ? "" : "s"} have
-            Missing or Unverified player values. Missing values are treated as
-            0, and unverified values limit analyzer confidence until a Firestore
-            player_stats value is confirmed.
+            Missing or Unverified player values. Missing values are labeled
+            Missing and treated as 0, including kickers, defenses, Philip
+            Rivers, and Taysom Hill.
           </div>
         )}
       </div>
@@ -1151,6 +1257,8 @@ export default function TradeAnalyzer() {
           verdict={currentAnalysis.verdict}
           isSadBuddyJesus={currentAnalysis.isSadBuddyJesus}
           components={currentAnalysis.components}
+          historicalPercentiles={historicalPercentiles}
+          timelineResults={keeperLedgerResults}
         />
       )}
     </div>

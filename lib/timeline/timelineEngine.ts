@@ -10,9 +10,9 @@ function safeNumber(value: any, fallback: number): number {
 }
 
 const badgeMap: Record<TimelineTag, string> = {
-  contender: "🔥 Contender",
-  bubble: "⚖️ Bubble",
-  rebuilder: "🧱 Rebuilder",
+  contender: "Keeper Edge",
+  bubble: "Balanced Keeper",
+  rebuilder: "Cost Reset",
 };
 
 export function calculateTimeline(
@@ -45,7 +45,7 @@ export function calculateTimeline(
   const { weights } = getSeasonPhase(nflWeek);
 
   // -----------------------------
-  // Talent (win-now strength)
+  // Talent (weekly lineup strength)
   // -----------------------------
   const talentScore =
     (1 - powerRank / leagueData.teamCount) * 100 * weights.talent;
@@ -56,7 +56,7 @@ export function calculateTimeline(
   const recordScore = winPct * 100 * weights.timeline;
 
   // -----------------------------
-  // Keeper surplus (future value)
+  // Keeper surplus (future keeper equity)
   // -----------------------------
   const keeperScore =
     Math.min(keeperSurplus / 50, 1) * 100 * weights.keepers;
@@ -68,7 +68,7 @@ export function calculateTimeline(
     Math.max(1 - injuryImpact / 10, 0) * 100 * weights.rosterTax;
 
   // -----------------------------
-  // Age (future vs win-now)
+  // Age (keeper portfolio timing)
   // -----------------------------
   const ageScore =
     (1 - Math.abs(avgAge - 27) / 10) * 100 * weights.timeline;
@@ -130,11 +130,11 @@ export function calculateTimeline(
       impact: talentScore,
     },
     {
-      text: `Their win percentage reflects their current standing and contributes to their timeline posture.`,
+      text: `Their win percentage reflects their current standing and contributes to their keeper-cost position.`,
       impact: recordScore,
     },
     {
-      text: `Their keeper portfolio shows a surplus value of ${keeperSurplus}, strengthening long-term flexibility.`,
+      text: `Their keeper portfolio shows a surplus value of ${keeperSurplus}, strengthening future keeper equity.`,
       impact: keeperScore,
     },
     {
@@ -142,7 +142,7 @@ export function calculateTimeline(
       impact: injuryScore,
     },
     {
-      text: `The roster's average age of ${avgAge} influences their balance between short-term and long-term outlook.`,
+      text: `The roster's average age of ${avgAge} influences how stable their keeper portfolio looks beyond this season.`,
       impact: ageScore,
     },
     {
