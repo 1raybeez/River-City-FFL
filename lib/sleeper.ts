@@ -71,6 +71,88 @@ export interface LeagueInfo {
   [key: string]: unknown;
 }
 
+export interface SleeperDraft {
+  draft_id?: string | null;
+  type?: string | null;
+  status?: string | null;
+  sport?: string | null;
+  season?: string | null;
+  season_type?: string | null;
+  league_id?: string | null;
+  start_time?: number | null;
+  created?: number | null;
+  last_picked?: number | null;
+  last_message_time?: number | null;
+  draft_order?: Record<string, number> | null;
+  slot_to_roster_id?: Record<string, number> | null;
+  settings?: {
+    budget?: number | null;
+    rounds?: number | null;
+    teams?: number | null;
+    pick_timer?: number | null;
+    [key: string]: unknown;
+  } | null;
+  metadata?: Record<string, unknown> | null;
+  [key: string]: unknown;
+}
+
+export interface SleeperDraftPickMetadata {
+  amount?: string | number | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  team?: string | null;
+  position?: string | null;
+  player_id?: string | number | null;
+  [key: string]: unknown;
+}
+
+export interface SleeperDraftPick {
+  draft_id?: string | null;
+  player_id?: string | number | null;
+  picked_by?: string | null;
+  roster_id?: string | number | null;
+  round?: number | null;
+  draft_slot?: number | null;
+  pick_no?: number | null;
+  is_keeper?: boolean | null;
+  metadata?: SleeperDraftPickMetadata | null;
+  [key: string]: unknown;
+}
+
+export interface NormalizedSleeperAuctionPick {
+  draftId: string | null;
+  playerId: string | null;
+  playerName: string;
+  firstName: string | null;
+  lastName: string | null;
+  position: string | null;
+  nflTeam: string | null;
+  pickedByUserId: string | null;
+  rosterId: number | null;
+  round: number | null;
+  draftSlot: number | null;
+  pickNo: number | null;
+  isKeeper: boolean | null;
+  auctionPrice: number | null;
+  rawAuctionAmount: string | number | null;
+  hasAuctionPrice: boolean;
+  needsAuctionPriceReview: boolean;
+}
+
+export interface SleeperAuctionDraftSnapshot {
+  year: number;
+  leagueId: string | null;
+  draft: SleeperDraft | null;
+  picks: NormalizedSleeperAuctionPick[];
+  status:
+    | "ready"
+    | "no-league"
+    | "no-auction-draft"
+    | "missing-draft-id";
+  warnings: string[];
+  generatedAt: string;
+}
+
 // --- API FETCH HELPERS ---
 
 async function sleeperFetch<T>(url: string): Promise<T | null> {
@@ -82,6 +164,62 @@ async function sleeperFetch<T>(url: string): Promise<T | null> {
     console.error(`Sleeper fetch error: ${url}`, error);
     return null;
   }
+}
+
+function readString(value: unknown): string | null {
+  if (typeof value === "string" && value.trim() !== "") return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+
+  return null;
+}
+
+function readNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value !== "string") return null;
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function readNonNegativeInteger(value: unknown): number | null {
+  const parsed = readNumber(value);
+  return parsed === null ? null : Math.max(Math.floor(parsed), 0);
+}
+
+function parseSleeperAuctionAmount(value: unknown): number | null {
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value >= 0 ? value : null;
+  }
+
+  if (typeof value !== "string") return null;
+
+  const cleanedValue = value.replace(/[$,]/g, "").trim();
+  if (cleanedValue === "") return null;
+
+  const parsed = Number(cleanedValue);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function isSleeperAuctionDraft(draft: SleeperDraft | null | undefined) {
+  return draft?.type === "auction";
+}
+
+function getDraftTimestamp(draft: SleeperDraft) {
+  return readNumber(draft.start_time) ?? readNumber(draft.created) ?? 0;
+}
+
+function sortDraftsByRecency(drafts: SleeperDraft[]) {
+  return [...drafts].sort(
+    (firstDraft, secondDraft) =>
+      getDraftTimestamp(secondDraft) - getDraftTimestamp(firstDraft)
+  );
+}
+
+async function hydrateSleeperDraft(draft: SleeperDraft) {
+  const draftId = readString(draft.draft_id);
+  if (!draftId) return draft;
+
+  return (await getSleeperDraft(draftId)) ?? draft;
 }
 
 // --- API FUNCTIONS ---
@@ -170,6 +308,172 @@ export async function getLeagueDrafts(year: number = 2026) {
       `https://api.sleeper.app/v1/draft/${drafts[0].draft_id}/picks`
     )) ?? []
   );
+}
+
+export async function getSleeperLeagueDrafts(year: number = 2026) {
+  const leagueId = LEAGUE_IDS[year];
+  if (!leagueId) return [];
+
+  const drafts = await sleeperFetch<SleeperDraft[]>(
+    `https://api.sleeper.app/v1/league/${leagueId}/drafts`
+  );
+
+  return drafts ?? [];
+}
+
+export async function getSleeperDraft(draftId: string | null | undefined) {
+  const safeDraftId = readString(draftId);
+  if (!safeDraftId) return null;
+
+  return sleeperFetch<SleeperDraft>(
+    `https://api.sleeper.app/v1/draft/${safeDraftId}`
+  );
+}
+
+export async function getSleeperDraftPicks(
+  draftId: string | null | undefined
+) {
+  const safeDraftId = readString(draftId);
+  if (!safeDraftId) return [];
+
+  const picks = await sleeperFetch<SleeperDraftPick[]>(
+    `https://api.sleeper.app/v1/draft/${safeDraftId}/picks`
+  );
+
+  return picks ?? [];
+}
+
+export async function findRiverCityAuctionDraft(year: number = 2026) {
+  const leagueId = LEAGUE_IDS[year];
+  if (!leagueId) return null;
+
+  const [league, drafts] = await Promise.all([
+    getLeagueInfo(leagueId),
+    getSleeperLeagueDrafts(year),
+  ]);
+  if (drafts.length === 0) return null;
+
+  const leagueDraftId = readString(league.draft_id);
+  const leagueDraft = leagueDraftId
+    ? drafts.find((draft) => draft.draft_id === leagueDraftId) ?? null
+    : null;
+
+  if (leagueDraft && isSleeperAuctionDraft(leagueDraft)) {
+    return hydrateSleeperDraft(leagueDraft);
+  }
+
+  const auctionDrafts = sortDraftsByRecency(
+    drafts.filter(isSleeperAuctionDraft)
+  );
+  const preferredDraft =
+    auctionDrafts.find((draft) => draft.status === "drafting") ??
+    auctionDrafts.find((draft) => draft.status === "pre_draft") ??
+    auctionDrafts.find((draft) => draft.status === "complete") ??
+    auctionDrafts[0] ??
+    null;
+
+  return preferredDraft ? hydrateSleeperDraft(preferredDraft) : null;
+}
+
+export function normalizeSleeperAuctionPick(
+  pick: SleeperDraftPick
+): NormalizedSleeperAuctionPick {
+  const metadata = pick.metadata ?? {};
+  const firstName = readString(metadata.first_name);
+  const lastName = readString(metadata.last_name);
+  const playerId = readString(pick.player_id);
+  const auctionPrice = parseSleeperAuctionAmount(metadata.amount);
+  const playerName =
+    [firstName, lastName].filter(Boolean).join(" ").trim() ||
+    playerId ||
+    "Unknown Player";
+
+  return {
+    draftId: readString(pick.draft_id),
+    playerId,
+    playerName,
+    firstName,
+    lastName,
+    position: readString(metadata.position),
+    nflTeam: readString(metadata.team),
+    pickedByUserId: readString(pick.picked_by),
+    rosterId: readNonNegativeInteger(pick.roster_id),
+    round: readNonNegativeInteger(pick.round),
+    draftSlot: readNonNegativeInteger(pick.draft_slot),
+    pickNo: readNonNegativeInteger(pick.pick_no),
+    isKeeper: pick.is_keeper ?? null,
+    auctionPrice,
+    rawAuctionAmount: metadata.amount ?? null,
+    hasAuctionPrice: auctionPrice !== null,
+    needsAuctionPriceReview: auctionPrice === null,
+  };
+}
+
+export async function getSleeperAuctionDraftSnapshot(year: number = 2026) {
+  const leagueId = LEAGUE_IDS[year] ?? null;
+  const generatedAt = new Date().toISOString();
+
+  if (!leagueId) {
+    return {
+      year,
+      leagueId,
+      draft: null,
+      picks: [],
+      status: "no-league",
+      warnings: [`No River City Sleeper league ID is configured for ${year}.`],
+      generatedAt,
+    } satisfies SleeperAuctionDraftSnapshot;
+  }
+
+  const draft = await findRiverCityAuctionDraft(year);
+  if (!draft) {
+    return {
+      year,
+      leagueId,
+      draft: null,
+      picks: [],
+      status: "no-auction-draft",
+      warnings: [`No auction draft was found for the ${year} River City league.`],
+      generatedAt,
+    } satisfies SleeperAuctionDraftSnapshot;
+  }
+
+  const draftId = readString(draft.draft_id);
+  if (!draftId) {
+    return {
+      year,
+      leagueId,
+      draft,
+      picks: [],
+      status: "missing-draft-id",
+      warnings: ["Sleeper returned an auction draft without a draft_id."],
+      generatedAt,
+    } satisfies SleeperAuctionDraftSnapshot;
+  }
+
+  const rawPicks = await getSleeperDraftPicks(draftId);
+  const picks = rawPicks.map(normalizeSleeperAuctionPick);
+  const missingPriceCount = picks.filter(
+    (pick) => pick.needsAuctionPriceReview
+  ).length;
+  const warnings = [
+    ...(!isSleeperAuctionDraft(draft)
+      ? ["Selected draft is not marked as an auction draft."]
+      : []),
+    ...(missingPriceCount > 0
+      ? [`${missingPriceCount} draft picks are missing metadata.amount.`]
+      : []),
+  ];
+
+  return {
+    year,
+    leagueId,
+    draft,
+    picks,
+    status: "ready",
+    warnings,
+    generatedAt,
+  } satisfies SleeperAuctionDraftSnapshot;
 }
 
 // ---------------------------------------------------------

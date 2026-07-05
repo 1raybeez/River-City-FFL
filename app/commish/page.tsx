@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, Gavel, Home, Shield, Wrench } from 'lucide-react';
+import { ArrowLeft, Gavel, Grid3X3, Home, Shield, Wrench } from 'lucide-react';
 import { ModeToggle } from '@/components/ModeToggle';
 
 const hubLinks = [
@@ -16,6 +16,12 @@ const hubLinks = [
     description: 'Run protected commissioner data operations.',
     href: '/commish/maintenance',
     icon: Wrench,
+  },
+  {
+    title: 'Auction War Room',
+    description: 'Prepare draft-day auction boards and commissioner-only views.',
+    href: '/commish/auction',
+    icon: Grid3X3,
   },
   {
     title: 'Home',
@@ -56,7 +62,7 @@ export default function CommishPage() {
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {hubLinks.map((item) => {
             const Icon = item.icon;
             return (

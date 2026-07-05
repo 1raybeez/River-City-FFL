@@ -6,6 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "import-player-stats": "tsx scripts/importPlayerStatsToFirestore.mts",
+    "auction:quality-report": "tsx scripts/auction-consensus-quality-report.ts",
+    "auction:update-values": "tsx scripts/auction-update-values.ts",
     "start": "next start",
     "lint": "eslint"
   },

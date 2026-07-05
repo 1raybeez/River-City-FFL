@@ -1,0 +1,311 @@
+{
+  "generatedAt": "2026-07-03T22:14:26.525Z",
+  "sourceDirectory": "data/auction/imports",
+  "outputDirectory": "data/auction/processed",
+  "seasonsProcessed": [
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "files": [
+    {
+      "seasonYear": 2018,
+      "sourceFilename": "2018_Auction_Value_Cheatsheet.xlsx",
+      "outputFilename": "masterview-2018.json",
+      "masterviewHeaderRow": 1,
+      "columnsDetected": [
+        "Name",
+        "Team",
+        "Position",
+        "Bye Week",
+        "ESPN",
+        "Scout",
+        "FantasyPro",
+        "RotoWire",
+        "Avg Going Rate",
+        "Variation"
+      ],
+      "siteValueColumns": [
+        "ESPN",
+        "Scout",
+        "FantasyPro",
+        "RotoWire"
+      ],
+      "statusColumnsDetected": [],
+      "rowCount": 616,
+      "skippedRows": 0,
+      "missingPlayerNames": 0,
+      "missingPositions": 0,
+      "warningCount": 0,
+      "errorCount": 0
+    },
+    {
+      "seasonYear": 2019,
+      "sourceFilename": "2019_Auction_Value_Cheatsheet.xlsx",
+      "outputFilename": "masterview-2019.json",
+      "masterviewHeaderRow": 1,
+      "columnsDetected": [
+        "Name",
+        "Keeper",
+        "Team",
+        "Position",
+        "Bye Week",
+        "ESPN",
+        "FFToolbox",
+        "FantasyPro",
+        "RotoWire",
+        "Avg Going Rate",
+        "Variation"
+      ],
+      "siteValueColumns": [
+        "ESPN",
+        "FFToolbox",
+        "FantasyPro",
+        "RotoWire"
+      ],
+      "statusColumnsDetected": [
+        "Keeper"
+      ],
+      "rowCount": 773,
+      "skippedRows": 0,
+      "missingPlayerNames": 0,
+      "missingPositions": 0,
+      "warningCount": 0,
+      "errorCount": 0
+    },
+    {
+      "seasonYear": 2020,
+      "sourceFilename": "2020_Auction_Value_Cheatsheet.xlsx",
+      "outputFilename": "masterview-2020.json",
+      "masterviewHeaderRow": 1,
+      "columnsDetected": [
+        "Name",
+        "Keeper",
+        "Team",
+        "Pos",
+        "Bye Week",
+        "ESPN",
+        "UDK",
+        "FantasyPro",
+        "FFToolbox",
+        "Avg Going Rate",
+        "Variation"
+      ],
+      "siteValueColumns": [
+        "ESPN",
+        "UDK",
+        "FantasyPro",
+        "FFToolbox"
+      ],
+      "statusColumnsDetected": [
+        "Keeper"
+      ],
+      "rowCount": 1009,
+      "skippedRows": 0,
+      "missingPlayerNames": 0,
+      "missingPositions": 0,
+      "warningCount": 0,
+      "errorCount": 0
+    },
+    {
+      "seasonYear": 2021,
+      "sourceFilename": "2021_Auction_Value_Cheatsheet.xlsx",
+      "outputFilename": "masterview-2021.json",
+      "masterviewHeaderRow": 1,
+      "columnsDetected": [
+        "Name",
+        "JAK",
+        "Tier",
+        "Team",
+        "Pos",
+        "Bye Week",
+        "ESPN",
+        "UDK",
+        "Rotowire",
+        "FantasyPro",
+        "FFToolbox",
+        "Avg Going Rate",
+        "Variation"
+      ],
+      "siteValueColumns": [
+        "ESPN",
+        "UDK",
+        "Rotowire",
+        "FantasyPro",
+        "FFToolbox"
+      ],
+      "statusColumnsDetected": [
+        "JAK",
+        "Tier"
+      ],
+      "rowCount": 1146,
+      "skippedRows": 0,
+      "missingPlayerNames": 0,
+      "missingPositions": 0,
+      "warningCount": 0,
+      "errorCount": 0
+    },
+    {
+      "seasonYear": 2022,
+      "sourceFilename": "2022_Auction_Value_Cheatsheet.xlsx",
+      "outputFilename": "masterview-2022.json",
+      "masterviewHeaderRow": 1,
+      "columnsDetected": [
+        "Name",
+        "JAK",
+        "Tier",
+        "Team",
+        "Pos",
+        "Bye Week",
+        "Sleeper",
+        "ESPN",
+        "UDK",
+        "Rotowire",
+        "FantasyPro",
+        "FFToolbox",
+        "Avg Going Rate",
+        "Variation"
+      ],
+      "siteValueColumns": [
+        "Sleeper",
+        "ESPN",
+        "UDK",
+        "Rotowire",
+        "FantasyPro",
+        "FFToolbox"
+      ],
+      "statusColumnsDetected": [
+        "JAK",
+        "Tier"
+      ],
+      "rowCount": 1075,
+      "skippedRows": 0,
+      "missingPlayerNames": 0,
+      "missingPositions": 0,
+      "warningCount": 0,
+      "errorCount": 0
+    },
+    {
+      "seasonYear": 2023,
+      "sourceFilename": "2023_Auction_Value_Cheatsheet.xlsx",
+      "outputFilename": "masterview-2023.json",
+      "masterviewHeaderRow": 1,
+      "columnsDetected": [
+        "Name",
+        "Taken",
+        "Team",
+        "Pos",
+        "Bye Week",
+        "ESPN",
+        "UDK",
+        "Rotowire",
+        "FantasyPro",
+        "FFToolbox",
+        "Avg Going Rate",
+        "Variation"
+      ],
+      "siteValueColumns": [
+        "ESPN",
+        "UDK",
+        "Rotowire",
+        "FantasyPro",
+        "FFToolbox"
+      ],
+      "statusColumnsDetected": [
+        "Taken"
+      ],
+      "rowCount": 1074,
+      "skippedRows": 0,
+      "missingPlayerNames": 0,
+      "missingPositions": 0,
+      "warningCount": 0,
+      "errorCount": 0
+    },
+    {
+      "seasonYear": 2024,
+      "sourceFilename": "2024_Auction_Value_Cheatsheet.xlsx",
+      "outputFilename": "masterview-2024.json",
+      "masterviewHeaderRow": 1,
+      "columnsDetected": [
+        "Name",
+        "Taken",
+        "Team",
+        "Pos",
+        "Bye Week",
+        "UDK",
+        "Rotowire",
+        "FantasyPro",
+        "FFToolbox",
+        "Sleeper",
+        "Avg Going Rate",
+        "Variation"
+      ],
+      "siteValueColumns": [
+        "UDK",
+        "Rotowire",
+        "FantasyPro",
+        "FFToolbox",
+        "Sleeper"
+      ],
+      "statusColumnsDetected": [
+        "Taken"
+      ],
+      "rowCount": 696,
+      "skippedRows": 0,
+      "missingPlayerNames": 0,
+      "missingPositions": 0,
+      "warningCount": 0,
+      "errorCount": 0
+    },
+    {
+      "seasonYear": 2025,
+      "sourceFilename": "2025_Auction_Value_Cheatsheet.xlsx",
+      "outputFilename": "masterview-2025.json",
+      "masterviewHeaderRow": 1,
+      "columnsDetected": [
+        "Name",
+        "Taken",
+        "Team",
+        "Pos",
+        "Bye Week",
+        "UDK",
+        "Rotowire",
+        "FantasyPro",
+        "FFToolbox",
+        "Sleeper",
+        "Avg Going Rate",
+        "Variation"
+      ],
+      "siteValueColumns": [
+        "UDK",
+        "Rotowire",
+        "FantasyPro",
+        "FFToolbox",
+        "Sleeper"
+      ],
+      "statusColumnsDetected": [
+        "Taken"
+      ],
+      "rowCount": 731,
+      "skippedRows": 0,
+      "missingPlayerNames": 0,
+      "missingPositions": 0,
+      "warningCount": 0,
+      "errorCount": 0
+    }
+  ],
+  "totals": {
+    "workbookCount": 8,
+    "rowCount": 7120,
+    "skippedRows": 0,
+    "missingPlayerNames": 0,
+    "missingPositions": 0,
+    "warningCount": 0,
+    "errorCount": 0
+  }
+}

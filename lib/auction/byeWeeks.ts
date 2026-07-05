@@ -1,0 +1,48 @@
+export const nflByeWeeks2025 = {
+  ARI: 8,
+  ATL: 5,
+  BAL: 7,
+  BUF: 7,
+  CAR: 14,
+  CHI: 5,
+  CIN: 10,
+  CLE: 9,
+  DAL: 10,
+  DEN: 12,
+  DET: 8,
+  GB: 5,
+  HOU: 6,
+  IND: 11,
+  JAC: 8,
+  JAX: 8,
+  KC: 10,
+  LAC: 12,
+  LAR: 8,
+  LV: 8,
+  MIA: 12,
+  MIN: 6,
+  NE: 14,
+  NO: 11,
+  NYG: 14,
+  NYJ: 9,
+  PHI: 9,
+  PIT: 5,
+  SEA: 8,
+  SF: 14,
+  TB: 9,
+  TEN: 10,
+  WAS: 12,
+  WSH: 12,
+} as const;
+
+export const byeWeekOptions2025 = [5, 6, 7, 8, 9, 10, 11, 12, 14] as const;
+
+export function getByeWeekForNflTeam(team: string | null | undefined) {
+  const normalizedTeam = team?.trim().toUpperCase();
+
+  if (!normalizedTeam || normalizedTeam === 'FA') {
+    return null;
+  }
+
+  return nflByeWeeks2025[normalizedTeam as keyof typeof nflByeWeeks2025] ?? null;
+}

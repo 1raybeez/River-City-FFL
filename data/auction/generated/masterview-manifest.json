@@ -1,0 +1,30 @@
+{
+  "generatedAt": "2026-07-05T20:15:09.231Z",
+  "sourceDirectory": "data/auction/source-values",
+  "outputDirectory": "data/auction/generated",
+  "seasonsProcessed": [
+    2026
+  ],
+  "sourceFilesRead": [
+    "data/auction/source-values/fantasypros-2026.json",
+    "data/auction/source-values/lineupexperts-2026.json",
+    "data/auction/source-values/rotowire-2026.json"
+  ],
+  "files": [
+    {
+      "season": 2026,
+      "outputFile": "data/auction/generated/masterview-2026.json",
+      "rowCount": 753,
+      "sourceValueCount": 1298,
+      "skippedSourceValueCount": 0,
+      "warningCount": 502
+    }
+  ],
+  "totals": {
+    "seasons": 1,
+    "rows": 753,
+    "sourceValues": 1298,
+    "skippedSourceValues": 0,
+    "warnings": 502
+  }
+}

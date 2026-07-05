@@ -1,8 +1,6 @@
 import "dotenv/config";
 import admin from "firebase-admin";
 
-let app: admin.app.App | null = null;
-
 const serviceAccount = {
   project_id: process.env.FIREBASE_PROJECT_ID,
   client_email: process.env.FIREBASE_CLIENT_EMAIL,
@@ -15,11 +13,12 @@ if (!admin.apps.length) {
     throw new Error("❌ FIREBASE ERROR: Missing credentials in .env file.");
   }
 
-  app = admin.initializeApp({
+  admin.initializeApp({
     credential: admin.credential.cert(serviceAccount as any),
   });
-} else {
-  app = admin.app();
 }
 
-export const firestore = admin.firestore();
+const firebaseAdminApp = admin.app();
+
+export const firestore = firebaseAdminApp.firestore();
+export const adminAuth = firebaseAdminApp.auth();
