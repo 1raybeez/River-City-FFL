@@ -39,6 +39,7 @@ const mobileNavLinks = [
   { label: "Home", href: "/", group: "Core" },
   { label: "Managers", href: "/managers", group: "Core" },
   { label: "League Info", href: "/league-info", group: "Core" },
+  { label: "Commish", href: "/commish", group: "Core" },
   { label: "Matchups", href: "/matchups", group: "Core" },
   { label: "AI Predictor", href: "/predictor", group: "War Room" },
   { label: "Draft Board", href: "/league-info/draft", group: "League Info" },
@@ -191,6 +192,7 @@ export default function Home() {
           <Link href="/" aria-current="page" className="px-4 py-1.5 bg-orange-600 text-white rounded-lg text-[10px] font-black uppercase italic shadow-lg shadow-orange-900/20">Home</Link>
           <Link href="/managers" className="px-4 py-1.5 text-[10px] font-black uppercase italic opacity-40 hover:opacity-100 transition-all">Managers</Link>
           <Link href="/league-info" className="px-4 py-1.5 text-[10px] font-black uppercase italic opacity-40 hover:opacity-100 transition-all">League Info</Link>
+          <Link href="/commish" className="px-4 py-1.5 text-[10px] font-black uppercase italic opacity-40 hover:opacity-100 transition-all">Commish</Link>
           <Link href="/matchups" className="px-4 py-1.5 text-[10px] font-black uppercase italic opacity-40 hover:opacity-100 transition-all">Matchups</Link>
         </div>
 

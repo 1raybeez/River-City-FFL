@@ -9,10 +9,17 @@ import {
   type AuctionAdvisorContextSelectedPlayer,
   type AuctionAdvisorContextValueTarget,
 } from "@/lib/auction/advisorContext";
+import {
+  buildDraftCoachResponse,
+  type DraftCoachInput,
+  type DraftCoachResult,
+} from "@/lib/auction/draftCoach";
 
 type AdvisorChatRequestBody = {
+  mode?: unknown;
   question?: unknown;
   selectedPlayerName?: unknown;
+  draftCoachContext?: unknown;
 };
 
 type AdvisorChatResponse = {
@@ -22,6 +29,20 @@ type AdvisorChatResponse = {
   warnings: string[];
   source: "local-rule-based";
   contextSummary: ReturnType<typeof buildContextSummary>;
+};
+
+type DraftCoachChatResponse = {
+  answer: string;
+  recommendation: DraftCoachResult["decision"];
+  intelSummary: string[];
+  buddyMessage: string;
+  riskGuidance: string;
+  budgetPace: DraftCoachResult["budgetPace"];
+  spendGuidance: DraftCoachResult["spendGuidance"];
+  reasons: string[];
+  warnings: string[];
+  source: "local-hybrid-coach";
+  contextSummary: ReturnType<typeof buildDraftCoachContextSummary>;
 };
 
 const GENERIC_QUESTION_PATTERNS = [
@@ -41,6 +62,10 @@ function normalizeText(value: string | null | undefined) {
 
 function readString(value: unknown) {
   return typeof value === "string" ? normalizeText(value) : "";
+}
+
+function readMode(value: unknown) {
+  return value === "draft-coach" ? "draft-coach" : "advisor-chat";
 }
 
 async function readRequestBody(req: Request): Promise<AdvisorChatRequestBody> {
@@ -151,6 +176,41 @@ function buildContextSummary(context: AuctionAdvisorContext) {
         }
       : null,
     dataLimits: context.dataLimits,
+  };
+}
+
+function readDraftCoachContext(
+  value: unknown,
+  question: string
+): DraftCoachInput | null {
+  if (!value || typeof value !== "object") return null;
+
+  return {
+    ...(value as DraftCoachInput),
+    question,
+  };
+}
+
+function buildDraftCoachContextSummary(
+  context: DraftCoachInput,
+  result: DraftCoachResult
+) {
+  return {
+    selectedPlayer: context.selectedPlayer
+      ? {
+          playerName: context.selectedPlayer.playerName,
+          position: context.selectedPlayer.position,
+          preference: context.selectedPlayer.preference,
+        }
+      : null,
+    currentBid: context.currentBid,
+    ownerMaxBid: context.ownerMaxBid,
+    legalMaxBid: context.budget?.legalMaxBid ?? null,
+    budgetPace: result.budgetPace.status,
+    mustReserve: result.spendGuidance.mustReserve,
+    currentBidIncluded:
+      typeof context.currentBid === "number" && Number.isFinite(context.currentBid),
+    historicalContext: context.historicalPricing?.kind ?? "none",
   };
 }
 
@@ -395,6 +455,7 @@ export async function POST(req: Request) {
   }
 
   const body = await readRequestBody(req);
+  const mode = readMode(body.mode);
   const question = readString(body.question);
   const selectedPlayerName =
     readString(body.selectedPlayerName) || inferSelectedPlayerName(question);
@@ -404,6 +465,47 @@ export async function POST(req: Request) {
       { error: "Missing advisor question." },
       { status: 400 }
     );
+  }
+
+  if (mode === "draft-coach") {
+    const draftCoachContext = readDraftCoachContext(
+      body.draftCoachContext,
+      question
+    );
+
+    if (!draftCoachContext) {
+      return NextResponse.json(
+        { error: "Missing draft coach context." },
+        { status: 400 }
+      );
+    }
+
+    try {
+      const coachResult = buildDraftCoachResponse(draftCoachContext);
+
+      return NextResponse.json({
+        answer: coachResult.buddyMessage,
+        recommendation: coachResult.decision,
+        intelSummary: coachResult.intelSummary,
+        buddyMessage: coachResult.buddyMessage,
+        riskGuidance: coachResult.riskGuidance,
+        budgetPace: coachResult.budgetPace,
+        spendGuidance: coachResult.spendGuidance,
+        reasons: coachResult.reasons,
+        warnings: coachResult.warnings,
+        source: "local-hybrid-coach",
+        contextSummary: buildDraftCoachContextSummary(
+          draftCoachContext,
+          coachResult
+        ),
+      } satisfies DraftCoachChatResponse);
+    } catch (error) {
+      console.error("Auction draft coach local answer failed:", error);
+      return NextResponse.json(
+        { error: "Failed to build local draft coach answer." },
+        { status: 500 }
+      );
+    }
   }
 
   try {

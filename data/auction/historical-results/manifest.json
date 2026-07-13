@@ -1,0 +1,101 @@
+{
+  "generatedAt": "2026-07-11T00:54:35.140Z",
+  "source": "sleeper",
+  "seasons": [
+    {
+      "season": 2021,
+      "leagueId": "677751457528762368",
+      "draftId": "677751457528762369",
+      "generatedAt": "2026-07-11T00:54:33.818Z",
+      "pickCount": 192,
+      "normalizedResultCount": 192,
+      "ownerMappingCounts": {
+        "exact": 192,
+        "roster-only": 0,
+        "user-only": 0,
+        "unresolved": 0
+      },
+      "warnings": [],
+      "errors": [],
+      "outputPath": "data/auction/historical-results/sleeper-auction-2021.json",
+      "written": true,
+      "source": "sleeper"
+    },
+    {
+      "season": 2022,
+      "leagueId": "784542934581256192",
+      "draftId": "784542934581256193",
+      "generatedAt": "2026-07-11T00:54:34.212Z",
+      "pickCount": 192,
+      "normalizedResultCount": 192,
+      "ownerMappingCounts": {
+        "exact": 192,
+        "roster-only": 0,
+        "user-only": 0,
+        "unresolved": 0
+      },
+      "warnings": [],
+      "errors": [],
+      "outputPath": "data/auction/historical-results/sleeper-auction-2022.json",
+      "written": true,
+      "source": "sleeper"
+    },
+    {
+      "season": 2023,
+      "leagueId": "997510104398315520",
+      "draftId": "997510104398315521",
+      "generatedAt": "2026-07-11T00:54:34.439Z",
+      "pickCount": 192,
+      "normalizedResultCount": 192,
+      "ownerMappingCounts": {
+        "exact": 192,
+        "roster-only": 0,
+        "user-only": 0,
+        "unresolved": 0
+      },
+      "warnings": [],
+      "errors": [],
+      "outputPath": "data/auction/historical-results/sleeper-auction-2023.json",
+      "written": true,
+      "source": "sleeper"
+    },
+    {
+      "season": 2024,
+      "leagueId": "1072545817749331968",
+      "draftId": "1072545817749331969",
+      "generatedAt": "2026-07-11T00:54:34.669Z",
+      "pickCount": 192,
+      "normalizedResultCount": 192,
+      "ownerMappingCounts": {
+        "exact": 192,
+        "roster-only": 0,
+        "user-only": 0,
+        "unresolved": 0
+      },
+      "warnings": [],
+      "errors": [],
+      "outputPath": "data/auction/historical-results/sleeper-auction-2024.json",
+      "written": true,
+      "source": "sleeper"
+    },
+    {
+      "season": 2025,
+      "leagueId": "1199749375539027968",
+      "draftId": "1199749375555796992",
+      "generatedAt": "2026-07-11T00:54:34.907Z",
+      "pickCount": 192,
+      "normalizedResultCount": 192,
+      "ownerMappingCounts": {
+        "exact": 192,
+        "roster-only": 0,
+        "user-only": 0,
+        "unresolved": 0
+      },
+      "warnings": [],
+      "errors": [],
+      "outputPath": "data/auction/historical-results/sleeper-auction-2025.json",
+      "written": true,
+      "source": "sleeper"
+    }
+  ]
+}

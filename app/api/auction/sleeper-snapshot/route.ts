@@ -4,9 +4,13 @@ import {
   requireAuctionAccess,
 } from "@/lib/auth/auctionAccess";
 import {
+  getLeagueRosters,
+  getSleeperLeagueDrafts,
+  getLeagueUsers,
   getSleeperAuctionDraftSnapshot,
   LEAGUE_IDS,
 } from "@/lib/sleeper";
+import { normalizeSleeperAuctionSyncSnapshot } from "@/lib/auction/sleeperAuctionSync";
 
 const DEFAULT_SEASON = LEAGUE_IDS[2026] ? 2026 : 2025;
 
@@ -24,17 +28,54 @@ function parseSeason(value: string | null) {
 function buildCounts(
   picks: Awaited<ReturnType<typeof getSleeperAuctionDraftSnapshot>>["picks"]
 ) {
-  const missingAuctionPrices = picks.filter(
+  const completedPurchasePicks = picks.filter((pick) => pick.isKeeper !== true);
+  const missingAuctionPrices = completedPurchasePicks.filter(
     (pick) => pick.needsAuctionPriceReview
   ).length;
 
   return {
     picks: picks.length,
-    purchases: picks.length,
-    pricedPurchases: picks.length - missingAuctionPrices,
+    purchases: completedPurchasePicks.length,
+    pricedPurchases: completedPurchasePicks.length - missingAuctionPrices,
     missingAuctionPrices,
     keepers: picks.filter((pick) => pick.isKeeper === true).length,
   };
+}
+
+async function getSleeperNflPlayers() {
+  const response = await fetch("https://api.sleeper.app/v1/players/nfl", {
+    next: { revalidate: 3600 },
+  });
+
+  if (!response.ok) return {};
+
+  return (await response.json()) as Record<
+    string,
+    {
+      full_name?: string | null;
+      first_name?: string | null;
+      last_name?: string | null;
+      position?: string | null;
+      team?: string | null;
+    }
+  >;
+}
+
+function readRosterKeeperIds(roster: { keepers?: unknown }) {
+  const keepers = roster.keepers;
+
+  if (Array.isArray(keepers)) {
+    return keepers.filter(
+      (keeper): keeper is string | number =>
+        typeof keeper === "string" || typeof keeper === "number"
+    );
+  }
+
+  if (keepers && typeof keepers === "object") {
+    return Object.keys(keepers);
+  }
+
+  return [];
 }
 
 export async function GET(req: Request) {
@@ -62,7 +103,10 @@ export async function GET(req: Request) {
       );
     }
 
-    const snapshot = await getSleeperAuctionDraftSnapshot(season);
+    const [snapshot, leagueDrafts] = await Promise.all([
+      getSleeperAuctionDraftSnapshot(season),
+      getSleeperLeagueDrafts(season),
+    ]);
     const fetchedAt = new Date().toISOString();
 
     if (
@@ -82,15 +126,83 @@ export async function GET(req: Request) {
       );
     }
 
+    const [rosters, users, playersById] = await Promise.all([
+      getLeagueRosters(snapshot.leagueId ?? undefined),
+      getLeagueUsers(snapshot.leagueId ?? undefined),
+      getSleeperNflPlayers(),
+    ]);
+    const draftId =
+      typeof snapshot.draft?.draft_id === "string"
+        ? snapshot.draft.draft_id
+        : null;
+    const syncPayload = normalizeSleeperAuctionSyncSnapshot({
+      leagueId: snapshot.leagueId,
+      season,
+      fetchedAt,
+      draftId,
+      picks: snapshot.picks,
+      rosters,
+      users,
+      playersById,
+      warnings: snapshot.warnings,
+    });
+    const auctionDraftCount = leagueDrafts.filter(
+      (draft) => draft.type === "auction"
+    ).length;
+    const routeWarnings = [
+      ...syncPayload.warnings,
+      ...(auctionDraftCount > 1
+        ? [
+            `${auctionDraftCount} auction drafts were found for ${season}; selected ${draftId ?? "unknown"}.`,
+          ]
+        : []),
+    ];
+    const rosterKeeperCount = rosters.reduce(
+      (sum, roster) => sum + readRosterKeeperIds(roster).length,
+      0
+    );
+    const keeperSourcesUsed = [
+      ...(snapshot.picks.some((pick) => pick.isKeeper === true)
+        ? ["draft-pick"]
+        : []),
+      ...(rosterKeeperCount > 0 ? ["roster"] : []),
+    ];
+    const diagnostics = {
+      draftsFound: leagueDrafts.length,
+      selectedDraftId: draftId,
+      selectedDraftType: snapshot.draft?.type ?? null,
+      selectedDraftStatus: snapshot.draft?.status ?? null,
+      rawPickCount: snapshot.picks.length,
+      keeperPickCount: snapshot.picks.filter((pick) => pick.isKeeper === true)
+        .length,
+      rosterKeeperCount,
+      normalizedKeeperCount: syncPayload.keepers.length,
+      completedPurchaseCount: syncPayload.completedPurchases.length,
+      keeperSourcesUsed,
+    };
+    const responseSyncStatus =
+      routeWarnings.length > 0 ? "partial" : syncPayload.syncStatus;
+
     return NextResponse.json({
+      ...syncPayload,
       season,
       leagueId: snapshot.leagueId,
       status: snapshot.status,
+      syncStatus: responseSyncStatus,
       draft: snapshot.draft,
-      purchases: snapshot.picks,
-      picks: snapshot.picks,
-      counts: buildCounts(snapshot.picks),
-      warnings: snapshot.warnings,
+      purchases: syncPayload.completedPurchases,
+      picks: syncPayload.completedPurchases,
+      counts: {
+        ...buildCounts(snapshot.picks),
+        keepers: syncPayload.keepers.length,
+        completedPurchases: syncPayload.completedPurchases.length,
+        missingKeeperPrices: syncPayload.keepers.filter(
+          (keeper) => keeper.priceStatus === "missing"
+        ).length,
+        warnings: routeWarnings.length,
+      },
+      diagnostics,
+      warnings: routeWarnings,
       fetchedAt,
     });
   } catch (error) {
