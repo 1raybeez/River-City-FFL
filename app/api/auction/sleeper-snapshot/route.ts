@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   AuctionAccessError,
-  requireAuctionAccess,
+  requireAuctionWarRoomAccess,
 } from "@/lib/auth/auctionAccess";
 import {
   getLeagueRosters,
@@ -80,7 +80,7 @@ function readRosterKeeperIds(roster: { keepers?: unknown }) {
 
 export async function GET(req: Request) {
   try {
-    await requireAuctionAccess();
+    await requireAuctionWarRoomAccess();
   } catch (error) {
     if (error instanceof AuctionAccessError) {
       return NextResponse.json(

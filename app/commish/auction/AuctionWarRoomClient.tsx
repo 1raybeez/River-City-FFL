@@ -18,6 +18,7 @@ import historicalSleeperAuction2024 from '@/data/auction/historical-results/slee
 import historicalSleeperAuction2025 from '@/data/auction/historical-results/sleeper-auction-2025.json';
 import playerValues2025 from '@/data/auction/processed/player-values-2025.json';
 import generatedMasterview2026 from '@/data/auction/generated/masterview-2026.json';
+import generatedAdpConsensus2026 from '@/data/auction/adp/generated/adp-consensus-2026.json';
 import {
   ArrowLeft,
   BarChart3,
@@ -59,6 +60,13 @@ import {
   targetPlayerNames,
   watchlistPlayerNames,
 } from '@/lib/auction/draftPreferences';
+import {
+  type AuctionOwnerPlayerPreference,
+  type AuctionOwnerPreferenceTag,
+} from '@/lib/auction/ownerPreferenceTypes';
+import type { AuctionOwnerProfileSettings } from '@/lib/auction/ownerProfileSettingsTypes';
+import type { AuctionAccessResult } from '@/lib/auction/ownerProfiles';
+import type { AuctionPurchaseDecisionSnapshot } from '@/lib/auction/purchaseDecisionTypes';
 import {
   calculateAuctionInflationState,
   recommendRayJeffreyMaxBid,
@@ -290,15 +298,79 @@ type GeneratedMasterviewFile = {
   rows: GeneratedMasterviewRow[];
 };
 
+type GeneratedAdpConsensusRow = {
+  season: number;
+  playerId: string;
+  playerName: string;
+  position: string;
+  nflTeam: string | null;
+  sourceCount: number;
+  consensusOverallAdp: number;
+  medianOverallAdp: number;
+  consensusPositionAdp: number | null;
+  minOverallAdp: number;
+  maxOverallAdp: number;
+  adpSpread: number;
+  demandScore: number;
+  demandTier: string;
+  waitRisk: string;
+  confidence: string;
+  warnings?: string[];
+};
+
+type GeneratedAdpConsensusFile = {
+  generatedAt: string;
+  season: number;
+  sourceFiles: string[];
+  rowCount: number;
+  sourceValueCount: number;
+  skippedSourceValueCount: number;
+  rows: GeneratedAdpConsensusRow[];
+  activeRunId?: string | null;
+  includedSourceKeys?: string[];
+};
+
 type AuctionValueSourceOption = {
-  id: 'generated-2026' | 'historical-2025';
+  id: string;
   label: string;
   shortLabel: string;
   path: string;
   file: ProcessedPlayerValuesFile;
 };
 
-type PlayerPoolSortKey = 'averageValue' | 'highValue' | 'position' | 'playerName';
+export type AuctionWarRoomInitialValueSource = {
+  file: GeneratedMasterviewFile | null;
+  label: string;
+  shortLabel: string;
+  path: string;
+  warning?: string | null;
+  activeRunId?: string | null;
+};
+
+export type AuctionWarRoomInitialAdpSource = {
+  file: GeneratedAdpConsensusFile | null;
+  label: string;
+  shortLabel: string;
+  warning?: string | null;
+  activeRunId?: string | null;
+};
+
+export type AuctionWarRoomInitialOwnerPreference =
+  AuctionOwnerPlayerPreference;
+export type AuctionWarRoomInitialOwnerSettings =
+  AuctionOwnerProfileSettings;
+export type AuctionWarRoomInitialPurchaseDecision =
+  AuctionPurchaseDecisionSnapshot;
+
+type PlayerPoolSortKey =
+  | 'averageValue'
+  | 'highValue'
+  | 'adp'
+  | 'demandPressure'
+  | 'plannedCap'
+  | 'preferredEntry'
+  | 'position'
+  | 'playerName';
 type PlayerPoolPreferenceFilter = 'all' | 'target' | 'fade' | 'watch';
 type PlayerPoolPreferenceTag = Exclude<PlayerPoolPreferenceFilter, 'all'>;
 type MyBoardFilter = 'targets' | 'watch' | 'available' | 'drafted' | 'fades';
@@ -502,6 +574,8 @@ type DraftCoachChatMessage = DraftCoachResult & {
 const localPlayerValues2025 = playerValues2025 as ProcessedPlayerValuesFile;
 const generatedMasterviewValues2026 =
   generatedMasterview2026 as GeneratedMasterviewFile;
+const localAdpConsensus2026 =
+  generatedAdpConsensus2026 as GeneratedAdpConsensusFile;
 
 function mapGeneratedMasterviewRowToPlayerPoolRow(
   row: GeneratedMasterviewRow,
@@ -581,14 +655,131 @@ const auctionValueSourceOptions: AuctionValueSourceOption[] = [
     file: localPlayerValues2025,
   },
 ];
-const activeAuctionValueSource =
+const defaultActiveAuctionValueSource =
   auctionValueSourceOptions.find((source) => source.file.rows.length > 0) ??
   auctionValueSourceOptions[1];
-const localPlayerValues = activeAuctionValueSource.file;
-const localPlayerPoolRows = localPlayerValues.rows;
-const playerPoolValueSourceLabel = activeAuctionValueSource.label;
-const playerPoolValueSourceShortLabel = activeAuctionValueSource.shortLabel;
-const playerPoolValueSourcePath = activeAuctionValueSource.path;
+let activeAuctionValueSource = defaultActiveAuctionValueSource;
+let localPlayerValues = activeAuctionValueSource.file;
+let localPlayerPoolRows = localPlayerValues.rows;
+let playerPoolValueSourceLabel = activeAuctionValueSource.label;
+let playerPoolValueSourceShortLabel = activeAuctionValueSource.shortLabel;
+let playerPoolValueSourcePath = activeAuctionValueSource.path;
+let playerPoolValueSourceWarning: string | null = null;
+let runtimeAuctionValueSourceFingerprint = 'local-default';
+
+function refreshAuctionValueSourceDerivedState() {
+  localPlayerValues = activeAuctionValueSource.file;
+  localPlayerPoolRows = localPlayerValues.rows;
+  playerPoolValueSourceLabel = activeAuctionValueSource.label;
+  playerPoolValueSourceShortLabel = activeAuctionValueSource.shortLabel;
+  playerPoolValueSourcePath = activeAuctionValueSource.path;
+  playerPoolPositionOptions = Array.from(
+    new Set(
+      localPlayerPoolRows
+        .map((player) => player.position)
+        .filter((position): position is string => Boolean(position))
+    )
+  ).sort();
+  playerPoolMatchStatusOptions = Array.from(
+    new Set(localPlayerPoolRows.map((player) => player.matchStatus))
+  ).sort();
+  playerPoolStatusOptions = sortPlayerPoolStatuses(Array.from(
+    new Set(localPlayerPoolRows.map((player) => formatPlayerPoolStatus(player.status)))
+  ));
+  guidancePlayerValues = localPlayerPoolRows.map((player) => ({
+    playerName: player.originalPlayerName,
+    matchedPlayerName: player.matchedSleeperName,
+    position: player.position,
+    averageValue: player.averageValue,
+    highValue: player.highValue,
+  }));
+}
+
+function applyRuntimeAuctionValueSource(
+  initialValueSource?: AuctionWarRoomInitialValueSource
+) {
+  const nextFingerprint =
+    initialValueSource?.file && initialValueSource.file.rows.length > 0
+      ? `${initialValueSource.activeRunId ?? 'published'}-${initialValueSource.file.generatedAt}-${initialValueSource.file.rowCount}`
+      : 'local-default';
+
+  if (runtimeAuctionValueSourceFingerprint === nextFingerprint) {
+    playerPoolValueSourceWarning = initialValueSource?.warning ?? null;
+    return;
+  }
+
+  activeAuctionValueSource =
+    initialValueSource?.file && initialValueSource.file.rows.length > 0
+      ? {
+          id: 'published-2026',
+          label: initialValueSource.label,
+          shortLabel: initialValueSource.shortLabel,
+          path: initialValueSource.path,
+          file: mapGeneratedMasterviewFileToProcessedValuesFile(
+            initialValueSource.file
+          ),
+        }
+      : defaultActiveAuctionValueSource;
+  playerPoolValueSourceWarning = initialValueSource?.warning ?? null;
+  runtimeAuctionValueSourceFingerprint = nextFingerprint;
+  refreshAuctionValueSourceDerivedState();
+}
+
+let activeAdpConsensus = localAdpConsensus2026;
+let adpSourceLabel = 'Local 2026 ADP consensus';
+let adpSourceWarning: string | null = null;
+let runtimeAdpSourceFingerprint = 'local-adp-default';
+let adpByPlayerId = new Map<string, GeneratedAdpConsensusRow>();
+let adpByNamePosition = new Map<string, GeneratedAdpConsensusRow>();
+
+function normalizeAdpLookupName(value: string | null | undefined) {
+  return value
+    ?.trim()
+    .toLowerCase()
+    .replace(/\b(jr|sr|ii|iii|iv|v)\.?$/i, '')
+    .replace(/['’`]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ') ?? '';
+}
+
+function refreshAdpLookupState() {
+  adpByPlayerId = new Map();
+  adpByNamePosition = new Map();
+
+  for (const row of activeAdpConsensus.rows ?? []) {
+    if (row.playerId) adpByPlayerId.set(row.playerId, row);
+    adpByNamePosition.set(
+      `${normalizeAdpLookupName(row.playerName)}|${row.position}`,
+      row
+    );
+  }
+}
+
+function applyRuntimeAdpSource(initialAdpSource?: AuctionWarRoomInitialAdpSource) {
+  const nextFingerprint =
+    initialAdpSource?.file && initialAdpSource.file.rows.length > 0
+      ? `${initialAdpSource.activeRunId ?? 'published-adp'}-${initialAdpSource.file.generatedAt}-${initialAdpSource.file.rowCount}`
+      : 'local-adp-default';
+
+  if (runtimeAdpSourceFingerprint === nextFingerprint) {
+    adpSourceWarning = initialAdpSource?.warning ?? null;
+    return;
+  }
+
+  activeAdpConsensus =
+    initialAdpSource?.file && initialAdpSource.file.rows.length > 0
+      ? initialAdpSource.file
+      : localAdpConsensus2026;
+  adpSourceLabel = initialAdpSource?.file
+    ? initialAdpSource.label
+    : 'Local 2026 ADP consensus';
+  adpSourceWarning = initialAdpSource?.warning ?? null;
+  runtimeAdpSourceFingerprint = nextFingerprint;
+  refreshAdpLookupState();
+}
+
+refreshAdpLookupState();
 const playerPoolInitialDisplayLimit = 250;
 const emptySleeperKeepers: SleeperSnapshotKeeper[] = [];
 const emptySleeperPurchases: SleeperSnapshotCompletedPurchase[] = [];
@@ -621,17 +812,74 @@ function fetchSharedSleeperAutoSnapshotPayload() {
 const playerPoolSortOptions: Array<{ label: string; value: PlayerPoolSortKey }> = [
   { label: 'Average Value', value: 'averageValue' },
   { label: 'High Value', value: 'highValue' },
+  { label: 'ADP', value: 'adp' },
+  { label: 'Demand Pressure', value: 'demandPressure' },
+  { label: 'Planned Cap', value: 'plannedCap' },
+  { label: 'Preferred Entry', value: 'preferredEntry' },
   { label: 'Position', value: 'position' },
   { label: 'Player Name', value: 'playerName' },
 ];
 
 const myBoardFilterOptions: Array<{ label: string; value: MyBoardFilter }> = [
+  { label: 'Available', value: 'available' },
   { label: 'Targets', value: 'targets' },
   { label: 'Watch', value: 'watch' },
-  { label: 'Available', value: 'available' },
   { label: 'Drafted', value: 'drafted' },
   { label: 'Fades', value: 'fades' },
 ];
+
+const draftPlanTagOptions: Array<{
+  label: string;
+  value: AuctionOwnerPreferenceTag;
+}> = [
+  { label: 'Open', value: 'open' },
+  { label: 'Target', value: 'target' },
+  { label: 'Watch', value: 'watch' },
+  { label: 'Fade', value: 'fade' },
+];
+
+const ownerSettingsLabelMap = {
+  rosterConstruction: {
+    balanced: 'Balanced',
+    'stars-and-scrubs': 'Stars and Scrubs',
+    'value-heavy': 'Value Heavy',
+    'hero-rb': 'Hero RB',
+    'zero-rb': 'Zero RB',
+    custom: 'Custom / Unsure',
+  },
+  riskTolerance: {
+    conservative: 'Conservative',
+    balanced: 'Balanced',
+    aggressive: 'Aggressive',
+  },
+  keeperFocus: {
+    low: 'Keeper Focus: Low',
+    medium: 'Keeper Focus: Medium',
+    high: 'Keeper Focus: High',
+  },
+  rookiePreference: {
+    low: 'Rookies: Low',
+    medium: 'Rookies: Medium',
+    high: 'Rookies: High',
+  },
+  nominationStyle: {
+    targets: 'Nominate Targets',
+    decoys: 'Nominate Decoys',
+    mixed: 'Mixed Nominations',
+    ai: 'AI Nominations',
+  },
+  kickerDefenseStrategy: {
+    minimum: 'K/DEF: Minimum',
+    'elite-small-premium': 'K/DEF: Small Premium',
+    flexible: 'K/DEF: Flexible',
+  },
+  draftGoal: {
+    'win-now': 'Win Now',
+    balanced: 'Balanced Goal',
+    'keeper-build': 'Keeper Build',
+    learning: 'Learning Mode',
+  },
+} as const;
 
 const draftUtilitySections: Array<{
   label: string;
@@ -675,6 +923,71 @@ const preferenceBadgeLabels: Record<PlayerPoolPreferenceTag, string> = {
   watch: 'Watch',
 };
 
+type DraftPlanPreferenceMap = Map<string, AuctionOwnerPlayerPreference>;
+
+function buildDraftPlanPreferenceMap(
+  preferences: readonly AuctionOwnerPlayerPreference[]
+): DraftPlanPreferenceMap {
+  return new Map(
+    preferences.flatMap((preference) => {
+      const playerId = normalizeFilterValue(preference.sleeperPlayerId);
+      return playerId ? [[playerId, preference] as const] : [];
+    })
+  );
+}
+
+function getPlayerDraftPlanKey(player: ProcessedPlayerValueRow) {
+  return normalizeFilterValue(player.sleeperPlayerId);
+}
+
+function getDraftPlanPreferenceForPlayer(
+  player: ProcessedPlayerValueRow,
+  preferencesByPlayerId: DraftPlanPreferenceMap
+) {
+  const playerId = getPlayerDraftPlanKey(player);
+  return playerId ? preferencesByPlayerId.get(playerId) ?? null : null;
+}
+
+function getEffectivePlayerPoolPreferenceTags(
+  player: ProcessedPlayerValueRow,
+  preferencesByPlayerId: DraftPlanPreferenceMap
+) {
+  const savedPreference = getDraftPlanPreferenceForPlayer(
+    player,
+    preferencesByPlayerId
+  );
+
+  if (savedPreference) {
+    return savedPreference.tag === 'open'
+      ? []
+      : [savedPreference.tag as PlayerPoolPreferenceTag];
+  }
+
+  return getPlayerPoolPreferenceTags(player);
+}
+
+function getDraftPlanEditorTag(
+  player: ProcessedPlayerValueRow,
+  preferencesByPlayerId: DraftPlanPreferenceMap
+) {
+  const savedPreference = getDraftPlanPreferenceForPlayer(
+    player,
+    preferencesByPlayerId
+  );
+  if (savedPreference) return savedPreference.tag;
+
+  return getPlayerPoolPreferenceTags(player)[0] ?? 'open';
+}
+
+function hasDraftPlanDetails(preference: AuctionOwnerPlayerPreference | null) {
+  return Boolean(
+    preference &&
+      (preference.preferredEntry !== null ||
+        preference.plannedCap !== null ||
+        preference.note)
+  );
+}
+
 const rosterGuidanceSeverityStyles: Record<RosterGuidanceSeverity, string> = {
   ok: 'border-emerald-600/20 bg-emerald-600/10 text-emerald-600',
   watch: 'border-orange-600/20 bg-orange-600/10 text-orange-600',
@@ -683,6 +996,71 @@ const rosterGuidanceSeverityStyles: Record<RosterGuidanceSeverity, string> = {
 
 function formatMoney(amount: number | null) {
   return amount === null ? 'N/A' : `$${amount}`;
+}
+
+function formatDraftBoardTitle(teamName: string | null | undefined) {
+  const trimmedTeamName = teamName?.trim();
+  return trimmedTeamName ? `${trimmedTeamName} Draft Board` : 'My Draft Board';
+}
+
+function getOwnerRoleLabel(access: AuctionAccessResult) {
+  return access.role === 'pilot-owner' ? 'Pilot' : 'Commissioner';
+}
+
+function getOwnerSettingsSummary(
+  settings: AuctionOwnerProfileSettings | null | undefined
+) {
+  if (!settings?.onboardingCompleted) return null;
+
+  const positionPriorities =
+    settings.positionPriorities.length > 0
+      ? `${settings.positionPriorities.join('/')} Priority`
+      : 'No Position Priority';
+
+  return [
+    ownerSettingsLabelMap.rosterConstruction[settings.rosterConstruction],
+    ownerSettingsLabelMap.riskTolerance[settings.riskTolerance],
+    ownerSettingsLabelMap.keeperFocus[settings.keeperFocus],
+    positionPriorities,
+  ].join(' · ');
+}
+
+function getPurchaseVariance(
+  salePrice: number,
+  referencePrice: number | null | undefined
+) {
+  return typeof referencePrice === 'number' && Number.isFinite(referencePrice)
+    ? salePrice - referencePrice
+    : null;
+}
+
+function formatNullableSignedMoney(amount: number | null) {
+  if (amount === null) return 'N/A';
+  if (amount > 0) return `+${formatMoney(amount)}`;
+  if (amount < 0) return `-${formatMoney(Math.abs(amount))}`;
+  return '$0';
+}
+
+function formatWarRoomTerminology(text: string) {
+  return text
+    .replace(/\bmy hard cap\b/gi, 'planned cap')
+    .replace(/\bhard caps\b/gi, 'planned caps')
+    .replace(/\bhard cap\b/gi, 'planned cap')
+    .replace(/\bopening bid\b/gi, 'preferred entry');
+}
+
+function formatPurchaseDecisionSnapshotLine(
+  snapshot: AuctionPurchaseDecisionSnapshot | null | undefined
+) {
+  if (!snapshot || snapshot.status === 'undone') return null;
+
+  return [
+    `Plan ${formatMoney(snapshot.plannedCapAtPurchase)}`,
+    `AI ${formatMoney(snapshot.currentAiCeilingAtPurchase)}`,
+    `Paid ${formatMoney(snapshot.salePrice)}`,
+    `${formatNullableSignedMoney(snapshot.plannedCapVariance)} vs plan`,
+    `${formatNullableSignedMoney(snapshot.aiCeilingVariance)} vs AI`,
+  ].join(' · ');
 }
 
 function formatHistoricalMoney(amount: number | null) {
@@ -1017,9 +1395,37 @@ function getSortableNumber(value: number | null | undefined) {
   return typeof value === 'number' && Number.isFinite(value) ? value : -1;
 }
 
+function getAdpForPlayer(player: ProcessedPlayerValueRow | null | undefined) {
+  if (!player) return null;
+  if (player.sleeperPlayerId) {
+    const byId = adpByPlayerId.get(player.sleeperPlayerId);
+    if (byId) return byId;
+  }
+
+  return (
+    adpByNamePosition.get(
+      `${normalizeAdpLookupName(player.matchedSleeperName ?? player.originalPlayerName)}|${player.position ?? ''}`
+    ) ?? null
+  );
+}
+
+function getAdpSortableValue(player: ProcessedPlayerValueRow) {
+  const adp = getAdpForPlayer(player);
+  return typeof adp?.consensusOverallAdp === 'number'
+    ? -adp.consensusOverallAdp
+    : Number.NEGATIVE_INFINITY;
+}
+
+function formatAdp(value: number | null | undefined) {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? value.toFixed(value % 1 === 0 ? 0 : 1)
+    : 'N/A';
+}
+
 function sortPlayerPoolRows(
   players: ProcessedPlayerValueRow[],
-  sortKey: PlayerPoolSortKey
+  sortKey: PlayerPoolSortKey,
+  preferencesByPlayerId?: DraftPlanPreferenceMap
 ) {
   return [...players].sort((firstPlayer, secondPlayer) => {
     if (sortKey === 'averageValue') {
@@ -1033,6 +1439,53 @@ function sortPlayerPoolRows(
       const valueDifference =
         getSortableNumber(secondPlayer.highValue) -
         getSortableNumber(firstPlayer.highValue);
+      if (valueDifference !== 0) return valueDifference;
+    }
+
+    if (sortKey === 'adp') {
+      const valueDifference =
+        getAdpSortableValue(secondPlayer) - getAdpSortableValue(firstPlayer);
+      if (valueDifference !== 0) return valueDifference;
+    }
+
+    if (sortKey === 'demandPressure') {
+      const valueDifference =
+        getSortableNumber(getAdpForPlayer(secondPlayer)?.demandScore) -
+        getSortableNumber(getAdpForPlayer(firstPlayer)?.demandScore);
+      if (valueDifference !== 0) return valueDifference;
+    }
+
+    if (sortKey === 'plannedCap') {
+      const valueDifference =
+        getSortableNumber(
+          preferencesByPlayerId
+            ? getDraftPlanPreferenceForPlayer(secondPlayer, preferencesByPlayerId)
+                ?.plannedCap
+            : null
+        ) -
+        getSortableNumber(
+          preferencesByPlayerId
+            ? getDraftPlanPreferenceForPlayer(firstPlayer, preferencesByPlayerId)
+                ?.plannedCap
+            : null
+        );
+      if (valueDifference !== 0) return valueDifference;
+    }
+
+    if (sortKey === 'preferredEntry') {
+      const valueDifference =
+        getSortableNumber(
+          preferencesByPlayerId
+            ? getDraftPlanPreferenceForPlayer(secondPlayer, preferencesByPlayerId)
+                ?.preferredEntry
+            : null
+        ) -
+        getSortableNumber(
+          preferencesByPlayerId
+            ? getDraftPlanPreferenceForPlayer(firstPlayer, preferencesByPlayerId)
+                ?.preferredEntry
+            : null
+        );
       if (valueDifference !== 0) return valueDifference;
     }
 
@@ -1272,6 +1725,189 @@ function getCurrentNominationRecommendation(
   return 'PASS';
 }
 
+function applyActionableCeilingToRecommendation({
+  recommendation,
+  currentBidValue,
+  actionableCeiling,
+}: {
+  recommendation: CurrentNominationRecommendation;
+  currentBidValue: number | null;
+  actionableCeiling: number | null;
+}): CurrentNominationRecommendation {
+  if (currentBidValue === null || actionableCeiling === null) {
+    return recommendation;
+  }
+
+  if (currentBidValue > actionableCeiling) return 'PASS';
+  if (
+    currentBidValue === actionableCeiling &&
+    recommendation !== 'PASS' &&
+    recommendation !== 'DO NOT BID'
+  ) {
+    return 'LAST BID';
+  }
+
+  return recommendation;
+}
+
+type CurrentAiCeilingResult = {
+  ceiling: number | null;
+  reasons: string[];
+  warnings: string[];
+  detail: string;
+};
+
+function deriveCurrentAiCeiling({
+  baselineRecommendedMax,
+  plannedCap,
+  legalMax,
+  position,
+  preferenceTags,
+  kDefStrategyMax,
+  marketValue,
+  predictedWinningBid,
+  confidenceScore,
+  currentBid,
+  roomRunStatus,
+  roomScarcityLabel,
+  competitionThreatCount,
+  adpDemandScore,
+  adpWaitRisk,
+}: {
+  baselineRecommendedMax: number | null;
+  plannedCap: number | null;
+  legalMax: number | null;
+  position: string | null | undefined;
+  preferenceTags: readonly PlayerPoolPreferenceTag[];
+  kDefStrategyMax: number | null;
+  marketValue: number | null;
+  predictedWinningBid: number | null;
+  confidenceScore: number | null;
+  currentBid: number | null;
+  roomRunStatus: string | null | undefined;
+  roomScarcityLabel: string | null | undefined;
+  competitionThreatCount: number | null;
+  adpDemandScore: number | null;
+  adpWaitRisk: string | null | undefined;
+}): CurrentAiCeilingResult {
+  const baseValues = [
+    baselineRecommendedMax,
+    predictedWinningBid,
+    marketValue,
+  ].filter((value): value is number => value !== null && Number.isFinite(value));
+  const baseCeiling =
+    baseValues.length > 0 ? Math.max(...baseValues.map(Math.round)) : null;
+
+  if (baseCeiling === null) {
+    return {
+      ceiling: legalMax,
+      reasons:
+        legalMax === null
+          ? []
+          : [`No AI ceiling signal is available; Legal Max remains ${formatMoney(legalMax)}.`],
+      warnings: [],
+      detail: 'No player-specific AI ceiling signal is available.',
+    };
+  }
+
+  const normalizedPosition = normalizePositionValue(position);
+  const reasons: string[] = [`Draft Intelligence base ceiling is ${formatMoney(baseCeiling)}.`];
+  const warnings: string[] = [];
+  let lift = 0;
+
+  if (preferenceTags.includes('target')) {
+    lift += 1;
+    reasons.push('Target tag supports a small ceiling lift.');
+  }
+
+  if (roomRunStatus === 'active') {
+    lift += 1;
+    reasons.push('Room Intelligence shows an active position run.');
+  } else if (roomRunStatus === 'extreme') {
+    lift += 2;
+    reasons.push('Room Intelligence shows an extreme position run.');
+  }
+
+  if (roomScarcityLabel === 'thin') {
+    lift += 1;
+    reasons.push('Room Intelligence shows thin position scarcity.');
+  } else if (roomScarcityLabel === 'critical') {
+    lift += 2;
+    reasons.push('Room Intelligence shows critical position scarcity.');
+  }
+
+  if ((competitionThreatCount ?? 0) >= 3) {
+    lift += 2;
+    reasons.push('Live competition shows multiple owners can need and afford this player.');
+  } else if ((competitionThreatCount ?? 0) > 0) {
+    lift += 1;
+    reasons.push('Live competition shows at least one owner can need and afford this player.');
+  }
+
+  if ((adpDemandScore ?? 0) >= 80) {
+    lift += 2;
+    reasons.push('ADP demand is elevated.');
+  } else if ((adpDemandScore ?? 0) >= 60) {
+    lift += 1;
+    reasons.push('ADP demand supports a small lift.');
+  }
+
+  if (adpWaitRisk === 'HIGH' || adpWaitRisk === 'ELEVATED') {
+    lift += 1;
+    reasons.push('ADP wait risk supports a small lift.');
+  }
+
+  if ((confidenceScore ?? 100) < 60) {
+    lift = Math.max(0, lift - 1);
+    warnings.push('AI ceiling lift was limited by lower confidence.');
+  }
+
+  const strategicLiftLimit = preferenceTags.includes('target') ? 5 : 3;
+  const liveLift = Math.min(lift, strategicLiftLimit);
+  let ceiling = baseCeiling + liveLift;
+
+  if (plannedCap !== null && plannedCap > ceiling && preferenceTags.includes('target')) {
+    ceiling = Math.min(plannedCap, baseCeiling + strategicLiftLimit);
+    reasons.push('Saved Planned Cap supports the upper end of the AI range.');
+  }
+
+  if (preferenceTags.includes('fade')) {
+    const fadeLimit = Math.min(
+      baseCeiling,
+      plannedCap ?? baseCeiling,
+      marketValue ?? baseCeiling
+    );
+    ceiling = Math.min(ceiling, fadeLimit);
+    warnings.push('Fade tag keeps the AI ceiling at value-only territory.');
+  }
+
+  if (kDefStrategyMax !== null) {
+    ceiling = Math.min(ceiling, kDefStrategyMax);
+    reasons.push(
+      `${normalizedPosition} strategy cap keeps the AI ceiling at ${formatMoney(kDefStrategyMax)}.`
+    );
+  }
+
+  if (legalMax !== null && ceiling > legalMax) {
+    ceiling = legalMax;
+    warnings.push('Legal Max is below the live AI ceiling and remains the final guardrail.');
+  }
+
+  if (currentBid !== null && currentBid > ceiling) {
+    warnings.push('Current bid is above the Current AI Ceiling.');
+  }
+
+  return {
+    ceiling,
+    reasons,
+    warnings,
+    detail:
+      liveLift > 0
+        ? `Base ${formatMoney(baseCeiling)} plus ${formatMoney(liveLift)} live context lift.`
+        : `Base ${formatMoney(baseCeiling)} with no live lift.`,
+  };
+}
+
 function getCurrentNominationRecommendationClass(
   recommendation: CurrentNominationRecommendation
 ) {
@@ -1371,6 +2007,43 @@ function getMyBoardCategoryClass({
   if (preferenceTags.includes('watch')) return 'hover:bg-blue-600/10';
   if (preferenceTags.includes('fade')) return 'hover:bg-rose-600/10';
   return 'hover:bg-black/[0.03] dark:hover:bg-white/[0.04]';
+}
+
+function getMyBoardStatusLabel({
+  isDrafted,
+  playerStatus,
+  preferenceTags,
+}: {
+  isDrafted: boolean;
+  playerStatus: string;
+  preferenceTags: readonly PlayerPoolPreferenceTag[];
+}) {
+  if (isDrafted) return 'DRAFTED';
+  if (preferenceTags.includes('target')) return 'TARGET';
+  if (preferenceTags.includes('watch')) return 'WATCH';
+  if (preferenceTags.includes('fade')) return 'FADE';
+  if (isAvailablePlayerPoolStatus(playerStatus)) return 'OPEN';
+  return playerStatus.toUpperCase();
+}
+
+function getMyBoardStatusClass(statusLabel: string) {
+  if (statusLabel === 'TARGET') {
+    return 'bg-emerald-600/10 text-emerald-700 dark:text-emerald-300';
+  }
+
+  if (statusLabel === 'WATCH') {
+    return 'bg-blue-600/10 text-blue-700 dark:text-blue-300';
+  }
+
+  if (statusLabel === 'FADE') {
+    return 'bg-rose-600/10 text-rose-700 dark:text-rose-300';
+  }
+
+  if (statusLabel === 'DRAFTED') {
+    return 'bg-zinc-500/10 text-zinc-500';
+  }
+
+  return 'bg-black/5 text-gray-600 dark:bg-white/10 dark:text-gray-300';
 }
 
 function getDraftIntelligenceContextualRecommendation(
@@ -1586,10 +2259,13 @@ function getBudgetPressureLevel({
 function buildAuctionAdvisorPlayerValues(
   purchases: readonly AuctionWarRoomPurchaseRow[],
   isUsingSleeperPurchases: boolean,
-  rosterPlayers: readonly RosterGuidancePlayer[]
+  rosterPlayers: readonly RosterGuidancePlayer[],
+  getPreferenceTags: (
+    player: ProcessedPlayerValueRow
+  ) => PlayerPoolPreferenceTag[] = getPlayerPoolPreferenceTags
 ): AuctionAdvisorPlayerValue[] {
   return localPlayerPoolRows.map((player) => {
-    const preferenceTags = getPlayerPoolPreferenceTags(player);
+    const preferenceTags = getPreferenceTags(player);
     const status = getPlayerPoolDisplayStatus(
       player,
       purchases,
@@ -1663,7 +2339,50 @@ function PreferenceBadge({ tag }: { tag: PlayerPoolPreferenceTag }) {
   );
 }
 
-const playerPoolPositionOptions = Array.from(
+function DraftPlanChips({
+  preference,
+  preferenceTags,
+  aiCeiling,
+}: {
+  preference: AuctionOwnerPlayerPreference | null;
+  preferenceTags: readonly PlayerPoolPreferenceTag[];
+  aiCeiling?: number | null;
+}) {
+  const hasSavedPlanAmount =
+    preference?.preferredEntry !== null &&
+    preference?.preferredEntry !== undefined
+      ? true
+      : preference?.plannedCap !== null && preference?.plannedCap !== undefined;
+
+  if (preferenceTags.length === 0 && !hasSavedPlanAmount && aiCeiling == null) {
+    return null;
+  }
+
+  return (
+    <>
+      {preferenceTags.map((tag) => (
+        <PreferenceBadge key={tag} tag={tag} />
+      ))}
+      {preference?.preferredEntry !== null && preference?.preferredEntry !== undefined ? (
+        <span className="rounded-full border border-orange-600/20 bg-orange-600/10 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">
+          ENTRY {formatMoney(preference.preferredEntry)}
+        </span>
+      ) : null}
+      {preference?.plannedCap !== null && preference?.plannedCap !== undefined ? (
+        <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-300">
+          PLAN {formatMoney(preference.plannedCap)}
+        </span>
+      ) : null}
+      {aiCeiling !== null && aiCeiling !== undefined ? (
+        <span className="rounded-full border border-blue-600/20 bg-blue-600/10 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-blue-700 dark:text-blue-300">
+          AI {formatMoney(aiCeiling)}
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+let playerPoolPositionOptions = Array.from(
   new Set(
     localPlayerPoolRows
       .map((player) => player.position)
@@ -1671,11 +2390,11 @@ const playerPoolPositionOptions = Array.from(
   )
 ).sort();
 
-const playerPoolMatchStatusOptions = Array.from(
+let playerPoolMatchStatusOptions = Array.from(
   new Set(localPlayerPoolRows.map((player) => player.matchStatus))
 ).sort();
 
-const playerPoolStatusOptions = sortPlayerPoolStatuses(Array.from(
+let playerPoolStatusOptions = sortPlayerPoolStatuses(Array.from(
   new Set(localPlayerPoolRows.map((player) => formatPlayerPoolStatus(player.status)))
 ));
 
@@ -1999,6 +2718,28 @@ function getManualSalePriceValue(input: string) {
   return Number.isFinite(price) && price >= 0 ? price : null;
 }
 
+function parseDraftPlanDollarInput(input: string, label: string) {
+  const trimmedInput = input.trim();
+  if (!trimmedInput) return { amount: null, error: null };
+
+  if (!/^\d+$/.test(trimmedInput)) {
+    return {
+      amount: null,
+      error: `${label} must be a whole dollar amount.`,
+    };
+  }
+
+  const amount = Number(trimmedInput);
+  if (!Number.isInteger(amount) || amount < 1) {
+    return {
+      amount: null,
+      error: `${label} must be at least $1.`,
+    };
+  }
+
+  return { amount, error: null };
+}
+
 function buildRayKDefStrategyWarnings(
   purchases: readonly AuctionWarRoomPurchaseRow[]
 ): RosterGuidanceWarning[] {
@@ -2048,7 +2789,7 @@ function getRayKDefStrategyMessages(
     });
 }
 
-const guidanceTeam =
+const defaultGuidanceTeam =
   mockAuctionTeams.find((team) => team.rosterId === 1) ??
   mockAuctionTeams[0] ??
   null;
@@ -2171,7 +2912,7 @@ function buildGuidanceRosterPlayers(
     });
 }
 
-const guidancePlayerValues: RosterGuidancePlayerValue[] = localPlayerPoolRows.map(
+let guidancePlayerValues: RosterGuidancePlayerValue[] = localPlayerPoolRows.map(
   (player) => ({
     playerName: player.originalPlayerName,
     matchedPlayerName: player.matchedSleeperName,
@@ -2223,6 +2964,9 @@ type LocalAdvisorChatContext = {
   guidanceWarnings: ReturnType<typeof calculateOverspendingWarnings>;
   rosterByeWeekCounts: ReturnType<typeof buildRosterByeWeekCounts>;
   visiblePlayerPoolRows: readonly ProcessedPlayerValueRow[];
+  getPreferenceTags: (
+    player: ProcessedPlayerValueRow
+  ) => PlayerPoolPreferenceTag[];
   activePurchaseRows: readonly AuctionWarRoomPurchaseRow[];
   isUsingSleeperPurchases: boolean;
   bidRecommendationContext: PlayerBidRecommendationContext;
@@ -2699,7 +3443,7 @@ function buildLocalAdvisorPlayerLookupAnswer(
   }
 
   const intent = getLocalAdvisorPlayerIntent(input);
-  const preferenceTags = getPlayerPoolPreferenceTags(player);
+  const preferenceTags = context.getPreferenceTags(player);
   const recommendation = getPlayerBidRecommendation(
     player,
     preferenceTags,
@@ -2769,16 +3513,6 @@ function buildLocalAdvisorPlayerLookupAnswer(
   };
 }
 
-const readinessItems = [
-  `${riverCityAuctionLeagueSettings.season} ${riverCityAuctionLeagueSettings.leagueName}`,
-  `${riverCityAuctionLeagueSettings.teamCount} teams`,
-  `${formatMoney(riverCityAuctionLeagueSettings.auctionBudgetPerTeam)} budget`,
-  'Read-only local state',
-  'Automatic Sleeper sync',
-  'No writes',
-  'No Trade Analyzer imports',
-];
-
 const importPrepSources = [
   {
     name: 'Historical auction sheets',
@@ -2808,9 +3542,29 @@ const importPrepWarnings = [
   'Review before import',
 ];
 
-export default function AuctionWarRoomClient() {
+export default function AuctionWarRoomClient({
+  access,
+  initialValueSource,
+  initialAdpSource,
+  initialOwnerPreferences,
+  initialOwnerSettings,
+  initialPurchaseDecisions,
+}: {
+  access: AuctionAccessResult;
+  initialValueSource?: AuctionWarRoomInitialValueSource;
+  initialAdpSource?: AuctionWarRoomInitialAdpSource;
+  initialOwnerPreferences?: AuctionWarRoomInitialOwnerPreference[];
+  initialOwnerSettings?: AuctionWarRoomInitialOwnerSettings | null;
+  initialPurchaseDecisions?: AuctionWarRoomInitialPurchaseDecision[];
+}) {
+  applyRuntimeAuctionValueSource(initialValueSource);
+  applyRuntimeAdpSource(initialAdpSource);
+
   const masterPlayerSearchInputRef = useRef<HTMLInputElement | null>(null);
   const manualSalePriceInputRef = useRef<HTMLInputElement | null>(null);
+  const myBoardResultsScrollRef = useRef<HTMLDivElement | null>(null);
+  const draftPlanSyncedPlayerIdRef = useRef<string | null>(null);
+  const syncedSleeperTeamNameRef = useRef<string | null>(null);
   const sleeperRefreshInFlightRef = useRef(false);
   const sleeperSnapshotRef = useRef<SleeperSnapshotResponse | null>(null);
   const sleeperComponentMountedRef = useRef(false);
@@ -2839,13 +3593,43 @@ export default function AuctionWarRoomClient() {
   const [playerPoolStatusFilter, setPlayerPoolStatusFilter] = useState('all');
   const [playerPoolPreferenceFilter, setPlayerPoolPreferenceFilter] =
     useState<PlayerPoolPreferenceFilter>('all');
-  const [myBoardFilter, setMyBoardFilter] = useState<MyBoardFilter>('targets');
+  const [myBoardFilter, setMyBoardFilter] = useState<MyBoardFilter>('available');
   const [playerPoolSort, setPlayerPoolSort] = useState<PlayerPoolSortKey>('averageValue');
   const [historyAuditSearch, setHistoryAuditSearch] = useState('');
   const [historyAuditFilter, setHistoryAuditFilter] =
     useState<HistoryAuditFilter>('all');
   const [selectedPlayerRowNumber, setSelectedPlayerRowNumber] =
     useState<number | null>(null);
+  const [draftPlanPreferencesByPlayerId, setDraftPlanPreferencesByPlayerId] =
+    useState<DraftPlanPreferenceMap>(() =>
+      buildDraftPlanPreferenceMap(initialOwnerPreferences ?? [])
+    );
+  const [draftPlanTagInput, setDraftPlanTagInput] =
+    useState<AuctionOwnerPreferenceTag>('open');
+  const [draftPlanPreferredEntryInput, setDraftPlanPreferredEntryInput] =
+    useState('');
+  const [draftPlanPlannedCapInput, setDraftPlanPlannedCapInput] = useState('');
+  const [draftPlanLiveOverrideInput, setDraftPlanLiveOverrideInput] =
+    useState('');
+  const [
+    draftPlanLiveOverrideAboveAiConfirmed,
+    setDraftPlanLiveOverrideAboveAiConfirmed,
+  ] = useState(false);
+  const [draftPlanNoteInput, setDraftPlanNoteInput] = useState('');
+  const [draftPlanSaveStatus, setDraftPlanSaveStatus] = useState<
+    'idle' | 'saving' | 'saved' | 'error'
+  >('idle');
+  const [draftPlanError, setDraftPlanError] = useState<string | null>(null);
+  const [
+    purchaseDecisionSnapshotsByPurchaseId,
+    setPurchaseDecisionSnapshotsByPurchaseId,
+  ] = useState<Map<string, AuctionWarRoomInitialPurchaseDecision>>(() => {
+    const snapshots = new Map<string, AuctionWarRoomInitialPurchaseDecision>();
+    for (const snapshot of initialPurchaseDecisions ?? []) {
+      snapshots.set(snapshot.purchaseId, snapshot);
+    }
+    return snapshots;
+  });
   const [draftUtilityOpenSection, setDraftUtilityOpenSection] =
     useState<DraftUtilitySection | null>(null);
   const [localAdvisorChatMessages, setLocalAdvisorChatMessages] = useState<
@@ -2866,6 +3650,8 @@ export default function AuctionWarRoomClient() {
     useState<string | null>(null);
   const [isDraftCoachOpen, setIsDraftCoachOpen] = useState(false);
   const [manualAuctionSales, setManualAuctionSales] = useState<ManualAuctionSale[]>([]);
+  const guidanceTeam =
+    getTeamByRosterId(access.sleeperRosterId) ?? defaultGuidanceTeam;
   const [
     manualSaleSelectedPlayerRowNumber,
     setManualSaleSelectedPlayerRowNumber,
@@ -2900,6 +3686,42 @@ export default function AuctionWarRoomClient() {
     sleeperSnapshot?.completedPurchases ??
     sleeperSnapshot?.purchases ??
     emptySleeperPurchases;
+  const liveSleeperTeamName =
+    access.sleeperRosterId == null
+      ? null
+      : sleeperSnapshot?.teams
+          ?.find((team) => team.rosterId === access.sleeperRosterId)
+          ?.teamName?.trim() || null;
+  const ownerBoardTeamName =
+    liveSleeperTeamName ??
+    access.sleeperTeamName ??
+    access.ownerProfileLabel ??
+    initialOwnerSettings?.sleeperTeamName ??
+    access.ownerDisplayName;
+  const draftBoardTitle = formatDraftBoardTitle(ownerBoardTeamName);
+  const ownerIdentityLabel = access.ownerDisplayName ?? access.ownerProfileLabel;
+  const ownerSettingsSummary = getOwnerSettingsSummary(initialOwnerSettings);
+
+  useEffect(() => {
+    if (
+      !initialOwnerSettings?.onboardingCompleted ||
+      !liveSleeperTeamName ||
+      liveSleeperTeamName === initialOwnerSettings.sleeperTeamName ||
+      syncedSleeperTeamNameRef.current === liveSleeperTeamName
+    ) {
+      return;
+    }
+
+    syncedSleeperTeamNameRef.current = liveSleeperTeamName;
+    void fetch('/api/auction/onboarding', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sleeperTeamName: liveSleeperTeamName }),
+    }).catch(() => {
+      syncedSleeperTeamNameRef.current = null;
+    });
+  }, [initialOwnerSettings, liveSleeperTeamName]);
+
   const isUsingSleeperPurchases = Boolean(sleeperSnapshot);
   const manualPurchaseRows = useMemo(
     () => buildManualPurchaseRows(manualAuctionSales),
@@ -2970,7 +3792,8 @@ export default function AuctionWarRoomClient() {
     ? getPlayerPoolPurchaseMatch(manualSaleSelectedPlayer, activePurchaseRows)
     : null;
   const canRecordManualSale = Boolean(
-    manualSaleSelectedPlayer &&
+    access.canRecordSales &&
+      manualSaleSelectedPlayer &&
       isManualSalePriceValid &&
       manualSaleBuyerTeam &&
       !manualSalePlayerAlreadyTaken
@@ -2984,7 +3807,9 @@ export default function AuctionWarRoomClient() {
         );
   const manualSaleValidationMessage =
     manualSaleError ??
-    (!manualSaleSelectedPlayer
+    (!access.canRecordSales
+      ? 'Manual sale controls are commissioner-only.'
+      : !manualSaleSelectedPlayer
       ? 'Use the master search or My Board to select a player before finishing a sale.'
       : !isManualSalePriceValid
         ? 'Enter a valid non-negative sale price.'
@@ -3046,7 +3871,7 @@ export default function AuctionWarRoomClient() {
       : budgetRows.find((row) => row.team.id === guidanceTeam.id) ?? null;
   const guidanceRosterPlayers = useMemo(
     () => buildGuidanceRosterPlayers(guidanceTeam, activePurchaseRows),
-    [activePurchaseRows]
+    [activePurchaseRows, guidanceTeam]
   );
   const guidancePositionCounts = calculatePositionCounts(guidanceRosterPlayers);
   const guidancePositionCountRows = rosterGuidancePositionOrder.map((position) => ({
@@ -3123,14 +3948,24 @@ export default function AuctionWarRoomClient() {
         : guidanceBudgetRow?.averageDollarsPerOpenSlot ?? null,
     }),
   ];
-  const bidRecommendationContext = {
-    guidanceBudgetRow,
-    guidanceStarterNeeds,
-    guidanceBenchDepthNeeds,
-    guidancePositionCounts,
-    guidanceRosterPlayers,
-    market: bidRecommendationMarket,
-  };
+  const bidRecommendationContext = useMemo(
+    () => ({
+      guidanceBudgetRow,
+      guidanceStarterNeeds,
+      guidanceBenchDepthNeeds,
+      guidancePositionCounts,
+      guidanceRosterPlayers,
+      market: bidRecommendationMarket,
+    }),
+    [
+      guidanceBenchDepthNeeds,
+      guidanceBudgetRow,
+      guidancePositionCounts,
+      guidanceRosterPlayers,
+      guidanceStarterNeeds,
+      bidRecommendationMarket,
+    ]
+  );
   const rosterByeWeekCounts = useMemo(
     () => buildRosterByeWeekCounts(guidanceRosterPlayers),
     [guidanceRosterPlayers]
@@ -3178,6 +4013,19 @@ export default function AuctionWarRoomClient() {
       icon: BarChart3,
     },
   ];
+  const getSavedDraftPlanPreference = useCallback(
+    (player: ProcessedPlayerValueRow) =>
+      getDraftPlanPreferenceForPlayer(player, draftPlanPreferencesByPlayerId),
+    [draftPlanPreferencesByPlayerId]
+  );
+  const getEffectivePreferenceTags = useCallback(
+    (player: ProcessedPlayerValueRow) =>
+      getEffectivePlayerPoolPreferenceTags(
+        player,
+        draftPlanPreferencesByPlayerId
+      ),
+    [draftPlanPreferencesByPlayerId]
+  );
   const availableTargetCount = localPlayerPoolRows.filter((player) => {
     const playerStatus = getPlayerPoolDisplayStatus(
       player,
@@ -3187,7 +4035,7 @@ export default function AuctionWarRoomClient() {
 
     return (
       isAvailablePlayerPoolStatus(playerStatus) &&
-      getPlayerPoolPreferenceTags(player).includes('target')
+      getEffectivePreferenceTags(player).includes('target')
     );
   }).length;
   const activeMyBoardFilter =
@@ -3205,7 +4053,7 @@ export default function AuctionWarRoomClient() {
         activePurchaseRows,
         isUsingSleeperPurchases
       );
-      const playerPreferenceTags = getPlayerPoolPreferenceTags(player);
+      const playerPreferenceTags = getEffectivePreferenceTags(player);
       const playerByeWeek = getByeWeekForNflTeam(player.nflTeam);
       const playerMatchesSearch =
         !searchNeedle ||
@@ -3243,9 +4091,15 @@ export default function AuctionWarRoomClient() {
       );
     });
 
-    return sortPlayerPoolRows(filteredRows, playerPoolSort);
+    return sortPlayerPoolRows(
+      filteredRows,
+      playerPoolSort,
+      draftPlanPreferencesByPlayerId
+    );
   }, [
     activePurchaseRows,
+    draftPlanPreferencesByPlayerId,
+    getEffectivePreferenceTags,
     isUsingSleeperPurchases,
     playerPoolByeWeekFilter,
     playerPoolMatchStatusFilter,
@@ -3278,7 +4132,7 @@ export default function AuctionWarRoomClient() {
         activePurchaseRows,
         isUsingSleeperPurchases
       );
-      const playerPreferenceTags = getPlayerPoolPreferenceTags(player);
+      const playerPreferenceTags = getEffectivePreferenceTags(player);
       const playerMatchesSearch =
         !searchNeedle ||
         playerName.includes(searchNeedle) ||
@@ -3314,10 +4168,16 @@ export default function AuctionWarRoomClient() {
       );
     });
 
-    return sortPlayerPoolRows(filteredRows, playerPoolSort);
+    return sortPlayerPoolRows(
+      filteredRows,
+      playerPoolSort,
+      draftPlanPreferencesByPlayerId
+    );
   }, [
     activePurchaseRows,
     activeMyBoardFilter,
+    draftPlanPreferencesByPlayerId,
+    getEffectivePreferenceTags,
     isUsingSleeperPurchases,
     playerPoolPositionFilter,
     playerPoolSearch,
@@ -3332,6 +4192,15 @@ export default function AuctionWarRoomClient() {
   const visibleMyBoardRows = hasActiveMyBoardFilters
     ? myBoardFilteredPlayerRows
     : myBoardFilteredPlayerRows.slice(0, playerPoolInitialDisplayLimit);
+  useEffect(() => {
+    myBoardResultsScrollRef.current?.scrollTo({ top: 0, left: 0 });
+  }, [
+    activeMyBoardFilter,
+    playerPoolPositionFilter,
+    playerPoolSearch,
+    playerPoolSort,
+    playerPoolStatusFilter,
+  ]);
   const nextTargetRows = localPlayerPoolRows
     .flatMap((player) => {
       const playerStatus = getPlayerPoolDisplayStatus(
@@ -3339,7 +4208,7 @@ export default function AuctionWarRoomClient() {
         activePurchaseRows,
         isUsingSleeperPurchases
       );
-      const preferenceTags = getPlayerPoolPreferenceTags(player);
+      const preferenceTags = getEffectivePreferenceTags(player);
 
       if (
         !isAvailablePlayerPoolStatus(playerStatus) ||
@@ -3383,9 +4252,19 @@ export default function AuctionWarRoomClient() {
       : localPlayerPoolRows.find(
           (player) => player.rowNumber === selectedPlayerRowNumber
         ) ?? null;
+  const selectedPlayerAdp = getAdpForPlayer(selectedPlayer);
+  const selectedPlayerDraftPlan = selectedPlayer
+    ? getSavedDraftPlanPreference(selectedPlayer)
+    : null;
   const selectedPlayerPreferenceTags = selectedPlayer
-    ? getPlayerPoolPreferenceTags(selectedPlayer)
+    ? getEffectivePreferenceTags(selectedPlayer)
     : [];
+  const selectedPlayerDraftPlanEditorTag = selectedPlayer
+    ? getDraftPlanEditorTag(selectedPlayer, draftPlanPreferencesByPlayerId)
+    : 'open';
+  const selectedPlayerHasDraftPlan =
+    selectedPlayerPreferenceTags.length > 0 ||
+    hasDraftPlanDetails(selectedPlayerDraftPlan);
   const selectedPlayerByeWeek = selectedPlayer
     ? getByeWeekForNflTeam(selectedPlayer.nflTeam)
     : null;
@@ -3406,6 +4285,40 @@ export default function AuctionWarRoomClient() {
         bidRecommendationContext
       )
     : null;
+  useEffect(() => {
+    const selectedDraftPlanPlayerId = selectedPlayer?.sleeperPlayerId ?? null;
+    const didSelectDifferentPlayer =
+      draftPlanSyncedPlayerIdRef.current !== selectedDraftPlanPlayerId;
+    draftPlanSyncedPlayerIdRef.current = selectedDraftPlanPlayerId;
+
+    setDraftPlanTagInput(selectedPlayerDraftPlanEditorTag);
+    setDraftPlanPreferredEntryInput(
+      selectedPlayerDraftPlan?.preferredEntry === null ||
+        selectedPlayerDraftPlan?.preferredEntry === undefined
+        ? ''
+        : String(selectedPlayerDraftPlan.preferredEntry)
+    );
+    setDraftPlanPlannedCapInput(
+      selectedPlayerDraftPlan?.plannedCap === null ||
+        selectedPlayerDraftPlan?.plannedCap === undefined
+        ? ''
+        : String(selectedPlayerDraftPlan.plannedCap)
+    );
+    setDraftPlanLiveOverrideInput('');
+    setDraftPlanLiveOverrideAboveAiConfirmed(false);
+    setDraftPlanNoteInput(selectedPlayerDraftPlan?.note ?? '');
+    if (didSelectDifferentPlayer) {
+      setDraftPlanSaveStatus('idle');
+      setDraftPlanError(null);
+    }
+  }, [
+    selectedPlayer?.sleeperPlayerId,
+    selectedPlayerDraftPlan?.plannedCap,
+    selectedPlayerDraftPlan?.note,
+    selectedPlayerDraftPlan?.preferredEntry,
+    selectedPlayerDraftPlan?.tag,
+    selectedPlayerDraftPlanEditorTag,
+  ]);
   const currentNominationManualBidValue =
     selectedPlayer &&
     manualSaleSelectedPlayer?.rowNumber === selectedPlayer.rowNumber
@@ -3448,6 +4361,15 @@ export default function AuctionWarRoomClient() {
           currentNominationReserveSpotsAfterWinning !== null
         ? `Legal max reserves ${formatMoney(currentNominationReserveAfterWinning)} for ${formatRemainingRosterSpotCount(currentNominationReserveSpotsAfterWinning)}.`
         : 'Legal max uses remaining budget after required roster reserve.';
+  const selectedPlayerSavedPlannedCap = selectedPlayerDraftPlan?.plannedCap ?? null;
+  const currentNominationLiveOverrideResult = parseDraftPlanDollarInput(
+    draftPlanLiveOverrideInput,
+    'Live Override'
+  );
+  const currentNominationLiveOverrideValue =
+    currentNominationLiveOverrideResult.error === null
+      ? currentNominationLiveOverrideResult.amount
+      : null;
   const selectedPlayerIntelligencePosition = getIntelligencePosition(
     selectedPlayer?.position
   );
@@ -3538,51 +4460,21 @@ export default function AuctionWarRoomClient() {
           contextualRecommendation: getDraftIntelligenceContextualRecommendation(
             currentNominationContextualRecommendation
           ),
+          demand: selectedPlayerAdp
+            ? {
+                demandTier: selectedPlayerAdp.demandTier,
+                demandScore: selectedPlayerAdp.demandScore,
+                overallAdp: selectedPlayerAdp.consensusOverallAdp,
+                positionAdp: selectedPlayerAdp.consensusPositionAdp,
+                waitRisk: selectedPlayerAdp.waitRisk,
+                confidence: selectedPlayerAdp.confidence,
+              }
+            : null,
         })
       : null;
-  const currentNominationRecommendation =
-    currentNominationManualBidValue !== null
-      ? currentNominationDraftIntelligence?.recommendation ??
-        currentNominationContextualRecommendation
-      : currentNominationContextualRecommendation;
   const currentNominationSoldReason = selectedPlayerPurchaseMatch
     ? `${selectedPlayerPurchaseMatch.playerName} is already marked sold via ${formatPurchaseSourceLabel(selectedPlayerPurchaseMatch.source)}.`
     : null;
-  const currentNominationReasons = [
-    currentNominationSoldReason,
-    ...(currentNominationDraftIntelligence?.reasons ?? []),
-  ].filter((reason): reason is string => Boolean(reason));
-  const currentNominationWarnings =
-    currentNominationDraftIntelligence?.warnings ?? [];
-  const draftCoachBudgetTerminologyReasons = [
-    currentNominationDraftIntelligence
-      ? `Your recommended ceiling is ${formatMoney(currentNominationDraftIntelligence.ownerMaxBid)}.`
-      : null,
-    guidanceBudgetRow?.budgetIsIncomplete
-      ? `Your legal maximum bid is incomplete because ${formatMissingKeeperPriceCount(guidanceBudgetRow.missingKeeperPriceCount)}.`
-      : currentNominationLegalMaxBid !== null
-        ? `Your legal maximum bid is ${formatMoney(currentNominationLegalMaxBid)}.`
-        : null,
-    currentNominationReserveAfterWinning !== null &&
-    currentNominationReserveSpotsAfterWinning !== null
-      ? [
-          `You must reserve at least ${formatMoney(currentNominationReserveAfterWinning)}`,
-          `for the other ${currentNominationReserveSpotsAfterWinning} open`,
-          `roster spot${currentNominationReserveSpotsAfterWinning === 1 ? '' : 's'}.`,
-        ].join(' ')
-      : null,
-  ].filter((reason): reason is string => Boolean(reason));
-  const currentNominationValueGap =
-    currentNominationDraftIntelligence &&
-    currentNominationManualBidValue !== null
-      ? currentNominationDraftIntelligence.ownerMaxBid -
-        currentNominationManualBidValue
-      : null;
-  const currentNominationBidCeilingState = getBidCeilingState(
-    currentNominationManualBidValue,
-    currentNominationDraftIntelligence?.ownerMaxBid ??
-      currentNominationBaselineMaxBid
-  );
   const selectedPlayerHistoricalMarketValue =
     currentNominationDraftIntelligence?.marketValue ??
     selectedPlayer?.averageValue ??
@@ -3682,7 +4574,7 @@ export default function AuctionWarRoomClient() {
       );
       if (!isAvailablePlayerPoolStatus(status)) return [];
 
-      const preferenceTags = getPlayerPoolPreferenceTags(player);
+      const preferenceTags = getEffectivePreferenceTags(player);
       const recommendation = getPlayerBidRecommendation(
         player,
         preferenceTags,
@@ -3926,6 +4818,137 @@ export default function AuctionWarRoomClient() {
               : null,
         })
       : null;
+  const currentNominationCurrentAiCeiling = deriveCurrentAiCeiling({
+    baselineRecommendedMax:
+      currentNominationDraftIntelligence?.ownerMaxBid ??
+      currentNominationBaselineMaxBid,
+    plannedCap: selectedPlayerSavedPlannedCap,
+    legalMax: currentNominationLegalMaxBid,
+    position: selectedPlayer?.position,
+    preferenceTags: selectedPlayerPreferenceTags,
+    kDefStrategyMax: selectedPlayerKDefStrategyMax,
+    marketValue:
+      currentNominationDraftIntelligence?.marketValue ??
+      selectedPlayer?.averageValue ??
+      null,
+    predictedWinningBid:
+      currentNominationDraftIntelligence?.predictedWinningBid ?? null,
+    confidenceScore:
+      currentNominationDraftIntelligence?.confidenceScore ??
+      selectedPlayer?.confidenceScore ??
+      null,
+    currentBid: currentNominationManualBidValue,
+    roomRunStatus: currentNominationRoomIntelligence?.positionRun.status,
+    roomScarcityLabel: currentNominationRoomIntelligence?.scarcity.label,
+    competitionThreatCount:
+      currentNominationCompetitionContext?.ownersBothNeedAndAfford ?? null,
+    adpDemandScore: selectedPlayerAdp?.demandScore ?? null,
+    adpWaitRisk: selectedPlayerAdp?.waitRisk?.toUpperCase() ?? null,
+  });
+  const currentNominationLiveOverrideExceedsAi =
+    currentNominationLiveOverrideValue !== null &&
+    currentNominationCurrentAiCeiling.ceiling !== null &&
+    currentNominationLiveOverrideValue > currentNominationCurrentAiCeiling.ceiling;
+  const currentNominationLiveOverrideAccepted =
+    currentNominationLiveOverrideValue !== null &&
+    (!currentNominationLiveOverrideExceedsAi ||
+      draftPlanLiveOverrideAboveAiConfirmed);
+  const currentNominationAcceptedLiveOverrideValue =
+    currentNominationLiveOverrideAccepted ? currentNominationLiveOverrideValue : null;
+  const currentNominationActionableCeiling =
+    currentNominationAcceptedLiveOverrideValue !== null
+      ? currentNominationLegalMaxBid !== null
+        ? Math.min(
+            currentNominationAcceptedLiveOverrideValue,
+            currentNominationLegalMaxBid
+          )
+        : currentNominationAcceptedLiveOverrideValue
+      : currentNominationCurrentAiCeiling.ceiling;
+  const currentNominationActionableCeilingLabel = formatMoney(
+    currentNominationActionableCeiling
+  );
+  const currentNominationActionableCeilingDetail =
+    currentNominationAcceptedLiveOverrideValue !== null
+      ? `Live Override ${formatMoney(currentNominationAcceptedLiveOverrideValue)}${currentNominationLegalMaxBid !== null ? ` | Legal Max ${formatMoney(currentNominationLegalMaxBid)}` : ''}`
+      : currentNominationCurrentAiCeiling.detail;
+  const currentNominationBaseRecommendation =
+    currentNominationManualBidValue !== null
+      ? currentNominationDraftIntelligence?.recommendation ??
+        currentNominationContextualRecommendation
+      : currentNominationContextualRecommendation;
+  const currentNominationRecommendation = applyActionableCeilingToRecommendation({
+    recommendation: currentNominationBaseRecommendation,
+    currentBidValue: currentNominationManualBidValue,
+    actionableCeiling: currentNominationActionableCeiling,
+  });
+  const currentNominationPlanWarnings = [
+    selectedPlayerSavedPlannedCap !== null &&
+    currentNominationLegalMaxBid !== null &&
+    currentNominationLegalMaxBid < selectedPlayerSavedPlannedCap
+      ? 'Current Legal Max is below your saved Planned Cap.'
+      : null,
+    currentNominationManualBidValue !== null &&
+    selectedPlayerSavedPlannedCap !== null &&
+    currentNominationManualBidValue > selectedPlayerSavedPlannedCap &&
+    currentNominationActionableCeiling !== null &&
+    currentNominationManualBidValue <= currentNominationActionableCeiling
+      ? 'Current bid is above Planned Cap, but live context still supports the AI ceiling.'
+      : null,
+    currentNominationLiveOverrideResult.error,
+    currentNominationLiveOverrideExceedsAi &&
+    !draftPlanLiveOverrideAboveAiConfirmed
+      ? 'Confirm Live Override to bid above the Current AI Ceiling.'
+      : null,
+    currentNominationAcceptedLiveOverrideValue !== null &&
+    currentNominationLegalMaxBid !== null &&
+    currentNominationAcceptedLiveOverrideValue > currentNominationLegalMaxBid
+      ? 'Live Override is above Legal Max, so Legal Max remains the final ceiling.'
+      : null,
+  ].filter((warning): warning is string => Boolean(warning));
+  const currentNominationReasons = [
+    currentNominationSoldReason,
+    ...(currentNominationDraftIntelligence?.reasons ?? []),
+    ...currentNominationCurrentAiCeiling.reasons,
+  ].filter((reason): reason is string => Boolean(reason));
+  const currentNominationWarnings = [
+    ...currentNominationPlanWarnings,
+    ...currentNominationCurrentAiCeiling.warnings,
+    ...(currentNominationDraftIntelligence?.warnings ?? []),
+  ];
+  const draftCoachBudgetTerminologyReasons = [
+    currentNominationDraftIntelligence
+      ? `Recommended Max is ${formatMoney(currentNominationDraftIntelligence.ownerMaxBid)}.`
+      : null,
+    currentNominationCurrentAiCeiling.ceiling !== null
+      ? `Current AI Ceiling is ${formatMoney(currentNominationCurrentAiCeiling.ceiling)}.`
+      : null,
+    selectedPlayerSavedPlannedCap !== null
+      ? `Saved Planned Cap is ${formatMoney(selectedPlayerSavedPlannedCap)}.`
+      : null,
+    guidanceBudgetRow?.budgetIsIncomplete
+      ? `Legal Max is incomplete because ${formatMissingKeeperPriceCount(guidanceBudgetRow.missingKeeperPriceCount)}.`
+      : currentNominationLegalMaxBid !== null
+        ? `Legal Max is ${formatMoney(currentNominationLegalMaxBid)}.`
+        : null,
+    currentNominationReserveAfterWinning !== null &&
+    currentNominationReserveSpotsAfterWinning !== null
+      ? [
+          `You must reserve at least ${formatMoney(currentNominationReserveAfterWinning)}`,
+          `for the other ${currentNominationReserveSpotsAfterWinning} open`,
+          `roster spot${currentNominationReserveSpotsAfterWinning === 1 ? '' : 's'}.`,
+        ].join(' ')
+      : null,
+  ].filter((reason): reason is string => Boolean(reason));
+  const currentNominationValueGap =
+    currentNominationDraftIntelligence &&
+    currentNominationManualBidValue !== null
+      ? currentNominationDraftIntelligence.ownerMaxBid -
+        currentNominationManualBidValue
+      : null;
+  const currentNominationBidCeilingState = getBidCeilingState(
+    currentNominationManualBidValue,
+    currentNominationActionableCeiling
+  );
   const draftTimelineRows = openMarketPurchaseRows
     .filter(
       (purchase) =>
@@ -4022,13 +5045,118 @@ export default function AuctionWarRoomClient() {
     [...manualAuctionSales]
       .reverse()
       .find((sale) => !suppressedManualSaleIds.includes(sale.id)) ?? null;
+  const saveDraftPlanPreference = async ({
+    clear = false,
+    plannedCapOverride = null,
+  }: {
+    clear?: boolean;
+    plannedCapOverride?: number | null;
+  } = {}) => {
+    if (!selectedPlayer) {
+      setDraftPlanError('Select a player before saving a draft plan.');
+      setDraftPlanSaveStatus('error');
+      return;
+    }
+
+    const sleeperPlayerId = selectedPlayer.sleeperPlayerId?.trim();
+    if (!sleeperPlayerId) {
+      setDraftPlanError('Sleeper player ID is required before saving a plan.');
+      setDraftPlanSaveStatus('error');
+      return;
+    }
+
+    const preferredEntryResult = clear
+      ? { amount: null, error: null }
+      : parseDraftPlanDollarInput(
+          draftPlanPreferredEntryInput,
+          'Preferred Entry'
+        );
+    const plannedCapResult = clear
+      ? { amount: null, error: null }
+      : plannedCapOverride !== null
+        ? { amount: plannedCapOverride, error: null }
+        : parseDraftPlanDollarInput(draftPlanPlannedCapInput, 'Planned Cap');
+
+    if (plannedCapOverride !== null && plannedCapOverride < 1) {
+      setDraftPlanError('Planned Cap must be at least $1.');
+      setDraftPlanSaveStatus('error');
+      return;
+    }
+
+    const validationError =
+      preferredEntryResult.error ??
+      plannedCapResult.error ??
+      (preferredEntryResult.amount !== null &&
+      plannedCapResult.amount !== null &&
+      preferredEntryResult.amount > plannedCapResult.amount
+        ? 'Preferred Entry cannot exceed Planned Cap.'
+        : null) ??
+      (preferredEntryResult.amount !== null &&
+      currentNominationLegalMaxBid !== null &&
+      preferredEntryResult.amount > currentNominationLegalMaxBid
+        ? 'Preferred Entry cannot exceed the current Legal Max.'
+        : null);
+
+    if (validationError) {
+      setDraftPlanError(validationError);
+      setDraftPlanSaveStatus('error');
+      return;
+    }
+
+    setDraftPlanSaveStatus('saving');
+    setDraftPlanError(null);
+
+    try {
+      const response = await fetch('/api/auction/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          season: riverCityAuctionLeagueSettings.season,
+          sleeperPlayerId,
+          tag: clear ? 'open' : draftPlanTagInput,
+          preferredEntry: preferredEntryResult.amount,
+          plannedCap: plannedCapResult.amount,
+          note: clear ? null : draftPlanNoteInput.trim() || null,
+        }),
+      });
+      const payload = (await response.json()) as {
+        preference?: AuctionOwnerPlayerPreference;
+        error?: string;
+      };
+      const savedPreference = payload.preference;
+
+      if (!response.ok || !savedPreference) {
+        throw new Error(payload.error ?? 'Unable to save draft plan.');
+      }
+
+      setDraftPlanPreferencesByPlayerId((currentPreferences) => {
+        const nextPreferences = new Map(currentPreferences);
+        nextPreferences.set(
+          normalizeFilterValue(savedPreference.sleeperPlayerId),
+          savedPreference
+        );
+        return nextPreferences;
+      });
+      if (plannedCapOverride !== null) {
+        setDraftPlanPlannedCapInput(String(plannedCapOverride));
+        setDraftPlanLiveOverrideInput('');
+        setDraftPlanLiveOverrideAboveAiConfirmed(false);
+      }
+      setDraftPlanSaveStatus('saved');
+    } catch (error) {
+      setDraftPlanError(
+        error instanceof Error ? error.message : 'Unable to save draft plan.'
+      );
+      setDraftPlanSaveStatus('error');
+    }
+  };
   const resetPlayerPoolFilters = () => {
     setPlayerPoolSearch('');
     setPlayerPoolPositionFilter('all');
     setPlayerPoolByeWeekFilter('all');
     setPlayerPoolMatchStatusFilter('all');
     setPlayerPoolPreferenceFilter('all');
-    setMyBoardFilter('targets');
+    setMyBoardFilter('available');
     setPlayerPoolStatusFilter('all');
     setPlayerPoolSort('averageValue');
   };
@@ -4119,10 +5247,146 @@ export default function AuctionWarRoomClient() {
       }
     }
   };
+
+  const persistPurchaseDecisionSnapshot = useCallback((
+    snapshot: AuctionWarRoomInitialPurchaseDecision
+  ) => {
+    setPurchaseDecisionSnapshotsByPurchaseId((currentSnapshots) => {
+      const nextSnapshots = new Map(currentSnapshots);
+      nextSnapshots.set(snapshot.purchaseId, snapshot);
+      return nextSnapshots;
+    });
+
+    void fetch('/api/auction/purchase-decisions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(snapshot),
+    }).catch((error) => {
+      console.error('Purchase decision snapshot save failed:', error);
+    });
+  }, []);
+
+  const buildPurchaseDecisionSnapshot = useCallback(({
+    purchaseId,
+    player,
+    salePrice,
+    team,
+    source,
+    purchaseOrder,
+    purchasedAt,
+  }: {
+    purchaseId: string;
+    player: ProcessedPlayerValueRow | null;
+    salePrice: number;
+    team: (typeof mockAuctionTeams)[number] | null;
+    source: 'manual-local' | 'sleeper-draft';
+    purchaseOrder: number | null;
+    purchasedAt: string | null;
+  }): AuctionWarRoomInitialPurchaseDecision => {
+    const preference = player ? getSavedDraftPlanPreference(player) : null;
+    const preferenceTags = player ? getEffectivePreferenceTags(player) : [];
+    const recommendation = player
+      ? getPlayerBidRecommendation(player, preferenceTags, bidRecommendationContext)
+      : null;
+    const adp = player ? getAdpForPlayer(player) : null;
+    const isCurrentNomination =
+      player !== null && selectedPlayer?.rowNumber === player.rowNumber;
+    const marketValue =
+      isCurrentNomination
+        ? currentNominationDraftIntelligence?.marketValue ??
+          player?.averageValue ??
+          null
+        : player?.averageValue ?? null;
+    const recommendedMax =
+      isCurrentNomination
+        ? currentNominationDraftIntelligence?.ownerMaxBid ??
+          recommendation?.recommendedMaxBid ??
+          null
+        : recommendation?.recommendedMaxBid ?? null;
+    const currentAiCeiling =
+      isCurrentNomination ? currentNominationCurrentAiCeiling.ceiling : null;
+    const liveOverride =
+      isCurrentNomination ? currentNominationAcceptedLiveOverrideValue : null;
+    const predictedSale =
+      isCurrentNomination
+        ? currentNominationDraftIntelligence?.predictedWinningBid ?? null
+        : null;
+    const legalMax = isCurrentNomination ? currentNominationLegalMaxBid : null;
+    const plannedCap = preference?.plannedCap ?? null;
+
+    return {
+      purchaseId,
+      season: riverCityAuctionLeagueSettings.season,
+      sleeperPlayerId: player?.sleeperPlayerId ?? null,
+      playerName: player?.originalPlayerName ?? '',
+      position: player?.position ?? null,
+      nflTeam: player?.nflTeam ?? null,
+      buyerOwnerProfileId: team?.managerId ?? null,
+      buyerTeamId: team?.id ?? null,
+      buyerRosterId: team?.rosterId ?? null,
+      source,
+      status: 'active',
+      salePrice,
+      purchaseOrder,
+      purchasedAt,
+      tagAtPurchase: preference?.tag ?? null,
+      preferredEntryAtPurchase: preference?.preferredEntry ?? null,
+      plannedCapAtPurchase: plannedCap,
+      liveOverrideAtPurchase: liveOverride,
+      marketValueAtPurchase: marketValue,
+      recommendedMaxAtPurchase: recommendedMax,
+      currentAiCeilingAtPurchase: currentAiCeiling,
+      legalMaxAtPurchase: legalMax,
+      predictedSaleAtPurchase: predictedSale,
+      adpAtPurchase: adp?.consensusOverallAdp ?? null,
+      demandTierAtPurchase: adp?.demandTier ?? null,
+      inflationAtPurchase:
+        isCurrentNomination && currentNominationPositionInflationRate !== null
+          ? currentNominationPositionInflationRate * 100
+          : null,
+      roomIntelligenceSummary:
+        isCurrentNomination
+          ? currentNominationRoomIntelligence?.positionRun.summary ?? null
+          : null,
+      competitionSummary:
+        isCurrentNomination
+          ? currentNominationCompetitionContext?.summary ?? null
+          : null,
+      plannedCapVariance: getPurchaseVariance(salePrice, plannedCap),
+      marketVariance: getPurchaseVariance(salePrice, marketValue),
+      recommendedMaxVariance: getPurchaseVariance(salePrice, recommendedMax),
+      aiCeilingVariance: getPurchaseVariance(salePrice, currentAiCeiling),
+      capturedAt: new Date().toISOString(),
+      capturedBy: access.email ?? 'war-room',
+      undoneAt: null,
+      undoneBy: null,
+    };
+  }, [
+    access.email,
+    bidRecommendationContext,
+    currentNominationAcceptedLiveOverrideValue,
+    currentNominationCompetitionContext?.summary,
+    currentNominationCurrentAiCeiling.ceiling,
+    currentNominationDraftIntelligence?.marketValue,
+    currentNominationDraftIntelligence?.ownerMaxBid,
+    currentNominationDraftIntelligence?.predictedWinningBid,
+    currentNominationLegalMaxBid,
+    currentNominationPositionInflationRate,
+    currentNominationRoomIntelligence?.positionRun.summary,
+    getEffectivePreferenceTags,
+    getSavedDraftPlanPreference,
+    selectedPlayer?.rowNumber,
+  ]);
+
   const recordManualSale = () => {
     const player = manualSaleSelectedPlayer;
     const team = manualSaleBuyerTeam;
     const salePrice = manualSalePriceValue;
+
+    if (!access.canRecordSales) {
+      setManualSaleError('Manual sale controls are commissioner-only.');
+      return;
+    }
 
     if (!player) {
       setManualSaleError('Use the master search or My Board before finishing a sale.');
@@ -4165,6 +5429,17 @@ export default function AuctionWarRoomClient() {
     };
 
     setManualAuctionSales((previousSales) => [...previousSales, sale]);
+    persistPurchaseDecisionSnapshot(
+      buildPurchaseDecisionSnapshot({
+        purchaseId: sale.id,
+        player,
+        salePrice: sale.salePrice,
+        team,
+        source: 'manual-local',
+        purchaseOrder: null,
+        purchasedAt: sale.recordedAt,
+      })
+    );
     clearManualSalePlayer();
     setManualSalePriceInput('');
     setManualSaleError(null);
@@ -4183,9 +5458,81 @@ export default function AuctionWarRoomClient() {
         .reverse()
         .find((sale) => !suppressedManualSaleIds.includes(sale.id)) ?? null;
     setManualAuctionSales(nextSales);
+    setPurchaseDecisionSnapshotsByPurchaseId((currentSnapshots) => {
+      const nextSnapshots = new Map(currentSnapshots);
+      const snapshot = nextSnapshots.get(latestUndoableManualSale.id);
+      if (snapshot) {
+        nextSnapshots.set(latestUndoableManualSale.id, {
+          ...snapshot,
+          status: 'undone',
+          undoneAt: new Date().toISOString(),
+          undoneBy: access.email ?? 'war-room',
+        });
+      }
+      return nextSnapshots;
+    });
+    void fetch('/api/auction/purchase-decisions', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        season: riverCityAuctionLeagueSettings.season,
+        purchaseId: latestUndoableManualSale.id,
+      }),
+    }).catch((error) => {
+      console.error('Purchase decision snapshot undo failed:', error);
+    });
     setManualSaleConfirmation(nextUndoableConfirmation);
     setManualSaleError(null);
   };
+  useEffect(() => {
+    if (!access.canRecordSales || !isUsingSleeperPurchases) return;
+
+    const snapshotsToCapture = sleeperDraftRows.flatMap((purchase) => {
+      if (
+        purchase.status !== 'active' ||
+        purchase.source !== 'sleeper-draft' ||
+        purchase.priceStatus !== 'confirmed' ||
+        purchaseDecisionSnapshotsByPurchaseId.has(purchase.id)
+      ) {
+        return [];
+      }
+
+      const player = findPlayerValueRowForPurchase(purchase);
+      if (!player) return [];
+
+      const preference = getSavedDraftPlanPreference(player);
+      const isCurrentNomination =
+        selectedPlayer?.rowNumber === player.rowNumber;
+      if (!preference && !isCurrentNomination) return [];
+
+      return [
+        buildPurchaseDecisionSnapshot({
+          purchaseId: purchase.id,
+          player,
+          salePrice: purchase.purchasePrice,
+          team: getTeam(purchase.teamId) ?? getTeamByRosterId(purchase.rosterId),
+          source: 'sleeper-draft',
+          purchaseOrder: purchase.pickNumber ?? null,
+          purchasedAt: sleeperLastSuccessfulRefreshAt ?? sleeperSnapshot?.fetchedAt ?? null,
+        }),
+      ];
+    });
+
+    if (snapshotsToCapture.length === 0) return;
+
+    snapshotsToCapture.forEach(persistPurchaseDecisionSnapshot);
+  }, [
+    access.canRecordSales,
+    isUsingSleeperPurchases,
+    sleeperDraftRows,
+    purchaseDecisionSnapshotsByPurchaseId,
+    selectedPlayer?.rowNumber,
+    sleeperLastSuccessfulRefreshAt,
+    sleeperSnapshot?.fetchedAt,
+    buildPurchaseDecisionSnapshot,
+    getSavedDraftPlanPreference,
+    persistPurchaseDecisionSnapshot,
+  ]);
   const refreshSleeperSnapshot = useCallback(async ({
     useSharedAutoRequest = false,
   }: { useSharedAutoRequest?: boolean } = {}) => {
@@ -4352,6 +5699,9 @@ export default function AuctionWarRoomClient() {
       const ownerTeam = team
         ? `${team.managerName} | ${team.teamName}`
         : `Roster ${purchase.rosterId ?? 'N/A'}`;
+      const decisionSnapshotLabel = formatPurchaseDecisionSnapshotLine(
+        purchaseDecisionSnapshotsByPurchaseId.get(purchase.id)
+      );
 
       return {
         id: `purchase-${purchase.id}`,
@@ -4361,6 +5711,7 @@ export default function AuctionWarRoomClient() {
         detailLabel: `${purchase.position ?? 'N/A'} | ${purchase.nflTeam ?? 'N/A'}`,
         ownerTeam,
         amountLabel: formatMoney(purchase.purchasePrice),
+        decisionSnapshotLabel,
         sourceLabel: formatHistorySourceLabel(purchase.source),
         status: valueResult.toUpperCase(),
         source: purchase.source,
@@ -4375,7 +5726,7 @@ export default function AuctionWarRoomClient() {
           ? Date.parse(manualSale.recordedAt)
           : purchase.pickNumber ?? index,
         searchText: normalizePlayerMatchValue(
-          `${purchase.playerName} ${ownerTeam} ${team?.managerName ?? ''} ${team?.teamName ?? ''}`
+          `${purchase.playerName} ${ownerTeam} ${team?.managerName ?? ''} ${team?.teamName ?? ''} ${decisionSnapshotLabel ?? ''}`
         ),
       };
     });
@@ -4400,6 +5751,7 @@ export default function AuctionWarRoomClient() {
           purchase.priceStatus === 'missing'
             ? 'Price missing'
             : formatMoney(purchase.purchasePrice),
+        decisionSnapshotLabel: null,
         sourceLabel: formatHistorySourceLabel(purchase.source),
         status:
           purchase.priceStatus === 'missing' ? 'PRICE MISSING' : 'CONFIRMED',
@@ -4422,6 +5774,7 @@ export default function AuctionWarRoomClient() {
     detailLabel: 'Sync diagnostic',
     ownerTeam: 'Sleeper Sync',
     amountLabel: 'N/A',
+    decisionSnapshotLabel: null,
     sourceLabel: formatHistorySourceLabel('sync-warning'),
     status: 'WARNING',
     source: 'sync-warning' as const,
@@ -4552,7 +5905,8 @@ export default function AuctionWarRoomClient() {
     playerValues: buildAuctionAdvisorPlayerValues(
       activePurchaseRows,
       isUsingSleeperPurchases,
-      guidanceRosterPlayers
+      guidanceRosterPlayers,
+      getEffectivePreferenceTags
     ),
     activePurchaseSource: hasManualAuctionSales
       ? 'manual'
@@ -4600,9 +5954,9 @@ export default function AuctionWarRoomClient() {
         key: `${warning.area}-${warning.message}`,
         severity: warning.severity,
         area: warning.area,
-        message: warning.message
-          .replace(/\bhard cap\b/gi, 'recommended ceiling')
-          .replace(/\bmax-bid cap\b/gi, 'legal max'),
+        message: formatWarRoomTerminology(
+          warning.message.replace(/\bmax-bid cap\b/gi, 'legal max')
+        ),
       })),
     ...guidanceWarnings.map((warning) => ({
       key: warning.id,
@@ -4637,6 +5991,7 @@ export default function AuctionWarRoomClient() {
     guidanceWarnings,
     rosterByeWeekCounts,
     visiblePlayerPoolRows,
+    getPreferenceTags: getEffectivePreferenceTags,
     activePurchaseRows,
     isUsingSleeperPurchases,
     bidRecommendationContext,
@@ -4791,6 +6146,19 @@ export default function AuctionWarRoomClient() {
         0
       ),
     },
+    ownerSettings: initialOwnerSettings?.onboardingCompleted
+      ? {
+          rosterConstruction: initialOwnerSettings.rosterConstruction,
+          riskTolerance: initialOwnerSettings.riskTolerance,
+          keeperFocus: initialOwnerSettings.keeperFocus,
+          rookiePreference: initialOwnerSettings.rookiePreference,
+          positionPriorities: initialOwnerSettings.positionPriorities,
+          nominationStyle: initialOwnerSettings.nominationStyle,
+          kickerDefenseStrategy: initialOwnerSettings.kickerDefenseStrategy,
+          draftGoal: initialOwnerSettings.draftGoal,
+          additionalNotes: initialOwnerSettings.additionalNotes,
+        }
+      : null,
   };
   const draftCoachPreview = buildDraftCoachResponse(draftCoachContext);
   const requestProtectedAdvisorChatAnswer = async (
@@ -5043,7 +6411,7 @@ export default function AuctionWarRoomClient() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-white pb-4 font-sans text-black selection:bg-orange-600 transition-colors duration-300 dark:bg-[#0a0a0a] dark:text-white">
       <header className="sticky top-0 z-50 border-b border-black/10 bg-white/95 backdrop-blur-md dark:border-white/10 dark:bg-[#0a0a0a]/95">
-        <div className="mx-auto grid max-w-[1800px] gap-2 px-3 py-2 sm:px-4 lg:grid-cols-[minmax(230px,0.82fr)_minmax(360px,1.45fr)_minmax(290px,0.9fr)] lg:items-center">
+        <div className="mx-auto grid max-w-[1800px] gap-2 px-3 py-2 sm:px-4 xl:grid-cols-[minmax(230px,0.82fr)_minmax(360px,1.45fr)_minmax(290px,0.9fr)] xl:items-center">
           <div className="flex min-w-0 items-center gap-3">
             <Link
               href="/commish"
@@ -5055,27 +6423,46 @@ export default function AuctionWarRoomClient() {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="truncate text-xl font-black uppercase italic tracking-tight sm:text-2xl">
-                  Auction War Room
+                  {draftBoardTitle}
                 </h1>
-                <MockBadge />
+                <span className="inline-flex w-fit rounded-full border border-orange-600/20 bg-orange-600/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">
+                  {getOwnerRoleLabel(access)}
+                </span>
+                {!access.canRecordSales ? <MockBadge /> : null}
               </div>
               <p className="mt-1 truncate text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">
-                {riverCityAuctionLeagueSettings.leagueName} | {riverCityAuctionLeagueSettings.season} | {readinessItems[3]}
+                {ownerIdentityLabel ? `${ownerIdentityLabel} | ` : ''}
+                {riverCityAuctionLeagueSettings.leagueName} | {riverCityAuctionLeagueSettings.season}
               </p>
             </div>
           </div>
 
           <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] sm:items-center">
-            <div className="min-w-0 rounded-xl border border-orange-600/20 bg-orange-600/10 px-3 py-2 text-orange-700 dark:text-orange-300">
-              <p className="truncate text-[9px] font-black uppercase tracking-[0.22em]">
-                {purchaseSourceLabel}
-              </p>
-              <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-widest">
-                {purchaseSourceDetail}
-              </p>
-              <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-widest">
-                Values: {playerPoolValueSourceLabel}
-              </p>
+	            <div className="min-w-0 rounded-xl border border-orange-600/20 bg-orange-600/10 px-3 py-2 text-orange-700 dark:text-orange-300">
+	              <p className="truncate text-[9px] font-black uppercase tracking-[0.22em]">
+	                {purchaseSourceLabel}
+	              </p>
+	              <div className="mt-1 flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-widest">
+	                <span className="min-w-0 max-w-full truncate">
+	                  {purchaseSourceDetail}
+	                </span>
+	                <span className="min-w-0 max-w-full truncate">
+	                  Values: {playerPoolValueSourceLabel}
+	                </span>
+	                <span className="min-w-0 max-w-full truncate">
+	                  ADP: {adpSourceLabel}
+	                </span>
+	              </div>
+              {playerPoolValueSourceWarning ? (
+                <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-widest text-rose-700 dark:text-rose-300">
+                  {playerPoolValueSourceWarning}
+                </p>
+              ) : null}
+              {adpSourceWarning ? (
+                <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-widest text-rose-700 dark:text-rose-300">
+                  {adpSourceWarning}
+                </p>
+              ) : null}
             </div>
             <label className="relative block min-w-0">
               <span className="sr-only">Quick player search</span>
@@ -5174,7 +6561,7 @@ export default function AuctionWarRoomClient() {
             </label>
           </div>
 
-          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 lg:justify-end">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 xl:justify-end">
             <div className="hidden min-w-0 flex-1 items-center justify-end gap-2 2xl:flex">
               {dashboardCards.slice(1).map((card) => {
                 const Icon = card.icon;
@@ -5217,27 +6604,29 @@ export default function AuctionWarRoomClient() {
                 {sleeperSyncDetail}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (manualSaleSelectedPlayer) {
-                  focusManualSalePriceInput();
-                  return;
-                }
+            {access.canRecordSales && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (manualSaleSelectedPlayer) {
+                    focusManualSalePriceInput();
+                    return;
+                  }
 
-                focusManualSalePlayerSearch();
-              }}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-orange-600/30 bg-orange-600 px-3 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-orange-700"
-            >
-              <Gavel className="h-4 w-4" />
-              <span className="hidden sm:inline">
-                {manualSaleSelectedPlayer
-                  ? 'Finish Sale'
-                  : manualSaleConfirmation
-                    ? 'Next Sale'
-                    : 'Record Sale'}
-              </span>
-            </button>
+                  focusManualSalePlayerSearch();
+                }}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-orange-600/30 bg-orange-600 px-3 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-orange-700"
+              >
+                <Gavel className="h-4 w-4" />
+                <span className="hidden sm:inline">
+                  {manualSaleSelectedPlayer
+                    ? 'Finish Sale'
+                    : manualSaleConfirmation
+                      ? 'Next Sale'
+                      : 'Record Sale'}
+                </span>
+              </button>
+            )}
             <ModeToggle />
           </div>
         </div>
@@ -5275,20 +6664,20 @@ export default function AuctionWarRoomClient() {
           {(activeWorkspace === 'draft' ||
             activeWorkspace === 'strategy' ||
             activeWorkspace === 'history') && (
-          <div
-            className={
-              activeWorkspace === 'draft'
-                ? 'grid min-h-0 gap-3 md:grid-cols-2 lg:grid-cols-[minmax(0,35fr)_minmax(340px,40fr)_minmax(280px,25fr)] lg:items-start'
-                : 'grid min-h-0 gap-3 lg:grid-cols-2 lg:items-start'
-            }
-          >
-            {activeWorkspace === 'draft' && (
-            <div className="order-2 min-h-0 md:col-span-1 lg:order-1 lg:h-[calc(100vh-7.25rem)]">
+	          <div
+		            className={
+		              activeWorkspace === 'draft'
+		                ? 'grid min-h-0 gap-3 xl:grid-cols-[minmax(620px,1.25fr)_minmax(520px,1fr)] xl:items-start 2xl:grid-cols-[minmax(620px,1.2fr)_minmax(520px,1fr)_minmax(280px,0.45fr)]'
+		                : 'grid min-h-0 gap-3 lg:grid-cols-2 lg:items-start'
+		            }
+		          >
+		            {activeWorkspace === 'draft' && (
+		            <div className="order-1 min-h-0 min-w-0">
               <SectionShell
-                title="MY DRAFT BOARD"
+                title={draftBoardTitle}
                 eyebrow="Player Selection"
                 icon={DollarSign}
-                className="lg:h-full lg:overflow-hidden"
+                className="min-h-0 lg:flex lg:flex-col"
               >
                 <div className="mb-3 rounded-2xl bg-black/[0.025] p-3 dark:bg-white/[0.04]">
                   <div className="mb-2 flex items-center justify-between gap-3">
@@ -5301,33 +6690,45 @@ export default function AuctionWarRoomClient() {
                   </div>
                   {nextTargetRows.length > 0 ? (
                     <div className="grid gap-1.5">
-                      {nextTargetRows.map((row, index) => (
-                        <button
-                          key={row.player.rowNumber}
-                          type="button"
-                          onClick={() => selectManualSalePlayer(row.player)}
-                          className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs transition hover:bg-emerald-600/10 ${
-                            selectedPlayerRowNumber === row.player.rowNumber
-                              ? 'bg-emerald-600/10 ring-1 ring-inset ring-emerald-600/25'
-                              : 'bg-white/70 dark:bg-black/20'
-                          }`}
-                        >
-                          <span className="text-sm font-black text-emerald-600">
-                            {index === 0 ? '⭐' : index + 1}
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block truncate font-black uppercase italic">
-                              {row.player.originalPlayerName}
+                      {nextTargetRows.map((row, index) => {
+                        const draftPlanPreference = getSavedDraftPlanPreference(
+                          row.player
+                        );
+
+                        return (
+                          <button
+                            key={row.player.rowNumber}
+                            type="button"
+                            onClick={() => selectManualSalePlayer(row.player)}
+                            className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs transition hover:bg-emerald-600/10 ${
+                              selectedPlayerRowNumber === row.player.rowNumber
+                                ? 'bg-emerald-600/10 ring-1 ring-inset ring-emerald-600/25'
+                                : 'bg-white/70 dark:bg-black/20'
+                            }`}
+                          >
+                            <span className="text-sm font-black text-emerald-600">
+                              {index === 0 ? '⭐' : index + 1}
                             </span>
-                            <span className="block truncate text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
-                              {row.player.position ?? 'N/A'} | {row.player.nflTeam ?? 'N/A'}
+                            <span className="min-w-0">
+                              <span className="block truncate font-black uppercase italic">
+                                {row.player.originalPlayerName}
+                              </span>
+                              <span className="block truncate text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                                {row.player.position ?? 'N/A'} | {row.player.nflTeam ?? 'N/A'}
+                              </span>
+                              <span className="mt-1 flex flex-wrap gap-1">
+                                <DraftPlanChips
+                                  preference={draftPlanPreference}
+                                  preferenceTags={row.preferenceTags}
+                                />
+                              </span>
                             </span>
-                          </span>
-                          <span className="text-right text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
-                            REC {formatMoney(row.recommendation.recommendedMaxBid)}
-                          </span>
-                        </button>
-                      ))}
+                            <span className="text-right text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+                              REC {formatMoney(row.recommendation.recommendedMaxBid)}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
@@ -5420,23 +6821,143 @@ export default function AuctionWarRoomClient() {
                   </button>
                 </div>
 
-                <div className="max-h-[52vh] overflow-auto rounded-xl border border-black/10 dark:border-white/10 lg:max-h-[calc(100vh-23rem)]">
-                  <table className="w-full min-w-[760px] text-left">
-                    <thead>
-                      <tr className="sticky top-0 z-10 border-b border-black/10 bg-white text-[9px] font-black uppercase tracking-widest text-gray-400 dark:border-white/10 dark:bg-[#121212]">
-                        <th className="px-2 py-1.5">Player</th>
-                        <th className="px-2 py-1.5">Pos</th>
-                        <th className="px-2 py-1.5">Team</th>
-                        <th className="px-2 py-1.5">Bye</th>
-                        <th className="px-2 py-1.5">Market</th>
-                        <th className="px-2 py-1.5">Max</th>
-                        <th className="px-2 py-1.5">Status</th>
-                      </tr>
-                    </thead>
+	                <div
+	                  ref={myBoardResultsScrollRef}
+	                  tabIndex={0}
+	                  aria-label="My Draft Board player results"
+	                  className="min-h-[360px] max-h-[70vh] overflow-x-hidden overflow-y-auto rounded-xl border border-black/10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-orange-600 dark:border-white/10 sm:min-h-[380px] lg:min-h-[320px] lg:max-h-[min(52vh,620px)]"
+	                >
+	                  <div className="grid gap-2 p-2 md:hidden">
+	                    {visibleMyBoardRows.length > 0 ? (
+	                      visibleMyBoardRows.map((player) => {
+	                        const preferenceTags = getEffectivePreferenceTags(player);
+	                        const draftPlanPreference =
+	                          getSavedDraftPlanPreference(player);
+	                        const byeWeek = getByeWeekForNflTeam(player.nflTeam);
+	                        const purchaseMatch = getPlayerPoolPurchaseMatch(
+	                          player,
+	                          activePurchaseRows
+	                        );
+	                        const playerStatus = getPlayerPoolDisplayStatus(
+	                          player,
+	                          activePurchaseRows,
+	                          isUsingSleeperPurchases
+	                        );
+	                        const isDrafted = !isAvailablePlayerPoolStatus(playerStatus);
+	                        const bidRecommendation = getPlayerBidRecommendation(
+	                          player,
+	                          preferenceTags,
+	                          bidRecommendationContext
+	                        );
+	                        const playerAdp = getAdpForPlayer(player);
+	                        const isSelected =
+	                          selectedPlayerRowNumber === player.rowNumber;
+	                        const displayStatusLabel = getMyBoardStatusLabel({
+	                          isDrafted,
+	                          playerStatus,
+	                          preferenceTags,
+	                        });
+
+	                        return (
+	                          <button
+	                            key={player.rowNumber}
+	                            type="button"
+	                            aria-pressed={isSelected}
+	                            onClick={() => selectManualSalePlayer(player)}
+	                            className={`rounded-xl px-3 py-3 text-left text-xs transition focus:outline-none focus:ring-2 focus:ring-inset focus:ring-orange-600 ${getMyBoardCategoryClass({
+	                              isDrafted,
+	                              isSelected,
+	                              preferenceTags,
+	                            })}`}
+	                          >
+	                            <div className="flex items-start justify-between gap-3">
+	                              <div className="min-w-0">
+	                                <p className={`truncate text-sm font-black uppercase italic ${isDrafted ? 'line-through' : ''}`}>
+	                                  {player.originalPlayerName}
+	                                </p>
+	                                <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">
+	                                  {player.position ?? 'N/A'} · {player.nflTeam ?? 'N/A'} · Bye {formatByeWeek(byeWeek)}
+	                                </p>
+	                              </div>
+	                              <span className={`shrink-0 rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-widest ${getMyBoardStatusClass(displayStatusLabel)}`}>
+	                                {displayStatusLabel}
+	                              </span>
+	                            </div>
+
+	                            <div className="mt-2 flex flex-wrap gap-1">
+	                              <DraftPlanChips
+	                                preference={draftPlanPreference}
+	                                preferenceTags={preferenceTags}
+	                              />
+	                              {playerAdp ? (
+	                                <span className="rounded-full bg-orange-600/10 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">
+	                                  ADP {formatAdp(playerAdp.consensusOverallAdp)} · {playerAdp.demandTier}
+	                                </span>
+	                              ) : null}
+	                            </div>
+
+	                            <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] font-black uppercase tracking-widest">
+	                              <div>
+	                                <p className="text-gray-400">Market</p>
+	                                <p className="mt-0.5 text-sm text-orange-600">{formatMoney(player.averageValue ?? null)}</p>
+	                              </div>
+	                              <div className="text-right">
+	                                <p className="text-gray-400">Rec Max</p>
+	                                <p className="mt-0.5 text-sm">{formatMoney(bidRecommendation.recommendedMaxBid)}</p>
+	                              </div>
+	                            </div>
+
+	                            {purchaseMatch && (
+	                              <p className="mt-2 truncate text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+	                                {getTeam(purchaseMatch.teamId)?.teamName ?? `Roster ${purchaseMatch.rosterId ?? 'N/A'}`} · {formatMoney(purchaseMatch.purchasePrice)}
+	                              </p>
+	                            )}
+	                          </button>
+	                        );
+	                      })
+	                    ) : (
+	                      <div className="px-2 py-8 text-center text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+	                        <div className="flex flex-col items-center gap-3">
+	                          <span>No players match these filters.</span>
+	                          <button
+	                            type="button"
+	                            onClick={resetPlayerPoolFilters}
+	                            className="rounded-lg border border-black/10 bg-black/[0.03] px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-gray-500 transition hover:border-orange-600 hover:text-orange-600 dark:border-white/10 dark:bg-white/[0.03]"
+	                          >
+	                            Reset Filters
+	                          </button>
+	                        </div>
+	                      </div>
+	                    )}
+	                  </div>
+
+	                  <table className="hidden w-full table-fixed text-left md:table">
+	                    <colgroup>
+	                      <col className="w-[38%]" />
+	                      <col className="w-[7%]" />
+	                      <col className="w-[8%]" />
+	                      <col className="w-[7%]" />
+	                      <col className="w-[11%]" />
+	                      <col className="w-[13%]" />
+	                      <col className="w-[16%]" />
+	                    </colgroup>
+	                    <thead className="sticky top-0 z-20 bg-white dark:bg-[#121212]">
+	                      <tr className="border-b border-black/10 text-[9px] font-black uppercase tracking-widest text-gray-400 dark:border-white/10">
+	                        <th className="px-2 py-1.5">Player</th>
+	                        <th className="px-2 py-1.5">Pos</th>
+	                        <th className="px-2 py-1.5">Team</th>
+	                        <th className="px-2 py-1.5">Bye</th>
+	                        <th className="px-2 py-1.5 text-right">Market</th>
+	                        <th className="px-2 py-1.5 text-right">Rec Max</th>
+	                        <th className="px-2 py-1.5">Status</th>
+	                      </tr>
+	                    </thead>
                     <tbody className="divide-y divide-black/5 dark:divide-white/10">
                       {visibleMyBoardRows.length > 0 ? (
                         visibleMyBoardRows.map((player) => {
-                          const preferenceTags = getPlayerPoolPreferenceTags(player);
+                          const preferenceTags = getEffectivePreferenceTags(player);
+                          const draftPlanPreference =
+                            getSavedDraftPlanPreference(player);
                           const byeWeek = getByeWeekForNflTeam(player.nflTeam);
                           const purchaseMatch = getPlayerPoolPurchaseMatch(
                             player,
@@ -5453,14 +6974,20 @@ export default function AuctionWarRoomClient() {
                             preferenceTags,
                             bidRecommendationContext
                           );
-                          const isSelected =
-                            selectedPlayerRowNumber === player.rowNumber;
+	                          const playerAdp = getAdpForPlayer(player);
+	                          const isSelected =
+	                            selectedPlayerRowNumber === player.rowNumber;
+	                          const displayStatusLabel = getMyBoardStatusLabel({
+	                            isDrafted,
+	                            playerStatus,
+	                            preferenceTags,
+	                          });
 
-                          return (
+	                          return (
                             <tr
                               key={player.rowNumber}
                               aria-pressed={isSelected}
-                              className={`cursor-pointer text-[11px] transition ${getMyBoardCategoryClass({
+                              className={`cursor-pointer text-[11px] transition focus:outline-none focus:ring-2 focus:ring-inset focus:ring-orange-600 ${getMyBoardCategoryClass({
                                 isDrafted,
                                 isSelected,
                                 preferenceTags,
@@ -5475,50 +7002,42 @@ export default function AuctionWarRoomClient() {
                                 }
                               }}
                             >
-                              <td className="px-2 py-1">
-                                <div className="flex min-w-0 items-center gap-1.5">
-                                  <span className={preferenceTags.includes('target') ? 'text-emerald-600' : 'text-gray-300 dark:text-gray-600'}>
-                                    {preferenceTags.includes('target') ? '⭐' : '•'}
-                                  </span>
-                                  <p className={`truncate font-black ${isDrafted ? 'line-through' : ''}`}>
-                                    {player.originalPlayerName}
-                                  </p>
-                                </div>
-                                <div className="mt-0.5 flex flex-wrap gap-1">
-                                  {preferenceTags.length > 0 ? (
-                                    preferenceTags.map((tag) => (
-                                      <PreferenceBadge key={tag} tag={tag} />
-                                    ))
-                                  ) : (
-                                    <span className={`rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-widest ${
-                                      isDrafted
-                                        ? 'bg-zinc-500/10 text-zinc-500'
-                                        : 'bg-black/5 text-gray-500 dark:bg-white/10 dark:text-gray-400'
-                                    }`}>
-                                      {isDrafted ? 'Drafted' : 'Available'}
+	                              <td className="px-2 py-1">
+	                                <div className="flex min-w-0 items-center gap-1.5">
+	                                  <span className={preferenceTags.includes('target') ? 'text-emerald-600' : 'text-gray-300 dark:text-gray-600'}>
+	                                    {preferenceTags.includes('target') ? '⭐' : '•'}
+	                                  </span>
+	                                  <p className={`truncate font-black ${isDrafted ? 'line-through' : ''}`}>
+	                                    {player.originalPlayerName}
+	                                  </p>
+	                                </div>
+	                                <div className="mt-0.5 flex flex-wrap gap-1">
+	                                  <DraftPlanChips
+	                                    preference={draftPlanPreference}
+	                                    preferenceTags={preferenceTags}
+	                                  />
+	                                  {playerAdp ? (
+	                                    <span className="rounded-full bg-orange-600/10 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">
+	                                      ADP {formatAdp(playerAdp.consensusOverallAdp)} · {playerAdp.demandTier}
                                     </span>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-2 py-1 font-bold text-gray-500 dark:text-gray-400">{player.position ?? 'N/A'}</td>
-                              <td className="px-2 py-1 font-bold text-gray-500 dark:text-gray-400">{player.nflTeam ?? 'N/A'}</td>
-                              <td className="px-2 py-1 font-black">{formatByeWeek(byeWeek)}</td>
-                              <td className="px-2 py-1 font-black text-orange-600">{formatMoney(player.averageValue ?? null)}</td>
-                              <td className="px-2 py-1 font-black">REC {formatMoney(bidRecommendation.recommendedMaxBid)}</td>
-                              <td className="px-2 py-1">
-                                <div className="flex flex-col gap-1">
-                                  <span className={`w-fit rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest ${
-                                    isDrafted
-                                      ? 'bg-zinc-500/10 text-zinc-500'
-                                      : 'bg-black/5 text-gray-600 dark:bg-white/10 dark:text-gray-300'
-                                  }`}>
-                                    {playerStatus}
-                                  </span>
-                                  {purchaseMatch && (
-                                    <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
-                                      {getTeam(purchaseMatch.teamId)?.teamName ?? `Roster ${purchaseMatch.rosterId ?? 'N/A'}`} | {formatMoney(purchaseMatch.purchasePrice)}
-                                    </span>
-                                  )}
+                                  ) : null}
+	                                </div>
+	                              </td>
+	                              <td className="px-2 py-1 font-bold text-gray-500 dark:text-gray-400">{player.position ?? 'N/A'}</td>
+	                              <td className="px-2 py-1 font-bold text-gray-500 dark:text-gray-400">{player.nflTeam ?? 'N/A'}</td>
+	                              <td className="px-2 py-1 font-black">{formatByeWeek(byeWeek)}</td>
+	                              <td className="whitespace-nowrap px-2 py-1 text-right font-black text-orange-600">{formatMoney(player.averageValue ?? null)}</td>
+	                              <td className="whitespace-nowrap px-2 py-1 text-right font-black">{formatMoney(bidRecommendation.recommendedMaxBid)}</td>
+	                              <td className="px-2 py-1">
+	                                <div className="flex flex-col gap-1">
+	                                  <span className={`w-fit rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest ${getMyBoardStatusClass(displayStatusLabel)}`}>
+	                                    {displayStatusLabel}
+	                                  </span>
+	                                  {purchaseMatch && (
+	                                    <span className="truncate text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+	                                      {getTeam(purchaseMatch.teamId)?.teamName ?? `Roster ${purchaseMatch.rosterId ?? 'N/A'}`} | {formatMoney(purchaseMatch.purchasePrice)}
+	                                    </span>
+	                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -5530,7 +7049,16 @@ export default function AuctionWarRoomClient() {
                             colSpan={7}
                             className="px-2 py-8 text-center text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400"
                           >
-                            No matching player rows.
+                            <div className="flex flex-col items-center gap-3">
+                              <span>No players match these filters.</span>
+                              <button
+                                type="button"
+                                onClick={resetPlayerPoolFilters}
+                                className="rounded-lg border border-black/10 bg-black/[0.03] px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-gray-500 transition hover:border-orange-600 hover:text-orange-600 dark:border-white/10 dark:bg-white/[0.03]"
+                              >
+                                Reset Filters
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       )}
@@ -5543,16 +7071,16 @@ export default function AuctionWarRoomClient() {
 
             {(activeWorkspace === 'draft' || activeWorkspace === 'strategy') && (
             <div
-              className={
-                activeWorkspace === 'draft'
-                  ? 'order-1 grid min-h-0 gap-3 md:col-span-1 lg:order-2 lg:col-span-1 lg:max-h-[calc(100vh-7.25rem)] lg:overflow-auto lg:pr-1'
-                  : 'grid min-h-0 gap-3'
-              }
+		              className={
+		                activeWorkspace === 'draft'
+		                  ? 'order-2 grid min-h-0 min-w-0 gap-3'
+		                  : 'grid min-h-0 gap-3'
+		              }
             >
               {activeWorkspace === 'draft' && (
               <>
-              <section className="rounded-3xl bg-white p-4 shadow-lg shadow-black/5 dark:bg-[#121212]">
-                <div className="grid gap-4">
+	              <section className={`${selectedPlayer ? 'rounded-3xl p-4' : 'rounded-2xl p-3'} bg-white shadow-lg shadow-black/5 dark:bg-[#121212]`}>
+	                <div className={`grid ${selectedPlayer ? 'gap-4' : 'gap-1'}`}>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <p className="text-[9px] font-black uppercase tracking-[0.22em] text-gray-400">
@@ -5573,11 +7101,11 @@ export default function AuctionWarRoomClient() {
                             Bye {formatByeWeek(selectedPlayerByeWeek)}
                           </span>
                         </div>
-                      ) : (
-                        <p className="mt-1 text-sm font-black uppercase italic text-gray-500 dark:text-gray-400">
-                          Waiting for next nomination...
-                        </p>
-                      )}
+	                      ) : (
+	                        <p className="mt-1 text-xs font-black uppercase italic tracking-widest text-gray-500 dark:text-gray-400">
+	                          Waiting for next nomination
+	                        </p>
+	                      )}
                     </div>
                   </div>
 
@@ -5598,7 +7126,7 @@ export default function AuctionWarRoomClient() {
                           </p>
                         </div>
 
-                        <div className="grid gap-3 sm:grid-cols-4">
+	                        <div className="grid gap-3 sm:grid-cols-2">
                           <div className={`rounded-2xl border px-4 py-4 ${getHudMoneyClass(currentNominationBidCeilingState)}`}>
                             <p className="text-[9px] font-black uppercase tracking-[0.22em] opacity-60">
                               Current Bid
@@ -5612,10 +7140,13 @@ export default function AuctionWarRoomClient() {
 
                           <div className={`rounded-2xl border px-4 py-4 ${getHudMoneyClass(currentNominationBidCeilingState)}`}>
                             <p className="text-[9px] font-black uppercase tracking-[0.22em] opacity-60">
-                              Recommended Max
+                              Current AI Ceiling
                             </p>
                             <p className="mt-2 text-4xl font-black uppercase italic leading-none">
-                              {formatMoney(currentNominationDraftIntelligence.ownerMaxBid)}
+                              {formatMoney(currentNominationCurrentAiCeiling.ceiling)}
+                            </p>
+                            <p className="mt-2 text-[9px] font-bold uppercase tracking-widest opacity-70">
+                              {currentNominationActionableCeilingLabel} actionable
                             </p>
                           </div>
 
@@ -5648,7 +7179,33 @@ export default function AuctionWarRoomClient() {
                           </summary>
 
                           <div className="mt-3 grid gap-3 border-t border-black/10 pt-3 dark:border-white/10">
-                            <div className="grid gap-2 sm:grid-cols-4">
+                            <div className="rounded-xl bg-white px-3 py-3 dark:bg-black/20">
+                              <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">
+                                Market Demand
+                              </p>
+                              {selectedPlayerAdp ? (
+                                <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest">
+                                  <span className="text-sm text-orange-600">
+                                    {selectedPlayerAdp.demandTier}
+                                  </span>
+                                  <span>ADP {formatAdp(selectedPlayerAdp.consensusOverallAdp)}</span>
+                                  <span>
+                                    {selectedPlayerAdp.position}
+                                    {formatAdp(selectedPlayerAdp.consensusPositionAdp)}
+                                  </span>
+                                  <span>WAIT RISK: {selectedPlayerAdp.waitRisk}</span>
+                                  <span>
+                                    {selectedPlayerAdp.sourceCount} SOURCES · {selectedPlayerAdp.confidence} CONFIDENCE
+                                  </span>
+                                </div>
+                              ) : (
+                                <p className="mt-1 text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                                  UNKNOWN
+                                </p>
+                              )}
+                            </div>
+
+	                            <div className="grid gap-2 sm:grid-cols-2 2xl:grid-cols-4">
                               <div className="rounded-xl bg-white px-3 py-2 dark:bg-black/20">
                                 <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">
                                   Confidence
@@ -5685,7 +7242,7 @@ export default function AuctionWarRoomClient() {
                               </div>
                             </div>
 
-                            <div className="grid gap-2 sm:grid-cols-4">
+	                            <div className="grid gap-2 sm:grid-cols-2 2xl:grid-cols-4">
                               <div className="rounded-xl bg-white px-3 py-2 dark:bg-black/20">
                                 <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">
                                   Remaining Budget
@@ -5883,10 +7440,306 @@ export default function AuctionWarRoomClient() {
                 </div>
               </section>
 
+              {selectedPlayer && (
+                <section className="rounded-2xl border border-black/10 bg-white p-3 shadow-lg dark:border-white/10 dark:bg-[#121212]">
+                  <form
+                    className="grid gap-3"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void saveDraftPlanPreference();
+                    }}
+                  >
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-black uppercase tracking-[0.22em] text-gray-400">
+                          My Draft Plan
+                        </p>
+                        <p className="mt-1 truncate text-lg font-black uppercase italic">
+                          {selectedPlayer.originalPlayerName}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="rounded-full border border-orange-600/20 bg-orange-600/10 px-2.5 py-1 text-[8px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">
+                          {access.ownerProfileLabel ?? 'Authorized Owner'}
+                        </span>
+                        <span className={`rounded-full px-2.5 py-1 text-[8px] font-black uppercase tracking-widest ${
+                          selectedPlayerHasDraftPlan
+                            ? 'bg-emerald-600/10 text-emerald-700 dark:text-emerald-300'
+                            : 'bg-black/5 text-gray-500 dark:bg-white/10 dark:text-gray-400'
+                        }`}>
+                          {selectedPlayerHasDraftPlan ? 'Plan Saved' : 'Open'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2 sm:grid-cols-4">
+                      {draftPlanTagOptions.map((option) => {
+                        const isActive = draftPlanTagInput === option.value;
+
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => {
+                              setDraftPlanTagInput(option.value);
+                              setDraftPlanSaveStatus('idle');
+                              setDraftPlanError(null);
+                            }}
+                            className={`h-9 rounded-xl border text-[9px] font-black uppercase tracking-widest transition ${
+                              isActive
+                                ? 'border-orange-600/30 bg-orange-600 text-white'
+                                : 'border-black/10 bg-black/[0.03] text-gray-600 hover:border-orange-600/30 hover:bg-orange-600/10 hover:text-orange-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-300'
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      <label className="block min-w-0">
+                        <span className="mb-1 block text-[8px] font-black uppercase tracking-widest text-gray-400">
+                          Preferred Entry
+                        </span>
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          inputMode="numeric"
+                          value={draftPlanPreferredEntryInput}
+                          onChange={(event) => {
+                            setDraftPlanPreferredEntryInput(event.target.value);
+                            setDraftPlanSaveStatus('idle');
+                            setDraftPlanError(null);
+                          }}
+                          placeholder="Blank"
+                          className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-black outline-none transition focus:border-orange-600 dark:border-white/10 dark:bg-black/30"
+                        />
+                      </label>
+
+                      <label className="block min-w-0">
+                        <span className="mb-1 block text-[8px] font-black uppercase tracking-widest text-gray-400">
+                          Planned Cap
+                        </span>
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          inputMode="numeric"
+                          value={draftPlanPlannedCapInput}
+                          onChange={(event) => {
+                            setDraftPlanPlannedCapInput(event.target.value);
+                            setDraftPlanSaveStatus('idle');
+                            setDraftPlanError(null);
+                          }}
+                          placeholder="Blank"
+                          className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-black outline-none transition focus:border-orange-600 dark:border-white/10 dark:bg-black/30"
+                        />
+                      </label>
+
+                      <label className="block min-w-0">
+                        <span className="mb-1 block text-[8px] font-black uppercase tracking-widest text-gray-400">
+                          Live Override
+                        </span>
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          inputMode="numeric"
+                          value={draftPlanLiveOverrideInput}
+                          onChange={(event) => {
+                            setDraftPlanLiveOverrideInput(event.target.value);
+                            setDraftPlanLiveOverrideAboveAiConfirmed(false);
+                            setDraftPlanSaveStatus('idle');
+                            setDraftPlanError(null);
+                          }}
+                          placeholder="Session"
+                          className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-black outline-none transition focus:border-orange-600 dark:border-white/10 dark:bg-black/30"
+                        />
+                      </label>
+                    </div>
+
+                    {(currentNominationLiveOverrideExceedsAi ||
+                      currentNominationAcceptedLiveOverrideValue !== null) && (
+                      <div className="grid gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-300 sm:grid-cols-[minmax(0,1fr)_auto]">
+                        <label className="flex items-start gap-2">
+                          <input
+                            type="checkbox"
+                            checked={
+                              !currentNominationLiveOverrideExceedsAi ||
+                              draftPlanLiveOverrideAboveAiConfirmed
+                            }
+                            onChange={(event) =>
+                              setDraftPlanLiveOverrideAboveAiConfirmed(
+                                event.target.checked
+                              )
+                            }
+                            disabled={!currentNominationLiveOverrideExceedsAi}
+                            className="mt-0.5 h-4 w-4 rounded border-black/20"
+                          />
+                          <span>
+                            {currentNominationLiveOverrideExceedsAi
+                              ? 'Confirm Live Override above Current AI Ceiling.'
+                              : 'Live Override is within Current AI Ceiling.'}
+                          </span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (currentNominationAcceptedLiveOverrideValue !== null) {
+                              void saveDraftPlanPreference({
+                                plannedCapOverride:
+                                  currentNominationAcceptedLiveOverrideValue,
+                              });
+                            }
+                          }}
+                          disabled={
+                            draftPlanSaveStatus === 'saving' ||
+                            currentNominationAcceptedLiveOverrideValue === null ||
+                            !selectedPlayer.sleeperPlayerId
+                          }
+                          className="inline-flex h-8 items-center justify-center rounded-lg border border-amber-500/30 bg-white/60 px-3 text-[9px] font-black uppercase tracking-widest text-amber-800 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:bg-black/20 dark:text-amber-200"
+                        >
+                          Update Planned Cap
+                        </button>
+                      </div>
+                    )}
+
+                    <label className="block min-w-0">
+                      <span className="mb-1 block text-[8px] font-black uppercase tracking-widest text-gray-400">
+                        Note
+                      </span>
+                      <textarea
+                        value={draftPlanNoteInput}
+                        maxLength={240}
+                        rows={2}
+                        onChange={(event) => {
+                          setDraftPlanNoteInput(event.target.value);
+                          setDraftPlanSaveStatus('idle');
+                          setDraftPlanError(null);
+                        }}
+                        placeholder="Optional note"
+                        className="min-h-16 w-full resize-none rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-bold outline-none transition focus:border-orange-600 dark:border-white/10 dark:bg-black/30"
+                      />
+                    </label>
+
+                    <div className="grid gap-2 text-[10px] font-black uppercase tracking-widest sm:grid-cols-3">
+                      <div className="rounded-xl bg-black/[0.025] px-3 py-2 dark:bg-white/[0.04]">
+                        <p className="text-gray-400">Market</p>
+                        <p className="mt-1 text-sm text-orange-600">
+                          {formatMoney(selectedPlayer.averageValue ?? null)}
+                        </p>
+                      </div>
+                      <div className="rounded-xl bg-black/[0.025] px-3 py-2 dark:bg-white/[0.04]">
+                        <p className="text-gray-400">Recommended Max</p>
+                        <p className="mt-1 text-sm">
+                          {formatMoney(
+                            currentNominationDraftIntelligence?.ownerMaxBid ??
+                              selectedPlayerRecommendation?.recommendedMaxBid ??
+                              null
+                          )}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-blue-600/20 bg-blue-600/10 px-3 py-2 text-blue-700 dark:text-blue-300">
+                        <p className="text-gray-500 dark:text-blue-300/80">Current AI Ceiling</p>
+                        <p className="mt-1 text-sm">
+                          {formatMoney(currentNominationCurrentAiCeiling.ceiling)}
+                        </p>
+                        <p className="mt-1 text-[8px] font-bold leading-snug">
+                          {currentNominationCurrentAiCeiling.detail}
+                        </p>
+                      </div>
+                      <div className="rounded-xl bg-black/[0.025] px-3 py-2 dark:bg-white/[0.04]">
+                        <p className="text-gray-400">Planned Cap</p>
+                        <p className="mt-1 text-sm">
+                          {draftPlanPlannedCapInput.trim()
+                            ? `$${draftPlanPlannedCapInput.trim()}`
+                            : 'N/A'}
+                        </p>
+                      </div>
+                      <div className="rounded-xl bg-black/[0.025] px-3 py-2 dark:bg-white/[0.04]">
+                        <p className="text-gray-400">Preferred Entry</p>
+                        <p className="mt-1 text-sm">
+                          {draftPlanPreferredEntryInput.trim()
+                            ? `$${draftPlanPreferredEntryInput.trim()}`
+                            : 'N/A'}
+                        </p>
+                      </div>
+                      <div className="rounded-xl bg-black/[0.025] px-3 py-2 dark:bg-white/[0.04]">
+                        <p className="text-gray-400">Legal Max</p>
+                        <p className="mt-1 text-sm">{currentNominationLegalMaxLabel}</p>
+                      </div>
+                      <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-amber-700 dark:text-amber-300">
+                        <p className="text-gray-500 dark:text-amber-300/80">
+                          Actionable Ceiling
+                        </p>
+                        <p className="mt-1 text-sm">
+                          {currentNominationActionableCeilingLabel}
+                        </p>
+                        <p className="mt-1 text-[8px] font-bold leading-snug">
+                          {currentNominationActionableCeilingDetail}
+                        </p>
+                      </div>
+                    </div>
+
+                    {(draftPlanError ||
+                      draftPlanSaveStatus === 'saved' ||
+                      currentNominationPlanWarnings.length > 0) && (
+                      <div className="grid gap-1.5 text-[10px] font-black uppercase tracking-widest">
+                        {draftPlanError ? (
+                          <p className="rounded-lg border border-rose-600/20 bg-rose-600/10 px-3 py-2 text-rose-700 dark:text-rose-300">
+                            {draftPlanError}
+                          </p>
+                        ) : null}
+                        {draftPlanSaveStatus === 'saved' ? (
+                          <p className="rounded-lg border border-emerald-600/20 bg-emerald-600/10 px-3 py-2 text-emerald-700 dark:text-emerald-300">
+                            Draft plan saved.
+                          </p>
+                        ) : null}
+                        {currentNominationPlanWarnings.map((warning) => (
+                          <p
+                            key={warning}
+                            className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-amber-700 dark:text-amber-300"
+                          >
+                            {warning}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <button
+                        type="submit"
+                        disabled={
+                          draftPlanSaveStatus === 'saving' ||
+                          !selectedPlayer.sleeperPlayerId
+                        }
+                        className="inline-flex h-10 flex-1 items-center justify-center rounded-xl border border-orange-600/30 bg-orange-600 px-4 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:border-black/10 disabled:bg-black/[0.06] disabled:text-gray-400 dark:disabled:border-white/10 dark:disabled:bg-white/[0.06]"
+                      >
+                        {draftPlanSaveStatus === 'saving' ? 'Saving' : 'Save Plan'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void saveDraftPlanPreference({ clear: true })}
+                        disabled={
+                          draftPlanSaveStatus === 'saving' ||
+                          !selectedPlayer.sleeperPlayerId
+                        }
+                        className="inline-flex h-10 items-center justify-center rounded-xl border border-black/10 bg-black/[0.03] px-4 text-[10px] font-black uppercase tracking-widest text-gray-600 transition hover:border-orange-600/30 hover:bg-orange-600/10 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-300"
+                      >
+                        Clear Plan
+                      </button>
+                    </div>
+                  </form>
+                </section>
+              )}
+
+              {access.canRecordSales && (
               <section className="rounded-2xl border border-black/10 bg-white p-3 shadow-lg dark:border-white/10 dark:bg-[#121212]">
-                <form
-                  className="grid gap-2 xl:grid-cols-[minmax(0,1.1fr)_6rem_minmax(0,1fr)_auto_auto]"
-                  onSubmit={(event) => {
+	                <form
+	                  className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_5.5rem]"
+	                  onSubmit={(event) => {
                     event.preventDefault();
                     recordManualSale();
                   }}
@@ -5895,7 +7748,7 @@ export default function AuctionWarRoomClient() {
                     <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">
                       Selected Player
                     </p>
-                    <p className="mt-1 truncate text-sm font-black uppercase italic">
+                    <p className="mt-1 truncate text-sm font-black uppercase italic leading-tight sm:text-base">
                       {manualSaleSelectedPlayer
                         ? `${manualSaleSelectedPlayer.originalPlayerName} | ${manualSaleSelectedPlayer.position ?? 'N/A'} ${manualSaleSelectedPlayer.nflTeam ?? 'N/A'}`
                         : 'Use master search or My Board'}
@@ -5923,11 +7776,11 @@ export default function AuctionWarRoomClient() {
                           clearManualSalePlayerAndFocus();
                         }
                       }}
-                      className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-black outline-none transition focus:border-orange-600 dark:border-white/10 dark:bg-black/30"
+                      className="h-10 w-full rounded-xl border border-black/10 bg-white px-2 text-center text-sm font-black outline-none transition focus:border-orange-600 dark:border-white/10 dark:bg-black/30"
                     />
                   </label>
 
-                  <label className="block min-w-0">
+	                  <label className="block min-w-0 sm:col-span-2">
                     <span className="mb-1 block text-[8px] font-black uppercase tracking-widest text-gray-400">
                       Buyer
                     </span>
@@ -5937,7 +7790,7 @@ export default function AuctionWarRoomClient() {
                         setManualSaleBuyerTeamId(event.target.value);
                         setManualSaleError(null);
                       }}
-                      className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-xs font-bold outline-none transition focus:border-orange-600 dark:border-white/10 dark:bg-black/30"
+                      className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-black outline-none transition focus:border-orange-600 dark:border-white/10 dark:bg-black/30"
                     >
                       {mockAuctionTeams.map((team) => (
                         <option key={team.id} value={team.id}>
@@ -5996,11 +7849,35 @@ export default function AuctionWarRoomClient() {
                   </div>
                 )}
               </section>
+              )}
               </>
               )}
 
               {activeWorkspace === 'strategy' && (
               <>
+              {ownerSettingsSummary && (
+                <section className="rounded-2xl border border-orange-600/20 bg-orange-600/10 p-4 text-orange-800 shadow-lg dark:text-orange-200">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-black uppercase tracking-[0.25em]">
+                        Draft Settings
+                      </p>
+                      <p className="mt-1 text-sm font-black uppercase italic leading-tight">
+                        {ownerSettingsSummary}
+                      </p>
+                    </div>
+                    {access.role === 'pilot-owner' && (
+                      <Link
+                        href="/commish/auction/onboarding?edit=1"
+                        className="inline-flex min-h-10 items-center justify-center rounded-xl border border-orange-600/30 bg-white/60 px-4 text-[10px] font-black uppercase tracking-widest text-orange-800 transition hover:bg-white dark:bg-black/20 dark:text-orange-200"
+                      >
+                        Edit Draft Settings
+                      </Link>
+                    )}
+                  </div>
+                </section>
+              )}
+
           <SectionShell
             title="Auction Advisor"
             eyebrow={`${purchaseSourceLabel} Strategy`}
@@ -6012,10 +7889,10 @@ export default function AuctionWarRoomClient() {
                   Current Read
                 </p>
                 <h3 className="mt-1 text-lg font-black uppercase italic tracking-tight">
-                  {auctionAdvisorSummary.headline.replace(/hard caps/gi, 'recommended ceilings')}
+                  {formatWarRoomTerminology(auctionAdvisorSummary.headline)}
                 </h3>
                 <p className="mt-2 text-xs font-bold leading-relaxed">
-                  {auctionAdvisorSummary.currentStrategy}
+                  {formatWarRoomTerminology(auctionAdvisorSummary.currentStrategy)}
                 </p>
               </div>
 
@@ -6130,7 +8007,7 @@ export default function AuctionWarRoomClient() {
                             )}
                           </div>
                           <p className="min-w-0 truncate text-[10px] font-bold text-gray-600 dark:text-gray-300">
-                            {player.reason}
+                            {formatWarRoomTerminology(player.reason)}
                           </p>
                         </div>
                       );
@@ -6379,11 +8256,11 @@ export default function AuctionWarRoomClient() {
               activeWorkspace === 'strategy' ||
               activeWorkspace === 'history') && (
             <div
-              className={
-                activeWorkspace === 'draft'
-                  ? 'order-3 grid min-h-0 gap-3 md:col-span-2 lg:col-span-1 lg:max-h-[calc(100vh-7.25rem)] lg:overflow-auto lg:pr-1'
-                  : 'grid min-h-0 gap-3'
-              }
+		              className={
+		                activeWorkspace === 'draft'
+		                  ? 'order-3 grid min-h-0 min-w-0 gap-3 xl:col-span-2 2xl:col-span-1'
+		                  : 'grid min-h-0 gap-3'
+		              }
             >
               {activeWorkspace === 'draft' && (
               <>
@@ -6405,7 +8282,7 @@ export default function AuctionWarRoomClient() {
                           onClick={() =>
                             setDraftUtilityOpenSection(isOpen ? null : section.value)
                           }
-                          className={`flex aspect-square items-center justify-center rounded-2xl text-2xl transition ${
+	                          className={`flex aspect-square items-center justify-center rounded-2xl text-2xl transition xl:aspect-auto xl:min-h-12 ${
                             isOpen
                               ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20'
                               : 'bg-black/[0.035] hover:bg-orange-600/10 dark:bg-white/[0.05]'
@@ -6689,39 +8566,41 @@ export default function AuctionWarRoomClient() {
                   </p>
                 )}
               </SectionShell>
-              <SectionShell
-                title="Undo Controls"
-                eyebrow="Manual Sales"
-                icon={ArrowLeft}
-              >
-                {latestUndoableManualSale ? (
-                  <div className="grid gap-3">
-                    <div className="rounded-xl border border-black/10 bg-black/[0.03] px-3 py-2 dark:border-white/10 dark:bg-white/[0.03]">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">
-                        Most Recent Undoable Manual Sale
-                      </p>
-                      <p className="mt-2 text-sm font-black uppercase italic">
-                        {latestUndoableManualSale.playerName}
-                      </p>
-                      <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
-                        {latestUndoableManualSale.teamName} | {formatMoney(latestUndoableManualSale.salePrice)} | {formatChatTimestamp(latestUndoableManualSale.recordedAt)}
-                      </p>
+              {access.canRecordSales && (
+                <SectionShell
+                  title="Undo Controls"
+                  eyebrow="Manual Sales"
+                  icon={ArrowLeft}
+                >
+                  {latestUndoableManualSale ? (
+                    <div className="grid gap-3">
+                      <div className="rounded-xl border border-black/10 bg-black/[0.03] px-3 py-2 dark:border-white/10 dark:bg-white/[0.03]">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">
+                          Most Recent Undoable Manual Sale
+                        </p>
+                        <p className="mt-2 text-sm font-black uppercase italic">
+                          {latestUndoableManualSale.playerName}
+                        </p>
+                        <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                          {latestUndoableManualSale.teamName} | {formatMoney(latestUndoableManualSale.salePrice)} | {formatChatTimestamp(latestUndoableManualSale.recordedAt)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={undoLastManualSale}
+                        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-black/10 bg-black/[0.03] px-3 text-[10px] font-black uppercase tracking-widest text-gray-600 transition hover:border-orange-600/30 hover:bg-orange-600/10 hover:text-orange-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-300"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                        Undo Manual Sale
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={undoLastManualSale}
-                      className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-black/10 bg-black/[0.03] px-3 text-[10px] font-black uppercase tracking-widest text-gray-600 transition hover:border-orange-600/30 hover:bg-orange-600/10 hover:text-orange-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-300"
-                    >
-                      <ArrowLeft className="h-4 w-4" />
-                      Undo Manual Sale
-                    </button>
-                  </div>
-                ) : (
-                  <p className="rounded-xl border border-black/10 bg-black/[0.03] p-3 text-xs font-bold uppercase tracking-widest text-gray-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-400">
-                    No manual sales available to undo.
-                  </p>
-                )}
-              </SectionShell>
+                  ) : (
+                    <p className="rounded-xl border border-black/10 bg-black/[0.03] p-3 text-xs font-bold uppercase tracking-widest text-gray-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-400">
+                      No manual sales available to undo.
+                    </p>
+                  )}
+                </SectionShell>
+              )}
               </>
               )}
 
@@ -8026,7 +9905,7 @@ export default function AuctionWarRoomClient() {
                 <tbody className="divide-y divide-black/5 dark:divide-white/10">
                   {visiblePlayerPoolRows.length > 0 ? (
                     visiblePlayerPoolRows.map((player) => {
-                      const preferenceTags = getPlayerPoolPreferenceTags(player);
+                      const preferenceTags = getEffectivePreferenceTags(player);
                       const byeWeek = getByeWeekForNflTeam(player.nflTeam);
                       const purchaseMatch = getPlayerPoolPurchaseMatch(
                         player,
@@ -8313,7 +10192,12 @@ export default function AuctionWarRoomClient() {
                           {entry.ownerTeam}
                         </td>
                         <td className="py-3 pr-4 font-black text-orange-600">
-                          {entry.amountLabel}
+                          <p>{entry.amountLabel}</p>
+                          {entry.decisionSnapshotLabel ? (
+                            <p className="mt-1 max-w-60 text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                              {entry.decisionSnapshotLabel}
+                            </p>
+                          ) : null}
                         </td>
                         <td className="py-3 pr-4">
                           <span className="rounded-full border border-black/10 bg-black/[0.03] px-3 py-1 text-[9px] font-black uppercase tracking-widest text-gray-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-400">

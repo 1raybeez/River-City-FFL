@@ -1,7 +1,6 @@
 {
   "projects": {
-    "default": "river-city-ffl",
-    "river-city-ffl": "river-city-ffl"
+    "default": "river-city-ffl"
   },
   "targets": {},
   "etags": {}

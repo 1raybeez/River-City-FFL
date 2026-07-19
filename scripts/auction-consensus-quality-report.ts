@@ -415,7 +415,7 @@ function getWarningMeaning(warning: string) {
   return meanings[warning] ?? "Review signal from the consensus generator.";
 }
 
-function buildMarkdownReport({
+export function buildAuctionConsensusMarkdownReport({
   masterview,
   manifest,
   sourceFiles,
@@ -678,7 +678,11 @@ async function main() {
   const masterview = await readJsonFile(MASTERVIEW_PATH, assertMasterviewFile);
   const manifest = await readJsonFile(MANIFEST_PATH, assertManifest);
   const sourceFiles = await readSourceValueFiles();
-  const report = buildMarkdownReport({ masterview, manifest, sourceFiles });
+  const report = buildAuctionConsensusMarkdownReport({
+    masterview,
+    manifest,
+    sourceFiles,
+  });
   const warningCategoryCounts = getWarningCategoryCounts(masterview.rows);
   const warningRowCount = masterview.rows.filter(
     (row) => row.warnings.length > 0
@@ -706,7 +710,9 @@ async function main() {
   );
 }
 
-main().catch((error: unknown) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+if (process.argv[1]?.endsWith("auction-consensus-quality-report.ts")) {
+  main().catch((error: unknown) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}

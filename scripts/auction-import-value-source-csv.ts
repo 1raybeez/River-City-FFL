@@ -23,10 +23,13 @@ import type {
   AuctionValueScoringFormat,
   AuctionValueSource,
 } from "../lib/auction/valueSources";
+import {
+  AUCTION_PLAYER_ALIASES_FILE,
+  getAuctionPlayerAliases,
+} from "../lib/auction/playerAliases";
 
 const INPUT_DIR = "data/auction/source-imports/manual-csv";
 const OUTPUT_DIR = "data/auction/source-values";
-const PLAYER_ALIASES_PATH = "data/auction/player-aliases.json";
 const SLEEPER_PLAYERS_URL = "https://api.sleeper.app/v1/players/nfl";
 const ADAPTER_VERSION = "manual-csv-v1";
 const SOURCE_KEY = "manual-csv";
@@ -419,29 +422,6 @@ async function readCsvRecords(): Promise<CsvRecord[]> {
   }
 
   return records;
-}
-
-async function readPlayerAliases(): Promise<Record<string, string>> {
-  const rawJson = await readFile(PLAYER_ALIASES_PATH, "utf8");
-  const parsed: unknown = JSON.parse(rawJson);
-
-  if (!isRecord(parsed)) {
-    throw new Error(`Invalid alias file: ${PLAYER_ALIASES_PATH}`);
-  }
-
-  return Object.entries(parsed).reduce<Record<string, string>>(
-    (aliases, [sourceName, sleeperName]) => {
-      const cleanSourceName = readString(sourceName);
-      const cleanSleeperName = readString(sleeperName);
-
-      if (cleanSourceName && cleanSleeperName) {
-        aliases[cleanSourceName] = cleanSleeperName;
-      }
-
-      return aliases;
-    },
-    {}
-  );
 }
 
 function buildAliasLookup(aliases: Record<string, string>): Map<string, string> {
@@ -1108,7 +1088,7 @@ async function writeSeasonOutputs({
     seasonYear,
     inputDirectory: INPUT_DIR,
     outputDirectory: OUTPUT_DIR,
-    playerAliasesFile: PLAYER_ALIASES_PATH,
+    playerAliasesFile: AUCTION_PLAYER_ALIASES_FILE,
     sleeperPlayersUrl: SLEEPER_PLAYERS_URL,
     sources,
     rowCount: rows.length,
@@ -1126,7 +1106,7 @@ async function writeSeasonOutputs({
     sourceKey: SOURCE_KEY,
     seasonYear,
     sourceValuesFile,
-    playerAliasesFile: PLAYER_ALIASES_PATH,
+    playerAliasesFile: AUCTION_PLAYER_ALIASES_FILE,
     sleeperPlayersUrl: SLEEPER_PLAYERS_URL,
     rowCount: reviewRows.length,
     matchedRowCount: countByStatus(reviewRows, "matched"),
@@ -1156,7 +1136,7 @@ async function main() {
   await mkdir(OUTPUT_DIR, { recursive: true });
 
   const records = await readCsvRecords();
-  const playerAliases = await readPlayerAliases();
+  const playerAliases = getAuctionPlayerAliases();
   const aliasLookup = buildAliasLookup(playerAliases);
   const normalizedRows = records
     .map((record) => normalizeCsvRecord(record, generatedAt, aliasLookup))

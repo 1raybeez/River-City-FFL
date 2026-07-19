@@ -3,12 +3,15 @@ import path from "node:path";
 
 import type { AuctionImportPreview } from "../lib/auction/importTypes";
 import type { AuctionPlayerPosition } from "../lib/auction/types";
+import {
+  AUCTION_PLAYER_ALIASES_FILE,
+  getAuctionPlayerAliases,
+} from "../lib/auction/playerAliases";
 
 const MASTER_VIEW_2025_PATH =
   "data/auction/processed/masterview-2025.json";
 const REVIEW_OUTPUT_PATH =
   "data/auction/processed/sleeper-match-review-2025.json";
-const PLAYER_ALIASES_PATH = "data/auction/player-aliases.json";
 const SLEEPER_PLAYERS_URL = "https://api.sleeper.app/v1/players/nfl";
 const TOP_UNMATCHED_LIMIT = 25;
 
@@ -676,28 +679,6 @@ async function readMasterviewPreview() {
   return parsed;
 }
 
-async function readPlayerAliases(): Promise<Record<string, string>> {
-  const rawJson = await readFile(PLAYER_ALIASES_PATH, "utf8");
-  const parsed: unknown = JSON.parse(rawJson);
-
-  if (!isRecord(parsed)) {
-    throw new Error(`Invalid alias file: ${PLAYER_ALIASES_PATH}`);
-  }
-
-  const aliases: Record<string, string> = {};
-
-  for (const [masterviewName, sleeperSearchName] of Object.entries(parsed)) {
-    const cleanMasterviewName = readString(masterviewName);
-    const cleanSleeperSearchName = readString(sleeperSearchName);
-
-    if (!cleanMasterviewName || !cleanSleeperSearchName) continue;
-
-    aliases[cleanMasterviewName] = cleanSleeperSearchName;
-  }
-
-  return aliases;
-}
-
 async function fetchSleeperPlayers(): Promise<Record<string, unknown>> {
   const response = await fetch(SLEEPER_PLAYERS_URL);
   if (!response.ok) {
@@ -717,7 +698,7 @@ async function fetchSleeperPlayers(): Promise<Record<string, unknown>> {
 async function main() {
   const generatedAt = new Date().toISOString();
   const masterview = await readMasterviewPreview();
-  const playerAliases = await readPlayerAliases();
+  const playerAliases = getAuctionPlayerAliases();
   const sleeperPlayers = await fetchSleeperPlayers();
   const candidates = buildSleeperCandidates(sleeperPlayers);
   const index = buildMatchIndex(candidates);
@@ -766,7 +747,7 @@ async function main() {
   const review = {
     generatedAt,
     sourceFile: MASTER_VIEW_2025_PATH,
-    playerAliasesFile: PLAYER_ALIASES_PATH,
+    playerAliasesFile: AUCTION_PLAYER_ALIASES_FILE,
     playerAliases,
     sleeperPlayersUrl: SLEEPER_PLAYERS_URL,
     beforeCounts,
@@ -802,7 +783,7 @@ async function main() {
     JSON.stringify(
       {
         outputFile: REVIEW_OUTPUT_PATH,
-        playerAliasesFile: PLAYER_ALIASES_PATH,
+        playerAliasesFile: AUCTION_PLAYER_ALIASES_FILE,
         beforeCounts,
         afterCounts,
         totalRows: review.totalRows,

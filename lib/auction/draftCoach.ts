@@ -17,6 +17,18 @@ export type DraftCoachNeedLevel =
 
 export type DraftCoachConfidence = 'high' | 'medium' | 'low';
 
+export type DraftCoachOwnerSettings = {
+  rosterConstruction: string;
+  riskTolerance: string;
+  keeperFocus: string;
+  rookiePreference: string;
+  positionPriorities: readonly string[];
+  nominationStyle: string;
+  kickerDefenseStrategy: string;
+  draftGoal: string;
+  additionalNotes: string | null;
+} | null;
+
 export type DraftCoachInput = {
   question?: string | null;
   selectedPlayer: {
@@ -89,6 +101,7 @@ export type DraftCoachInput = {
     leagueDollarsSpent: number | null;
     totalRosterSlots: number | null;
   } | null;
+  ownerSettings?: DraftCoachOwnerSettings;
 };
 
 export type DraftCoachResult = {
@@ -144,6 +157,13 @@ function normalizeRecommendation(
 ): DraftCoachDecision {
   if (recommendation === 'DO NOT BID') return 'PASS';
   return recommendation && decisionSet.has(recommendation) ? recommendation : 'WAIT';
+}
+
+function formatOwnerSettingLabel(value: string | null | undefined) {
+  return value
+    ?.trim()
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase()) ?? '';
 }
 
 function isAvailableStatus(status: string | null | undefined) {
@@ -416,6 +436,12 @@ function buildIntelSummary(input: DraftCoachInput, decision: DraftCoachDecision)
     facts.push(`${label} is ${formatMoney(input.historicalPricing.recentAverage ?? input.historicalPricing.mostRecentValue)}.`);
   }
 
+  if (input.ownerSettings) {
+    facts.push(
+      `Draft style: ${formatOwnerSettingLabel(input.ownerSettings.rosterConstruction)} with ${formatOwnerSettingLabel(input.ownerSettings.riskTolerance).toLowerCase()} bid posture.`
+    );
+  }
+
   if (input.competitionContext && input.selectedPlayer) {
     const highestThreat = input.competitionContext.highestThreat;
     if (input.competitionContext.ownersBothNeedAndAfford > 0) {
@@ -518,6 +544,14 @@ function buildRiskGuidance(input: DraftCoachInput, decision: DraftCoachDecision)
     return 'Fade tag is active, so the burden of proof is higher than normal.';
   }
 
+  if (input.ownerSettings?.riskTolerance === 'conservative') {
+    return 'Your conservative setting favors passing when the edge is thin and keeping extra room for later nominations.';
+  }
+
+  if (input.ownerSettings?.riskTolerance === 'aggressive') {
+    return 'Your aggressive setting supports decisive bids on fits, but it still does not move the calculated ceiling.';
+  }
+
   return 'Risk is controlled as long as you honor the ceiling and reserve.';
 }
 
@@ -546,6 +580,43 @@ function buildCompetitionReasons(input: DraftCoachInput) {
       ? `${highestThreat.ownerName} is the strongest current threat because ${highestThreat.reasons[0] ?? highestThreat.threatLevel}.`
       : null,
   ]);
+}
+
+function buildOwnerSettingsReasons(input: DraftCoachInput) {
+  const settings = input.ownerSettings;
+  if (!settings) return [];
+
+  const selectedPosition = normalizePosition(input.selectedPlayer?.position);
+  const priorities = settings.positionPriorities
+    .map((position) => normalizePosition(position))
+    .filter(Boolean);
+
+  return uniqueStrings([
+    `Owner style context: ${formatOwnerSettingLabel(settings.rosterConstruction)} roster build, ${formatOwnerSettingLabel(settings.riskTolerance).toLowerCase()} bid posture, ${formatOwnerSettingLabel(settings.keeperFocus).toLowerCase()} keeper focus.`,
+    selectedPosition && priorities.includes(selectedPosition)
+      ? `${selectedPosition} is one of your stated priority positions.`
+      : priorities.length > 0
+        ? `Your stated position priorities are ${priorities.join('/')}.`
+        : null,
+    settings.rookiePreference === 'high'
+      ? 'Your settings favor rookies and breakout-player upside as a tie-breaker.'
+      : null,
+    settings.nominationStyle === 'targets'
+      ? 'Nomination style favors putting your own targets up when the price window is right.'
+      : settings.nominationStyle === 'decoys'
+        ? 'Nomination style favors draining money with players you do not want.'
+        : settings.nominationStyle === 'mixed'
+          ? 'Nomination style supports mixing targets and price-enforcement nominations.'
+          : null,
+    settings.kickerDefenseStrategy === 'minimum'
+      ? 'K/DEF setting favors minimum-dollar buys unless live context forces a different decision.'
+      : settings.kickerDefenseStrategy === 'elite-small-premium'
+        ? 'K/DEF setting allows a small premium for an elite option.'
+        : null,
+    settings.additionalNotes
+      ? `Owner note: ${settings.additionalNotes.slice(0, 160)}`
+      : null,
+  ]).slice(0, 5);
 }
 
 export function buildDraftCoachResponse(input: DraftCoachInput): DraftCoachResult {
@@ -619,6 +690,7 @@ export function buildDraftCoachResponse(input: DraftCoachInput): DraftCoachResul
       reserveMessage,
       budgetPace.message,
       overpayReason,
+      ...buildOwnerSettingsReasons(input),
       ...buildCompetitionReasons(input),
       ...input.intelligenceReasons,
       ...input.roomReasons,

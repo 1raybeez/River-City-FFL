@@ -1,0 +1,245 @@
+import "server-only";
+
+import { firestore } from "@/lib/firebaseAdmin";
+import { riverCityAuctionLeagueSettings } from "@/lib/auction/leagueSettings";
+import {
+  type AuctionDraftGoal,
+  type AuctionKickerDefenseStrategy,
+  type AuctionKeeperFocus,
+  type AuctionNominationStyle,
+  type AuctionOwnerProfileSettings,
+  type AuctionPositionPriority,
+  type AuctionRiskTolerance,
+  type AuctionRookiePreference,
+  type AuctionRosterConstruction,
+} from "@/lib/auction/ownerProfileSettingsTypes";
+
+export const AUCTION_OWNER_PROFILES_COLLECTION = "auction_owner_profiles";
+export const AUCTION_OWNER_PROFILE_SETTINGS_COLLECTION = "settings";
+export const AUCTION_OWNER_PROFILE_SETTINGS_SCHEMA_VERSION = 1;
+
+const rosterConstructionValues = new Set<AuctionRosterConstruction>([
+  "balanced",
+  "stars-and-scrubs",
+  "value-heavy",
+  "hero-rb",
+  "zero-rb",
+  "custom",
+]);
+const riskToleranceValues = new Set<AuctionRiskTolerance>([
+  "conservative",
+  "balanced",
+  "aggressive",
+]);
+const keeperFocusValues = new Set<AuctionKeeperFocus>([
+  "low",
+  "medium",
+  "high",
+]);
+const rookiePreferenceValues = new Set<AuctionRookiePreference>([
+  "low",
+  "medium",
+  "high",
+]);
+const positionPriorityValues = new Set<AuctionPositionPriority>([
+  "QB",
+  "RB",
+  "WR",
+  "TE",
+]);
+const nominationStyleValues = new Set<AuctionNominationStyle>([
+  "targets",
+  "decoys",
+  "mixed",
+  "ai",
+]);
+const kickerDefenseStrategyValues = new Set<AuctionKickerDefenseStrategy>([
+  "minimum",
+  "elite-small-premium",
+  "flexible",
+]);
+const draftGoalValues = new Set<AuctionDraftGoal>([
+  "win-now",
+  "balanced",
+  "keeper-build",
+  "learning",
+]);
+
+function getSettingsRef(season: number, ownerProfileId: string) {
+  return firestore
+    .collection(AUCTION_OWNER_PROFILES_COLLECTION)
+    .doc(ownerProfileId)
+    .collection(AUCTION_OWNER_PROFILE_SETTINGS_COLLECTION)
+    .doc(String(season));
+}
+
+function readString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function readBoolean(value: unknown) {
+  return typeof value === "boolean" ? value : false;
+}
+
+function readEnum<T extends string>(
+  value: unknown,
+  allowedValues: ReadonlySet<T>,
+  fallback: T
+) {
+  return typeof value === "string" && allowedValues.has(value as T)
+    ? (value as T)
+    : fallback;
+}
+
+function readPositionPriorities(value: unknown): AuctionPositionPriority[] {
+  if (!Array.isArray(value)) return [];
+
+  return Array.from(
+    new Set(
+      value.flatMap((item) => {
+        const position =
+          typeof item === "string" ? item.trim().toUpperCase() : "";
+        return positionPriorityValues.has(position as AuctionPositionPriority)
+          ? [position as AuctionPositionPriority]
+          : [];
+      })
+    )
+  ).slice(0, 2);
+}
+
+function readSettingsDocument(
+  data: FirebaseFirestore.DocumentData
+): AuctionOwnerProfileSettings | null {
+  const season = data.season;
+  const ownerProfileId = readString(data.ownerProfileId);
+  const updatedAt = readString(data.updatedAt);
+  const updatedBy = readString(data.updatedBy);
+
+  if (
+    typeof season !== "number" ||
+    !Number.isInteger(season) ||
+    !ownerProfileId ||
+    !updatedAt ||
+    !updatedBy
+  ) {
+    return null;
+  }
+
+  const onboardingCompleted = readBoolean(data.onboardingCompleted);
+
+  return {
+    season,
+    ownerProfileId,
+    sleeperTeamName: readString(data.sleeperTeamName),
+    rosterConstruction: readEnum(
+      data.rosterConstruction,
+      rosterConstructionValues,
+      "balanced"
+    ),
+    riskTolerance: readEnum(data.riskTolerance, riskToleranceValues, "balanced"),
+    keeperFocus: readEnum(data.keeperFocus, keeperFocusValues, "medium"),
+    rookiePreference: readEnum(
+      data.rookiePreference,
+      rookiePreferenceValues,
+      "medium"
+    ),
+    positionPriorities: readPositionPriorities(data.positionPriorities),
+    nominationStyle: readEnum(
+      data.nominationStyle,
+      nominationStyleValues,
+      "ai"
+    ),
+    kickerDefenseStrategy: readEnum(
+      data.kickerDefenseStrategy,
+      kickerDefenseStrategyValues,
+      "minimum"
+    ),
+    draftGoal: readEnum(data.draftGoal, draftGoalValues, "balanced"),
+    additionalNotes: readString(data.additionalNotes),
+    onboardingCompleted,
+    onboardingCompletedAt: onboardingCompleted
+      ? readString(data.onboardingCompletedAt)
+      : null,
+    updatedAt,
+    updatedBy,
+    schemaVersion: AUCTION_OWNER_PROFILE_SETTINGS_SCHEMA_VERSION,
+  };
+}
+
+export async function readAuctionOwnerProfileSettings({
+  season = riverCityAuctionLeagueSettings.season,
+  ownerProfileId,
+}: {
+  season?: number;
+  ownerProfileId: string;
+}) {
+  const snapshot = await getSettingsRef(season, ownerProfileId).get();
+  if (!snapshot.exists) return null;
+
+  return readSettingsDocument(snapshot.data() ?? {});
+}
+
+export async function upsertAuctionOwnerProfileSettings({
+  settings,
+  updatedBy,
+}: {
+  settings: Omit<
+    AuctionOwnerProfileSettings,
+    "updatedAt" | "updatedBy" | "schemaVersion"
+  >;
+  updatedBy: string;
+}) {
+  const updatedAt = new Date().toISOString();
+  const serializedSettings: AuctionOwnerProfileSettings = {
+    season: settings.season,
+    ownerProfileId: settings.ownerProfileId,
+    sleeperTeamName: settings.sleeperTeamName,
+    rosterConstruction: settings.rosterConstruction,
+    riskTolerance: settings.riskTolerance,
+    keeperFocus: settings.keeperFocus,
+    rookiePreference: settings.rookiePreference,
+    positionPriorities: settings.positionPriorities.slice(0, 2),
+    nominationStyle: settings.nominationStyle,
+    kickerDefenseStrategy: settings.kickerDefenseStrategy,
+    draftGoal: settings.draftGoal,
+    additionalNotes: settings.additionalNotes,
+    onboardingCompleted: settings.onboardingCompleted,
+    onboardingCompletedAt: settings.onboardingCompletedAt,
+    updatedAt,
+    updatedBy,
+    schemaVersion: AUCTION_OWNER_PROFILE_SETTINGS_SCHEMA_VERSION,
+  };
+
+  await getSettingsRef(
+    serializedSettings.season,
+    serializedSettings.ownerProfileId
+  ).set(serializedSettings, { merge: true });
+
+  return serializedSettings;
+}
+
+export async function updateAuctionOwnerProfileSettingsTeamName({
+  season = riverCityAuctionLeagueSettings.season,
+  ownerProfileId,
+  sleeperTeamName,
+  updatedBy,
+}: {
+  season?: number;
+  ownerProfileId: string;
+  sleeperTeamName: string;
+  updatedBy: string;
+}) {
+  const updatedAt = new Date().toISOString();
+
+  await getSettingsRef(season, ownerProfileId).set(
+    {
+      season,
+      ownerProfileId,
+      sleeperTeamName,
+      updatedAt,
+      updatedBy,
+      schemaVersion: AUCTION_OWNER_PROFILE_SETTINGS_SCHEMA_VERSION,
+    },
+    { merge: true }
+  );
+}

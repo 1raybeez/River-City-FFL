@@ -1,5 +1,6 @@
 export type AuctionValueSourceRegistryId =
   | "fantasypros"
+  | "lineupexperts"
   | "rotowire"
   | "draftsharks"
   | "footballguys"
@@ -66,11 +67,23 @@ export const auctionValueSourceRegistry = [
     implementationStatus: "inspect-next",
   },
   {
+    id: "lineupexperts",
+    displayName: "Lineup Experts",
+    type: "export",
+    accessLevel: "unknown",
+    recommendedPriority: 3,
+    notes:
+      "Current CSV export source for production auction-value refreshes. Parsed through the generic source import adapter with Lineup Experts header normalization.",
+    supportsAuctionValues: true,
+    supportsCustomLeagueSettings: true,
+    implementationStatus: "adapter-ready",
+  },
+  {
     id: "fantasynerds",
     displayName: "FantasyNerds",
     type: "official-api",
     accessLevel: "free",
-    recommendedPriority: 3,
+    recommendedPriority: 4,
     notes:
       "First free source to inspect for official/API access. Confirm auction dollar support and rate/terms before building an adapter.",
     supportsAuctionValues: true,
@@ -82,19 +95,19 @@ export const auctionValueSourceRegistry = [
     displayName: "RotoWire",
     type: "export",
     accessLevel: "subscription",
-    recommendedPriority: 4,
+    recommendedPriority: 5,
     notes:
       "Strong alternate paid/subscription candidate if a clean export or licensed data path is available. Do not scrape protected pages.",
     supportsAuctionValues: true,
     supportsCustomLeagueSettings: true,
-    implementationStatus: "not-started",
+    implementationStatus: "adapter-ready",
   },
   {
     id: "draftsharks",
     displayName: "Draft Sharks",
     type: "export",
     accessLevel: "subscription",
-    recommendedPriority: 5,
+    recommendedPriority: 6,
     notes:
       "Strong alternate paid/subscription candidate. Prefer official exports; do not bypass login or paid content controls.",
     supportsAuctionValues: true,
@@ -106,7 +119,7 @@ export const auctionValueSourceRegistry = [
     displayName: "Footballguys",
     type: "export",
     accessLevel: "subscription",
-    recommendedPriority: 6,
+    recommendedPriority: 7,
     notes:
       "Strong alternate paid/subscription candidate if auction values are available through an allowed export or official tool.",
     supportsAuctionValues: true,
@@ -118,7 +131,7 @@ export const auctionValueSourceRegistry = [
     displayName: "ESPN",
     type: "public-page",
     accessLevel: "unknown",
-    recommendedPriority: 7,
+    recommendedPriority: 8,
     notes:
       "Secondary candidate unless a clean export/API path exists. Avoid brittle scraping and any protected fantasy league data.",
     supportsAuctionValues: false,
@@ -130,7 +143,7 @@ export const auctionValueSourceRegistry = [
     displayName: "Historical Masterview",
     type: "historical-excel",
     accessLevel: "free",
-    recommendedPriority: 8,
+    recommendedPriority: 9,
     notes:
       "Baseline/reference only. Historical sheets should help validate generated consensus output, not remain the manual source of truth.",
     supportsAuctionValues: true,
@@ -139,11 +152,29 @@ export const auctionValueSourceRegistry = [
   },
 ] as const satisfies readonly AuctionValueSourceRegistryEntry[];
 
-export function getAuctionValueSourceRegistryByPriority() {
+export function getAuctionValueSourceRegistryByPriority(): AuctionValueSourceRegistryEntry[] {
   return [...auctionValueSourceRegistry].sort(
     (firstSource, secondSource) =>
       firstSource.recommendedPriority - secondSource.recommendedPriority
+  ) as AuctionValueSourceRegistryEntry[];
+}
+
+export function getProductionAuctionValueSourceRegistryEntries(): AuctionValueSourceRegistryEntry[] {
+  const productionSourceIds: AuctionValueSourceRegistryId[] = [
+    "fantasypros",
+    "rotowire",
+    "lineupexperts",
+  ];
+  const registryById = new Map(
+    getAuctionValueSourceRegistryByPriority().map((source) => [
+      source.id,
+      source,
+    ])
   );
+
+  return productionSourceIds
+    .map((sourceId) => registryById.get(sourceId))
+    .filter((source): source is AuctionValueSourceRegistryEntry => Boolean(source));
 }
 
 export function getAuctionValueSourceRegistryEntry(

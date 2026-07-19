@@ -1,0 +1,44 @@
+export const AUCTION_PURCHASE_DECISION_ROOT_COLLECTION = "auction_draft_runs";
+export const AUCTION_PURCHASE_DECISION_SUBCOLLECTION = "purchase_decisions";
+
+export type AuctionPurchaseDecisionSource = "manual-local" | "sleeper-draft";
+export type AuctionPurchaseDecisionStatus = "active" | "undone";
+
+export type AuctionPurchaseDecisionSnapshot = {
+  purchaseId: string;
+  season: number;
+  sleeperPlayerId: string | null;
+  playerName: string;
+  position: string | null;
+  nflTeam: string | null;
+  buyerOwnerProfileId: string | null;
+  buyerTeamId: string | null;
+  buyerRosterId: number | null;
+  source: AuctionPurchaseDecisionSource;
+  status: AuctionPurchaseDecisionStatus;
+  salePrice: number;
+  purchaseOrder: number | null;
+  purchasedAt: string | null;
+  tagAtPurchase: string | null;
+  preferredEntryAtPurchase: number | null;
+  plannedCapAtPurchase: number | null;
+  liveOverrideAtPurchase: number | null;
+  marketValueAtPurchase: number | null;
+  recommendedMaxAtPurchase: number | null;
+  currentAiCeilingAtPurchase: number | null;
+  legalMaxAtPurchase: number | null;
+  predictedSaleAtPurchase: number | null;
+  adpAtPurchase: number | null;
+  demandTierAtPurchase: string | null;
+  inflationAtPurchase: number | null;
+  roomIntelligenceSummary: string | null;
+  competitionSummary: string | null;
+  plannedCapVariance: number | null;
+  marketVariance: number | null;
+  recommendedMaxVariance: number | null;
+  aiCeilingVariance: number | null;
+  capturedAt: string;
+  capturedBy: string;
+  undoneAt: string | null;
+  undoneBy: string | null;
+};

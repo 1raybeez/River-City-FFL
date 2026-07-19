@@ -25,10 +25,13 @@ import type {
   AuctionValueSourceKey,
   AuctionValueSourceKind,
 } from "../lib/auction/valueSources";
+import {
+  AUCTION_PLAYER_ALIASES_FILE,
+  getAuctionPlayerAliases,
+} from "../lib/auction/playerAliases";
 
 const INPUT_DIR = "data/auction/source-imports/exports";
 const OUTPUT_DIR = "data/auction/source-values";
-const PLAYER_ALIASES_PATH = "data/auction/player-aliases.json";
 const SLEEPER_PLAYERS_URL = "https://api.sleeper.app/v1/players/nfl";
 const ADAPTER_VERSION = "source-export-v1";
 const DEFAULT_SCORING_FORMAT = "custom" satisfies AuctionValueScoringFormat;
@@ -122,10 +125,25 @@ const HEADER_ALIASES = {
   player: ["player", "name", "player name"],
   position: ["position", "pos"],
   team: ["team", "nfl team"],
-  value: ["value", "$ value", "auction value", "dollar value", "salary"],
+  value: [
+    "value",
+    "$ value",
+    "auction value",
+    "dollar value",
+    "salary",
+    "projected value",
+  ],
   rank: ["rank"],
   tier: ["tier"],
 } as const;
+
+const ROTOWIRE_REQUIRED_HEADERS: CanonicalHeader[] = [
+  "value",
+  "player",
+  "team",
+  "position",
+];
+const ROTOWIRE_OPTIONAL_HEADERS: CanonicalHeader[] = ["rank"];
 
 const FANTASYPROS_BLOCK_HEADERS = new Set([
   "OVERALL",
@@ -252,6 +270,12 @@ type ImportSummary = {
     valuesFile: string;
     reviewFile: string;
   };
+};
+
+export type AuctionSourceImportResult = {
+  valuesOutput: AuctionSourceValuesFile;
+  reviewOutput: AuctionSourceMatchReviewFile;
+  summary: ImportSummary;
 };
 
 const HEADER_LOOKUP = new Map<string, CanonicalHeader>(
@@ -833,18 +857,42 @@ function findSourceHeaderRow(
   return rows.findIndex((row) => rowHasHeaders(row, headers));
 }
 
+function rowHasCanonicalHeaders(
+  row: readonly string[],
+  headers: readonly CanonicalHeader[]
+) {
+  const canonicalHeaders = new Set(
+    row
+      .map(getCanonicalHeader)
+      .filter((header): header is CanonicalHeader => header !== null)
+  );
+
+  return headers.every((header) => canonicalHeaders.has(header));
+}
+
+function findRotoWireHeaderRow(rows: readonly string[][]) {
+  return rows.findIndex(
+    (row) =>
+      rowHasCanonicalHeaders(row, ROTOWIRE_REQUIRED_HEADERS) &&
+      (rowHasCanonicalHeaders(row, ROTOWIRE_OPTIONAL_HEADERS) ||
+        !row.some((cell) => normalizeHeader(cell) === "rank"))
+  );
+}
+
+function isRotoWireDataRecord(record: CsvRecord) {
+  const playerName = getCsvValue(record, "player");
+  const position = getCsvValue(record, "position");
+  const value = parseFiniteNumber(getCsvValue(record, "value"));
+
+  return Boolean(playerName && position && value !== null && value > 0);
+}
+
 function buildRotoWireCsvRecords(
   sourceFilename: string,
   text: string
 ): ParsedInput {
   const rows = parseCsv(text);
-  const headerRowIndex = findSourceHeaderRow(rows, [
-    "Value",
-    "Name",
-    "Team",
-    "Pos",
-    "Rank",
-  ]);
+  const headerRowIndex = findRotoWireHeaderRow(rows);
 
   if (headerRowIndex === -1) {
     return buildFlatCsvInput(sourceFilename, text);
@@ -854,23 +902,17 @@ function buildRotoWireCsvRecords(
     sourceFilename,
     rows,
     headerRowIndex
-  ).map((record) => {
-    const rawValue = getCsvValue(record, "value");
-    const numericValue = parseFiniteNumber(rawValue);
-    const clampedValue =
-      numericValue !== null && numericValue < 0 ? "0" : rawValue;
-
-    return {
+  )
+    .filter(isRotoWireDataRecord)
+    .map((record) => ({
       ...record,
       raw: {
         ...record.raw,
-        value: clampedValue,
-        "raw:rotowirevalue": rawValue,
+        "raw:rotowirevalue": getCsvValue(record, "value"),
         "raw:byeweek": record.raw["raw:bye"] ?? "",
         "raw:rotowireheaderrow": String(headerRowIndex + 1),
       },
-    };
-  });
+    }));
 
   return {
     records,
@@ -940,29 +982,6 @@ function buildLineupExpertsCsvRecords(
     detectedBlocks: ["LINEUP_EXPERTS"],
     duplicatesSkipped: 0,
   };
-}
-
-async function readPlayerAliases(): Promise<Record<string, string>> {
-  const rawJson = await readFile(PLAYER_ALIASES_PATH, "utf8");
-  const parsed: unknown = JSON.parse(rawJson);
-
-  if (!isRecord(parsed)) {
-    throw new Error(`Invalid alias file: ${PLAYER_ALIASES_PATH}`);
-  }
-
-  return Object.entries(parsed).reduce<Record<string, string>>(
-    (aliases, [sourceName, sleeperName]) => {
-      const cleanSourceName = readString(sourceName);
-      const cleanSleeperName = readString(sleeperName);
-
-      if (cleanSourceName && cleanSleeperName) {
-        aliases[cleanSourceName] = cleanSleeperName;
-      }
-
-      return aliases;
-    },
-    {}
-  );
 }
 
 function buildAliasLookup(aliases: Record<string, string>): Map<string, string> {
@@ -1638,44 +1657,52 @@ async function writeOutputs({
   };
 }
 
-async function main() {
-  const args = parseArgs(process.argv.slice(2));
+function parseSourceExportText({
+  source,
+  sourceFilename,
+  text,
+}: {
+  source: string;
+  sourceFilename: string;
+  text: string;
+}) {
+  return source === "fantasypros"
+    ? buildFantasyProsCsvRecords(sourceFilename, text)
+    : source === "rotowire"
+      ? buildRotoWireCsvRecords(sourceFilename, text)
+      : source === "lineupexperts"
+        ? buildLineupExpertsCsvRecords(sourceFilename, text)
+        : buildFlatCsvInput(sourceFilename, text);
+}
 
-  if (!args) {
-    console.error(getUsage());
-    process.exitCode = 1;
-    return;
-  }
-
-  const { source, seasonYear } = args;
+export async function importAuctionSourceExportText({
+  source,
+  seasonYear,
+  sourceFilename,
+  text,
+  inputFile,
+  sourceValuesFile,
+  reviewFile,
+  writeFiles = false,
+}: {
+  source: string;
+  seasonYear: AuctionSeasonYear;
+  sourceFilename: string;
+  text: string;
+  inputFile: string;
+  sourceValuesFile: string;
+  reviewFile: string;
+  writeFiles?: boolean;
+}): Promise<AuctionSourceImportResult> {
   const generatedAt = new Date().toISOString();
   const sourceName = getSourceDisplayName(source);
-  const inputFilename = `${source}-${seasonYear}.csv`;
-  const inputFile = path.join(INPUT_DIR, inputFilename);
-  const sourceValuesFile = `${OUTPUT_DIR}/${source}-${seasonYear}.json`;
-  const reviewFile = `${OUTPUT_DIR}/${source}-${seasonYear}-review.json`;
-
-  await mkdir(INPUT_DIR, { recursive: true });
-  await mkdir(OUTPUT_DIR, { recursive: true });
-
-  if (!existsSync(inputFile)) {
-    console.log(
-      `No matching export CSV found for ${sourceName} ${seasonYear}.\nPlace export CSV at ${inputFile}`
-    );
-    return;
-  }
-
-  const text = await readFile(inputFile, "utf8");
-  const parsedInput =
-    source === "fantasypros"
-      ? buildFantasyProsCsvRecords(inputFilename, text)
-      : source === "rotowire"
-        ? buildRotoWireCsvRecords(inputFilename, text)
-        : source === "lineupexperts"
-          ? buildLineupExpertsCsvRecords(inputFilename, text)
-      : buildFlatCsvInput(inputFilename, text);
+  const parsedInput = parseSourceExportText({
+    source,
+    sourceFilename,
+    text,
+  });
   const { records } = parsedInput;
-  const playerAliases = await readPlayerAliases();
+  const playerAliases = getAuctionPlayerAliases();
   const aliasLookup = buildAliasLookup(playerAliases);
   const normalizedRows = records.map((record) =>
     normalizeCsvRecord({
@@ -1726,7 +1753,7 @@ async function main() {
     source,
     sourceName,
     seasonYear,
-    sourceFilename: inputFilename,
+    sourceFilename,
     generatedAt,
     rows: normalizedRows,
   });
@@ -1740,7 +1767,7 @@ async function main() {
     seasonYear,
     inputDirectory: INPUT_DIR,
     outputDirectory: OUTPUT_DIR,
-    playerAliasesFile: PLAYER_ALIASES_PATH,
+    playerAliasesFile: AUCTION_PLAYER_ALIASES_FILE,
     sleeperPlayersUrl: SLEEPER_PLAYERS_URL,
     sources: [sourceRecord],
     rowCount: valueRows.length,
@@ -1758,7 +1785,7 @@ async function main() {
     sourceKey: source as AuctionValueSourceKey,
     seasonYear,
     sourceValuesFile,
-    playerAliasesFile: PLAYER_ALIASES_PATH,
+    playerAliasesFile: AUCTION_PLAYER_ALIASES_FILE,
     sleeperPlayersUrl: SLEEPER_PLAYERS_URL,
     rowCount: reviewRows.length,
     matchedRowCount: countByStatus(reviewRows, "matched"),
@@ -1771,35 +1798,86 @@ async function main() {
     suggestedAliases,
     rows: reviewRows,
   };
-  const outputSummary = await writeOutputs({
-    source,
-    seasonYear,
-    sourceValuesFile,
-    reviewFile,
+
+  if (writeFiles) {
+    await writeOutputs({
+      source,
+      seasonYear,
+      sourceValuesFile,
+      reviewFile,
+      valuesOutput,
+      reviewOutput,
+    });
+  }
+
+  return {
     valuesOutput,
     reviewOutput,
-  });
-  const summary: ImportSummary = {
-    source,
-    season: seasonYear,
-    inputFile,
-    detectedBlocks: parsedInput.detectedBlocks,
-    rowsRead: parsedInput.rowsRead,
-    rowsNormalized: valueRows.length,
-    matched: countByStatus(valueRows, "matched"),
-    unmatched: countByStatus(valueRows, "unmatched"),
-    ambiguous: countByStatus(valueRows, "ambiguous"),
-    ignored: countByStatus(valueRows, "ignored"),
-    duplicatesSkipped: parsedInput.duplicatesSkipped,
-    warnings: countIssues(valueRows, "warning"),
-    errors: countIssues(valueRows, "error"),
-    outputFiles: outputSummary.outputFiles,
+    summary: {
+      source,
+      season: seasonYear,
+      inputFile,
+      detectedBlocks: parsedInput.detectedBlocks,
+      rowsRead: parsedInput.rowsRead,
+      rowsNormalized: valueRows.length,
+      matched: countByStatus(valueRows, "matched"),
+      unmatched: countByStatus(valueRows, "unmatched"),
+      ambiguous: countByStatus(valueRows, "ambiguous"),
+      ignored: countByStatus(valueRows, "ignored"),
+      duplicatesSkipped: parsedInput.duplicatesSkipped,
+      warnings: countIssues(valueRows, "warning"),
+      errors: countIssues(valueRows, "error"),
+      outputFiles: {
+        valuesFile: sourceValuesFile,
+        reviewFile,
+      },
+    },
   };
-
-  console.log(JSON.stringify(summary, null, 2));
 }
 
-main().catch((error: unknown) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+
+  if (!args) {
+    console.error(getUsage());
+    process.exitCode = 1;
+    return;
+  }
+
+  const { source, seasonYear } = args;
+  const inputFilename = `${source}-${seasonYear}.csv`;
+  const inputFile = path.join(INPUT_DIR, inputFilename);
+  const sourceValuesFile = `${OUTPUT_DIR}/${source}-${seasonYear}.json`;
+  const reviewFile = `${OUTPUT_DIR}/${source}-${seasonYear}-review.json`;
+
+  await mkdir(INPUT_DIR, { recursive: true });
+  await mkdir(OUTPUT_DIR, { recursive: true });
+
+  if (!existsSync(inputFile)) {
+    console.log(
+      `No matching export CSV found for ${getSourceDisplayName(source)} ${seasonYear}.\nPlace export CSV at ${inputFile}`
+    );
+    return;
+  }
+
+  const text = await readFile(inputFile, "utf8");
+  const result = await importAuctionSourceExportText({
+    source,
+    seasonYear,
+    sourceFilename: inputFilename,
+    text,
+    inputFile,
+    sourceValuesFile,
+    reviewFile,
+    writeFiles: true,
+  });
+
+  console.log(JSON.stringify(result.summary, null, 2));
+}
+
+if (process.argv[1]?.endsWith("auction-import-source-export.ts")) {
+  main().catch((error: unknown) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}

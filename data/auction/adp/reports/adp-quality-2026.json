@@ -1,0 +1,41 @@
+{
+  "generatedAt": "2026-07-14T19:43:06.303Z",
+  "season": 2026,
+  "sources": [
+    {
+      "sourceKey": "fantasypros-adp",
+      "sourceName": "FantasyPros ADP",
+      "rows": 406,
+      "matched": 404,
+      "unmatched": 2,
+      "warnings": 2,
+      "errors": 0
+    },
+    {
+      "sourceKey": "rotowire-adp",
+      "sourceName": "RotoWire ADP",
+      "rows": 546,
+      "matched": 539,
+      "unmatched": 7,
+      "warnings": 7,
+      "errors": 0
+    }
+  ],
+  "consensus": {
+    "players": 555,
+    "sourceValues": 952,
+    "skippedSourceValues": 9,
+    "demandTiers": {
+      "ELITE": 92,
+      "VERY HIGH": 80,
+      "HIGH": 69,
+      "MEDIUM": 82,
+      "LOW": 128,
+      "VERY LOW": 104
+    },
+    "warnings": {
+      "ADP sources disagree widely.": 129,
+      "Only one ADP source supports this player.": 167
+    }
+  }
+}

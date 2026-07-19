@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-05T20:15:05.861Z",
+  "generatedAt": "2026-07-14T17:55:06.978Z",
   "sourceKey": "lineupexperts",
   "seasonYear": 2026,
   "inputDirectory": "data/auction/source-imports/exports",
@@ -19,7 +19,7 @@
       "sourceFilename": "lineupexperts-2026.csv",
       "sourceSheetName": null,
       "sourceUrl": null,
-      "importedAt": "2026-07-05T20:15:05.861Z",
+      "importedAt": "2026-07-14T17:55:06.978Z",
       "importedBy": null,
       "adapterVersion": "source-export-v1",
       "status": "matched",
@@ -88,7 +88,7 @@
         "raw:lineupexpertsplayer": "Puka Nacua",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-3",
@@ -142,7 +142,7 @@
         "raw:lineupexpertsplayer": "Ja'Marr Chase",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-4",
@@ -196,7 +196,7 @@
         "raw:lineupexpertsplayer": "Jahmyr Gibbs",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-5",
@@ -250,7 +250,7 @@
         "raw:lineupexpertsplayer": "Josh Allen",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-6",
@@ -304,7 +304,7 @@
         "raw:lineupexpertsplayer": "Jaxon Smith-Njigba",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-7",
@@ -358,7 +358,7 @@
         "raw:lineupexpertsplayer": "Bijan Robinson",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-8",
@@ -412,7 +412,7 @@
         "raw:lineupexpertsplayer": "Amon-Ra St. Brown",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-9",
@@ -466,7 +466,7 @@
         "raw:lineupexpertsplayer": "Justin Jefferson",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-10",
@@ -520,7 +520,7 @@
         "raw:lineupexpertsplayer": "Drake London",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-11",
@@ -574,7 +574,7 @@
         "raw:lineupexpertsplayer": "CeeDee Lamb",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-12",
@@ -628,7 +628,7 @@
         "raw:lineupexpertsplayer": "Christian McCaffrey",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-13",
@@ -682,7 +682,7 @@
         "raw:lineupexpertsplayer": "Drake Maye",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-14",
@@ -736,7 +736,7 @@
         "raw:lineupexpertsplayer": "Jonathan Taylor",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-15",
@@ -790,7 +790,7 @@
         "raw:lineupexpertsplayer": "A.J. Brown",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-16",
@@ -844,7 +844,7 @@
         "raw:lineupexpertsplayer": "Rashee Rice",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-17",
@@ -898,7 +898,7 @@
         "raw:lineupexpertsplayer": "George Pickens",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-18",
@@ -952,7 +952,7 @@
         "raw:lineupexpertsplayer": "Chris Olave",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-19",
@@ -1006,7 +1006,7 @@
         "raw:lineupexpertsplayer": "Trey McBride",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-20",
@@ -1060,7 +1060,7 @@
         "raw:lineupexpertsplayer": "Devon Achane",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-21",
@@ -1114,7 +1114,7 @@
         "raw:lineupexpertsplayer": "Brock Bowers",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-22",
@@ -1168,7 +1168,7 @@
         "raw:lineupexpertsplayer": "Lamar Jackson",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-23",
@@ -1222,7 +1222,7 @@
         "raw:lineupexpertsplayer": "Nico Collins",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-24",
@@ -1276,7 +1276,7 @@
         "raw:lineupexpertsplayer": "Joe Burrow",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-25",
@@ -1330,7 +1330,7 @@
         "raw:lineupexpertsplayer": "DeVonta Smith",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-26",
@@ -1384,7 +1384,7 @@
         "raw:lineupexpertsplayer": "Saquon Barkley",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-27",
@@ -1438,7 +1438,7 @@
         "raw:lineupexpertsplayer": "Jalen Hurts",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-28",
@@ -1492,7 +1492,7 @@
         "raw:lineupexpertsplayer": "Malik Nabers",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-29",
@@ -1546,7 +1546,7 @@
         "raw:lineupexpertsplayer": "Tee Higgins",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-30",
@@ -1600,7 +1600,7 @@
         "raw:lineupexpertsplayer": "Jayden Daniels",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-31",
@@ -1654,7 +1654,7 @@
         "raw:lineupexpertsplayer": "James Cook",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-32",
@@ -1708,7 +1708,7 @@
         "raw:lineupexpertsplayer": "Ashton Jeanty",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-33",
@@ -1762,7 +1762,7 @@
         "raw:lineupexpertsplayer": "Zay Flowers",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-34",
@@ -1816,7 +1816,7 @@
         "raw:lineupexpertsplayer": "Derrick Henry",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-35",
@@ -1870,7 +1870,7 @@
         "raw:lineupexpertsplayer": "Dak Prescott",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-36",
@@ -1924,7 +1924,7 @@
         "raw:lineupexpertsplayer": "Garrett Wilson",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-37",
@@ -1978,7 +1978,7 @@
         "raw:lineupexpertsplayer": "Kenneth Walker III",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-38",
@@ -2032,7 +2032,7 @@
         "raw:lineupexpertsplayer": "Colston Loveland",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-39",
@@ -2086,7 +2086,7 @@
         "raw:lineupexpertsplayer": "Tetairoa McMillan",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-40",
@@ -2140,7 +2140,7 @@
         "raw:lineupexpertsplayer": "Davante Adams",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-41",
@@ -2194,7 +2194,7 @@
         "raw:lineupexpertsplayer": "Chase Brown",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-42",
@@ -2248,7 +2248,7 @@
         "raw:lineupexpertsplayer": "Emeka Egbuka",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-43",
@@ -2302,7 +2302,7 @@
         "raw:lineupexpertsplayer": "Justin Herbert",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-44",
@@ -2356,7 +2356,7 @@
         "raw:lineupexpertsplayer": "Omarion Hampton",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-45",
@@ -2410,7 +2410,7 @@
         "raw:lineupexpertsplayer": "Jeremiyah Love",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-46",
@@ -2464,7 +2464,7 @@
         "raw:lineupexpertsplayer": "Ladd McConkey",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-47",
@@ -2518,7 +2518,7 @@
         "raw:lineupexpertsplayer": "Jameson Williams",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-48",
@@ -2572,7 +2572,7 @@
         "raw:lineupexpertsplayer": "Kyren Williams",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-49",
@@ -2626,7 +2626,7 @@
         "raw:lineupexpertsplayer": "D.J. Moore",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-50",
@@ -2680,7 +2680,7 @@
         "raw:lineupexpertsplayer": "Tyler Warren",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-51",
@@ -2734,7 +2734,7 @@
         "raw:lineupexpertsplayer": "Christian Watson",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-52",
@@ -2788,7 +2788,7 @@
         "raw:lineupexpertsplayer": "Rome Odunze",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-53",
@@ -2842,7 +2842,7 @@
         "raw:lineupexpertsplayer": "Cam Skattebo",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-54",
@@ -2896,7 +2896,7 @@
         "raw:lineupexpertsplayer": "Josh Jacobs",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-55",
@@ -2950,7 +2950,7 @@
         "raw:lineupexpertsplayer": "Jaxson Dart",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-56",
@@ -3004,7 +3004,7 @@
         "raw:lineupexpertsplayer": "Javonte Williams",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-57",
@@ -3058,7 +3058,7 @@
         "raw:lineupexpertsplayer": "Terry McLaurin",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-58",
@@ -3112,7 +3112,7 @@
         "raw:lineupexpertsplayer": "Breece Hall",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-59",
@@ -3166,7 +3166,7 @@
         "raw:lineupexpertsplayer": "Jaylen Waddle",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-60",
@@ -3220,7 +3220,7 @@
         "raw:lineupexpertsplayer": "Caleb Williams",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-61",
@@ -3274,7 +3274,7 @@
         "raw:lineupexpertsplayer": "Luther Burden III",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-62",
@@ -3328,7 +3328,7 @@
         "raw:lineupexpertsplayer": "D'Andre Swift",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-63",
@@ -3382,7 +3382,7 @@
         "raw:lineupexpertsplayer": "Harold Fannin Jr.",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-64",
@@ -3436,7 +3436,7 @@
         "raw:lineupexpertsplayer": "Alec Pierce",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-65",
@@ -3490,7 +3490,7 @@
         "raw:lineupexpertsplayer": "Kyle Pitts",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-66",
@@ -3544,7 +3544,7 @@
         "raw:lineupexpertsplayer": "Brock Purdy",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-67",
@@ -3598,7 +3598,7 @@
         "raw:lineupexpertsplayer": "Marvin Harrison Jr.",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-68",
@@ -3652,7 +3652,7 @@
         "raw:lineupexpertsplayer": "Tucker Kraft",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-69",
@@ -3706,7 +3706,7 @@
         "raw:lineupexpertsplayer": "Courtland Sutton",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-70",
@@ -3760,7 +3760,7 @@
         "raw:lineupexpertsplayer": "Sam LaPorta",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-71",
@@ -3814,7 +3814,7 @@
         "raw:lineupexpertsplayer": "Mike Evans",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-72",
@@ -3868,7 +3868,7 @@
         "raw:lineupexpertsplayer": "Mark Andrews",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-73",
@@ -3922,7 +3922,7 @@
         "raw:lineupexpertsplayer": "Brian Thomas Jr.",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-74",
@@ -3976,7 +3976,7 @@
         "raw:lineupexpertsplayer": "Dalton Kincaid",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-75",
@@ -4030,7 +4030,7 @@
         "raw:lineupexpertsplayer": "Wan'Dale Robinson",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-76",
@@ -4084,7 +4084,7 @@
         "raw:lineupexpertsplayer": "Michael Wilson",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-77",
@@ -4138,7 +4138,7 @@
         "raw:lineupexpertsplayer": "Michael Pittman Jr.",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-78",
@@ -4192,7 +4192,7 @@
         "raw:lineupexpertsplayer": "Bucky Irving",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-79",
@@ -4246,7 +4246,7 @@
         "raw:lineupexpertsplayer": "Trevor Lawrence",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-80",
@@ -4300,7 +4300,7 @@
         "raw:lineupexpertsplayer": "Parker Washington",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-81",
@@ -4354,7 +4354,7 @@
         "raw:lineupexpertsplayer": "Carnell Tate",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-82",
@@ -4408,7 +4408,7 @@
         "raw:lineupexpertsplayer": "George Kittle",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-83",
@@ -4462,7 +4462,7 @@
         "raw:lineupexpertsplayer": "Jared Goff",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-84",
@@ -4516,7 +4516,7 @@
         "raw:lineupexpertsplayer": "Quinshon Judkins",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-85",
@@ -4570,7 +4570,7 @@
         "raw:lineupexpertsplayer": "Travis Etienne",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-86",
@@ -4624,7 +4624,7 @@
         "raw:lineupexpertsplayer": "Matthew Stafford",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-87",
@@ -4678,7 +4678,7 @@
         "raw:lineupexpertsplayer": "Patrick Mahomes",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-88",
@@ -4732,7 +4732,7 @@
         "raw:lineupexpertsplayer": "Dallas Goedert",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-89",
@@ -4786,7 +4786,7 @@
         "raw:lineupexpertsplayer": "D.K. Metcalf",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-90",
@@ -4840,7 +4840,7 @@
         "raw:lineupexpertsplayer": "Jake Ferguson",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-91",
@@ -4894,7 +4894,7 @@
         "raw:lineupexpertsplayer": "Travis Kelce",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-92",
@@ -4948,7 +4948,7 @@
         "raw:lineupexpertsplayer": "Chris Godwin",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-93",
@@ -5002,7 +5002,7 @@
         "raw:lineupexpertsplayer": "Jordyn Tyson",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-94",
@@ -5056,7 +5056,7 @@
         "raw:lineupexpertsplayer": "Isaiah Likely",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-95",
@@ -5110,7 +5110,7 @@
         "raw:lineupexpertsplayer": "Brenton Strange",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-96",
@@ -5164,7 +5164,7 @@
         "raw:lineupexpertsplayer": "Jordan Addison",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-97",
@@ -5218,7 +5218,7 @@
         "raw:lineupexpertsplayer": "Xavier Worthy",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-98",
@@ -5272,7 +5272,7 @@
         "raw:lineupexpertsplayer": "Ricky Pearsall",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-99",
@@ -5326,7 +5326,7 @@
         "raw:lineupexpertsplayer": "Jayden Reed",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-100",
@@ -5380,7 +5380,7 @@
         "raw:lineupexpertsplayer": "Jordan Love",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-101",
@@ -5434,7 +5434,7 @@
         "raw:lineupexpertsplayer": "Quentin Johnston",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-102",
@@ -5488,7 +5488,7 @@
         "raw:lineupexpertsplayer": "Juwan Johnson",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-103",
@@ -5542,7 +5542,7 @@
         "raw:lineupexpertsplayer": "Josh Downs",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-104",
@@ -5596,7 +5596,7 @@
         "raw:lineupexpertsplayer": "Bo Nix",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-105",
@@ -5650,7 +5650,7 @@
         "raw:lineupexpertsplayer": "TreVeyon Henderson",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-106",
@@ -5704,7 +5704,7 @@
         "raw:lineupexpertsplayer": "Romeo Doubs",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-107",
@@ -5758,7 +5758,7 @@
         "raw:lineupexpertsplayer": "David Montgomery",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-108",
@@ -5812,7 +5812,7 @@
         "raw:lineupexpertsplayer": "Tyler Shough",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-109",
@@ -5866,7 +5866,7 @@
         "raw:lineupexpertsplayer": "Bhayshul Tuten",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-110",
@@ -5920,7 +5920,7 @@
         "raw:lineupexpertsplayer": "Makai Lemon",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-111",
@@ -5974,7 +5974,7 @@
         "raw:lineupexpertsplayer": "Jakobi Meyers",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-112",
@@ -6028,7 +6028,7 @@
         "raw:lineupexpertsplayer": "Khalil Shakir",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-113",
@@ -6082,7 +6082,7 @@
         "raw:lineupexpertsplayer": "Greg Dulcich",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-114",
@@ -6136,7 +6136,7 @@
         "raw:lineupexpertsplayer": "Rashid Shaheed",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-115",
@@ -6190,7 +6190,7 @@
         "raw:lineupexpertsplayer": "Terrance Ferguson",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-116",
@@ -6244,7 +6244,7 @@
         "raw:lineupexpertsplayer": "J.K. Dobbins",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-117",
@@ -6298,7 +6298,7 @@
         "raw:lineupexpertsplayer": "Jalen Coker",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-118",
@@ -6352,7 +6352,7 @@
         "raw:lineupexpertsplayer": "AJ Barner",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-119",
@@ -6406,7 +6406,7 @@
         "raw:lineupexpertsplayer": "Jerry Jeudy",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-120",
@@ -6460,7 +6460,7 @@
         "raw:lineupexpertsplayer": "Chuba Hubbard",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-121",
@@ -6514,7 +6514,7 @@
         "raw:lineupexpertsplayer": "Jaylen Warren",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-122",
@@ -6568,7 +6568,7 @@
         "raw:lineupexpertsplayer": "Calvin Ridley",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-123",
@@ -6622,7 +6622,7 @@
         "raw:lineupexpertsplayer": "Oronde Gadsden II",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-124",
@@ -6676,7 +6676,7 @@
         "raw:lineupexpertsplayer": "Tony Pollard",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-125",
@@ -6730,7 +6730,7 @@
         "raw:lineupexpertsplayer": "Matthew Golden",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-126",
@@ -6784,7 +6784,7 @@
         "raw:lineupexpertsplayer": "Chigoziem Okonkwo",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-127",
@@ -6838,7 +6838,7 @@
         "raw:lineupexpertsplayer": "Kenyon Sadiq",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-128",
@@ -6892,7 +6892,7 @@
         "raw:lineupexpertsplayer": "Rico Dowdle",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-129",
@@ -6946,7 +6946,7 @@
         "raw:lineupexpertsplayer": "T.J. Hockenson",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-130",
@@ -7000,7 +7000,7 @@
         "raw:lineupexpertsplayer": "Dalton Schultz",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-131",
@@ -7054,7 +7054,7 @@
         "raw:lineupexpertsplayer": "Jadarian Price",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-132",
@@ -7108,7 +7108,7 @@
         "raw:lineupexpertsplayer": "Hunter Henry",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-133",
@@ -7162,7 +7162,7 @@
         "raw:lineupexpertsplayer": "Theo Wease Jr.",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-134",
@@ -7216,7 +7216,7 @@
         "raw:lineupexpertsplayer": "Pat Freiermuth",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-135",
@@ -7270,7 +7270,7 @@
         "raw:lineupexpertsplayer": "KC Concepcion",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-136",
@@ -7324,7 +7324,7 @@
         "raw:lineupexpertsplayer": "Cade Otton",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-137",
@@ -7378,7 +7378,7 @@
         "raw:lineupexpertsplayer": "Rashod Bateman",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-138",
@@ -7432,7 +7432,7 @@
         "raw:lineupexpertsplayer": "Malik Willis",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-139",
@@ -7486,7 +7486,7 @@
         "raw:lineupexpertsplayer": "Jalen McMillan",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-140",
@@ -7540,7 +7540,7 @@
         "raw:lineupexpertsplayer": "Jayden Higgins",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-141",
@@ -7594,7 +7594,7 @@
         "raw:lineupexpertsplayer": "Michael Mayer",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-142",
@@ -7648,7 +7648,7 @@
         "raw:lineupexpertsplayer": "Jalen Nailor",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-143",
@@ -7702,7 +7702,7 @@
         "raw:lineupexpertsplayer": "Aaron Jones",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-144",
@@ -7756,7 +7756,7 @@
         "raw:lineupexpertsplayer": "Colby Parkinson",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-145",
@@ -7810,7 +7810,7 @@
         "raw:lineupexpertsplayer": "Rachaad White",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-146",
@@ -7864,7 +7864,7 @@
         "raw:lineupexpertsplayer": "Mason Taylor",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-147",
@@ -7918,7 +7918,7 @@
         "raw:lineupexpertsplayer": "Evan Engram",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-148",
@@ -7972,7 +7972,7 @@
         "raw:lineupexpertsplayer": "Jauan Jennings",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-149",
@@ -8026,7 +8026,7 @@
         "raw:lineupexpertsplayer": "Baker Mayfield",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-150",
@@ -8080,7 +8080,7 @@
         "raw:lineupexpertsplayer": "David Njoku",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-151",
@@ -8134,7 +8134,7 @@
         "raw:lineupexpertsplayer": "Kyle Monangai",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-152",
@@ -8188,7 +8188,7 @@
         "raw:lineupexpertsplayer": "Gunnar Helm",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-153",
@@ -8242,7 +8242,7 @@
         "raw:lineupexpertsplayer": "Mike Gesicki",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-154",
@@ -8296,7 +8296,7 @@
         "raw:lineupexpertsplayer": "Kyler Murray",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-155",
@@ -8350,7 +8350,7 @@
         "raw:lineupexpertsplayer": "John Metchie",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-156",
@@ -8404,7 +8404,7 @@
         "raw:lineupexpertsplayer": "Tank Dell",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-157",
@@ -8458,7 +8458,7 @@
         "raw:lineupexpertsplayer": "Tre Tucker",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-158",
@@ -8512,7 +8512,7 @@
         "raw:lineupexpertsplayer": "RJ Harvey",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-159",
@@ -8566,7 +8566,7 @@
         "raw:lineupexpertsplayer": "Rhamondre Stevenson",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-160",
@@ -8620,7 +8620,7 @@
         "raw:lineupexpertsplayer": "Jacory Croskey-Merritt",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-161",
@@ -8674,7 +8674,7 @@
         "raw:lineupexpertsplayer": "C.J. Stroud",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-162",
@@ -8728,7 +8728,7 @@
         "raw:lineupexpertsplayer": "Kenneth Gainwell",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-163",
@@ -8782,7 +8782,7 @@
         "raw:lineupexpertsplayer": "Sam Darnold",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-164",
@@ -8836,7 +8836,7 @@
         "raw:lineupexpertsplayer": "Jonathon Brooks",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-165",
@@ -8890,7 +8890,7 @@
         "raw:lineupexpertsplayer": "Jordan Mason",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-166",
@@ -8944,7 +8944,7 @@
         "raw:lineupexpertsplayer": "Zach Charbonnet",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-167",
@@ -8998,7 +8998,7 @@
         "raw:lineupexpertsplayer": "Blake Corum",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-168",
@@ -9052,7 +9052,7 @@
         "raw:lineupexpertsplayer": "Bryce Young",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-169",
@@ -9106,7 +9106,7 @@
         "raw:lineupexpertsplayer": "Daniel Jones",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-170",
@@ -9160,7 +9160,7 @@
         "raw:lineupexpertsplayer": "New England Patriots D/ST",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-171",
@@ -9214,7 +9214,7 @@
         "raw:lineupexpertsplayer": "Tyler Loop",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-172",
@@ -9268,7 +9268,7 @@
         "raw:lineupexpertsplayer": "Cameron Dicker",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-173",
@@ -9322,7 +9322,7 @@
         "raw:lineupexpertsplayer": "Ka'imi Fairbairn",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-174",
@@ -9376,7 +9376,7 @@
         "raw:lineupexpertsplayer": "Cam Little",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-175",
@@ -9430,7 +9430,7 @@
         "raw:lineupexpertsplayer": "Houston Texans D/ST",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-176",
@@ -9484,7 +9484,7 @@
         "raw:lineupexpertsplayer": "Jason Myers",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-177",
@@ -9538,7 +9538,7 @@
         "raw:lineupexpertsplayer": "Seattle Seahawks D/ST",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-178",
@@ -9592,7 +9592,7 @@
         "raw:lineupexpertsplayer": "Brandon Aubrey",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-179",
@@ -9646,7 +9646,7 @@
         "raw:lineupexpertsplayer": "Cleveland Browns D/ST",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-180",
@@ -9700,7 +9700,7 @@
         "raw:lineupexpertsplayer": "Denver Broncos D/ST",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-181",
@@ -9754,7 +9754,7 @@
         "raw:lineupexpertsplayer": "Baltimore Ravens D/ST",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-182",
@@ -9808,7 +9808,7 @@
         "raw:lineupexpertsplayer": "Detroit Lions D/ST",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-183",
@@ -9862,7 +9862,7 @@
         "raw:lineupexpertsplayer": "Pittsburgh Steelers D/ST",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-184",
@@ -9916,7 +9916,7 @@
         "raw:lineupexpertsplayer": "Tyler Bass",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-185",
@@ -9970,7 +9970,7 @@
         "raw:lineupexpertsplayer": "New Orleans Saints D/ST",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-186",
@@ -10024,7 +10024,7 @@
         "raw:lineupexpertsplayer": "Minnesota Vikings D/ST",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-187",
@@ -10078,7 +10078,7 @@
         "raw:lineupexpertsplayer": "Evan McPherson",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-188",
@@ -10132,7 +10132,7 @@
         "raw:lineupexpertsplayer": "Chase McLaughlin",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-189",
@@ -10186,7 +10186,7 @@
         "raw:lineupexpertsplayer": "Jake Bates",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-190",
@@ -10240,7 +10240,7 @@
         "raw:lineupexpertsplayer": "Eddy Pineiro",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-191",
@@ -10294,7 +10294,7 @@
         "raw:lineupexpertsplayer": "Philadelphia Eagles D/ST",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-192",
@@ -10348,7 +10348,7 @@
         "raw:lineupexpertsplayer": "Blake Grupe",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-193",
@@ -10402,7 +10402,7 @@
         "raw:lineupexpertsplayer": "Los Angeles Rams D/ST",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-194",
@@ -10456,7 +10456,7 @@
         "raw:lineupexpertsplayer": "Ja'Tavion Sanders",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-195",
@@ -10510,7 +10510,7 @@
         "raw:lineupexpertsplayer": "Will Reichard",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-196",
@@ -10564,7 +10564,7 @@
         "raw:lineupexpertsplayer": "Nick Folk",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-197",
@@ -10618,7 +10618,7 @@
         "raw:lineupexpertsplayer": "Jason Sanders",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-198",
@@ -10672,7 +10672,7 @@
         "raw:lineupexpertsplayer": "Tyrone Tracy Jr.",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-199",
@@ -10726,7 +10726,7 @@
         "raw:lineupexpertsplayer": "Buffalo Bills D/ST",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-200",
@@ -10780,7 +10780,7 @@
         "raw:lineupexpertsplayer": "Zane Gonzalez",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-201",
@@ -10834,7 +10834,7 @@
         "raw:lineupexpertsplayer": "Cairo Santos",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-202",
@@ -10888,7 +10888,7 @@
         "raw:lineupexpertsplayer": "Theo Johnson",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-203",
@@ -10942,7 +10942,7 @@
         "raw:lineupexpertsplayer": "Woody Marks",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-204",
@@ -10996,7 +10996,7 @@
         "raw:lineupexpertsplayer": "Alvin Kamara",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-205",
@@ -11050,7 +11050,7 @@
         "raw:lineupexpertsplayer": "Darnell Washington",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-206",
@@ -11104,7 +11104,7 @@
         "raw:lineupexpertsplayer": "Geno Smith",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-207",
@@ -11158,7 +11158,7 @@
         "raw:lineupexpertsplayer": "Tyler Higbee",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-208",
@@ -11212,7 +11212,7 @@
         "raw:lineupexpertsplayer": "Harrison Mevis",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-209",
@@ -11266,7 +11266,7 @@
         "raw:lineupexpertsplayer": "Harrison Butker",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-210",
@@ -11320,7 +11320,7 @@
         "raw:lineupexpertsplayer": "Charlie Smyth",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-211",
@@ -11374,7 +11374,7 @@
         "raw:lineupexpertsplayer": "Denzel Boston",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-212",
@@ -11428,7 +11428,7 @@
         "raw:lineupexpertsplayer": "Dawson Knox",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-213",
@@ -11482,7 +11482,7 @@
         "raw:lineupexpertsplayer": "Tyjae Spears",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-214",
@@ -11536,7 +11536,7 @@
         "raw:lineupexpertsplayer": "Cooper Kupp",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-215",
@@ -11590,7 +11590,7 @@
         "raw:lineupexpertsplayer": "Cam Ward",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-216",
@@ -11644,7 +11644,7 @@
         "raw:lineupexpertsplayer": "Isiah Pacheco",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-217",
@@ -11698,7 +11698,7 @@
         "raw:lineupexpertsplayer": "Wil Lutz",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-218",
@@ -11752,7 +11752,7 @@
         "raw:lineupexpertsplayer": "Tommy Tremble",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-219",
@@ -11806,7 +11806,7 @@
         "raw:lineupexpertsplayer": "Antonio Williams",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-220",
@@ -11860,7 +11860,7 @@
         "raw:lineupexpertsplayer": "Aaron Rodgers",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-221",
@@ -11914,7 +11914,7 @@
         "raw:lineupexpertsplayer": "Tory Horton",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-222",
@@ -11968,7 +11968,7 @@
         "raw:lineupexpertsplayer": "Darnell Mooney",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-223",
@@ -12022,7 +12022,7 @@
         "raw:lineupexpertsplayer": "Ty Johnson",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-224",
@@ -12076,7 +12076,7 @@
         "raw:lineupexpertsplayer": "Bub Means",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-225",
@@ -12130,7 +12130,7 @@
         "raw:lineupexpertsplayer": "Malik Washington",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-226",
@@ -12184,7 +12184,7 @@
         "raw:lineupexpertsplayer": "Darius Slayton",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-227",
@@ -12238,7 +12238,7 @@
         "raw:lineupexpertsplayer": "Omar Cooper Jr.",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-228",
@@ -12292,7 +12292,7 @@
         "raw:lineupexpertsplayer": "AJ Dillon",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-229",
@@ -12346,7 +12346,7 @@
         "raw:lineupexpertsplayer": "Brian Robinson",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-230",
@@ -12400,7 +12400,7 @@
         "raw:lineupexpertsplayer": "Dylan Sampson",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-231",
@@ -12454,7 +12454,7 @@
         "raw:lineupexpertsplayer": "Jordan James",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-232",
@@ -12508,7 +12508,7 @@
         "raw:lineupexpertsplayer": "Samaje Perine",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-233",
@@ -12562,7 +12562,7 @@
         "raw:lineupexpertsplayer": "Braelon Allen",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-234",
@@ -12616,7 +12616,7 @@
         "raw:lineupexpertsplayer": "Christian Kirk",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-235",
@@ -12670,7 +12670,7 @@
         "raw:lineupexpertsplayer": "Germie Bernard",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-236",
@@ -12724,7 +12724,7 @@
         "raw:lineupexpertsplayer": "Chris Rodriguez",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-237",
@@ -12778,7 +12778,7 @@
         "raw:lineupexpertsplayer": "Jacoby Brissett",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-238",
@@ -12832,7 +12832,7 @@
         "raw:lineupexpertsplayer": "Green Bay Packers D/ST",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-239",
@@ -12886,7 +12886,7 @@
         "raw:lineupexpertsplayer": "Adonai Mitchell",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-240",
@@ -12940,7 +12940,7 @@
         "raw:lineupexpertsplayer": "Travis Hunter",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-241",
@@ -12994,7 +12994,7 @@
         "raw:lineupexpertsplayer": "Tyler Allgeier",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-242",
@@ -13048,7 +13048,7 @@
         "raw:lineupexpertsplayer": "Cole Kmet",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     },
     {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-243",
@@ -13102,7 +13102,7 @@
         "raw:lineupexpertsplayer": "Justice Hill",
         "raw:lineupexpertsheaderrow": "1"
       },
-      "importedAt": "2026-07-05T20:15:05.861Z"
+      "importedAt": "2026-07-14T17:55:06.978Z"
     }
   ]
 }
