@@ -506,6 +506,20 @@ export async function POST(req: Request) {
               additionalNotes: ownerSettings.additionalNotes,
             }
           : null,
+        liveStrategy: ownerSettings?.liveDraftStrategy
+          ? {
+              riskMode: ownerSettings.liveDraftStrategy.riskMode,
+              priorityPositions:
+                ownerSettings.liveDraftStrategy.priorityPositions,
+              deemphasizedPositions:
+                ownerSettings.liveDraftStrategy.deemphasizedPositions,
+              minimumBudgetReserve:
+                ownerSettings.liveDraftStrategy.minimumBudgetReserve,
+              opponentFocus: ownerSettings.liveDraftStrategy.opponentFocus,
+              additionalInstructions:
+                ownerSettings.liveDraftStrategy.additionalInstructions,
+            }
+          : null,
       };
       const coachResult = buildDraftCoachResponse(coachContextWithOwnerSettings);
 

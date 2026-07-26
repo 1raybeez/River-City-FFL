@@ -38,6 +38,7 @@ import {
   X,
 } from 'lucide-react';
 import { ModeToggle } from '@/components/ModeToggle';
+import { PlayerDetailDrawer } from './PlayerDetailDrawer';
 import { activeManagers } from '@/lib/managers/activeManagers';
 import {
   mockAuctionTeams,
@@ -66,6 +67,23 @@ import {
 } from '@/lib/auction/ownerPreferenceTypes';
 import type { AuctionOwnerProfileSettings } from '@/lib/auction/ownerProfileSettingsTypes';
 import type { AuctionAccessResult } from '@/lib/auction/ownerProfiles';
+import {
+  auctionLiveStrategyPositions,
+  parseConversationalLiveStrategyUpdate,
+  validateAuctionLiveDraftStrategyInput,
+  type AuctionLiveDraftStrategy,
+  type AuctionLiveStrategyPosition,
+} from '@/lib/auction/liveDraftStrategy';
+import {
+  rankOpponentPressurePositions,
+  resolveAuctionOpponent,
+  selectAvailableOpponentRecommendations,
+  type AuctionOpponentCandidate,
+} from '@/lib/auction/opponentStrategy';
+import {
+  buildSoldPlayerState,
+  suppressSoldPlayerLiveWarnings,
+} from '@/lib/auction/soldPlayerState';
 import type { AuctionPurchaseDecisionSnapshot } from '@/lib/auction/purchaseDecisionTypes';
 import {
   calculateAuctionInflationState,
@@ -534,7 +552,10 @@ type LocalAdvisorChatQuestionId =
   | 'bye-risk'
   | 'best-values';
 type LocalAdvisorPlayerIntent = 'lookup' | 'max-bid' | 'bid' | 'nominate';
-type LocalAdvisorChatSourceLabel = 'Protected local API' | 'Local fallback';
+type LocalAdvisorChatSourceLabel =
+  | 'Protected local API'
+  | 'Local fallback'
+  | 'Player-locked local advisor';
 
 type LocalAdvisorChatMessage = {
   id: string;
@@ -568,7 +589,11 @@ type DraftCoachChatMessage = DraftCoachResult & {
   question: string;
   answer: string;
   timestamp: string;
-  sourceLabel: 'Protected local coach' | 'Local coach fallback';
+  sourceLabel:
+    | 'Protected local coach'
+    | 'Local coach fallback'
+    | 'Player-locked local coach'
+    | 'Live strategy update';
 };
 
 const localPlayerValues2025 = playerValues2025 as ProcessedPlayerValuesFile;
@@ -1049,6 +1074,80 @@ function formatWarRoomTerminology(text: string) {
     .replace(/\bopening bid\b/gi, 'preferred entry');
 }
 
+type CoachQuestionDisplayIntent =
+  | 'alternatives'
+  | 'budget-impact'
+  | 'nominate'
+  | 'price-check'
+  | 'maximum'
+  | 'bid';
+
+function getCoachQuestionDisplayIntent(
+  questionText: string
+): CoachQuestionDisplayIntent {
+  const normalizedQuestion = normalizePlayerMatchValue(questionText);
+
+  if (
+    /\b(alternative|alternatives|instead|similar|comparable)\b/.test(
+      normalizedQuestion
+    ) ||
+    normalizedQuestion.includes('who else') ||
+    normalizedQuestion.includes('other options')
+  ) {
+    return 'alternatives';
+  }
+
+  if (
+    normalizedQuestion.includes('remaining budget') ||
+    normalizedQuestion.includes('affect my budget') ||
+    normalizedQuestion.includes('budget impact')
+  ) {
+    return 'budget-impact';
+  }
+
+  if (normalizedQuestion.includes('nominate')) return 'nominate';
+  if (/\$\s*\d+/.test(questionText)) return 'price-check';
+
+  if (
+    normalizedQuestion.includes('highest') ||
+    normalizedQuestion.includes('recommended max') ||
+    normalizedQuestion.includes('max bid') ||
+    normalizedQuestion.includes('ceiling')
+  ) {
+    return 'maximum';
+  }
+
+  return 'bid';
+}
+
+function getCoachActionAmountLabel(questionText: string) {
+  const intent = getCoachQuestionDisplayIntent(questionText);
+
+  if (intent === 'alternatives') return 'Top Alternative Max';
+  if (intent === 'budget-impact') return 'Assumed Purchase Price';
+  if (intent === 'nominate') return 'Comfortable Winning Up To';
+  if (intent === 'maximum' || intent === 'price-check') {
+    return 'Recommended Max';
+  }
+
+  return 'Suggested Next Bid';
+}
+
+function cleanCoachIntelSummary(items: readonly string[]) {
+  return items
+    .map((item) =>
+      item.replace(
+        /^Recent River City value is /i,
+        'Historical River City value-sheet estimate is '
+      )
+    )
+    .filter(
+      (item) =>
+        !/likely sale is N\/A/i.test(item) &&
+        !/Expected Sale is not available yet/i.test(item)
+    );
+}
+
 function formatPurchaseDecisionSnapshotLine(
   snapshot: AuctionPurchaseDecisionSnapshot | null | undefined
 ) {
@@ -1268,8 +1367,12 @@ function normalizeFilterValue(value: string | null | undefined) {
 
 function normalizePlayerMatchValue(value: string | null | undefined) {
   return normalizeFilterValue(value)
-    .replace(/[.'’]/g, '')
-    .replace(/\s+/g, ' ');
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/['’`]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function normalizePositionValue(value: string | null | undefined) {
@@ -1804,9 +1907,9 @@ function deriveCurrentAiCeiling({
       reasons:
         legalMax === null
           ? []
-          : [`No AI ceiling signal is available; Legal Max remains ${formatMoney(legalMax)}.`],
+          : [`No Live Context Ceiling signal is available; Legal Max remains ${formatMoney(legalMax)}.`],
       warnings: [],
-      detail: 'No player-specific AI ceiling signal is available.',
+      detail: 'No player-specific Live Context Ceiling signal is available.',
     };
   }
 
@@ -1859,7 +1962,7 @@ function deriveCurrentAiCeiling({
 
   if ((confidenceScore ?? 100) < 60) {
     lift = Math.max(0, lift - 1);
-    warnings.push('AI ceiling lift was limited by lower confidence.');
+    warnings.push('Live Context Ceiling lift was limited by lower confidence.');
   }
 
   const strategicLiftLimit = preferenceTags.includes('target') ? 5 : 3;
@@ -1878,13 +1981,13 @@ function deriveCurrentAiCeiling({
       marketValue ?? baseCeiling
     );
     ceiling = Math.min(ceiling, fadeLimit);
-    warnings.push('Fade tag keeps the AI ceiling at value-only territory.');
+    warnings.push('Fade tag keeps the Live Context Ceiling at value-only territory.');
   }
 
   if (kDefStrategyMax !== null) {
     ceiling = Math.min(ceiling, kDefStrategyMax);
     reasons.push(
-      `${normalizedPosition} strategy cap keeps the AI ceiling at ${formatMoney(kDefStrategyMax)}.`
+      `${normalizedPosition} strategy cap keeps the Live Context Ceiling at ${formatMoney(kDefStrategyMax)}.`
     );
   }
 
@@ -1894,7 +1997,7 @@ function deriveCurrentAiCeiling({
   }
 
   if (currentBid !== null && currentBid > ceiling) {
-    warnings.push('Current bid is above the Current AI Ceiling.');
+    warnings.push('Current bid is above the Live Context Ceiling.');
   }
 
   return {
@@ -2052,6 +2155,172 @@ function getDraftIntelligenceContextualRecommendation(
   if (recommendation === 'DO NOT BID') return 'PASS';
   if (recommendation === 'LAST BID') return 'WAIT';
   return recommendation;
+}
+
+type KeeperMarketStatus =
+  | 'under-market'
+  | 'at-market'
+  | 'over-market'
+  | 'price-missing'
+  | 'no-market-match';
+
+type KeeperValueAuditRow = {
+  keeper: AuctionWarRoomPurchaseRow;
+  playerValue: ProcessedPlayerValueRow | null;
+  marketValue: number | null;
+  keeperCost: number | null;
+  difference: number | null;
+  differencePercent: number | null;
+  status: KeeperMarketStatus;
+  sourceCount: number | null;
+  confidenceScore: number | null;
+  adp: GeneratedAdpConsensusRow | null;
+};
+
+function roundKeeperMoney(amount: number) {
+  return Math.round(amount * 100) / 100;
+}
+
+function buildKeeperValueAuditRow(
+  keeper: AuctionWarRoomPurchaseRow
+): KeeperValueAuditRow {
+  const playerValue = findPlayerValueRowForPurchase(keeper);
+  const rawMarketValue = playerValue?.averageValue;
+  const marketValue =
+    typeof rawMarketValue === 'number' &&
+    Number.isFinite(rawMarketValue) &&
+    rawMarketValue > 0
+      ? roundKeeperMoney(rawMarketValue)
+      : null;
+  const keeperCost =
+    keeper.priceStatus === 'missing' ? null : roundKeeperMoney(keeper.purchasePrice);
+
+  if (keeperCost === null) {
+    return {
+      keeper,
+      playerValue,
+      marketValue,
+      keeperCost,
+      difference: null,
+      differencePercent: null,
+      status: 'price-missing',
+      sourceCount: playerValue?.sourceCount ?? null,
+      confidenceScore: playerValue?.confidenceScore ?? null,
+      adp: getAdpForPlayer(playerValue),
+    };
+  }
+
+  if (marketValue === null) {
+    return {
+      keeper,
+      playerValue,
+      marketValue,
+      keeperCost,
+      difference: null,
+      differencePercent: null,
+      status: 'no-market-match',
+      sourceCount: playerValue?.sourceCount ?? null,
+      confidenceScore: playerValue?.confidenceScore ?? null,
+      adp: getAdpForPlayer(playerValue),
+    };
+  }
+
+  const difference = roundKeeperMoney(marketValue - keeperCost);
+  const differencePercent = roundKeeperMoney((difference / marketValue) * 100);
+  const threshold = Math.max(1, marketValue * 0.08);
+  const status: KeeperMarketStatus =
+    difference >= threshold
+      ? 'under-market'
+      : difference <= -threshold
+        ? 'over-market'
+        : 'at-market';
+
+  return {
+    keeper,
+    playerValue,
+    marketValue,
+    keeperCost,
+    difference,
+    differencePercent,
+    status,
+    sourceCount: playerValue?.sourceCount ?? null,
+    confidenceScore: playerValue?.confidenceScore ?? null,
+    adp: getAdpForPlayer(playerValue),
+  };
+}
+
+function getKeeperMarketStatusLabel(status: KeeperMarketStatus) {
+  if (status === 'under-market') return 'UNDER MARKET';
+  if (status === 'at-market') return 'AT MARKET';
+  if (status === 'over-market') return 'OVER MARKET';
+  if (status === 'price-missing') return 'PRICE MISSING';
+  return 'NO MARKET MATCH';
+}
+
+function getKeeperMarketStatusClass(status: KeeperMarketStatus) {
+  if (status === 'under-market') {
+    return 'border-emerald-600/20 bg-emerald-600/10 text-emerald-700 dark:text-emerald-300';
+  }
+
+  if (status === 'at-market') {
+    return 'border-blue-600/20 bg-blue-600/10 text-blue-700 dark:text-blue-300';
+  }
+
+  if (status === 'over-market') {
+    return 'border-rose-600/20 bg-rose-600/10 text-rose-700 dark:text-rose-300';
+  }
+
+  if (status === 'price-missing') {
+    return 'border-orange-600/20 bg-orange-600/10 text-orange-700 dark:text-orange-300';
+  }
+
+  return 'border-yellow-600/20 bg-yellow-600/10 text-yellow-700 dark:text-yellow-300';
+}
+
+function getKeeperDifferenceLabel(status: KeeperMarketStatus) {
+  if (status === 'under-market') return 'Keeper Surplus';
+  if (status === 'over-market') return 'Keeper Premium';
+  return 'Difference';
+}
+
+function formatKeeperDifferenceAmount(row: KeeperValueAuditRow) {
+  if (row.difference === null) return 'N/A';
+  const absoluteDifference = Math.abs(row.difference);
+
+  if (row.status === 'under-market' || row.status === 'over-market') {
+    return `+${formatMoney(absoluteDifference)}`;
+  }
+
+  return formatMoney(absoluteDifference);
+}
+
+function formatKeeperMarketComparison(row: KeeperValueAuditRow) {
+  if (row.status === 'price-missing') return 'Keeper price is missing.';
+  if (row.status === 'no-market-match') {
+    return 'No published 2026 Market Value match was found.';
+  }
+
+  const percent = Math.abs(row.differencePercent ?? 0);
+  const formattedPercent = Number.isInteger(percent)
+    ? String(percent)
+    : percent.toFixed(1);
+
+  if (row.status === 'under-market') {
+    return `${formattedPercent}% below market`;
+  }
+
+  if (row.status === 'over-market') {
+    return `${formattedPercent}% above market`;
+  }
+
+  if (percent === 0) return 'At published Market Value';
+  return `Within ${formattedPercent}% of market`;
+}
+
+function formatKeeperNetValue(amount: number) {
+  if (amount > 0) return `+${formatMoney(amount)}`;
+  if (amount < 0) return `-${formatMoney(Math.abs(amount))}`;
+  return '$0';
 }
 
 type PurchaseValueResult = 'bargain' | 'fair' | 'overpay';
@@ -2714,8 +2983,10 @@ function getManualSalePriceValue(input: string) {
   const trimmedInput = input.trim();
   if (!trimmedInput) return null;
 
+  if (!/^\d+$/.test(trimmedInput)) return null;
+
   const price = Number(trimmedInput);
-  return Number.isFinite(price) && price >= 0 ? price : null;
+  return Number.isSafeInteger(price) && price >= 1 ? price : null;
 }
 
 function parseDraftPlanDollarInput(input: string, label: string) {
@@ -2993,7 +3264,7 @@ function getLocalAdvisorChatQuestionLabel(questionId: LocalAdvisorChatQuestionId
 function formatAdvisorTarget(
   player: ReturnType<typeof buildAuctionAdvisorSummary>['bestValueOpportunities'][number]
 ) {
-  return `${player.playerName} (${player.position ?? 'N/A'} ${player.nflTeam ?? 'N/A'}) | avg ${formatMoney(player.averageValue)} | rec ${formatMoney(player.recommendedMaxBid)} | ${player.reason}`;
+  return `${player.playerName} (${player.position ?? 'N/A'} ${player.nflTeam ?? 'N/A'}) | avg ${formatMoney(player.averageValue)} | recommended max ${formatMoney(player.recommendedMaxBid)} | ${player.reason}`;
 }
 
 function buildLocalAdvisorChatAnswer(
@@ -3270,6 +3541,27 @@ function readApiStringArray(value: unknown) {
     : [];
 }
 
+function containsDemoLanguage(...values: unknown[]) {
+  const text = values
+    .flatMap((value) => {
+      if (typeof value === 'string') return [value];
+      if (Array.isArray(value)) {
+        return value.filter((item): item is string => typeof item === 'string');
+      }
+      if (value && typeof value === 'object') {
+        try {
+          return [JSON.stringify(value)];
+        } catch {
+          return [];
+        }
+      }
+      return [];
+    })
+    .join(' ');
+
+  return /\bdemo\b/i.test(text);
+}
+
 function isDraftCoachDecision(value: unknown): value is DraftCoachDecision {
   return (
     value === 'BID' ||
@@ -3327,6 +3619,21 @@ function readDraftCoachSpendGuidance(
       Number.isFinite(spendGuidance.mustReserve)
         ? spendGuidance.mustReserve
         : fallback.mustReserve,
+    rosterMinimumReserve:
+      typeof spendGuidance.rosterMinimumReserve === 'number' &&
+      Number.isFinite(spendGuidance.rosterMinimumReserve)
+        ? spendGuidance.rosterMinimumReserve
+        : fallback.rosterMinimumReserve,
+    strategicReserve:
+      typeof spendGuidance.strategicReserve === 'number' &&
+      Number.isFinite(spendGuidance.strategicReserve)
+        ? spendGuidance.strategicReserve
+        : fallback.strategicReserve,
+    effectiveReserve:
+      typeof spendGuidance.effectiveReserve === 'number' &&
+      Number.isFinite(spendGuidance.effectiveReserve)
+        ? spendGuidance.effectiveReserve
+        : fallback.effectiveReserve,
   };
 }
 
@@ -3342,6 +3649,18 @@ function buildProtectedApiChatAnswer(
 
   if (!summary || !recommendation) {
     throw new Error('Protected Advisor API returned an incomplete answer.');
+  }
+
+  if (
+    containsDemoLanguage(
+      summary,
+      recommendation,
+      payload.reasons,
+      payload.warnings,
+      payload.contextSummary
+    )
+  ) {
+    throw new Error('Protected Advisor API returned demo-labelled context.');
   }
 
   return {
@@ -3361,6 +3680,24 @@ function buildDraftCoachChatAnswer(
   payload: AdvisorChatApiResponse,
   fallback: DraftCoachResult
 ): Omit<DraftCoachChatMessage, 'id' | 'question' | 'timestamp'> {
+  if (
+    containsDemoLanguage(
+      payload.answer,
+      payload.buddyMessage,
+      payload.intelSummary,
+      payload.riskGuidance,
+      payload.reasons,
+      payload.warnings,
+      payload.contextSummary
+    )
+  ) {
+    return {
+      ...fallback,
+      answer: fallback.buddyMessage,
+      sourceLabel: 'Local coach fallback',
+    };
+  }
+
   const decision = isDraftCoachDecision(payload.recommendation)
     ? payload.recommendation
     : fallback.decision;
@@ -3600,6 +3937,7 @@ export default function AuctionWarRoomClient({
     useState<HistoryAuditFilter>('all');
   const [selectedPlayerRowNumber, setSelectedPlayerRowNumber] =
     useState<number | null>(null);
+  const [isPlayerDetailDrawerOpen, setIsPlayerDetailDrawerOpen] = useState(false);
   const [draftPlanPreferencesByPlayerId, setDraftPlanPreferencesByPlayerId] =
     useState<DraftPlanPreferenceMap>(() =>
       buildDraftPlanPreferenceMap(initialOwnerPreferences ?? [])
@@ -3649,6 +3987,51 @@ export default function AuctionWarRoomClient({
   const [draftCoachChatError, setDraftCoachChatError] =
     useState<string | null>(null);
   const [isDraftCoachOpen, setIsDraftCoachOpen] = useState(false);
+  const [liveDraftStrategy, setLiveDraftStrategy] =
+    useState<AuctionLiveDraftStrategy | null>(
+      initialOwnerSettings?.liveDraftStrategy ?? null
+    );
+  const [liveStrategyRiskMode, setLiveStrategyRiskMode] = useState<
+    'conservative' | 'balanced' | 'aggressive'
+  >(
+    initialOwnerSettings?.liveDraftStrategy?.riskMode ??
+      initialOwnerSettings?.riskTolerance ??
+      'balanced'
+  );
+  const [liveStrategyPriorityPositions, setLiveStrategyPriorityPositions] =
+    useState<AuctionLiveStrategyPosition[]>(
+      initialOwnerSettings?.liveDraftStrategy?.priorityPositions ?? []
+    );
+  const [
+    liveStrategyDeemphasizedPositions,
+    setLiveStrategyDeemphasizedPositions,
+  ] = useState<AuctionLiveStrategyPosition[]>(
+    initialOwnerSettings?.liveDraftStrategy?.deemphasizedPositions ?? []
+  );
+  const [liveStrategyMinimumReserve, setLiveStrategyMinimumReserve] = useState(
+    initialOwnerSettings?.liveDraftStrategy?.minimumBudgetReserve === null ||
+      initialOwnerSettings?.liveDraftStrategy?.minimumBudgetReserve ===
+        undefined
+      ? ''
+      : String(
+          initialOwnerSettings.liveDraftStrategy.minimumBudgetReserve
+        )
+  );
+  const [liveStrategyOpponentFocus, setLiveStrategyOpponentFocus] = useState(
+    initialOwnerSettings?.liveDraftStrategy?.opponentFocus ?? ''
+  );
+  const [
+    liveStrategyAdditionalInstructions,
+    setLiveStrategyAdditionalInstructions,
+  ] = useState(
+    initialOwnerSettings?.liveDraftStrategy?.additionalInstructions ?? ''
+  );
+  const [liveStrategySaveStatus, setLiveStrategySaveStatus] = useState<
+    'idle' | 'saving' | 'saved' | 'error'
+  >('idle');
+  const [liveStrategyError, setLiveStrategyError] = useState<string | null>(
+    null
+  );
   const [manualAuctionSales, setManualAuctionSales] = useState<ManualAuctionSale[]>([]);
   const guidanceTeam =
     getTeamByRosterId(access.sleeperRosterId) ?? defaultGuidanceTeam;
@@ -3661,7 +4044,9 @@ export default function AuctionWarRoomClient({
   const [manualSaleHighlightedMatchIndex, setManualSaleHighlightedMatchIndex] =
     useState(0);
   const [manualSalePriceInput, setManualSalePriceInput] = useState('');
-  const [manualSaleBuyerTeamId, setManualSaleBuyerTeamId] = useState<string>(
+  const [manualSaleBuyerTeamId, setManualSaleBuyerTeamId] = useState<
+    AuctionTeamId | ''
+  >(
     guidanceTeam?.id ?? mockAuctionTeams[0]?.id ?? ''
   );
   const [manualSaleError, setManualSaleError] = useState<string | null>(null);
@@ -3701,6 +4086,12 @@ export default function AuctionWarRoomClient({
   const draftBoardTitle = formatDraftBoardTitle(ownerBoardTeamName);
   const ownerIdentityLabel = access.ownerDisplayName ?? access.ownerProfileLabel;
   const ownerSettingsSummary = getOwnerSettingsSummary(initialOwnerSettings);
+  const canEditLiveStrategy = Boolean(
+    access.ownerProfileId &&
+      (access.role === 'commissioner' ||
+        access.role === 'co-commissioner' ||
+        access.role === 'pilot-owner')
+  );
 
   useEffect(() => {
     if (
@@ -3786,7 +4177,7 @@ export default function AuctionWarRoomClient({
     [manualSaleSelectedPlayerRowNumber]
   );
   const manualSalePriceValue = getManualSalePriceValue(manualSalePriceInput);
-  const manualSaleBuyerTeam = getTeam(manualSaleBuyerTeamId as AuctionTeamId);
+  const manualSaleBuyerTeam = getTeam(manualSaleBuyerTeamId || null);
   const isManualSalePriceValid = manualSalePriceValue !== null;
   const manualSalePlayerAlreadyTaken = manualSaleSelectedPlayer
     ? getPlayerPoolPurchaseMatch(manualSaleSelectedPlayer, activePurchaseRows)
@@ -3812,7 +4203,7 @@ export default function AuctionWarRoomClient({
       : !manualSaleSelectedPlayer
       ? 'Use the master search or My Board to select a player before finishing a sale.'
       : !isManualSalePriceValid
-        ? 'Enter a valid non-negative sale price.'
+        ? 'Enter a whole-dollar sale price of at least $1.'
         : !manualSaleBuyerTeam
           ? 'Choose a buying team.'
           : manualSalePlayerAlreadyTaken
@@ -4472,6 +4863,33 @@ export default function AuctionWarRoomClient({
             : null,
         })
       : null;
+  const selectedPlayerSoldState = selectedPlayerPurchaseMatch
+    ? buildSoldPlayerState({
+        isKeeper:
+          selectedPlayerPurchaseMatch.source === 'sleeper-keeper' ||
+          selectedPlayerPurchaseMatch.isKeeper === true,
+        teamName:
+          getTeam(selectedPlayerPurchaseMatch.teamId)?.teamName ??
+          `Roster ${selectedPlayerPurchaseMatch.rosterId ?? 'N/A'}`,
+        managerName:
+          getTeam(selectedPlayerPurchaseMatch.teamId)?.managerName ?? null,
+        price:
+          selectedPlayerPurchaseMatch.priceStatus === 'missing'
+            ? null
+            : selectedPlayerPurchaseMatch.purchasePrice,
+        sourceLabel: formatPurchaseSourceLabel(
+          selectedPlayerPurchaseMatch.source
+        ),
+        marketValue:
+          currentNominationDraftIntelligence?.marketValue ??
+          selectedPlayer?.averageValue ??
+          null,
+        expectedSale:
+          currentNominationDraftIntelligence?.predictedWinningBid ?? null,
+        recommendationCeiling:
+          selectedPlayerRecommendation?.recommendedMaxBid ?? null,
+      })
+    : null;
   const currentNominationSoldReason = selectedPlayerPurchaseMatch
     ? `${selectedPlayerPurchaseMatch.playerName} is already marked sold via ${formatPurchaseSourceLabel(selectedPlayerPurchaseMatch.source)}.`
     : null;
@@ -4480,7 +4898,6 @@ export default function AuctionWarRoomClient({
     selectedPlayer?.averageValue ??
     null;
   const selectedPlayerHistoricalOwnerMaxBid =
-    currentNominationDraftIntelligence?.ownerMaxBid ??
     currentNominationBaselineMaxBid;
   const selectedPlayerHistoricalPricing = calculateHistoricalPricing({
     selectedPlayer: selectedPlayer
@@ -4863,14 +5280,14 @@ export default function AuctionWarRoomClient({
             currentNominationLegalMaxBid
           )
         : currentNominationAcceptedLiveOverrideValue
-      : currentNominationCurrentAiCeiling.ceiling;
+      : currentNominationBaselineMaxBid;
   const currentNominationActionableCeilingLabel = formatMoney(
     currentNominationActionableCeiling
   );
   const currentNominationActionableCeilingDetail =
     currentNominationAcceptedLiveOverrideValue !== null
       ? `Live Override ${formatMoney(currentNominationAcceptedLiveOverrideValue)}${currentNominationLegalMaxBid !== null ? ` | Legal Max ${formatMoney(currentNominationLegalMaxBid)}` : ''}`
-      : currentNominationCurrentAiCeiling.detail;
+      : `Recommended Max ${formatMoney(currentNominationBaselineMaxBid)} is the primary ceiling. Live Context Ceiling ${formatMoney(currentNominationCurrentAiCeiling.ceiling)} is advanced context only.`;
   const currentNominationBaseRecommendation =
     currentNominationManualBidValue !== null
       ? currentNominationDraftIntelligence?.recommendation ??
@@ -4892,12 +5309,12 @@ export default function AuctionWarRoomClient({
     currentNominationManualBidValue > selectedPlayerSavedPlannedCap &&
     currentNominationActionableCeiling !== null &&
     currentNominationManualBidValue <= currentNominationActionableCeiling
-      ? 'Current bid is above Planned Cap, but live context still supports the AI ceiling.'
+      ? 'Current bid is above Planned Cap but remains within Recommended Max.'
       : null,
     currentNominationLiveOverrideResult.error,
     currentNominationLiveOverrideExceedsAi &&
     !draftPlanLiveOverrideAboveAiConfirmed
-      ? 'Confirm Live Override to bid above the Current AI Ceiling.'
+      ? 'Confirm Live Override to bid above the Live Context Ceiling.'
       : null,
     currentNominationAcceptedLiveOverrideValue !== null &&
     currentNominationLegalMaxBid !== null &&
@@ -4905,22 +5322,28 @@ export default function AuctionWarRoomClient({
       ? 'Live Override is above Legal Max, so Legal Max remains the final ceiling.'
       : null,
   ].filter((warning): warning is string => Boolean(warning));
-  const currentNominationReasons = [
-    currentNominationSoldReason,
-    ...(currentNominationDraftIntelligence?.reasons ?? []),
-    ...currentNominationCurrentAiCeiling.reasons,
-  ].filter((reason): reason is string => Boolean(reason));
-  const currentNominationWarnings = [
-    ...currentNominationPlanWarnings,
-    ...currentNominationCurrentAiCeiling.warnings,
-    ...(currentNominationDraftIntelligence?.warnings ?? []),
-  ];
+  const currentNominationReasons = selectedPlayerSoldState
+    ? [currentNominationSoldReason].filter(
+        (reason): reason is string => Boolean(reason)
+      )
+    : [
+        ...(currentNominationDraftIntelligence?.reasons ?? []),
+        ...currentNominationCurrentAiCeiling.reasons,
+      ].filter((reason): reason is string => Boolean(reason));
+  const currentNominationWarnings = suppressSoldPlayerLiveWarnings(
+    selectedPlayerSoldState,
+    [
+      ...currentNominationPlanWarnings,
+      ...currentNominationCurrentAiCeiling.warnings,
+      ...(currentNominationDraftIntelligence?.warnings ?? []),
+    ]
+  );
   const draftCoachBudgetTerminologyReasons = [
-    currentNominationDraftIntelligence
-      ? `Recommended Max is ${formatMoney(currentNominationDraftIntelligence.ownerMaxBid)}.`
+    selectedPlayerRecommendation
+      ? `Recommended Max is ${formatMoney(selectedPlayerRecommendation.recommendedMaxBid)}.`
       : null,
     currentNominationCurrentAiCeiling.ceiling !== null
-      ? `Current AI Ceiling is ${formatMoney(currentNominationCurrentAiCeiling.ceiling)}.`
+      ? `Live Context Ceiling is ${formatMoney(currentNominationCurrentAiCeiling.ceiling)}.`
       : null,
     selectedPlayerSavedPlannedCap !== null
       ? `Saved Planned Cap is ${formatMoney(selectedPlayerSavedPlannedCap)}.`
@@ -4940,9 +5363,9 @@ export default function AuctionWarRoomClient({
       : null,
   ].filter((reason): reason is string => Boolean(reason));
   const currentNominationValueGap =
-    currentNominationDraftIntelligence &&
+    selectedPlayerRecommendation &&
     currentNominationManualBidValue !== null
-      ? currentNominationDraftIntelligence.ownerMaxBid -
+      ? selectedPlayerRecommendation.recommendedMaxBid -
         currentNominationManualBidValue
       : null;
   const currentNominationBidCeilingState = getBidCeilingState(
@@ -5173,6 +5596,7 @@ export default function AuctionWarRoomClient({
   };
   const selectManualSalePlayer = (player: ProcessedPlayerValueRow) => {
     setSelectedPlayerRowNumber(player.rowNumber);
+    setIsPlayerDetailDrawerOpen(true);
     setManualSaleSelectedPlayerRowNumber(player.rowNumber);
     setPlayerPoolSearch(player.originalPlayerName);
     setManualSalePlayerSearchOpen(false);
@@ -5187,6 +5611,9 @@ export default function AuctionWarRoomClient({
     setManualSalePlayerSearchOpen(false);
     setManualSaleHighlightedMatchIndex(0);
     setManualSaleError(null);
+  };
+  const closePlayerDetailDrawer = () => {
+    setIsPlayerDetailDrawerOpen(false);
   };
   const clearManualSalePlayerAndFocus = () => {
     clearManualSalePlayer();
@@ -5297,12 +5724,7 @@ export default function AuctionWarRoomClient({
           player?.averageValue ??
           null
         : player?.averageValue ?? null;
-    const recommendedMax =
-      isCurrentNomination
-        ? currentNominationDraftIntelligence?.ownerMaxBid ??
-          recommendation?.recommendedMaxBid ??
-          null
-        : recommendation?.recommendedMaxBid ?? null;
+    const recommendedMax = recommendation?.recommendedMaxBid ?? null;
     const currentAiCeiling =
       isCurrentNomination ? currentNominationCurrentAiCeiling.ceiling : null;
     const liveOverride =
@@ -5378,10 +5800,19 @@ export default function AuctionWarRoomClient({
     selectedPlayer?.rowNumber,
   ]);
 
-  const recordManualSale = () => {
-    const player = manualSaleSelectedPlayer;
-    const team = manualSaleBuyerTeam;
-    const salePrice = manualSalePriceValue;
+  const recordManualSale = ({
+    player,
+    buyerTeamId,
+    priceInput,
+    keepPlayerSelected,
+  }: {
+    player: ProcessedPlayerValueRow | null;
+    buyerTeamId: AuctionTeamId | '';
+    priceInput: string;
+    keepPlayerSelected: boolean;
+  }) => {
+    const team = getTeam(buyerTeamId || null);
+    const salePrice = getManualSalePriceValue(priceInput);
 
     if (!access.canRecordSales) {
       setManualSaleError('Manual sale controls are commissioner-only.');
@@ -5394,7 +5825,7 @@ export default function AuctionWarRoomClient({
     }
 
     if (salePrice === null) {
-      setManualSaleError('Enter a valid non-negative sale price.');
+      setManualSaleError('Enter a whole-dollar sale price of at least $1.');
       return;
     }
 
@@ -5420,7 +5851,7 @@ export default function AuctionWarRoomClient({
       matchedSleeperName: player.matchedSleeperName ?? null,
       position: player.position ?? null,
       nflTeam: player.nflTeam ?? null,
-      salePrice: Math.max(0, Math.round(salePrice)),
+      salePrice,
       teamId: team.id,
       rosterId: team.rosterId,
       teamName: team.teamName,
@@ -5440,12 +5871,14 @@ export default function AuctionWarRoomClient({
         purchasedAt: sale.recordedAt,
       })
     );
-    clearManualSalePlayer();
-    setManualSalePriceInput('');
+    if (!keepPlayerSelected) {
+      clearManualSalePlayer();
+      setManualSalePriceInput('');
+      focusManualSalePlayerSearch();
+    }
     setManualSaleError(null);
     setManualSaleConfirmation(sale);
     setSelectedPlayerRowNumber(player.rowNumber);
-    focusManualSalePlayerSearch();
   };
   const undoLastManualSale = () => {
     if (latestUndoableManualSale === null) return;
@@ -5656,19 +6089,103 @@ export default function AuctionWarRoomClient({
       budgetStatus: row.budgetIsIncomplete ? 'INCOMPLETE' : 'COMPLETE',
     };
   });
+  const keeperValueAuditRows = keeperPurchaseRows.map(buildKeeperValueAuditRow);
+  const keeperAuditReviewedRows = keeperValueAuditRows.filter(
+    (row) =>
+      row.status === 'under-market' ||
+      row.status === 'at-market' ||
+      row.status === 'over-market'
+  );
+  const keeperAuditTotalPricedCost = roundKeeperMoney(
+    keeperValueAuditRows.reduce(
+      (sum, row) => sum + (row.keeperCost ?? 0),
+      0
+    )
+  );
+  const keeperAuditReviewedCost = roundKeeperMoney(
+    keeperAuditReviewedRows.reduce(
+      (sum, row) => sum + (row.keeperCost ?? 0),
+      0
+    )
+  );
+  const keeperAuditReviewedMarketValue = roundKeeperMoney(
+    keeperAuditReviewedRows.reduce(
+      (sum, row) => sum + (row.marketValue ?? 0),
+      0
+    )
+  );
+  const keeperAuditNetValue = roundKeeperMoney(
+    keeperAuditReviewedMarketValue - keeperAuditReviewedCost
+  );
+  const keeperAuditUnderMarketCount = keeperValueAuditRows.filter(
+    (row) => row.status === 'under-market'
+  ).length;
+  const keeperAuditAtMarketCount = keeperValueAuditRows.filter(
+    (row) => row.status === 'at-market'
+  ).length;
+  const keeperAuditOverMarketCount = keeperValueAuditRows.filter(
+    (row) => row.status === 'over-market'
+  ).length;
+  const keeperAuditNoMarketMatchCount = keeperValueAuditRows.filter(
+    (row) => row.status === 'no-market-match'
+  ).length;
   const keeperReviewTeamRows = budgetRows
-    .map((row) => ({
-      team: row.team,
-      budgetIsIncomplete: row.budgetIsIncomplete,
-      keepers: keeperPurchaseRows
+    .map((row) => {
+      const keepers = keeperValueAuditRows
         .filter(
-          (purchase) =>
-            purchase.status === 'active' && purchase.teamId === row.team.id
+          (auditRow) =>
+            auditRow.keeper.status === 'active' &&
+            auditRow.keeper.teamId === row.team.id
         )
         .sort((firstKeeper, secondKeeper) =>
-          firstKeeper.playerName.localeCompare(secondKeeper.playerName)
-        ),
-    }))
+          firstKeeper.keeper.playerName.localeCompare(
+            secondKeeper.keeper.playerName
+          )
+        );
+      const reviewedKeepers = keepers.filter(
+        (auditRow) =>
+          auditRow.status === 'under-market' ||
+          auditRow.status === 'at-market' ||
+          auditRow.status === 'over-market'
+      );
+      const keeperCostTotal = roundKeeperMoney(
+        keepers.reduce((sum, auditRow) => sum + (auditRow.keeperCost ?? 0), 0)
+      );
+      const reviewedKeeperCostTotal = roundKeeperMoney(
+        reviewedKeepers.reduce(
+          (sum, auditRow) => sum + (auditRow.keeperCost ?? 0),
+          0
+        )
+      );
+      const marketValueTotal = roundKeeperMoney(
+        reviewedKeepers.reduce(
+          (sum, auditRow) => sum + (auditRow.marketValue ?? 0),
+          0
+        )
+      );
+      const netValue = roundKeeperMoney(
+        marketValueTotal - reviewedKeeperCostTotal
+      );
+
+      return {
+        team: row.team,
+        budgetIsIncomplete: row.budgetIsIncomplete,
+        keepers,
+        keeperCostTotal,
+        marketValueTotal,
+        netValue,
+        reviewedCount: reviewedKeepers.length,
+        underMarketCount: keepers.filter(
+          (auditRow) => auditRow.status === 'under-market'
+        ).length,
+        atMarketCount: keepers.filter(
+          (auditRow) => auditRow.status === 'at-market'
+        ).length,
+        overMarketCount: keepers.filter(
+          (auditRow) => auditRow.status === 'over-market'
+        ).length,
+      };
+    })
     .filter((row) => row.keepers.length > 0);
   const teamsWithIncompleteBudgets = budgetRows.filter(
     (row) => row.budgetIsIncomplete
@@ -5976,7 +6493,7 @@ export default function AuctionWarRoomClient({
       ? `Reserve ${formatMoney(strategyOpenRosterReserve)} for ${Math.max(0, guidanceBudgetRow.rosterSpotsRemaining - 1)} remaining roster spots.`
       : null,
     bestRemainingValueRows[0]
-      ? `${bestRemainingValueRows[0].player.originalPlayerName} is your highest-priority available target at REC ${formatMoney(bestRemainingValueRows[0].recommendation.recommendedMaxBid)}.`
+      ? `${bestRemainingValueRows[0].player.originalPlayerName} is your highest-priority available target at Recommended Max ${formatMoney(bestRemainingValueRows[0].recommendation.recommendedMaxBid)}.`
       : null,
     !isUsingSleeperPurchases
       ? 'Refresh Sleeper before the next nomination if a recent sale is missing.'
@@ -5999,6 +6516,300 @@ export default function AuctionWarRoomClient({
     purchaseSourceLabel,
     purchaseSourceDetail,
     rayKDefStrategyMessages,
+  };
+  const opponentCandidates: AuctionOpponentCandidate[] = activeManagers.map(
+    (manager) => ({
+      ownerId: manager.sleeperId,
+      ownerName: manager.fullName,
+      shortName: manager.shortName,
+      teamName: manager.teamName,
+    })
+  );
+  const getOpponentQuestionPosition = (
+    questionText: string,
+    matchedPlayer: ProcessedPlayerValueRow | null
+  ): IntelligencePosition | null => {
+    const normalizedQuestion = normalizePlayerMatchValue(questionText);
+    const positionAliases: Array<[IntelligencePosition, string[]]> = [
+      ['QB', ['qb', 'quarterback']],
+      ['RB', ['rb', 'running back']],
+      ['WR', ['wr', 'wide receiver', 'receiver']],
+      ['TE', ['te', 'tight end']],
+      ['K', ['kicker']],
+      ['DEF', ['def', 'dst', 'defense']],
+    ];
+    const explicitPosition =
+      positionAliases.find(([, aliases]) =>
+        aliases.some((alias) =>
+          ` ${normalizedQuestion} `.includes(` ${alias} `)
+        )
+      )?.[0] ?? null;
+
+    return explicitPosition ?? getIntelligencePosition(matchedPlayer?.position);
+  };
+  const buildOpponentDraftCoachContext = (
+    questionText: string,
+    matchedPlayer: ProcessedPlayerValueRow | null
+  ): DraftCoachInput['opponentContext'] => {
+    const resolution = resolveAuctionOpponent(
+      questionText,
+      opponentCandidates,
+      access.sleeperUserId
+    );
+
+    if (resolution.status === 'none') return null;
+    if (resolution.status === 'ambiguous') {
+      const names = resolution.candidates
+        .map((candidate) => candidate.ownerName)
+        .join(' or ');
+      return {
+        ownerName: names,
+        teamName: 'Ambiguous owner match',
+        remainingBudget: null,
+        legalMaxBid: null,
+        rosterSpotsRemaining: null,
+        positionCounts: {},
+        starterNeeds: [],
+        historicalAveragePurchase: null,
+        historicalBiggestPurchase: null,
+        historicalPositionPreferences: [],
+        purchaseTiming: null,
+        confidence: 'Low',
+        currentCompetitionSummary: null,
+        recommendedPlayerName: null,
+        recommendedMove: `Clarify whether you mean ${names}`,
+        whyItCouldWork:
+          'The Coach found more than one equally strong owner match and will not treat either profile as fact.',
+        nominationOnlyPressure: true,
+        alternatives: [
+          'Use the owner’s full name',
+          'Use the current team name',
+        ],
+        warnings: ['Opponent match is ambiguous; no tendency claim was used.'],
+      };
+    }
+
+    const opponent = resolution.candidate;
+    const budgetRow =
+      budgetRows.find((row) => row.team.managerId === opponent.ownerId) ?? null;
+    const tendency =
+      ownerTendencyIntel.profiles.find(
+        (profile) => profile.ownerId === opponent.ownerId
+      ) ?? null;
+    const positionCounts = budgetRow
+      ? getPositionCountsForTeam(budgetRow.team.id, activePurchaseRows)
+      : ({} as Record<string, number>);
+    const intelligence = budgetRow
+      ? teamIntelligenceById.get(budgetRow.team.id) ?? null
+      : null;
+    const starterNeeds =
+      intelligence?.needs
+        .filter((need) => need.needed > 0)
+        .map((need) => need.position) ?? [];
+    const historicalPositionPreferences =
+      tendency?.positionSpending
+        .filter(
+          (position) =>
+            position.percentOfOpenMarketSpend !== null &&
+            position.totalDollarsSpent > 0
+        )
+        .sort(
+          (first, second) =>
+            (second.percentOfOpenMarketSpend ?? 0) -
+            (first.percentOfOpenMarketSpend ?? 0)
+        )
+        .slice(0, 3)
+        .map(
+          (position) =>
+            `${position.position} ${Math.round((position.percentOfOpenMarketSpend ?? 0) * 100)}%`
+        ) ?? [];
+    const availableOpponentPlayers = localPlayerPoolRows
+      .filter(
+        (player) =>
+          isAvailablePlayerPoolStatus(
+            getPlayerPoolDisplayStatus(
+              player,
+              activePurchaseRows,
+              isUsingSleeperPurchases
+            )
+          )
+      )
+      .filter(
+        (player) =>
+          getPlayerPoolPurchaseMatch(player, activePurchaseRows) === null
+      );
+    const explicitQuestionPosition = getOpponentQuestionPosition(
+      questionText,
+      matchedPlayer
+    );
+    const rankedNeedPositions = rankOpponentPressurePositions(
+      rosterGuidancePositionOrder
+      .map((position, order) => {
+        const need =
+          intelligence?.needs.find((item) => item.position === position) ??
+          null;
+        const historical =
+          tendency?.positionSpending.find(
+            (item) => item.position === position
+          ) ?? null;
+        const availableCount = availableOpponentPlayers.filter(
+          (player) => getIntelligencePosition(player.position) === position
+        ).length;
+        const market = marketHeatRows.find(
+          (item) => item.position === position
+        );
+        return {
+          position,
+          needed: need?.needed ?? 0,
+          availableCount,
+          historicalSpendShare:
+            historical?.percentOfOpenMarketSpend ?? null,
+          marketHeat: market?.heatLabel ?? 'Normal',
+          order,
+        };
+      })
+    );
+    const selectedNeed = explicitQuestionPosition
+      ? rankedNeedPositions.find(
+          (position) => position.position === explicitQuestionPosition
+        ) ?? {
+          position: explicitQuestionPosition,
+          score: 0,
+          needed: 0,
+          availableCount: availableOpponentPlayers.filter(
+            (player) =>
+              getIntelligencePosition(player.position) ===
+              explicitQuestionPosition
+          ).length,
+          historicalSpendShare:
+            tendency?.positionSpending.find(
+              (position) => position.position === explicitQuestionPosition
+            )?.percentOfOpenMarketSpend ?? null,
+          marketHeat:
+            marketHeatRows.find(
+              (position) => position.position === explicitQuestionPosition
+            )?.heatLabel ?? 'Normal',
+          order: rosterGuidancePositionOrder.indexOf(explicitQuestionPosition),
+        }
+      : rankedNeedPositions[0] ?? null;
+    const questionPosition =
+      selectedNeed?.position ??
+      tendency?.positionSpending
+        .filter((position) => position.totalDollarsSpent > 0)
+        .sort(
+          (first, second) =>
+            (second.percentOfOpenMarketSpend ?? 0) -
+            (first.percentOfOpenMarketSpend ?? 0)
+        )[0]?.position ??
+      null;
+    const recommendedPlayers = selectAvailableOpponentRecommendations(
+      localPlayerPoolRows.map((player) => ({
+        value: player,
+        position: getIntelligencePosition(player.position),
+        marketValue: player.averageValue ?? null,
+        available:
+          isAvailablePlayerPoolStatus(
+            getPlayerPoolDisplayStatus(
+              player,
+              activePurchaseRows,
+              isUsingSleeperPurchases
+            )
+          ) && getPlayerPoolPurchaseMatch(player, activePurchaseRows) === null,
+      })),
+      questionPosition
+    );
+    const primaryPlayer = recommendedPlayers[0] ?? null;
+    const availableAlternatives = recommendedPlayers
+      .slice(1, 4)
+      .map(
+        (player) =>
+          `${player.originalPlayerName} (${player.position ?? 'N/A'}, Market ${formatMoney(player.averageValue ?? null)})`
+      );
+    const currentThreat =
+      currentNominationCompetitionContext?.threats.find(
+        (threat) => threat.ownerId === opponent.ownerId
+      ) ?? null;
+    const hasPositionNeed =
+      questionPosition !== null && starterNeeds.includes(questionPosition);
+    const historicalPosition = questionPosition
+      ? tendency?.positionSpending.find(
+          (position) => position.position === questionPosition
+        ) ?? null
+      : null;
+    const historicalSupport =
+      tendency?.confidence !== 'Low' &&
+      (historicalPosition?.percentOfOpenMarketSpend ?? 0) >= 0.2;
+    const nominationOnlyPressure =
+      /\b(without risk|without risking|stuck with|do not want|don't want|make .* overpay|bid up)\b/i.test(
+        questionText
+      );
+    const recommendationTarget =
+      matchedPlayer &&
+      getPlayerPoolPurchaseMatch(matchedPlayer, activePurchaseRows) === null
+        ? matchedPlayer.originalPlayerName
+        : primaryPlayer?.originalPlayerName ??
+          (questionPosition
+            ? `the next available upper-tier ${questionPosition}`
+            : 'a player matching the opponent’s strongest need');
+    const needSelectionReason = selectedNeed
+      ? `${selectedNeed.position} is the strongest pressure position: ${selectedNeed.needed} starter slot${selectedNeed.needed === 1 ? '' : 's'} open, ${selectedNeed.availableCount} viable alternatives remaining, ${selectedNeed.historicalSpendShare === null ? 'limited historical share data' : `${Math.round(selectedNeed.historicalSpendShare * 100)}% historical spend share`}, and a ${selectedNeed.marketHeat.toLowerCase()} current market.`
+      : 'No single open starter need clearly outranked the others, so historical spending preference breaks the tie.';
+    const supportReasons = [
+      hasPositionNeed
+        ? `${opponent.shortName ?? opponent.ownerName} still needs ${questionPosition}`
+        : null,
+      budgetRow && !budgetRow.budgetIsIncomplete
+        ? `has ${formatMoney(budgetRow.remainingBudget)} remaining`
+        : null,
+      historicalSupport
+        ? `historically directs ${Math.round((historicalPosition?.percentOfOpenMarketSpend ?? 0) * 100)}% of open-market spend to ${questionPosition}`
+        : null,
+    ].filter((reason): reason is string => Boolean(reason));
+
+    return {
+      ownerName: opponent.ownerName,
+      teamName: opponent.teamName,
+      remainingBudget:
+        budgetRow && !budgetRow.budgetIsIncomplete
+          ? budgetRow.remainingBudget
+          : null,
+      legalMaxBid:
+        budgetRow && !budgetRow.budgetIsIncomplete ? budgetRow.maxBid : null,
+      rosterSpotsRemaining: budgetRow?.rosterSpotsRemaining ?? null,
+      positionCounts,
+      starterNeeds,
+      historicalAveragePurchase:
+        tendency && tendency.openMarketPurchaseCount > 0
+          ? tendency.totalOpenMarketSpend / tendency.openMarketPurchaseCount
+          : null,
+      historicalBiggestPurchase: tendency?.highestPurchase?.salePrice ?? null,
+      historicalPositionPreferences,
+      purchaseTiming: tendency?.purchaseTiming.timingLabel ?? null,
+      confidence: tendency?.confidence ?? 'Low',
+      currentCompetitionSummary: currentThreat
+        ? `${currentThreat.threatLevel} threat: ${currentThreat.reasons.join(' ')}`
+        : null,
+      recommendedPlayerName:
+        matchedPlayer &&
+        getPlayerPoolPurchaseMatch(matchedPlayer, activePurchaseRows) === null
+          ? matchedPlayer.originalPlayerName
+          : primaryPlayer?.originalPlayerName ?? null,
+      recommendedMove: nominationOnlyPressure
+        ? `Nominate ${recommendationTarget}; do not open or continue the bidding`
+        : `Nominate ${recommendationTarget} and let willing bidders establish the price`,
+      whyItCouldWork:
+        supportReasons.length > 0
+          ? `${supportReasons.join(', ')}. ${needSelectionReason}`
+          : `The nomination tests ${opponent.ownerName}'s current budget and roster priorities, but the historical signal is limited.`,
+      nominationOnlyPressure,
+      alternatives: availableAlternatives,
+      warnings: [
+        ...(tendency?.cautions ?? []),
+        budgetRow?.budgetIsIncomplete
+          ? 'Opponent budget is incomplete because keeper pricing is incomplete.'
+          : null,
+      ].filter((warning): warning is string => Boolean(warning)),
+    };
   };
   const draftCoachContext: DraftCoachInput = {
     question: null,
@@ -6023,9 +6834,7 @@ export default function AuctionWarRoomClient({
       null,
     predictedWinningBid:
       currentNominationDraftIntelligence?.predictedWinningBid ?? null,
-    ownerMaxBid:
-      currentNominationDraftIntelligence?.ownerMaxBid ??
-      currentNominationBaselineMaxBid,
+    ownerMaxBid: currentNominationBaselineMaxBid,
     confidence: currentNominationDraftIntelligence?.confidence ?? null,
     confidenceScore:
       currentNominationDraftIntelligence?.confidenceScore ??
@@ -6159,8 +6968,634 @@ export default function AuctionWarRoomClient({
           additionalNotes: initialOwnerSettings.additionalNotes,
         }
       : null,
+    liveStrategy: liveDraftStrategy
+      ? {
+          riskMode: liveDraftStrategy.riskMode,
+          priorityPositions: liveDraftStrategy.priorityPositions,
+          deemphasizedPositions: liveDraftStrategy.deemphasizedPositions,
+          minimumBudgetReserve: liveDraftStrategy.minimumBudgetReserve,
+          opponentFocus: liveDraftStrategy.opponentFocus,
+          additionalInstructions: liveDraftStrategy.additionalInstructions,
+        }
+      : null,
+    opponentContext: null,
+    completedPurchase: selectedPlayerSoldState,
   };
   const draftCoachPreview = buildDraftCoachResponse(draftCoachContext);
+  const buildPlayerLockedDraftCoachContext = (
+    questionText: string,
+    matchedPlayerOverride: ProcessedPlayerValueRow | null = null
+  ): {
+    matchedPlayer: ProcessedPlayerValueRow | null;
+    context: DraftCoachInput;
+  } => {
+    const matchedPlayer =
+      matchedPlayerOverride ??
+      findLocalAdvisorPlayerMatch(questionText, localPlayerPoolRows);
+
+    if (!matchedPlayer) {
+      return {
+        matchedPlayer: null,
+        context: {
+          ...draftCoachContext,
+          question: questionText,
+          opponentContext: buildOpponentDraftCoachContext(questionText, null),
+        } satisfies DraftCoachInput,
+      };
+    }
+
+    const preferenceTags = getEffectivePreferenceTags(matchedPlayer);
+    const recommendation = getPlayerBidRecommendation(
+      matchedPlayer,
+      preferenceTags,
+      bidRecommendationContext
+    );
+    const status = getPlayerPoolDisplayStatus(
+      matchedPlayer,
+      activePurchaseRows,
+      isUsingSleeperPurchases
+    );
+    const matchedPurchase = getPlayerPoolPurchaseMatch(
+      matchedPlayer,
+      activePurchaseRows
+    );
+    const contextualRecommendation = getCurrentNominationRecommendation(
+      status,
+      recommendation,
+      null,
+      recommendation.recommendedMaxBid
+    );
+    const historicalPricing = calculateHistoricalPricing({
+      selectedPlayer: {
+        originalPlayerName: matchedPlayer.originalPlayerName,
+        matchedSleeperName: matchedPlayer.matchedSleeperName,
+        sleeperPlayerId: matchedPlayer.sleeperPlayerId,
+        position: matchedPlayer.position,
+      },
+      currentMarketValue: matchedPlayer.averageValue ?? null,
+      historicalDocuments: riverCityHistoricalPricingDocuments,
+    });
+    const matchedPosition = normalizePositionValue(matchedPlayer.position);
+    const matchedMarketValue = matchedPlayer.averageValue ?? null;
+    const meaningfulValueFloor =
+      matchedMarketValue === null
+        ? 1
+        : Math.max(1, Math.round(matchedMarketValue * 0.25));
+    const remainingAtPosition = localPlayerPoolRows.filter((player) => {
+      const playerStatus = getPlayerPoolDisplayStatus(
+        player,
+        activePurchaseRows,
+        isUsingSleeperPurchases
+      );
+      const playerMarketValue = player.averageValue ?? 0;
+
+      return (
+        normalizePositionValue(player.position) === matchedPosition &&
+        isAvailablePlayerPoolStatus(playerStatus) &&
+        playerMarketValue >= meaningfulValueFloor
+      );
+    }).length;
+    const isCurrentSelectedPlayer =
+      selectedPlayer?.rowNumber === matchedPlayer.rowNumber;
+    const matchedPredictedWinningBid = isCurrentSelectedPlayer
+      ? currentNominationDraftIntelligence?.predictedWinningBid ?? null
+      : null;
+    const matchedSoldState = matchedPurchase
+      ? buildSoldPlayerState({
+          isKeeper:
+            matchedPurchase.source === 'sleeper-keeper' ||
+            matchedPurchase.isKeeper === true,
+          teamName:
+            getTeam(matchedPurchase.teamId)?.teamName ??
+            `Roster ${matchedPurchase.rosterId ?? 'N/A'}`,
+          managerName:
+            getTeam(matchedPurchase.teamId)?.managerName ?? null,
+          price:
+            matchedPurchase.priceStatus === 'missing'
+              ? null
+              : matchedPurchase.purchasePrice,
+          sourceLabel: formatPurchaseSourceLabel(matchedPurchase.source),
+          marketValue: matchedPlayer.averageValue ?? null,
+          expectedSale: matchedPredictedWinningBid,
+          recommendationCeiling: recommendation.recommendedMaxBid,
+        })
+      : null;
+
+    return {
+      matchedPlayer,
+      context: {
+        ...draftCoachContext,
+        question: questionText,
+        opponentContext: buildOpponentDraftCoachContext(
+          questionText,
+          matchedPlayer
+        ),
+        completedPurchase: matchedSoldState,
+        selectedPlayer: {
+          playerName: matchedPlayer.originalPlayerName,
+          position: matchedPlayer.position ?? null,
+          nflTeam: matchedPlayer.nflTeam ?? null,
+          preference: getBidRecommendationPreference(preferenceTags),
+          rosterNeedLevel: getBidRecommendationNeedLevel(
+            matchedPlayer,
+            guidanceStarterNeeds,
+            guidanceBenchDepthNeeds
+          ),
+          status,
+        },
+        currentBid: null,
+        marketValue: matchedPlayer.averageValue ?? null,
+        predictedWinningBid: matchedPredictedWinningBid,
+        ownerMaxBid: recommendation.recommendedMaxBid,
+        confidence: recommendation.confidence,
+        confidenceScore: matchedPlayer.confidenceScore ?? null,
+        recommendation:
+          contextualRecommendation === 'DO NOT BID'
+            ? 'DO NOT BID'
+            : contextualRecommendation,
+        intelligenceReasons: recommendation.reasons,
+        intelligenceWarnings: recommendation.warnings,
+        roomReasons: [],
+        roomWarnings: [],
+        historicalPricing:
+          historicalPricing.kind === 'none'
+            ? {
+                kind: 'none',
+                mostRecentValue: null,
+                recentAverage: null,
+                currentVsRecentAverage: null,
+                careerAverage: null,
+                historyContextLabel: null,
+              }
+            : {
+                kind: historicalPricing.kind,
+                mostRecentValue: historicalPricing.mostRecentValue,
+                recentAverage: historicalPricing.recentAverage,
+                currentVsRecentAverage:
+                  historicalPricing.currentVsRecentAverage,
+                careerAverage: historicalPricing.average,
+                historyContextLabel: historicalPricing.historyContextLabel,
+              },
+        competitionContext: null,
+        positionContext: {
+          heatLabel: null,
+          heatPercent: null,
+          remainingMeaningfulPlayersAtPosition: remainingAtPosition,
+          runStatus: null,
+        },
+        kDefStrategy: {
+          preferredEarlyKickerMax:
+            draftCoachContext.kDefStrategy?.preferredEarlyKickerMax ??
+            riverCityAuctionLeagueSettings.preferredEarlyKickerMax ??
+            3,
+          preferredEarlyDefenseMax:
+            draftCoachContext.kDefStrategy?.preferredEarlyDefenseMax ??
+            riverCityAuctionLeagueSettings.preferredEarlyDefenseMax ??
+            4,
+          configuredMax: getRayKDefStrategyMax(matchedPlayer.position),
+        },
+      } satisfies DraftCoachInput,
+    };
+  };
+  const getPlayerLockedQuestionIntent = (questionText: string) => {
+    const normalizedQuestion = normalizePlayerMatchValue(questionText);
+
+    if (
+      /\b(alternative|alternatives|instead|similar|comparable)\b/.test(
+        normalizedQuestion
+      ) ||
+      normalizedQuestion.includes('who else') ||
+      normalizedQuestion.includes('other options')
+    ) {
+      return 'alternatives' as const;
+    }
+
+    if (
+      normalizedQuestion.includes('remaining budget') ||
+      normalizedQuestion.includes('affect my budget') ||
+      normalizedQuestion.includes('budget impact')
+    ) {
+      return 'budget-impact' as const;
+    }
+
+    if (normalizedQuestion.includes('nominate')) {
+      return 'nominate' as const;
+    }
+
+    if (/\$\s*\d+/.test(questionText)) {
+      return 'price-check' as const;
+    }
+
+    if (
+      normalizedQuestion.includes('highest') ||
+      normalizedQuestion.includes('recommended max') ||
+      normalizedQuestion.includes('max bid') ||
+      normalizedQuestion.includes('ceiling')
+    ) {
+      return 'maximum' as const;
+    }
+
+    return 'general' as const;
+  };
+  const getQuestionDollarAmount = (questionText: string) => {
+    const match = questionText.match(/\$\s*(\d+(?:\.\d+)?)/);
+    if (!match) return null;
+
+    const amount = Number(match[1]);
+    return Number.isFinite(amount) ? amount : null;
+  };
+  const getPlayerLockedAlternatives = (
+    matchedPlayer: ProcessedPlayerValueRow
+  ) => {
+    const selectedPosition = normalizePositionValue(matchedPlayer.position);
+    const selectedMarketValue = matchedPlayer.averageValue ?? null;
+
+    return localPlayerPoolRows
+      .flatMap((candidate) => {
+        if (candidate.rowNumber === matchedPlayer.rowNumber) return [];
+        if (normalizePositionValue(candidate.position) !== selectedPosition) {
+          return [];
+        }
+
+        const candidateStatus = getPlayerPoolDisplayStatus(
+          candidate,
+          activePurchaseRows,
+          isUsingSleeperPurchases
+        );
+        if (!isAvailablePlayerPoolStatus(candidateStatus)) return [];
+
+        const marketValue = candidate.averageValue ?? null;
+        if (marketValue === null || marketValue <= 0) return [];
+
+        const preferenceTags = getEffectivePreferenceTags(candidate);
+        const recommendation = getPlayerBidRecommendation(
+          candidate,
+          preferenceTags,
+          bidRecommendationContext
+        );
+        const adp = getAdpForPlayer(candidate);
+        const distanceFromSelectedTier =
+          selectedMarketValue === null
+            ? Number.POSITIVE_INFINITY
+            : Math.abs(marketValue - selectedMarketValue);
+
+        return [
+          {
+            player: candidate,
+            marketValue,
+            recommendedMax: Math.round(recommendation.recommendedMaxBid),
+            adp: adp?.consensusOverallAdp ?? null,
+            preferenceTags,
+            distanceFromSelectedTier,
+          },
+        ];
+      })
+      .sort((firstAlternative, secondAlternative) => {
+        if (
+          firstAlternative.distanceFromSelectedTier !==
+          secondAlternative.distanceFromSelectedTier
+        ) {
+          return (
+            firstAlternative.distanceFromSelectedTier -
+            secondAlternative.distanceFromSelectedTier
+          );
+        }
+
+        const firstTargetBoost = firstAlternative.preferenceTags.includes(
+          'target'
+        )
+          ? 1
+          : 0;
+        const secondTargetBoost = secondAlternative.preferenceTags.includes(
+          'target'
+        )
+          ? 1
+          : 0;
+        if (secondTargetBoost !== firstTargetBoost) {
+          return secondTargetBoost - firstTargetBoost;
+        }
+
+        return secondAlternative.marketValue - firstAlternative.marketValue;
+      })
+      .slice(0, 12);
+  };
+  const buildIntentAwarePlayerLockedCoachResult = ({
+    questionText,
+    matchedPlayer,
+    context,
+  }: {
+    questionText: string;
+    matchedPlayer: ProcessedPlayerValueRow;
+    context: DraftCoachInput;
+  }): DraftCoachResult => {
+    const rawBaseResult = buildDraftCoachResponse(context);
+    const baseResult: DraftCoachResult = {
+      ...rawBaseResult,
+      intelSummary: cleanCoachIntelSummary(rawBaseResult.intelSummary),
+    };
+    if (context.completedPurchase || context.opponentContext) return baseResult;
+
+    const intent = getPlayerLockedQuestionIntent(questionText);
+    const preferenceTags = getEffectivePreferenceTags(matchedPlayer);
+    const recommendation = getPlayerBidRecommendation(
+      matchedPlayer,
+      preferenceTags,
+      bidRecommendationContext
+    );
+    const recommendedMax = Math.round(recommendation.recommendedMaxBid);
+    const marketValue = matchedPlayer.averageValue ?? null;
+    const expectedSale = context.predictedWinningBid ?? null;
+    const legalMax = guidanceBudgetRow?.budgetIsIncomplete
+      ? null
+      : guidanceBudgetRow?.maxBid ?? null;
+    const playerLabel = matchedPlayer.originalPlayerName;
+    const positionLabel = normalizePositionValue(matchedPlayer.position) || 'player';
+
+    if (intent === 'alternatives') {
+      const allAlternatives = getPlayerLockedAlternatives(matchedPlayer);
+      const sameTierThreshold =
+        marketValue === null ? 0 : Math.max(5, marketValue * 0.25);
+      const sameTierAlternatives = allAlternatives
+        .filter(
+          (alternative) =>
+            alternative.distanceFromSelectedTier <= sameTierThreshold
+        )
+        .slice(0, 2);
+      const selectedAlternativeRows = new Set(
+        sameTierAlternatives.map(
+          (alternative) => alternative.player.rowNumber
+        )
+      );
+      const cheaperPivots = allAlternatives
+        .filter(
+          (alternative) =>
+            !selectedAlternativeRows.has(alternative.player.rowNumber) &&
+            (marketValue === null || alternative.marketValue < marketValue)
+        )
+        .slice(0, 2);
+      const displayedAlternatives = [
+        ...sameTierAlternatives,
+        ...cheaperPivots,
+      ];
+
+      for (const alternative of allAlternatives) {
+        if (displayedAlternatives.length >= 4) break;
+        if (
+          displayedAlternatives.some(
+            (displayedAlternative) =>
+              displayedAlternative.player.rowNumber ===
+              alternative.player.rowNumber
+          )
+        ) {
+          continue;
+        }
+        displayedAlternatives.push(alternative);
+      }
+
+      const sameTierRows = new Set(
+        sameTierAlternatives.map(
+          (alternative) => alternative.player.rowNumber
+        )
+      );
+      const cheaperPivotRows = new Set(
+        cheaperPivots.map((alternative) => alternative.player.rowNumber)
+      );
+      const sameTierSummary = sameTierAlternatives
+        .map((alternative) => alternative.player.originalPlayerName)
+        .join(', ');
+      const cheaperPivotSummary = cheaperPivots
+        .map((alternative) => alternative.player.originalPlayerName)
+        .join(', ');
+      const summaryParts = [
+        sameTierSummary ? `Same-tier options: ${sameTierSummary}.` : null,
+        cheaperPivotSummary ? `Cheaper pivots: ${cheaperPivotSummary}.` : null,
+      ].filter((part): part is string => Boolean(part));
+      const alternativeIntel = displayedAlternatives.map((alternative) => {
+        const groupLabel = sameTierRows.has(alternative.player.rowNumber)
+          ? 'Same tier'
+          : cheaperPivotRows.has(alternative.player.rowNumber)
+            ? 'Cheaper pivot'
+            : 'Other available option';
+
+        return [
+          `${groupLabel} — ${alternative.player.originalPlayerName}`,
+          `Market ${formatMoney(alternative.marketValue)}`,
+          `Recommended Max ${formatMoney(alternative.recommendedMax)}`,
+          alternative.adp === null ? null : `ADP ${formatAdp(alternative.adp)}`,
+          alternative.preferenceTags.length > 0
+            ? `Plan ${alternative.preferenceTags
+                .map((tag) => preferenceBadgeLabels[tag])
+                .join('/')}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' · ');
+      });
+
+      return {
+        ...baseResult,
+        decision: 'WAIT',
+        headline: `Best ${positionLabel} alternatives to ${playerLabel}`,
+        buddyMessage:
+          displayedAlternatives.length > 0
+            ? `${summaryParts.join(' ')} Compare their price tiers before chasing ${playerLabel} above ${formatMoney(recommendedMax)}.`
+            : `No clear available ${positionLabel} alternatives were found near ${playerLabel}'s current market tier.`,
+        riskGuidance:
+          displayedAlternatives.length > 0
+            ? `Keep ${playerLabel}'s ${formatMoney(recommendedMax)} Recommended Max firm unless the same-tier options are also being pushed above their ceilings.`
+            : baseResult.riskGuidance,
+        intelSummary:
+          alternativeIntel.length > 0
+            ? alternativeIntel
+            : [`No available ${positionLabel} alternatives passed the current value filter.`],
+        reasons: [
+          `Same-tier options are available ${positionLabel}s within about 25% of ${playerLabel}'s ${formatMoney(marketValue)} Market Value.`,
+          'Cheaper pivots preserve more budget while filling the same position.',
+          `Every alternative uses the same owner-specific recommendation math as ${playerLabel}.`,
+        ],
+        warnings:
+          displayedAlternatives.length > 0
+            ? []
+            : [`The remaining ${positionLabel} pool may be too thin for a clean pivot.`],
+        spendGuidance: {
+          ...baseResult.spendGuidance,
+          ...(displayedAlternatives[0]
+            ? { suggestedNextBid: displayedAlternatives[0].recommendedMax }
+            : {}),
+          justifiedOverpayAmount: 0,
+        },
+      };
+    }
+
+    if (intent === 'maximum') {
+      return {
+        ...baseResult,
+        headline: `${playerLabel} walk-away price`,
+        buddyMessage: `Your Recommended Max for ${playerLabel} is ${formatMoney(recommendedMax)}. Treat that as the primary walk-away point; Legal Max is only the roster-completion guardrail.`,
+        intelSummary: [
+          `Market Value is ${formatMoney(marketValue)}.`,
+          expectedSale === null
+            ? null
+            : `Expected Sale is ${formatMoney(expectedSale)}.`,
+          legalMax === null
+            ? 'Legal Max is incomplete because keeper pricing is incomplete.'
+            : `Legal Max is ${formatMoney(legalMax)} and is not a recommendation.`,
+        ].filter((item): item is string => Boolean(item)),
+        spendGuidance: {
+          ...baseResult.spendGuidance,
+          suggestedNextBid: recommendedMax,
+        },
+      };
+    }
+
+    if (intent === 'price-check') {
+      const requestedAmount = getQuestionDollarAmount(questionText);
+      if (requestedAmount !== null) {
+        const roundedAmount = Math.round(requestedAmount);
+        const aboveRecommendedMax = roundedAmount - recommendedMax;
+        const exceedsLegalMax = legalMax !== null && roundedAmount > legalMax;
+        const decision: DraftCoachDecision = exceedsLegalMax
+          ? 'PASS'
+          : roundedAmount > recommendedMax
+            ? 'PASS'
+            : roundedAmount === recommendedMax
+              ? 'LAST BID'
+              : 'BID';
+
+        return {
+          ...baseResult,
+          decision,
+          headline: `${formatMoney(roundedAmount)} price check for ${playerLabel}`,
+          buddyMessage: exceedsLegalMax
+            ? `${formatMoney(roundedAmount)} is not legal for your current roster and budget. Do not bid that amount.`
+            : aboveRecommendedMax > 0
+              ? `${formatMoney(roundedAmount)} is ${formatMoney(aboveRecommendedMax)} above your ${formatMoney(recommendedMax)} Recommended Max for ${playerLabel}. Let the player go unless you intentionally accept that overpay.`
+              : roundedAmount === recommendedMax
+                ? `${formatMoney(roundedAmount)} is exactly your Recommended Max for ${playerLabel}. That should be your final bid.`
+                : `${formatMoney(roundedAmount)} is within your ${formatMoney(recommendedMax)} Recommended Max for ${playerLabel}. You can stay in at that price.`,
+          riskGuidance:
+            roundedAmount > recommendedMax
+              ? `Going above ${formatMoney(recommendedMax)} spends budget that the current roster plan assigns elsewhere.`
+              : baseResult.riskGuidance,
+          intelSummary: [
+            `Question price: ${formatMoney(roundedAmount)}.`,
+            `Recommended Max: ${formatMoney(recommendedMax)}.`,
+            `Market Value: ${formatMoney(marketValue)}.`,
+            expectedSale === null
+              ? null
+              : `Expected Sale: ${formatMoney(expectedSale)}.`,
+          ].filter((item): item is string => Boolean(item)),
+          warnings:
+            roundedAmount > recommendedMax
+              ? [
+                  `${formatMoney(roundedAmount)} is above the current Recommended Max by ${formatMoney(aboveRecommendedMax)}.`,
+                ]
+              : [],
+          spendGuidance: {
+            ...baseResult.spendGuidance,
+            suggestedNextBid: Math.min(roundedAmount, recommendedMax),
+            justifiedOverpayAmount: Math.max(0, aboveRecommendedMax),
+          },
+        };
+      }
+    }
+
+    if (intent === 'nominate') {
+      const nominationStyle = initialOwnerSettings?.onboardingCompleted
+        ? initialOwnerSettings.nominationStyle
+        : null;
+      const isTarget = preferenceTags.includes('target');
+      const nominationAdvice =
+        nominationStyle === 'decoys' && isTarget
+          ? `Your saved nomination style favors decoys, so consider waiting rather than exposing ${playerLabel} early.`
+          : isTarget
+            ? `Nominate ${playerLabel} only if you are comfortable winning the player up to ${formatMoney(recommendedMax)}.`
+            : `You can nominate ${playerLabel} to test the room, but do not let the nomination pull you above ${formatMoney(recommendedMax)}.`;
+
+      return {
+        ...baseResult,
+        decision: 'WAIT',
+        headline: `Nomination plan for ${playerLabel}`,
+        buddyMessage: nominationAdvice,
+        intelSummary: [
+          `Preference: ${getPreferenceLabel(preferenceTags)}.`,
+          `Recommended Max: ${formatMoney(recommendedMax)}.`,
+          nominationStyle
+            ? `Saved nomination style: ${ownerSettingsLabelMap.nominationStyle[nominationStyle]}.`
+            : 'No saved nomination style is available.',
+        ],
+        spendGuidance: {
+          ...baseResult.spendGuidance,
+          suggestedNextBid: recommendedMax,
+          justifiedOverpayAmount: 0,
+        },
+      };
+    }
+
+    if (intent === 'budget-impact') {
+      const assumedPrice = Math.round(expectedSale ?? recommendedMax);
+      const remainingBudget = guidanceBudgetRow?.remainingBudget ?? null;
+      const openSpots = guidanceBudgetRow?.rosterSpotsRemaining ?? null;
+      const nextBudget =
+        remainingBudget === null ? null : Math.max(0, remainingBudget - assumedPrice);
+      const nextOpenSpots = openSpots === null ? null : Math.max(0, openSpots - 1);
+      const nextReserve =
+        nextOpenSpots === null
+          ? null
+          : nextOpenSpots * riverCityMinimumRosterPrice;
+      const nextAveragePerSpot =
+        nextBudget !== null && nextOpenSpots !== null && nextOpenSpots > 0
+          ? nextBudget / nextOpenSpots
+          : null;
+
+      return {
+        ...baseResult,
+        decision: 'WAIT',
+        headline: `${playerLabel} budget impact`,
+        buddyMessage:
+          nextBudget === null || nextOpenSpots === null
+            ? `Budget impact cannot be calculated until the current owner budget is complete.`
+            : `At an assumed ${formatMoney(assumedPrice)} purchase price, you would have ${formatMoney(nextBudget)} left for ${nextOpenSpots} roster spots.`,
+        riskGuidance:
+          nextAveragePerSpot === null
+            ? baseResult.riskGuidance
+            : `That leaves about ${formatMoneyPerSlot(nextAveragePerSpot)} per remaining spot while reserving ${formatMoney(nextReserve)} for minimum bids.`,
+        intelSummary: [
+          `Assumed purchase price: ${formatMoney(assumedPrice)}.`,
+          nextBudget === null
+            ? 'Remaining budget is unavailable.'
+            : `Budget after purchase: ${formatMoney(nextBudget)}.`,
+          nextOpenSpots === null
+            ? 'Remaining roster spots are unavailable.'
+            : `Open roster spots after purchase: ${nextOpenSpots}.`,
+          nextReserve === null
+            ? 'Required reserve is unavailable.'
+            : `Required reserve after purchase: ${formatMoney(nextReserve)}.`,
+        ],
+        spendGuidance: {
+          ...baseResult.spendGuidance,
+          suggestedNextBid: assumedPrice,
+          ...(nextReserve !== null ? { mustReserve: nextReserve } : {}),
+        },
+      };
+    }
+
+    const preciseGeneralIntel = baseResult.intelSummary.filter(
+      (item) => !/^Market is /i.test(item)
+    );
+
+    return {
+      ...baseResult,
+      intelSummary: [
+        ...preciseGeneralIntel,
+        marketValue === null
+          ? null
+          : expectedSale === null
+            ? `Market Value is ${formatMoney(marketValue)}.`
+            : `Market Value is ${formatMoney(marketValue)}; Expected Sale is ${formatMoney(expectedSale)}.`,
+      ].filter((item): item is string => Boolean(item)),
+    };
+  };
   const requestProtectedAdvisorChatAnswer = async (
     questionText: string,
     selectedPlayerName?: string
@@ -6295,9 +7730,36 @@ export default function AuctionWarRoomClient({
 
     if (!questionText) return;
 
-    const selectedPlayerName = getAdvisorApiSelectedPlayerName(questionText);
+    const matchedPlayer = findLocalAdvisorPlayerMatch(
+      questionText,
+      localAdvisorChatContext.visiblePlayerPoolRows
+    );
 
     setLocalAdvisorChatInput('');
+
+    if (matchedPlayer) {
+      const localAnswer = buildLocalAdvisorPlayerLookupAnswer(
+        questionText,
+        localAdvisorChatContext
+      );
+      appendLocalAdvisorChatMessages(
+        questionText,
+        {
+          ...localAnswer,
+          sourceLabel: 'Player-locked local advisor',
+          meta: localAnswer.meta
+            ? `Player locked: ${matchedPlayer.originalPlayerName} | ${localAnswer.meta}`
+            : `Player locked: ${matchedPlayer.originalPlayerName}`,
+        },
+        'player-lookup'
+      );
+      setLocalAdvisorChatStatus('idle');
+      setLocalAdvisorChatError(null);
+      return;
+    }
+
+    const selectedPlayerName = getAdvisorApiSelectedPlayerName(questionText);
+
     await askAdvisorWithProtectedApi({
       questionText,
       messageKey: 'player-lookup',
@@ -6361,18 +7823,179 @@ export default function AuctionWarRoomClient({
 
     return buildDraftCoachChatAnswer(payload, fallbackResult);
   };
-  const askDraftCoach = async (questionText: string, messageKey: string) => {
+  const applySavedLiveDraftStrategy = (
+    strategy: AuctionLiveDraftStrategy | null
+  ) => {
+    setLiveDraftStrategy(strategy);
+    setLiveStrategyRiskMode(
+      strategy?.riskMode ?? initialOwnerSettings?.riskTolerance ?? 'balanced'
+    );
+    setLiveStrategyPriorityPositions(strategy?.priorityPositions ?? []);
+    setLiveStrategyDeemphasizedPositions(
+      strategy?.deemphasizedPositions ?? []
+    );
+    setLiveStrategyMinimumReserve(
+      strategy?.minimumBudgetReserve === null ||
+        strategy?.minimumBudgetReserve === undefined
+        ? ''
+        : String(strategy.minimumBudgetReserve)
+    );
+    setLiveStrategyOpponentFocus(strategy?.opponentFocus ?? '');
+    setLiveStrategyAdditionalInstructions(
+      strategy?.additionalInstructions ?? ''
+    );
+  };
+  const persistLiveDraftStrategy = async (
+    strategy: ReturnType<
+      typeof validateAuctionLiveDraftStrategyInput
+    >
+  ) => {
+    const response = await fetch('/api/auction/live-strategy', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        strategy,
+        currentRemainingBudget: guidanceBudgetRow?.budgetIsIncomplete
+          ? null
+          : guidanceBudgetRow?.remainingBudget ?? null,
+      }),
+    });
+    const payload = (await response.json()) as {
+      liveDraftStrategy?: AuctionLiveDraftStrategy;
+      error?: string;
+    };
+
+    if (!response.ok || !payload.liveDraftStrategy) {
+      throw new Error(payload.error ?? 'Unable to save live strategy.');
+    }
+
+    applySavedLiveDraftStrategy(payload.liveDraftStrategy);
+    return payload.liveDraftStrategy;
+  };
+  const askDraftCoach = async (
+    questionText: string,
+    messageKey: string,
+    matchedPlayerOverride: ProcessedPlayerValueRow | null = null
+  ) => {
     const trimmedQuestion = questionText.trim();
 
     if (!trimmedQuestion || draftCoachChatStatus === 'loading') return;
 
-    const context = {
-      ...draftCoachContext,
-      question: trimmedQuestion,
-    };
-
     setDraftCoachChatStatus('loading');
     setDraftCoachChatError(null);
+
+    const currentLiveStrategy = {
+      riskMode:
+        liveDraftStrategy?.riskMode ??
+        initialOwnerSettings?.riskTolerance ??
+        'balanced',
+      priorityPositions: liveDraftStrategy?.priorityPositions ?? [],
+      deemphasizedPositions:
+        liveDraftStrategy?.deemphasizedPositions ?? [],
+      minimumBudgetReserve:
+        liveDraftStrategy?.minimumBudgetReserve ?? null,
+      opponentFocus: liveDraftStrategy?.opponentFocus ?? null,
+      additionalInstructions:
+        liveDraftStrategy?.additionalInstructions ?? null,
+    };
+    const conversationalUpdate = parseConversationalLiveStrategyUpdate(
+      trimmedQuestion,
+      currentLiveStrategy
+    );
+
+    if (conversationalUpdate.status === 'ambiguous') {
+      const fallback = buildDraftCoachResponse(draftCoachContext);
+      appendDraftCoachChatMessage(
+        trimmedQuestion,
+        {
+          ...fallback,
+          decision: 'WAIT',
+          headline: 'Confirm Live Strategy Change',
+          buddyMessage: conversationalUpdate.message,
+          answer: conversationalUpdate.message,
+          sourceLabel: 'Live strategy update',
+        },
+        messageKey
+      );
+      setDraftCoachChatStatus('idle');
+      return;
+    }
+
+    if (conversationalUpdate.status === 'clear') {
+      try {
+        const validatedStrategy = validateAuctionLiveDraftStrategyInput(
+          conversationalUpdate.strategy,
+          guidanceBudgetRow?.budgetIsIncomplete
+            ? null
+            : guidanceBudgetRow?.remainingBudget ?? null
+        );
+        const savedStrategy = await persistLiveDraftStrategy(
+          validatedStrategy
+        );
+        const updatedContext: DraftCoachInput = {
+          ...draftCoachContext,
+          question: trimmedQuestion,
+          liveStrategy: {
+            riskMode: savedStrategy.riskMode,
+            priorityPositions: savedStrategy.priorityPositions,
+            deemphasizedPositions: savedStrategy.deemphasizedPositions,
+            minimumBudgetReserve: savedStrategy.minimumBudgetReserve,
+            opponentFocus: savedStrategy.opponentFocus,
+            additionalInstructions: savedStrategy.additionalInstructions,
+          },
+        };
+        const updatedPreview = buildDraftCoachResponse(updatedContext);
+        const acknowledgement = conversationalUpdate.changes.join(' ');
+        appendDraftCoachChatMessage(
+          trimmedQuestion,
+          {
+            ...updatedPreview,
+            decision: 'WAIT',
+            headline: 'Live Strategy Updated',
+            buddyMessage: acknowledgement,
+            answer: acknowledgement,
+            sourceLabel: 'Live strategy update',
+          },
+          messageKey
+        );
+        setLiveStrategySaveStatus('saved');
+        setDraftCoachChatStatus('idle');
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Unable to update live strategy.';
+        setLiveStrategyError(message);
+        setDraftCoachChatError(message);
+        setDraftCoachChatStatus('error');
+      }
+      return;
+    }
+
+    const playerLocked = buildPlayerLockedDraftCoachContext(
+      trimmedQuestion,
+      matchedPlayerOverride
+    );
+    const context = playerLocked.context;
+
+    if (playerLocked.matchedPlayer) {
+      const localResult = buildIntentAwarePlayerLockedCoachResult({
+        questionText: trimmedQuestion,
+        matchedPlayer: playerLocked.matchedPlayer,
+        context,
+      });
+      appendDraftCoachChatMessage(
+        trimmedQuestion,
+        {
+          ...localResult,
+          answer: localResult.buddyMessage,
+          sourceLabel: 'Player-locked local coach',
+        },
+        messageKey
+      );
+      setDraftCoachChatStatus('idle');
+      return;
+    }
 
     try {
       const apiAnswer = await requestProtectedDraftCoachAnswer(
@@ -6406,6 +8029,107 @@ export default function AuctionWarRoomClient({
 
     setDraftCoachChatInput('');
     await askDraftCoach(questionText, 'custom');
+  };
+  const askDraftCoachForSelectedPlayer = async (questionText: string) => {
+    const trimmedQuestion = questionText.trim();
+
+    if (!trimmedQuestion || !selectedPlayer) return;
+
+    setDraftCoachChatInput('');
+    await askDraftCoach(
+      trimmedQuestion,
+      `player-modal-${selectedPlayer.sleeperPlayerId ?? selectedPlayer.rowNumber}`,
+      selectedPlayer
+    );
+  };
+  const clearDraftCoachChat = () => {
+    setDraftCoachChatMessages([]);
+    setDraftCoachChatError(null);
+    setDraftCoachChatStatus('idle');
+  };
+  const toggleLiveStrategyPosition = (
+    position: AuctionLiveStrategyPosition,
+    kind: 'priority' | 'deemphasized'
+  ) => {
+    const updateList =
+      kind === 'priority'
+        ? setLiveStrategyPriorityPositions
+        : setLiveStrategyDeemphasizedPositions;
+    const removeFromOther =
+      kind === 'priority'
+        ? setLiveStrategyDeemphasizedPositions
+        : setLiveStrategyPriorityPositions;
+
+    updateList((positions) =>
+      positions.includes(position)
+        ? positions.filter((item) => item !== position)
+        : [...positions, position]
+    );
+    removeFromOther((positions) =>
+      positions.filter((item) => item !== position)
+    );
+    setLiveStrategySaveStatus('idle');
+    setLiveStrategyError(null);
+  };
+  const saveLiveDraftStrategy = async () => {
+    if (!canEditLiveStrategy || liveStrategySaveStatus === 'saving') return;
+
+    setLiveStrategySaveStatus('saving');
+    setLiveStrategyError(null);
+
+    try {
+      const reserveInput = liveStrategyMinimumReserve.trim();
+      const minimumBudgetReserve =
+        reserveInput === ''
+          ? null
+          : /^\d+$/.test(reserveInput)
+            ? Number(reserveInput)
+            : Number.NaN;
+      const strategy = validateAuctionLiveDraftStrategyInput(
+        {
+          riskMode: liveStrategyRiskMode,
+          priorityPositions: liveStrategyPriorityPositions,
+          deemphasizedPositions: liveStrategyDeemphasizedPositions,
+          minimumBudgetReserve,
+          opponentFocus: liveStrategyOpponentFocus,
+          additionalInstructions: liveStrategyAdditionalInstructions,
+        },
+        guidanceBudgetRow?.budgetIsIncomplete
+          ? null
+          : guidanceBudgetRow?.remainingBudget ?? null
+      );
+      await persistLiveDraftStrategy(strategy);
+      setLiveStrategySaveStatus('saved');
+    } catch (error) {
+      setLiveStrategyError(
+        error instanceof Error ? error.message : 'Unable to save live strategy.'
+      );
+      setLiveStrategySaveStatus('error');
+    }
+  };
+  const clearLiveDraftStrategy = async () => {
+    if (!canEditLiveStrategy || liveStrategySaveStatus === 'saving') return;
+
+    setLiveStrategySaveStatus('saving');
+    setLiveStrategyError(null);
+
+    try {
+      const response = await fetch('/api/auction/live-strategy', {
+        method: 'DELETE',
+      });
+      const payload = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error ?? 'Unable to clear live strategy.');
+      }
+
+      applySavedLiveDraftStrategy(null);
+      setLiveStrategySaveStatus('saved');
+    } catch (error) {
+      setLiveStrategyError(
+        error instanceof Error ? error.message : 'Unable to clear live strategy.'
+      );
+      setLiveStrategySaveStatus('error');
+    }
   };
 
   return (
@@ -6609,10 +8333,12 @@ export default function AuctionWarRoomClient({
                 type="button"
                 onClick={() => {
                   if (manualSaleSelectedPlayer) {
+                    setActiveWorkspace('draft');
                     focusManualSalePriceInput();
                     return;
                   }
 
+                  setActiveWorkspace('draft');
                   focusManualSalePlayerSearch();
                 }}
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-orange-600/30 bg-orange-600 px-3 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-orange-700"
@@ -6667,7 +8393,7 @@ export default function AuctionWarRoomClient({
 	          <div
 		            className={
 		              activeWorkspace === 'draft'
-		                ? 'grid min-h-0 gap-3 xl:grid-cols-[minmax(620px,1.25fr)_minmax(520px,1fr)] xl:items-start 2xl:grid-cols-[minmax(620px,1.2fr)_minmax(520px,1fr)_minmax(280px,0.45fr)]'
+			                ? 'grid min-h-0 gap-3 xl:grid-cols-[minmax(620px,1.25fr)_minmax(520px,1fr)] xl:items-start 2xl:grid-cols-[minmax(580px,1.1fr)_minmax(480px,1fr)_minmax(320px,0.62fr)]'
 		                : 'grid min-h-0 gap-3 lg:grid-cols-2 lg:items-start'
 		            }
 		          >
@@ -6724,7 +8450,7 @@ export default function AuctionWarRoomClient({
                               </span>
                             </span>
                             <span className="text-right text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
-                              REC {formatMoney(row.recommendation.recommendedMaxBid)}
+                              Recommended Max {formatMoney(row.recommendation.recommendedMaxBid)}
                             </span>
                           </button>
                         );
@@ -7109,9 +8835,57 @@ export default function AuctionWarRoomClient({
                     </div>
                   </div>
 
-                  {selectedPlayer &&
+                  {selectedPlayerSoldState ? (
+                    <div className="grid gap-3">
+                      <div className="rounded-3xl border border-emerald-600/25 bg-emerald-600/10 px-5 py-5 text-center text-emerald-700 dark:text-emerald-300">
+                        <p className="text-[10px] font-black uppercase tracking-[0.28em] opacity-70">
+                          Sale Complete
+                        </p>
+                        <p className="mt-2 text-4xl font-black uppercase italic leading-none tracking-tight sm:text-5xl">
+                          {selectedPlayerSoldState.statusLabel}
+                        </p>
+                        <p className="mt-3 text-sm font-black uppercase tracking-wide">
+                          {selectedPlayerSoldState.teamName}
+                          {selectedPlayerSoldState.managerName
+                            ? ` · ${selectedPlayerSoldState.managerName}`
+                            : ''}
+                        </p>
+                        <p className="mt-1 text-2xl font-black">
+                          {formatMoney(selectedPlayerSoldState.price)}
+                        </p>
+                        <p className="mt-2 text-[9px] font-bold uppercase tracking-widest opacity-75">
+                          {selectedPlayerSoldState.sourceLabel}
+                        </p>
+                      </div>
+
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        {[
+                          ['Vs Market Value', selectedPlayerSoldState.marketValueDifference],
+                          ['Vs Expected Sale', selectedPlayerSoldState.expectedSaleDifference],
+                          [
+                            'Vs Recommended Max',
+                            selectedPlayerSoldState.recommendationCeilingDifference,
+                          ],
+                        ].map(([label, difference]) => (
+                          <div
+                            key={label as string}
+                            className="rounded-xl bg-black/[0.025] px-3 py-3 text-center dark:bg-white/[0.04]"
+                          >
+                            <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">
+                              {label}
+                            </p>
+                            <p className="mt-1 text-lg font-black">
+                              {formatCurrentNominationValueGap(
+                                difference as number | null
+                              )}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : selectedPlayer &&
                     selectedPlayerRecommendation &&
-                    currentNominationDraftIntelligence && (
+                    currentNominationDraftIntelligence ? (
                       <div className="grid gap-3">
                         <div
                           key={currentNominationRecommendation}
@@ -7140,13 +8914,13 @@ export default function AuctionWarRoomClient({
 
                           <div className={`rounded-2xl border px-4 py-4 ${getHudMoneyClass(currentNominationBidCeilingState)}`}>
                             <p className="text-[9px] font-black uppercase tracking-[0.22em] opacity-60">
-                              Current AI Ceiling
+                              Recommended Max
                             </p>
                             <p className="mt-2 text-4xl font-black uppercase italic leading-none">
-                              {formatMoney(currentNominationCurrentAiCeiling.ceiling)}
+                              {formatMoney(selectedPlayerRecommendation.recommendedMaxBid)}
                             </p>
                             <p className="mt-2 text-[9px] font-bold uppercase tracking-widest opacity-70">
-                              {currentNominationActionableCeilingLabel} actionable
+                              Primary personalized ceiling
                             </p>
                           </div>
 
@@ -7240,6 +9014,18 @@ export default function AuctionWarRoomClient({
                                     : selectedPlayerHistoricalPricing.historyContextLabel}
                                 </p>
                               </div>
+                            </div>
+
+                            <div className="rounded-xl border border-blue-600/20 bg-blue-600/10 px-3 py-3 text-blue-800 dark:text-blue-200">
+                              <p className="text-[8px] font-black uppercase tracking-widest opacity-70">
+                                Live Context Ceiling
+                              </p>
+                              <p className="mt-1 text-sm font-black">
+                                {formatMoney(currentNominationCurrentAiCeiling.ceiling)}
+                              </p>
+                              <p className="mt-1 text-[9px] font-bold uppercase tracking-widest opacity-75">
+                                Secondary stress test only. Recommended Max remains the primary ceiling.
+                              </p>
                             </div>
 
 	                            <div className="grid gap-2 sm:grid-cols-2 2xl:grid-cols-4">
@@ -7436,7 +9222,7 @@ export default function AuctionWarRoomClient({
                           </div>
                         </details>
                       </div>
-                    )}
+                    ) : null}
                 </div>
               </section>
 
@@ -7580,8 +9366,8 @@ export default function AuctionWarRoomClient({
                           />
                           <span>
                             {currentNominationLiveOverrideExceedsAi
-                              ? 'Confirm Live Override above Current AI Ceiling.'
-                              : 'Live Override is within Current AI Ceiling.'}
+                              ? 'Confirm Live Override above Live Context Ceiling.'
+                              : 'Live Override is within Live Context Ceiling.'}
                           </span>
                         </label>
                         <button
@@ -7635,14 +9421,12 @@ export default function AuctionWarRoomClient({
                         <p className="text-gray-400">Recommended Max</p>
                         <p className="mt-1 text-sm">
                           {formatMoney(
-                            currentNominationDraftIntelligence?.ownerMaxBid ??
-                              selectedPlayerRecommendation?.recommendedMaxBid ??
-                              null
+                            selectedPlayerRecommendation?.recommendedMaxBid ?? null
                           )}
                         </p>
                       </div>
                       <div className="rounded-xl border border-blue-600/20 bg-blue-600/10 px-3 py-2 text-blue-700 dark:text-blue-300">
-                        <p className="text-gray-500 dark:text-blue-300/80">Current AI Ceiling</p>
+                        <p className="text-gray-500 dark:text-blue-300/80">Live Context Ceiling</p>
                         <p className="mt-1 text-sm">
                           {formatMoney(currentNominationCurrentAiCeiling.ceiling)}
                         </p>
@@ -7741,7 +9525,12 @@ export default function AuctionWarRoomClient({
 	                  className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_5.5rem]"
 	                  onSubmit={(event) => {
                     event.preventDefault();
-                    recordManualSale();
+                    recordManualSale({
+                      player: manualSaleSelectedPlayer,
+                      buyerTeamId: manualSaleBuyerTeamId,
+                      priceInput: manualSalePriceInput,
+                      keepPlayerSelected: false,
+                    });
                   }}
                 >
                   <div className="min-w-0 rounded-xl border border-black/10 bg-black/[0.03] px-3 py-2 dark:border-white/10 dark:bg-white/[0.03]">
@@ -7762,7 +9551,7 @@ export default function AuctionWarRoomClient({
                     <input
                       ref={manualSalePriceInputRef}
                       type="number"
-                      min="0"
+                      min="1"
                       step="1"
                       value={manualSalePriceInput}
                       onChange={(event) => {
@@ -7787,11 +9576,14 @@ export default function AuctionWarRoomClient({
                     <select
                       value={manualSaleBuyerTeamId}
                       onChange={(event) => {
-                        setManualSaleBuyerTeamId(event.target.value);
+                        setManualSaleBuyerTeamId(
+                          event.target.value as AuctionTeamId | ''
+                        );
                         setManualSaleError(null);
                       }}
                       className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-black outline-none transition focus:border-orange-600 dark:border-white/10 dark:bg-black/30"
                     >
+                      <option value="">Select buyer</option>
                       {mockAuctionTeams.map((team) => (
                         <option key={team.id} value={team.id}>
                           {team.teamName} | {team.managerName}
@@ -7874,6 +9666,213 @@ export default function AuctionWarRoomClient({
                         Edit Draft Settings
                       </Link>
                     )}
+                  </div>
+                </section>
+              )}
+
+              {canEditLiveStrategy && (
+                <section className="rounded-2xl border border-black/10 bg-white p-4 shadow-lg dark:border-white/10 dark:bg-[#121212]">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-[0.25em] text-orange-600">
+                        Owner-Specific Override
+                      </p>
+                      <h2 className="mt-1 text-xl font-black uppercase italic tracking-tight">
+                        Live Draft Strategy
+                      </h2>
+                      <p className="mt-1 text-xs font-bold text-gray-500 dark:text-gray-400">
+                        Applies to your Coach context now; preseason settings remain unchanged.
+                      </p>
+                    </div>
+                    {liveDraftStrategy ? (
+                      <span className="w-fit rounded-full border border-emerald-600/20 bg-emerald-600/10 px-3 py-1.5 text-[8px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+                        Live Override Active
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                    <div className="space-y-4">
+                      <fieldset>
+                        <legend className="text-[9px] font-black uppercase tracking-widest text-gray-400">
+                          Risk Mode
+                        </legend>
+                        <div className="mt-2 grid grid-cols-3 gap-2">
+                          {(
+                            [
+                              'conservative',
+                              'balanced',
+                              'aggressive',
+                            ] as const
+                          ).map((mode) => (
+                            <button
+                              key={mode}
+                              type="button"
+                              onClick={() => {
+                                setLiveStrategyRiskMode(mode);
+                                setLiveStrategySaveStatus('idle');
+                                setLiveStrategyError(null);
+                              }}
+                              className={`rounded-xl border px-2 py-2.5 text-[9px] font-black uppercase tracking-widest transition ${
+                                liveStrategyRiskMode === mode
+                                  ? 'border-orange-600 bg-orange-600 text-white'
+                                  : 'border-black/10 bg-black/[0.03] text-gray-500 hover:border-orange-600/30 dark:border-white/10 dark:bg-white/[0.04]'
+                              }`}
+                            >
+                              {mode}
+                            </button>
+                          ))}
+                        </div>
+                      </fieldset>
+
+                      {(
+                        [
+                          {
+                            label: 'Priority Positions',
+                            kind: 'priority' as const,
+                            selected: liveStrategyPriorityPositions,
+                          },
+                          {
+                            label: 'De-emphasized Positions',
+                            kind: 'deemphasized' as const,
+                            selected: liveStrategyDeemphasizedPositions,
+                          },
+                        ] as const
+                      ).map((group) => (
+                        <fieldset key={group.kind}>
+                          <legend className="text-[9px] font-black uppercase tracking-widest text-gray-400">
+                            {group.label}
+                          </legend>
+                          <div className="mt-2 grid grid-cols-6 gap-1.5">
+                            {auctionLiveStrategyPositions.map((position) => {
+                              const selected =
+                                group.selected.includes(position);
+                              return (
+                                <button
+                                  key={position}
+                                  type="button"
+                                  aria-pressed={selected}
+                                  onClick={() =>
+                                    toggleLiveStrategyPosition(
+                                      position,
+                                      group.kind
+                                    )
+                                  }
+                                  className={`rounded-lg border px-1 py-2 text-[9px] font-black uppercase transition ${
+                                    selected
+                                      ? 'border-orange-600 bg-orange-600/10 text-orange-700 dark:text-orange-300'
+                                      : 'border-black/10 bg-black/[0.025] text-gray-500 dark:border-white/10 dark:bg-white/[0.03]'
+                                  }`}
+                                >
+                                  {position}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </fieldset>
+                      ))}
+
+                      <label className="grid gap-1.5">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">
+                          Minimum Budget Reserve
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          inputMode="numeric"
+                          value={liveStrategyMinimumReserve}
+                          onChange={(event) => {
+                            setLiveStrategyMinimumReserve(event.target.value);
+                            setLiveStrategySaveStatus('idle');
+                            setLiveStrategyError(null);
+                          }}
+                          placeholder="Optional whole-dollar amount"
+                          className="h-11 rounded-xl border border-black/10 bg-black/[0.025] px-3 text-sm font-black outline-none focus:border-orange-600 dark:border-white/10 dark:bg-black/30"
+                        />
+                        <span className="text-[9px] font-bold text-gray-400">
+                          Current remaining budget:{' '}
+                          {guidanceBudgetRow?.budgetIsIncomplete
+                            ? 'Incomplete'
+                            : formatMoney(
+                                guidanceBudgetRow?.remainingBudget ?? null
+                              )}
+                        </span>
+                      </label>
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="grid gap-1.5">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">
+                          Opponent Focus
+                        </span>
+                        <textarea
+                          rows={4}
+                          maxLength={500}
+                          value={liveStrategyOpponentFocus}
+                          onChange={(event) => {
+                            setLiveStrategyOpponentFocus(event.target.value);
+                            setLiveStrategySaveStatus('idle');
+                            setLiveStrategyError(null);
+                          }}
+                          placeholder="Pressure Tommy into spending on elite WRs."
+                          className="resize-none rounded-xl border border-black/10 bg-black/[0.025] px-3 py-2.5 text-sm font-bold outline-none focus:border-orange-600 dark:border-white/10 dark:bg-black/30"
+                        />
+                      </label>
+                      <label className="grid gap-1.5">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">
+                          Additional Live Instructions
+                        </span>
+                        <textarea
+                          rows={4}
+                          maxLength={500}
+                          value={liveStrategyAdditionalInstructions}
+                          onChange={(event) => {
+                            setLiveStrategyAdditionalInstructions(
+                              event.target.value
+                            );
+                            setLiveStrategySaveStatus('idle');
+                            setLiveStrategyError(null);
+                          }}
+                          placeholder="I need a WR1 now. Be more aggressive than my preseason plan."
+                          className="resize-none rounded-xl border border-black/10 bg-black/[0.025] px-3 py-2.5 text-sm font-bold outline-none focus:border-orange-600 dark:border-white/10 dark:bg-black/30"
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {liveStrategyError ? (
+                    <p className="mt-4 rounded-xl border border-rose-600/20 bg-rose-600/10 p-3 text-xs font-bold text-rose-700 dark:text-rose-300">
+                      {liveStrategyError}
+                    </p>
+                  ) : liveStrategySaveStatus === 'saved' ? (
+                    <p className="mt-4 rounded-xl border border-emerald-600/20 bg-emerald-600/10 p-3 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                      Live strategy updated for your owner profile.
+                    </p>
+                  ) : null}
+
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={() => void saveLiveDraftStrategy()}
+                      disabled={liveStrategySaveStatus === 'saving'}
+                      className="inline-flex h-11 flex-1 items-center justify-center rounded-xl bg-orange-600 px-4 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {liveStrategySaveStatus === 'saving'
+                        ? 'Saving'
+                        : 'Save Live Strategy'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void clearLiveDraftStrategy()}
+                      disabled={
+                        liveStrategySaveStatus === 'saving' ||
+                        liveDraftStrategy === null
+                      }
+                      className="inline-flex h-11 items-center justify-center rounded-xl border border-black/10 bg-black/[0.03] px-4 text-[10px] font-black uppercase tracking-widest text-gray-600 transition hover:border-rose-600/30 hover:bg-rose-600/10 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-300"
+                    >
+                      Clear Live Strategy
+                    </button>
                   </div>
                 </section>
               )}
@@ -7967,51 +9966,47 @@ export default function AuctionWarRoomClient({
                   Top Value Targets
                 </p>
                 <div className="space-y-2">
-                  {auctionAdvisorSummary.bestValueOpportunities.length > 0 ? (
-                    auctionAdvisorSummary.bestValueOpportunities.map((player) => {
-                      const valueGap =
-                        player.averageValue === null ||
-                        player.recommendedMaxBid === null
-                          ? null
-                          : player.recommendedMaxBid - player.averageValue;
-
-                      return (
-                        <div
-                          key={`${player.playerName}-${player.position}`}
-                          className="grid gap-2 rounded-lg border border-black/10 bg-white px-3 py-2 text-xs dark:border-white/10 dark:bg-black/30 md:grid-cols-[minmax(0,1.25fr)_auto_auto_minmax(0,1.1fr)] md:items-center"
-                        >
-                          <div className="min-w-0">
-                            <p className="truncate font-black uppercase italic">
-                              {player.playerName}
-                            </p>
-                            <p className="mt-0.5 text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
-                              {player.position ?? 'N/A'} | {player.nflTeam ?? 'N/A'}
-                            </p>
-                          </div>
-                          <div className="flex gap-2 text-[10px] font-black uppercase tracking-widest">
-                            <span>Market {formatMoney(player.averageValue)}</span>
-                            <span className="text-orange-600">
-                              REC {formatMoney(player.recommendedMaxBid)}
-                            </span>
-                            <span>
-                              Gap {valueGap === null ? 'N/A' : formatSignedMoney(Math.round(valueGap))}
-                            </span>
-                          </div>
-                          <div>
-                            {player.preference !== 'none' ? (
-                              <PreferenceBadge tag={player.preference} />
-                            ) : (
-                              <span className="rounded-full bg-black/5 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-gray-400 dark:bg-white/10">
-                                Value
-                              </span>
-                            )}
-                          </div>
-                          <p className="min-w-0 truncate text-[10px] font-bold text-gray-600 dark:text-gray-300">
-                            {formatWarRoomTerminology(player.reason)}
+                  {bestRemainingValueRows.length > 0 ? (
+                    bestRemainingValueRows.slice(0, 5).map((row) => (
+                      <div
+                        key={row.player.rowNumber}
+                        className="grid gap-2 rounded-lg border border-black/10 bg-white px-3 py-2 text-xs dark:border-white/10 dark:bg-black/30 md:grid-cols-[minmax(0,1.25fr)_auto_auto_minmax(0,1.1fr)] md:items-center"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-black uppercase italic">
+                            {row.player.originalPlayerName}
+                          </p>
+                          <p className="mt-0.5 text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                            {row.player.position ?? 'N/A'} | {row.player.nflTeam ?? 'N/A'}
                           </p>
                         </div>
-                      );
-                    })
+                        <div className="flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-widest">
+                          <span>Market {formatMoney(row.averageValue)}</span>
+                          <span className="text-orange-600">
+                            Recommended Max {formatMoney(row.recommendation.recommendedMaxBid)}
+                          </span>
+                          <span>
+                            Above Market {row.valueGap === null ? 'N/A' : formatSignedMoney(Math.round(row.valueGap))}
+                          </span>
+                        </div>
+                        <div>
+                          {row.preferenceTags.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {row.preferenceTags.map((tag) => (
+                                <PreferenceBadge key={tag} tag={tag} />
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="rounded-full bg-black/5 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-gray-400 dark:bg-white/10">
+                              Value
+                            </span>
+                          )}
+                        </div>
+                        <p className="min-w-0 truncate text-[10px] font-bold text-gray-600 dark:text-gray-300">
+                          {formatWarRoomTerminology(row.recommendation.reasons[0] ?? 'Recommendation uses the shared War Room ceiling.')}
+                        </p>
+                      </div>
+                    ))
                   ) : (
                     <p className="rounded-lg border border-black/10 bg-white px-3 py-2 text-xs font-bold uppercase tracking-widest text-gray-500 dark:border-white/10 dark:bg-black/30 dark:text-gray-400">
                       No clear value opportunities from the current filters and budget state.
@@ -8045,7 +10040,7 @@ export default function AuctionWarRoomClient({
                     <div className="flex gap-2 text-[10px] font-black uppercase tracking-widest">
                       <span>Market {formatMoney(row.averageValue)}</span>
                       <span className="text-orange-600">
-                        REC {formatMoney(row.recommendation.recommendedMaxBid)}
+                        Recommended Max {formatMoney(row.recommendation.recommendedMaxBid)}
                       </span>
                     </div>
                     <span className={`w-fit rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-widest ${
@@ -8053,7 +10048,7 @@ export default function AuctionWarRoomClient({
                         ? 'border-emerald-600/20 bg-emerald-600/10 text-emerald-700 dark:text-emerald-300'
                         : 'border-orange-600/20 bg-orange-600/10 text-orange-700 dark:text-orange-300'
                     }`}>
-                      Gap {row.valueGap === null ? 'N/A' : formatSignedMoney(Math.round(row.valueGap))}
+                      Above Market {row.valueGap === null ? 'N/A' : formatSignedMoney(Math.round(row.valueGap))}
                     </span>
                     <div className="flex flex-wrap justify-start gap-1 sm:justify-end">
                       {row.preferenceTags.length > 0 ? (
@@ -8077,173 +10072,71 @@ export default function AuctionWarRoomClient({
           </SectionShell>
 
           <SectionShell
-            title="Advisor Chat"
-            eyebrow="Local Advisor — no AI yet"
+            title="AI Draft Coach"
+            eyebrow="One Coach — Available Everywhere"
             icon={MessageCircle}
           >
-            <div className="mb-3 flex flex-col gap-2 rounded-xl border border-orange-600/20 bg-orange-600/10 p-3 text-orange-700 dark:text-orange-300 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-[10px] font-black uppercase tracking-widest">
-                Local Advisor — no AI yet.
-              </p>
-              {localAdvisorChatMessages.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLocalAdvisorChatMessages([]);
-                    setLocalAdvisorChatError(null);
-                    setLocalAdvisorChatStatus('idle');
-                  }}
-                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-current/30 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest transition hover:bg-white/30 dark:hover:bg-black/20"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Clear Chat
-                </button>
-              )}
-            </div>
-
-            {(localAdvisorChatStatus === 'loading' || localAdvisorChatError) && (
-              <div className="mb-3 rounded-xl border border-black/10 bg-black/[0.03] p-3 text-xs font-bold text-gray-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-300">
-                {localAdvisorChatStatus === 'loading'
-                  ? 'Asking protected local API...'
-                  : localAdvisorChatError}
-              </div>
-            )}
-
-            <form
-              className="mb-3 flex flex-col gap-2 sm:flex-row"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void askLocalAdvisorPlayer();
-              }}
-            >
-              <input
-                type="text"
-                value={localAdvisorChatInput}
-                onChange={(event) => setLocalAdvisorChatInput(event.target.value)}
-                placeholder="Try: Bijan, recommended max Bijan, should I bid on Bijan"
-                disabled={localAdvisorChatStatus === 'loading'}
-                className="min-h-10 flex-1 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-bold text-black outline-none transition placeholder:text-gray-400 focus:border-orange-600 dark:border-white/10 dark:bg-black/30 dark:text-white"
-              />
-              <button
-                type="submit"
-                disabled={localAdvisorChatStatus === 'loading'}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-orange-600/30 bg-orange-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-orange-700"
-              >
-                {localAdvisorChatStatus === 'loading' ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                ) : (
-                  <MessageCircle className="h-4 w-4" />
-                )}
-                {localAdvisorChatStatus === 'loading' ? 'Asking' : 'Ask'}
-              </button>
-            </form>
-
-            <div className="mb-3 flex flex-wrap gap-1.5">
-              {localAdvisorChatQuestions.map((question) => (
-                <button
-                  key={question.id}
-                  type="button"
-                  onClick={() => void askLocalAdvisor(question.id)}
-                  disabled={localAdvisorChatStatus === 'loading'}
-                  className="rounded-lg border border-black/10 bg-black/[0.03] px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest text-gray-600 transition hover:border-orange-600/30 hover:bg-orange-600/10 hover:text-orange-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-300"
-                >
-                  {question.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="max-h-[34vh] overflow-auto rounded-xl border border-black/10 bg-black/[0.03] p-3 dark:border-white/10 dark:bg-white/[0.03]">
-              {localAdvisorChatMessages.length > 0 ? (
-                <div className="space-y-3">
-                  {localAdvisorChatMessages.map((message) => (
-                    <div
-                      key={message.id}
-                      className="rounded-xl border border-orange-600/20 bg-orange-600/10 p-3 text-orange-700 dark:text-orange-300"
-                    >
-                      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <p className="text-[9px] font-black uppercase tracking-[0.25em] opacity-60">
-                            {message.sourceLabel ?? 'Local fallback'}
-                          </p>
-                          <p className="mt-2 text-sm font-black uppercase italic tracking-tight">
-                            {message.question}
-                          </p>
-                        </div>
-                        <p className="text-[10px] font-black uppercase tracking-widest opacity-70">
-                          {formatChatTimestamp(message.timestamp)}
-                        </p>
-                      </div>
-
-                      <div className="grid gap-2 lg:grid-cols-[1fr_0.9fr]">
-                        <div className="rounded-xl border border-current/20 bg-white/40 p-3 dark:bg-black/20">
-                          <p className="mb-2 text-[9px] font-black uppercase tracking-widest opacity-70">
-                            Answer Summary
-                          </p>
-                          <p className="text-sm font-bold leading-relaxed">
-                            {message.summary}
-                          </p>
-                        </div>
-                        <div className="rounded-xl border border-current/20 bg-white/40 p-3 dark:bg-black/20">
-                          <p className="mb-2 text-[9px] font-black uppercase tracking-widest opacity-70">
-                            Recommendation
-                          </p>
-                          <p className="text-sm font-black leading-relaxed">
-                            {message.recommendation}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 grid gap-2 lg:grid-cols-2">
-                        <div>
-                          <p className="mb-2 text-[9px] font-black uppercase tracking-widest opacity-70">
-                            Reasons
-                          </p>
-                          <ul className="space-y-2">
-                            {message.reasons.map((reason) => (
-                              <li
-                                key={reason}
-                                className="rounded-xl border border-current/20 bg-white/40 px-3 py-2 text-xs font-bold leading-relaxed dark:bg-black/20"
-                              >
-                                {reason}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div>
-                          <p className="mb-2 text-[9px] font-black uppercase tracking-widest opacity-70">
-                            Warnings
-                          </p>
-                          <ul className="space-y-2">
-                            {(message.warnings.length > 0
-                              ? message.warnings
-                              : ['No local warnings for this answer.']
-                            ).map((warning) => (
-                              <li
-                                key={warning}
-                                className="rounded-xl border border-current/20 bg-white/40 px-3 py-2 text-xs font-bold leading-relaxed dark:bg-black/20"
-                              >
-                                {warning}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-
-                      {message.meta && (
-                        <p className="mt-3 text-[10px] font-black uppercase tracking-widest opacity-70">
-                          {message.meta}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-black/30">
-                  <p className="text-sm font-bold leading-relaxed text-gray-600 dark:text-gray-300">
-                    Choose a draft question to get a local read from the current budget, roster, value, preference, bye-week, and purchase-source state.
+            <div className="rounded-2xl border border-orange-600/20 bg-orange-600/10 p-4 text-orange-700 dark:text-orange-300">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-[9px] font-black uppercase tracking-[0.25em] opacity-70">
+                    One conversation across Draft, Strategy, League Intel, and History
+                  </p>
+                  <p className="mt-2 text-lg font-black uppercase italic tracking-tight">
+                    {selectedPlayer
+                      ? `Currently focused on ${selectedPlayer.originalPlayerName}`
+                      : 'Draft-level guidance is ready'}
+                  </p>
+                  <p className="mt-2 max-w-3xl text-sm font-bold leading-relaxed">
+                    Use the floating robot for player-specific values, roster fit,
+                    budget pace, reasons, and warnings. The Strategy page no longer
+                    maintains a second competing chat.
                   </p>
                 </div>
-              )}
+                <button
+                  type="button"
+                  onClick={() => setIsDraftCoachOpen(true)}
+                  className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-orange-700"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Open Coach
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-xl border border-current/15 bg-white/45 p-3 dark:bg-black/20">
+                  <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-65">
+                    Current Decision
+                  </p>
+                  <p className="mt-1 text-sm font-black uppercase italic">
+                    {draftCoachPreview.decision}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-current/15 bg-white/45 p-3 dark:bg-black/20">
+                  <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-65">
+                    Budget Pace
+                  </p>
+                  <p className="mt-1 text-sm font-black uppercase italic">
+                    {draftCoachPreview.budgetPace.label}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-current/15 bg-white/45 p-3 dark:bg-black/20">
+                  <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-65">
+                    Must Reserve
+                  </p>
+                  <p className="mt-1 text-sm font-black uppercase italic">
+                    {formatMoney(draftCoachPreview.spendGuidance.mustReserve)}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-current/15 bg-white/45 p-3 dark:bg-black/20">
+                  <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-65">
+                    Conversation
+                  </p>
+                  <p className="mt-1 text-sm font-black uppercase italic">
+                    {draftCoachChatMessages.length} message{draftCoachChatMessages.length === 1 ? '' : 's'}
+                  </p>
+                </div>
+              </div>
             </div>
           </SectionShell>
               </>
@@ -8308,15 +10201,22 @@ export default function AuctionWarRoomClient({
                       <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
                         {purchaseSourceDetail}
                       </p>
-                      <div className="max-h-[54vh] overflow-auto rounded-xl border border-black/10 dark:border-white/10">
-                        <table className="w-full min-w-[520px] text-left">
-                          <thead>
-                            <tr className="sticky top-0 z-10 border-b border-black/10 bg-white text-[9px] font-black uppercase tracking-widest text-gray-400 dark:border-white/10 dark:bg-[#121212]">
-                              <th className="px-2 py-2">Owner</th>
-                              <th className="px-2 py-2">Spent</th>
-                              <th className="px-2 py-2">Remain</th>
-                              <th className="px-2 py-2">Players</th>
-                              <th className="px-2 py-2">Legal Max</th>
+	                      <div className="max-h-[54vh] overflow-y-auto rounded-xl border border-black/10 dark:border-white/10">
+	                        <table className="w-full table-fixed text-left">
+                            <colgroup>
+                              <col className="w-[34%]" />
+                              <col className="w-[14%]" />
+                              <col className="w-[18%]" />
+                              <col className="w-[14%]" />
+                              <col className="w-[20%]" />
+                            </colgroup>
+	                          <thead>
+	                            <tr className="sticky top-0 z-10 border-b border-black/10 bg-white text-[9px] font-black uppercase tracking-widest text-gray-400 dark:border-white/10 dark:bg-[#121212]">
+	                              <th className="px-1.5 py-2">Owner</th>
+	                              <th className="px-1.5 py-2 text-right">Spent</th>
+	                              <th className="px-1.5 py-2 text-right">Remain</th>
+	                              <th className="px-1.5 py-2 text-right">Players</th>
+	                              <th className="px-1.5 py-2 text-right">Legal Max</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-black/5 dark:divide-white/10">
@@ -8329,8 +10229,8 @@ export default function AuctionWarRoomClient({
                                   key={row.team.id}
                                   className={`text-xs ${guidanceTeam?.id === row.team.id ? 'bg-orange-600/10 ring-1 ring-inset ring-orange-600/25' : ''}`}
                                 >
-                                  <td className="px-2 py-2">
-                                    <p className="font-black">{row.team.managerName}{guidanceTeam?.id === row.team.id ? ' | Ray/Jeffrey' : ''}</p>
+	                                  <td className="break-words px-1.5 py-2">
+	                                    <p className="font-black">{row.team.managerName}{guidanceTeam?.id === row.team.id ? ' | Ray/Jeffrey' : ''}</p>
                                     <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
                                       {row.team.teamName}
                                     </p>
@@ -8340,18 +10240,18 @@ export default function AuctionWarRoomClient({
                                       </p>
                                     )}
                                   </td>
-                                  <td className="px-2 py-2 font-black">{formatMoney(row.totalSpent)}</td>
-                                  <td className="px-2 py-2 font-black text-emerald-600">
-                                    {row.budgetIsIncomplete ? 'Incomplete' : formatMoney(row.remainingBudget)}
-                                  </td>
-                                  <td className="px-2 py-2 font-black">
-                                    {Math.max(0, row.team.rosterSlots.total - row.rosterSpotsRemaining)}/{row.team.rosterSlots.total}
-                                  </td>
-                                  <td className="px-2 py-2">
-                                    <p className="font-black text-orange-600">
-                                      {row.budgetIsIncomplete ? 'Incomplete' : formatMoney(row.maxBid)}
-                                    </p>
-                                    <span className={`mt-1 inline-flex rounded-full border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest ${getBudgetPressureClass(pressure)}`}>
+	                                  <td className="whitespace-nowrap px-1.5 py-2 text-right font-black">{formatMoney(row.totalSpent)}</td>
+	                                  <td className="whitespace-nowrap px-1.5 py-2 text-right font-black text-emerald-600">
+	                                    {row.budgetIsIncomplete ? 'Incomplete' : formatMoney(row.remainingBudget)}
+	                                  </td>
+	                                  <td className="whitespace-nowrap px-1.5 py-2 text-right font-black">
+	                                    {Math.max(0, row.team.rosterSlots.total - row.rosterSpotsRemaining)}/{row.team.rosterSlots.total}
+	                                  </td>
+	                                  <td className="px-1.5 py-2 text-right">
+	                                    <p className="font-black text-orange-600">
+	                                      {row.budgetIsIncomplete ? 'Incomplete' : formatMoney(row.maxBid)}
+	                                    </p>
+	                                    <span className={`mt-1 inline-flex rounded-full border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest ${getBudgetPressureClass(pressure)}`}>
                                       {pressure}
                                     </span>
                                   </td>
@@ -9302,10 +11202,7 @@ export default function AuctionWarRoomClient({
                   <div>
                     <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Recommended Max</p>
                     <p className="mt-1 text-2xl font-black text-orange-600">
-                      {formatMoney(
-                        currentNominationDraftIntelligence?.ownerMaxBid ??
-                          currentNominationBaselineMaxBid
-                      )}
+                      {formatMoney(currentNominationBaselineMaxBid)}
                     </p>
                   </div>
                   <div>
@@ -9355,7 +11252,7 @@ export default function AuctionWarRoomClient({
             icon={ClipboardList}
             collapsible
           >
-              <div className="mb-4 grid gap-3 sm:grid-cols-4">
+              <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="rounded-xl border border-black/10 bg-black/[0.03] p-3 dark:border-white/10 dark:bg-white/[0.03]">
                   <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Total Keepers</p>
                   <p className="mt-1 text-2xl font-black">{keeperPurchaseRows.length}</p>
@@ -9372,6 +11269,53 @@ export default function AuctionWarRoomClient({
                   <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Teams Incomplete</p>
                   <p className="mt-1 text-2xl font-black">{teamsWithIncompleteBudgets}</p>
                 </div>
+                <div className="rounded-xl border border-black/10 bg-black/[0.03] p-3 dark:border-white/10 dark:bg-white/[0.03]">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Total Keeper Cost</p>
+                  <p className="mt-1 text-2xl font-black">{formatMoney(keeperAuditTotalPricedCost)}</p>
+                </div>
+                <div className="rounded-xl border border-black/10 bg-black/[0.03] p-3 dark:border-white/10 dark:bg-white/[0.03]">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Reviewed Market Value</p>
+                  <p className="mt-1 text-2xl font-black">{keeperAuditReviewedRows.length > 0 ? formatMoney(keeperAuditReviewedMarketValue) : 'N/A'}</p>
+                  <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                    {keeperAuditReviewedRows.length}/{keeperPurchaseRows.length} keepers valued
+                  </p>
+                </div>
+                <div className="rounded-xl border border-black/10 bg-black/[0.03] p-3 dark:border-white/10 dark:bg-white/[0.03]">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">League Net Keeper Value</p>
+                  <p className={`mt-1 text-2xl font-black ${
+                    keeperAuditNetValue > 0
+                      ? 'text-emerald-600'
+                      : keeperAuditNetValue < 0
+                        ? 'text-rose-600'
+                        : ''
+                  }`}>
+                    {keeperAuditReviewedRows.length > 0
+                      ? formatKeeperNetValue(keeperAuditNetValue)
+                      : 'N/A'}
+                  </p>
+                  <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                    Market value minus reviewed keeper cost
+                  </p>
+                </div>
+                <div className="rounded-xl border border-black/10 bg-black/[0.03] p-3 dark:border-white/10 dark:bg-white/[0.03]">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Value Mix</p>
+                  <p className="mt-1 text-sm font-black uppercase leading-relaxed">
+                    <span className="text-emerald-600">{keeperAuditUnderMarketCount} Under</span>
+                    {' · '}
+                    <span className="text-blue-600">{keeperAuditAtMarketCount} At</span>
+                    {' · '}
+                    <span className="text-rose-600">{keeperAuditOverMarketCount} Over</span>
+                  </p>
+                  {keeperAuditNoMarketMatchCount > 0 ? (
+                    <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-yellow-700 dark:text-yellow-300">
+                      {keeperAuditNoMarketMatchCount} without market match
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="mb-4 rounded-xl border border-blue-600/20 bg-blue-600/5 px-4 py-3 text-xs font-bold leading-relaxed text-blue-800 dark:text-blue-200">
+                Keeper value compares each confirmed keeper cost with the same published 2026 Market Value used throughout the War Room. Under, at, and over market use the same greater-of-$1-or-8% tolerance as purchase grading. ADP is supporting demand context only.
               </div>
 
               {keeperReviewTeamRows.length > 0 ? (
@@ -9399,39 +11343,130 @@ export default function AuctionWarRoomClient({
                         </span>
                       </div>
 
+                      <div className="mb-3 grid gap-2 sm:grid-cols-4">
+                        <div className="rounded-xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-black/20">
+                          <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Keeper Cost</p>
+                          <p className="mt-1 text-lg font-black">{formatMoney(teamRow.keeperCostTotal)}</p>
+                        </div>
+                        <div className="rounded-xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-black/20">
+                          <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Reviewed Market</p>
+                          <p className="mt-1 text-lg font-black">{teamRow.reviewedCount > 0 ? formatMoney(teamRow.marketValueTotal) : 'N/A'}</p>
+                        </div>
+                        <div className="rounded-xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-black/20">
+                          <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Net Keeper Value</p>
+                          <p className={`mt-1 text-lg font-black ${
+                            teamRow.netValue > 0
+                              ? 'text-emerald-600'
+                              : teamRow.netValue < 0
+                                ? 'text-rose-600'
+                                : ''
+                          }`}>
+                            {teamRow.reviewedCount > 0
+                              ? formatKeeperNetValue(teamRow.netValue)
+                              : 'N/A'}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-black/20">
+                          <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Value Mix</p>
+                          <p className="mt-1 text-[10px] font-black uppercase leading-relaxed">
+                            <span className="text-emerald-600">{teamRow.underMarketCount} Under</span>
+                            {' · '}
+                            <span className="text-blue-600">{teamRow.atMarketCount} At</span>
+                            {' · '}
+                            <span className="text-rose-600">{teamRow.overMarketCount} Over</span>
+                          </p>
+                        </div>
+                      </div>
+
                       <div className="space-y-2">
-                        {teamRow.keepers.map((keeper) => (
-                          <div
-                            key={keeper.id}
-                            className="grid gap-2 rounded-xl bg-white px-3 py-2 text-xs dark:bg-black/20 sm:grid-cols-[minmax(0,1fr)_auto_auto]"
-                          >
-                            <div className="min-w-0">
-                              <p className="truncate font-black uppercase italic">
-                                {keeper.playerName}
-                              </p>
-                              <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
-                                {keeper.position ?? 'N/A'} | {keeper.nflTeam ?? 'N/A'} | {teamRow.team.teamName}
+                        {teamRow.keepers.map((keeperAudit) => {
+                          const keeper = keeperAudit.keeper;
+                          const differenceLabel = getKeeperDifferenceLabel(
+                            keeperAudit.status
+                          );
+
+                          return (
+                            <div
+                              key={keeper.id}
+                              className="rounded-xl bg-white p-3 text-xs dark:bg-black/20"
+                            >
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div className="min-w-0">
+                                  <p className="truncate font-black uppercase italic">
+                                    {keeper.playerName}
+                                  </p>
+                                  <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                                    {keeper.position ?? 'N/A'} | {keeper.nflTeam ?? 'N/A'} | {teamRow.team.teamName}
+                                  </p>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="w-fit rounded-full bg-black/5 px-3 py-1 text-[9px] font-black uppercase tracking-widest dark:bg-white/10">
+                                    {keeperAudit.keeperCost === null
+                                      ? 'Price missing'
+                                      : formatMoney(keeperAudit.keeperCost)}
+                                  </span>
+                                  <span className={`w-fit rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-widest ${getKeeperMarketStatusClass(keeperAudit.status)}`}>
+                                    {getKeeperMarketStatusLabel(keeperAudit.status)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                                <div className="rounded-lg border border-black/10 bg-black/[0.025] p-2.5 dark:border-white/10 dark:bg-white/[0.03]">
+                                  <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Keeper Cost</p>
+                                  <p className="mt-1 text-base font-black">{formatMoney(keeperAudit.keeperCost)}</p>
+                                </div>
+                                <div className="rounded-lg border border-black/10 bg-black/[0.025] p-2.5 dark:border-white/10 dark:bg-white/[0.03]">
+                                  <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Market Value</p>
+                                  <p className="mt-1 text-base font-black">{formatMoney(keeperAudit.marketValue)}</p>
+                                </div>
+                                <div className="rounded-lg border border-black/10 bg-black/[0.025] p-2.5 dark:border-white/10 dark:bg-white/[0.03]">
+                                  <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">{differenceLabel}</p>
+                                  <p className={`mt-1 text-base font-black ${
+                                    keeperAudit.status === 'under-market'
+                                      ? 'text-emerald-600'
+                                      : keeperAudit.status === 'over-market'
+                                        ? 'text-rose-600'
+                                        : ''
+                                  }`}>
+                                    {formatKeeperDifferenceAmount(keeperAudit)}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[9px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                                <span className={
+                                  keeperAudit.status === 'under-market'
+                                    ? 'text-emerald-700 dark:text-emerald-300'
+                                    : keeperAudit.status === 'over-market'
+                                      ? 'text-rose-700 dark:text-rose-300'
+                                      : ''
+                                }>
+                                  {formatKeeperMarketComparison(keeperAudit)}
+                                </span>
+                                <span>
+                                  {keeperAudit.sourceCount === null
+                                    ? 'Sources N/A'
+                                    : `${keeperAudit.sourceCount} source${keeperAudit.sourceCount === 1 ? '' : 's'}`}
+                                </span>
+                                <span>
+                                  {keeperAudit.confidenceScore === null
+                                    ? 'Confidence N/A'
+                                    : `${keeperAudit.confidenceScore}% confidence`}
+                                </span>
+                                {keeperAudit.adp ? (
+                                  <span>
+                                    ADP {formatAdp(keeperAudit.adp.consensusOverallAdp)} · {keeperAudit.adp.demandTier}
+                                  </span>
+                                ) : null}
+                              </div>
+
+                              <p className="mt-2 text-[9px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                                Owner/team: {teamRow.team.managerName} | {teamRow.team.teamName} | Source: {formatHistorySourceLabel(keeper.source)}
                               </p>
                             </div>
-                            <span className="w-fit rounded-full bg-black/5 px-3 py-1 text-[9px] font-black uppercase tracking-widest dark:bg-white/10">
-                              {keeper.priceStatus === 'missing'
-                                ? 'Price missing'
-                                : formatMoney(keeper.purchasePrice)}
-                            </span>
-                            <span className={`w-fit rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-widest ${
-                              keeper.priceStatus === 'missing'
-                                ? 'border-orange-600/20 bg-orange-600/10 text-orange-700 dark:text-orange-300'
-                                : 'border-emerald-600/20 bg-emerald-600/10 text-emerald-700 dark:text-emerald-300'
-                            }`}>
-                              {keeper.priceStatus === 'missing'
-                                ? 'Price missing'
-                                : 'Priced'}
-                            </span>
-                            <p className="text-[9px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 sm:col-span-3">
-                              Owner/team: {teamRow.team.managerName} | {teamRow.team.teamName} | Source: {formatHistorySourceLabel(keeper.source)}
-                            </p>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   ))}
@@ -10963,6 +12998,170 @@ export default function AuctionWarRoomClient({
         🤖
       </button>
 
+      <PlayerDetailDrawer
+        open={isPlayerDetailDrawerOpen}
+        onClose={closePlayerDetailDrawer}
+        saleComplete={selectedPlayerSoldState}
+        player={
+          selectedPlayer
+            ? {
+                sleeperPlayerId: selectedPlayer.sleeperPlayerId ?? null,
+                name: selectedPlayer.originalPlayerName,
+                position: selectedPlayer.position ?? null,
+                nflTeam: selectedPlayer.nflTeam ?? null,
+                byeWeek: selectedPlayerByeWeek,
+                status: selectedPlayerStatus,
+                lowValue: selectedPlayer.lowValue ?? null,
+                averageValue: selectedPlayer.averageValue ?? null,
+                highValue: selectedPlayer.highValue ?? null,
+                adp: selectedPlayerAdp?.consensusOverallAdp ?? null,
+                demandTier: selectedPlayerAdp?.demandTier ?? null,
+                sourceCount: selectedPlayerSourceCount,
+                confidenceScore:
+                  currentNominationDraftIntelligence?.confidenceScore ??
+                  selectedPlayer.confidenceScore ??
+                  null,
+              }
+            : null
+        }
+        recommendation={
+          selectedPlayer
+            ? {
+                decision: getCurrentNominationRecommendationLabel(
+                  currentNominationRecommendation
+                ),
+                recommendedMax:
+                  selectedPlayerRecommendation?.recommendedMaxBid ?? null,
+                currentAiCeiling: currentNominationCurrentAiCeiling.ceiling,
+                predictedWinningBid:
+                  currentNominationDraftIntelligence?.predictedWinningBid ?? null,
+                legalMax: currentNominationLegalMaxBid,
+                marketValue:
+                  selectedPlayer.averageValue ??
+                  currentNominationDraftIntelligence?.marketValue ??
+                  null,
+                reasons: currentNominationReasons,
+                warnings: currentNominationWarnings,
+              }
+            : null
+        }
+        history={
+          selectedPlayer
+            ? {
+                seasonsCompared:
+                  selectedPlayerHistoricalPriceComparison.summary.seasonsCompared,
+                pricingStyle: formatHistoricalComparisonStyle(
+                  selectedPlayerHistoricalPriceComparison.summary.riverCityPricingStyle
+                ),
+                trend: formatHistoricalComparisonTrend(
+                  selectedPlayerHistoricalPriceComparison.summary.trend
+                ),
+                averageExpectedValue:
+                  selectedPlayerHistoricalPriceComparison.summary.averageExpectedValue,
+                averageActualPrice:
+                  selectedPlayerHistoricalPriceComparison.summary.averageActualPrice,
+                averageDifference:
+                  selectedPlayerHistoricalPriceComparison.summary.averageDifference,
+                averageDifferencePercent:
+                  selectedPlayerHistoricalPriceComparison.summary.averageDifferencePercent,
+                recentAverageActual:
+                  selectedPlayerHistoricalPriceComparison.summary.recentAverageActual,
+                mostRecentActualPrice:
+                  selectedPlayerHistoricalPriceComparison.summary.mostRecentActualPrice,
+                lowestActualPrice:
+                  selectedPlayerHistoricalPriceComparison.summary.lowestActualPrice,
+                highestActualPrice:
+                  selectedPlayerHistoricalPriceComparison.summary.highestActualPrice,
+                verdict: selectedPlayerHistoricalPriceComparison.verdict,
+                seasons: selectedPlayerHistoricalPriceComparison.seasons.map(
+                  (seasonComparison) => ({
+                    season: seasonComparison.season,
+                    expectedValue: seasonComparison.expectedValue,
+                    actualSalePrice: seasonComparison.actualSalePrice,
+                    difference: seasonComparison.difference,
+                    differencePercent: seasonComparison.differencePercent,
+                    buyerName: seasonComparison.buyerName,
+                    teamName: seasonComparison.teamName,
+                    result: seasonComparison.result,
+                    isKeeper: seasonComparison.isKeeper ?? false,
+                  })
+                ),
+                valueSheetOnlySeasons:
+                  selectedPlayerHistoricalPriceComparison.valueSheetOnlySeasons.map(
+                    (seasonValue) => ({
+                      season: seasonValue.season,
+                      expectedValue: seasonValue.expectedValue,
+                    })
+                  ),
+                warnings: selectedPlayerHistoricalPriceComparison.warnings,
+              }
+            : null
+        }
+        plan={{
+          tag: draftPlanTagInput,
+          preferredEntry: draftPlanPreferredEntryInput,
+          plannedCap: draftPlanPlannedCapInput,
+          note: draftPlanNoteInput,
+          saveStatus: draftPlanSaveStatus,
+          error: draftPlanError,
+        }}
+        coach={{
+          messages: draftCoachChatMessages,
+          input: draftCoachChatInput,
+          status: draftCoachChatStatus,
+          error: draftCoachChatError,
+        }}
+        onCoachInputChange={setDraftCoachChatInput}
+        onAskCoach={(question) => void askDraftCoachForSelectedPlayer(question)}
+        onClearCoach={clearDraftCoachChat}
+        onTagChange={setDraftPlanTagInput}
+        onPreferredEntryChange={setDraftPlanPreferredEntryInput}
+        onPlannedCapChange={setDraftPlanPlannedCapInput}
+        onNoteChange={setDraftPlanNoteInput}
+        onSavePlan={() => void saveDraftPlanPreference()}
+        onClearPlan={() => void saveDraftPlanPreference({ clear: true })}
+        sale={{
+          canRecordSale: access.canRecordSales,
+          buyerOptions: mockAuctionTeams.map((team) => ({
+            id: team.id,
+            label: `${team.teamName} | ${team.managerName}`,
+          })),
+          selectedBuyer: manualSaleBuyerTeamId,
+          price: manualSalePriceInput,
+          canSubmit: canRecordManualSale,
+          validationMessage:
+            selectedPlayerPurchaseMatch
+              ? `${selectedPlayer?.originalPlayerName ?? 'This player'} is already marked taken by ${formatPurchaseSourceLabel(selectedPlayerPurchaseMatch.source)}.`
+              : manualSaleValidationMessage,
+          purchase: selectedPlayerPurchaseMatch
+            ? {
+                teamName:
+                  getTeam(selectedPlayerPurchaseMatch.teamId)?.teamName ??
+                  `Roster ${selectedPlayerPurchaseMatch.rosterId ?? 'N/A'}`,
+                managerName:
+                  getTeam(selectedPlayerPurchaseMatch.teamId)?.managerName ?? null,
+                price: selectedPlayerPurchaseMatch.purchasePrice,
+              }
+            : null,
+        }}
+        onBuyerChange={(teamId) => {
+          setManualSaleBuyerTeamId(teamId);
+          setManualSaleError(null);
+        }}
+        onSalePriceChange={(value) => {
+          setManualSalePriceInput(value);
+          setManualSaleError(null);
+        }}
+        onRecordSale={() =>
+          recordManualSale({
+            player: selectedPlayer,
+            buyerTeamId: manualSaleBuyerTeamId,
+            priceInput: manualSalePriceInput,
+            keepPlayerSelected: true,
+          })
+        }
+      />
+
       {isDraftCoachOpen && (
         <div className="fixed inset-0 z-[80] bg-black/20 backdrop-blur-sm">
           <aside
@@ -10973,7 +13172,7 @@ export default function AuctionWarRoomClient({
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <p className="text-[9px] font-black uppercase tracking-[0.25em] text-gray-400">
-                  Hybrid Local Coach
+                  One Authoritative War Room Coach
                 </p>
                 <h2 className="mt-1 text-2xl font-black uppercase italic tracking-tight">
                   AI Draft Coach
@@ -11017,6 +13216,111 @@ export default function AuctionWarRoomClient({
                     ))}
                   </div>
                 )}
+
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div className="rounded-xl border border-current/15 bg-white/45 p-3 dark:bg-black/20">
+                    <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-65">
+                      Current Focus
+                    </p>
+                    <p className="mt-1 truncate text-sm font-black uppercase italic">
+                      {selectedPlayer?.originalPlayerName ?? 'Draft Strategy'}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-current/15 bg-white/45 p-3 dark:bg-black/20">
+                    <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-65">
+                      Budget Pace
+                    </p>
+                    <p className="mt-1 text-sm font-black uppercase italic">
+                      {draftCoachPreview.budgetPace.label}
+                    </p>
+                  </div>
+                  {selectedPlayerSoldState ? (
+                    <>
+                      <div className="rounded-xl border border-current/15 bg-white/45 p-3 dark:bg-black/20">
+                        <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-65">
+                          Player State
+                        </p>
+                        <p className="mt-1 text-lg font-black">
+                          {selectedPlayerSoldState.statusLabel}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-current/15 bg-white/45 p-3 dark:bg-black/20">
+                        <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-65">
+                          Team
+                        </p>
+                        <p className="mt-1 truncate text-sm font-black">
+                          {selectedPlayerSoldState.teamName}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-current/15 bg-white/45 p-3 dark:bg-black/20">
+                        <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-65">
+                          Price
+                        </p>
+                        <p className="mt-1 text-lg font-black">
+                          {formatMoney(selectedPlayerSoldState.price)}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-current/15 bg-white/45 p-3 dark:bg-black/20">
+                        <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-65">
+                          Source
+                        </p>
+                        <p className="mt-1 text-sm font-black">
+                          {selectedPlayerSoldState.sourceLabel}
+                        </p>
+                      </div>
+                    </>
+                  ) : selectedPlayer ? (
+                    <>
+                      <div className="rounded-xl border border-current/15 bg-white/45 p-3 dark:bg-black/20">
+                        <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-65">
+                          Market Value
+                        </p>
+                        <p className="mt-1 text-lg font-black">
+                          {formatMoney(selectedPlayer.averageValue ?? null)}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-current/15 bg-white/45 p-3 dark:bg-black/20">
+                        <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-65">
+                          Recommended Max
+                        </p>
+                        <p className="mt-1 text-lg font-black">
+                          {formatMoney(currentNominationBaselineMaxBid)}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-current/15 bg-white/45 p-3 dark:bg-black/20">
+                        <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-65">
+                          Expected Sale
+                        </p>
+                        <p className="mt-1 text-lg font-black">
+                          {formatMoney(currentNominationDraftIntelligence?.predictedWinningBid ?? null)}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-current/15 bg-white/45 p-3 dark:bg-black/20">
+                        <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-65">
+                          Legal Max
+                        </p>
+                        <p className="mt-1 text-lg font-black">
+                          {currentNominationLegalMaxLabel}
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rounded-xl border border-current/15 bg-white/45 p-3 dark:bg-black/20 sm:col-span-2">
+                      <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-65">
+                        Reserve
+                      </p>
+                      <p className="mt-1 text-sm font-black uppercase italic">
+                        Effective {formatMoney(draftCoachPreview.spendGuidance.effectiveReserve)}
+                      </p>
+                      <p className="mt-1 text-[9px] font-bold uppercase tracking-widest opacity-70">
+                        Roster minimum {formatMoney(draftCoachPreview.spendGuidance.rosterMinimumReserve)}
+                        {draftCoachPreview.spendGuidance.strategicReserve === null
+                          ? ''
+                          : ` · Strategic ${formatMoney(draftCoachPreview.spendGuidance.strategicReserve)}`}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="rounded-2xl bg-black/[0.025] p-3 dark:bg-white/[0.04]">
@@ -11027,11 +13331,7 @@ export default function AuctionWarRoomClient({
                   {draftCoachChatMessages.length > 0 && (
                     <button
                       type="button"
-                      onClick={() => {
-                        setDraftCoachChatMessages([]);
-                        setDraftCoachChatError(null);
-                        setDraftCoachChatStatus('idle');
-                      }}
+                      onClick={clearDraftCoachChat}
                       className="inline-flex w-fit items-center gap-2 rounded-lg px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest text-gray-500 transition hover:bg-orange-600/10 hover:text-orange-600 dark:text-gray-300"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -11054,22 +13354,167 @@ export default function AuctionWarRoomClient({
                       {draftCoachChatMessages.map((message) => (
                         <div
                           key={message.id}
-                          className="rounded-xl bg-white p-3 text-sm dark:bg-black/20"
+                          className="rounded-2xl border border-black/10 bg-white p-3 text-sm dark:border-white/10 dark:bg-black/20"
                         >
-                          <div className="mb-2 flex items-start justify-between gap-2">
-                            <p className="font-black uppercase italic">
-                              {message.question}
-                            </p>
-                            <span className="rounded-full bg-orange-600/10 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">
+                          <div className="mb-3 flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-[8px] font-black uppercase tracking-[0.22em] text-gray-400">
+                                {message.sourceLabel}
+                              </p>
+                              <p className="mt-1 font-black uppercase italic">
+                                {message.question}
+                              </p>
+                            </div>
+                            <span className="shrink-0 rounded-full bg-orange-600/10 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">
                               {message.decision}
                             </span>
                           </div>
-                          <p className="font-bold leading-relaxed text-gray-700 dark:text-gray-200">
-                            {message.buddyMessage}
-                          </p>
-                          <p className="mt-2 text-xs font-bold leading-relaxed text-gray-500 dark:text-gray-400">
-                            {message.riskGuidance}
-                          </p>
+
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <div className="rounded-xl bg-black/[0.03] p-3 dark:bg-white/[0.04]">
+                              <p className="mb-1 text-[8px] font-black uppercase tracking-[0.2em] text-gray-400">
+                                Coach Answer
+                              </p>
+                              <p className="font-bold leading-relaxed text-gray-700 dark:text-gray-200">
+                                {message.answer || message.buddyMessage}
+                              </p>
+                            </div>
+                            <div className="rounded-xl bg-black/[0.03] p-3 dark:bg-white/[0.04]">
+                              <p className="mb-1 text-[8px] font-black uppercase tracking-[0.2em] text-gray-400">
+                                Budget &amp; Risk
+                              </p>
+                              <p className="font-black text-gray-700 dark:text-gray-200">
+                                {message.budgetPace.label}
+                              </p>
+                              <p className="mt-1 text-xs font-bold leading-relaxed text-gray-500 dark:text-gray-400">
+                                {message.budgetPace.message}
+                              </p>
+                              <p className="mt-2 text-xs font-bold leading-relaxed text-gray-500 dark:text-gray-400">
+                                {message.riskGuidance}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div
+                            className={`mt-2 grid gap-2 ${
+                              typeof message.spendGuidance.justifiedOverpayAmount === 'number' &&
+                              message.spendGuidance.justifiedOverpayAmount > 0
+                                ? 'sm:grid-cols-3'
+                                : 'sm:grid-cols-2'
+                            }`}
+                          >
+                            <div className="rounded-xl bg-black/[0.03] p-2.5 dark:bg-white/[0.04]">
+                              <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400">Effective Reserve</p>
+                              <p className="mt-1 font-black">{formatMoney(message.spendGuidance.effectiveReserve)}</p>
+                              <p className="mt-1 text-[8px] font-bold text-gray-400">
+                                Roster {formatMoney(message.spendGuidance.rosterMinimumReserve)}
+                                {message.spendGuidance.strategicReserve === null
+                                  ? ''
+                                  : ` · Strategy ${formatMoney(message.spendGuidance.strategicReserve)}`}
+                              </p>
+                            </div>
+                            {message.decision === 'SOLD' ||
+                            message.decision === 'KEEPER' ? (
+                              <div className="rounded-xl bg-black/[0.03] p-2.5 dark:bg-white/[0.04]">
+                                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400">
+                                  Player State
+                                </p>
+                                <p className="mt-1 font-black">
+                                  {message.decision}
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="rounded-xl bg-black/[0.03] p-2.5 dark:bg-white/[0.04]">
+                                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400">
+                                  {getCoachActionAmountLabel(message.question)}
+                                </p>
+                                <p className="mt-1 font-black">
+                                  {typeof message.spendGuidance.suggestedNextBid === 'number'
+                                    ? formatMoney(
+                                        Math.round(
+                                          message.spendGuidance.suggestedNextBid
+                                        )
+                                      )
+                                    : 'N/A'}
+                                </p>
+                              </div>
+                            )}
+                            {message.decision !== 'SOLD' &&
+                            message.decision !== 'KEEPER' &&
+                            typeof message.spendGuidance.justifiedOverpayAmount === 'number' &&
+                            message.spendGuidance.justifiedOverpayAmount > 0 ? (
+                              <div className="rounded-xl bg-black/[0.03] p-2.5 dark:bg-white/[0.04]">
+                                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400">Justified Overpay</p>
+                                <p className="mt-1 font-black">
+                                  {formatMoney(
+                                    Math.round(
+                                      message.spendGuidance.justifiedOverpayAmount
+                                    )
+                                  )}
+                                </p>
+                              </div>
+                            ) : null}
+                          </div>
+
+                          {message.intelSummary.length > 0 && (
+                            <div className="mt-3">
+                              <p className="mb-2 text-[8px] font-black uppercase tracking-[0.2em] text-gray-400">
+                                Live Context
+                              </p>
+                              <ul className="grid gap-1.5">
+                                {message.intelSummary.map((item) => (
+                                  <li
+                                    key={item}
+                                    className="rounded-lg bg-blue-600/10 px-3 py-2 text-xs font-bold leading-relaxed text-blue-700 dark:text-blue-300"
+                                  >
+                                    {formatWarRoomTerminology(item)}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                            <div>
+                              <p className="mb-2 text-[8px] font-black uppercase tracking-[0.2em] text-gray-400">
+                                Reasons
+                              </p>
+                              <ul className="space-y-1.5">
+                                {(message.reasons.length > 0
+                                  ? message.reasons
+                                  : ['No additional reasons were returned.']
+                                ).map((reason) => (
+                                  <li
+                                    key={reason}
+                                    className="rounded-lg bg-emerald-600/10 px-3 py-2 text-xs font-bold leading-relaxed text-emerald-700 dark:text-emerald-300"
+                                  >
+                                    {formatWarRoomTerminology(reason)}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                            <div>
+                              <p className="mb-2 text-[8px] font-black uppercase tracking-[0.2em] text-gray-400">
+                                Warnings
+                              </p>
+                              {message.warnings.length > 0 ? (
+                                <ul className="space-y-1.5">
+                                  {message.warnings.map((warning) => (
+                                    <li
+                                      key={warning}
+                                      className="rounded-lg bg-rose-600/10 px-3 py-2 text-xs font-bold leading-relaxed text-rose-700 dark:text-rose-300"
+                                    >
+                                      {formatWarRoomTerminology(warning)}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className="rounded-lg bg-emerald-600/10 px-3 py-2 text-xs font-bold leading-relaxed text-emerald-700 dark:text-emerald-300">
+                                  No active warnings
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>

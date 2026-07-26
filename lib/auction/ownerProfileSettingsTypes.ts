@@ -45,9 +45,11 @@ export type AuctionOwnerProfileSettings = {
   kickerDefenseStrategy: AuctionKickerDefenseStrategy;
   draftGoal: AuctionDraftGoal;
   additionalNotes: string | null;
+  liveDraftStrategy: AuctionLiveDraftStrategy | null;
   onboardingCompleted: boolean;
   onboardingCompletedAt: string | null;
   updatedAt: string;
   updatedBy: string;
   schemaVersion: 1;
 };
+import type { AuctionLiveDraftStrategy } from "@/lib/auction/liveDraftStrategy";

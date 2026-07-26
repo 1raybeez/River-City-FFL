@@ -3,6 +3,10 @@ import "server-only";
 import { firestore } from "@/lib/firebaseAdmin";
 import { riverCityAuctionLeagueSettings } from "@/lib/auction/leagueSettings";
 import {
+  parseAuctionLiveDraftStrategy,
+  type AuctionLiveDraftStrategyInput,
+} from "@/lib/auction/liveDraftStrategy";
+import {
   type AuctionDraftGoal,
   type AuctionKickerDefenseStrategy,
   type AuctionKeeperFocus,
@@ -156,6 +160,7 @@ function readSettingsDocument(
     ),
     draftGoal: readEnum(data.draftGoal, draftGoalValues, "balanced"),
     additionalNotes: readString(data.additionalNotes),
+    liveDraftStrategy: parseAuctionLiveDraftStrategy(data.liveDraftStrategy),
     onboardingCompleted,
     onboardingCompletedAt: onboardingCompleted
       ? readString(data.onboardingCompletedAt)
@@ -185,12 +190,19 @@ export async function upsertAuctionOwnerProfileSettings({
 }: {
   settings: Omit<
     AuctionOwnerProfileSettings,
-    "updatedAt" | "updatedBy" | "schemaVersion"
+    "updatedAt" | "updatedBy" | "schemaVersion" | "liveDraftStrategy"
   >;
   updatedBy: string;
 }) {
   const updatedAt = new Date().toISOString();
-  const serializedSettings: AuctionOwnerProfileSettings = {
+  const existingSettings = await readAuctionOwnerProfileSettings({
+    season: settings.season,
+    ownerProfileId: settings.ownerProfileId,
+  });
+  const serializedSettings: Omit<
+    AuctionOwnerProfileSettings,
+    "liveDraftStrategy"
+  > = {
     season: settings.season,
     ownerProfileId: settings.ownerProfileId,
     sleeperTeamName: settings.sleeperTeamName,
@@ -215,7 +227,45 @@ export async function upsertAuctionOwnerProfileSettings({
     serializedSettings.ownerProfileId
   ).set(serializedSettings, { merge: true });
 
-  return serializedSettings;
+  return {
+    ...serializedSettings,
+    liveDraftStrategy: existingSettings?.liveDraftStrategy ?? null,
+  } satisfies AuctionOwnerProfileSettings;
+}
+
+export async function updateAuctionOwnerLiveDraftStrategy({
+  season = riverCityAuctionLeagueSettings.season,
+  ownerProfileId,
+  strategy,
+  updatedBy,
+}: {
+  season?: number;
+  ownerProfileId: string;
+  strategy: AuctionLiveDraftStrategyInput | null;
+  updatedBy: string;
+}) {
+  const updatedAt = new Date().toISOString();
+  const liveDraftStrategy = strategy
+    ? {
+        ...strategy,
+        updatedAt,
+        updatedBy,
+      }
+    : null;
+
+  await getSettingsRef(season, ownerProfileId).set(
+    {
+      season,
+      ownerProfileId,
+      liveDraftStrategy,
+      updatedAt,
+      updatedBy,
+      schemaVersion: AUCTION_OWNER_PROFILE_SETTINGS_SCHEMA_VERSION,
+    },
+    { merge: true }
+  );
+
+  return liveDraftStrategy;
 }
 
 export async function updateAuctionOwnerProfileSettingsTeamName({
