@@ -20,7 +20,8 @@
     "incremental": true,
 
     // ⭐ Required for "@/..." imports
-  
+    "baseUrl": ".",
+
     "paths": {
       "@/*": ["./*"]
     },
