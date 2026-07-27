@@ -17,6 +17,49 @@ export type DraftCoachNeedLevel =
 
 export type DraftCoachConfidence = 'high' | 'medium' | 'low';
 
+export type DraftCoachOwnerSettings = {
+  rosterConstruction: string;
+  riskTolerance: string;
+  keeperFocus: string;
+  rookiePreference: string;
+  positionPriorities: readonly string[];
+  nominationStyle: string;
+  kickerDefenseStrategy: string;
+  draftGoal: string;
+  additionalNotes: string | null;
+} | null;
+
+export type DraftCoachLiveStrategy = {
+  riskMode: 'conservative' | 'balanced' | 'aggressive';
+  priorityPositions: readonly string[];
+  deemphasizedPositions: readonly string[];
+  minimumBudgetReserve: number | null;
+  opponentFocus: string | null;
+  additionalInstructions: string | null;
+} | null;
+
+export type DraftCoachOpponentContext = {
+  ownerName: string;
+  teamName: string;
+  remainingBudget: number | null;
+  legalMaxBid: number | null;
+  rosterSpotsRemaining: number | null;
+  positionCounts: Readonly<Record<string, number>>;
+  starterNeeds: readonly string[];
+  historicalAveragePurchase: number | null;
+  historicalBiggestPurchase: number | null;
+  historicalPositionPreferences: readonly string[];
+  purchaseTiming: string | null;
+  confidence: 'High' | 'Medium' | 'Low';
+  currentCompetitionSummary: string | null;
+  recommendedPlayerName: string | null;
+  recommendedMove: string;
+  whyItCouldWork: string;
+  nominationOnlyPressure: boolean;
+  alternatives: readonly string[];
+  warnings: readonly string[];
+} | null;
+
 export type DraftCoachInput = {
   question?: string | null;
   selectedPlayer: {
@@ -89,10 +132,23 @@ export type DraftCoachInput = {
     leagueDollarsSpent: number | null;
     totalRosterSlots: number | null;
   } | null;
+  ownerSettings?: DraftCoachOwnerSettings;
+  liveStrategy?: DraftCoachLiveStrategy;
+  opponentContext?: DraftCoachOpponentContext;
+  completedPurchase?: {
+    statusLabel: 'SOLD' | 'KEEPER';
+    teamName: string;
+    managerName: string | null;
+    price: number | null;
+    sourceLabel: string;
+    marketValueDifference: number | null;
+    expectedSaleDifference: number | null;
+    recommendationCeilingDifference: number | null;
+  } | null;
 };
 
 export type DraftCoachResult = {
-  decision: DraftCoachDecision;
+  decision: DraftCoachDecision | 'SOLD' | 'KEEPER';
   headline: string;
   intelSummary: string[];
   buddyMessage: string;
@@ -105,6 +161,9 @@ export type DraftCoachResult = {
   spendGuidance: {
     suggestedNextBid?: number;
     justifiedOverpayAmount?: number;
+    rosterMinimumReserve: number;
+    strategicReserve: number | null;
+    effectiveReserve: number;
     mustReserve: number;
   };
   reasons: string[];
@@ -131,6 +190,13 @@ function formatPercent(value: number | null | undefined) {
   return isFiniteNumber(value) ? `${value >= 0 ? '+' : ''}${Math.round(value)}%` : 'N/A';
 }
 
+function formatSignedMoney(value: number | null | undefined) {
+  if (!isFiniteNumber(value)) return 'N/A';
+  if (value > 0) return `+${formatMoney(value)}`;
+  if (value < 0) return `-${formatMoney(Math.abs(value))}`;
+  return '$0';
+}
+
 function normalizePosition(value: string | null | undefined) {
   return value?.trim().toUpperCase() ?? '';
 }
@@ -146,6 +212,13 @@ function normalizeRecommendation(
   return recommendation && decisionSet.has(recommendation) ? recommendation : 'WAIT';
 }
 
+function formatOwnerSettingLabel(value: string | null | undefined) {
+  return value
+    ?.trim()
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase()) ?? '';
+}
+
 function isAvailableStatus(status: string | null | undefined) {
   const normalizedStatus = status?.trim().toLowerCase() ?? '';
   return (
@@ -157,7 +230,19 @@ function isAvailableStatus(status: string | null | undefined) {
 }
 
 function getEffectiveOwnerMax(input: DraftCoachInput) {
-  return input.kDefStrategy?.configuredMax ?? input.ownerMaxBid;
+  const baseMax = input.kDefStrategy?.configuredMax ?? input.ownerMaxBid;
+  const remainingBudget = input.budget?.remainingBudget;
+  const liveReserve = input.liveStrategy?.minimumBudgetReserve;
+
+  if (
+    !isFiniteNumber(baseMax) ||
+    !isFiniteNumber(remainingBudget) ||
+    !isFiniteNumber(liveReserve)
+  ) {
+    return baseMax;
+  }
+
+  return Math.max(0, Math.min(baseMax, remainingBudget - liveReserve));
 }
 
 function getOpenRosterSpots(input: DraftCoachInput) {
@@ -168,15 +253,28 @@ function getOpenRosterSpots(input: DraftCoachInput) {
   );
 }
 
-function calculateMustReserve(input: DraftCoachInput) {
+export function calculateDraftCoachReserveGuidance(input: DraftCoachInput) {
   const openRosterSpots = getOpenRosterSpots(input);
-  if (!isFiniteNumber(openRosterSpots)) return 0;
+  const rosterMinimumReserve = isFiniteNumber(openRosterSpots)
+    ? input.selectedPlayer
+      ? Math.max(0, openRosterSpots - 1)
+      : Math.max(0, openRosterSpots)
+    : 0;
+  const strategicReserve = isFiniteNumber(
+    input.liveStrategy?.minimumBudgetReserve
+  )
+    ? Math.max(0, input.liveStrategy.minimumBudgetReserve)
+    : null;
+  const effectiveReserve = Math.max(
+    rosterMinimumReserve,
+    strategicReserve ?? 0
+  );
 
-  const reserveSpots = input.selectedPlayer
-    ? Math.max(0, openRosterSpots - 1)
-    : openRosterSpots;
-
-  return Math.max(0, reserveSpots);
+  return {
+    rosterMinimumReserve,
+    strategicReserve,
+    effectiveReserve,
+  };
 }
 
 function buildBudgetPace(input: DraftCoachInput): DraftCoachResult['budgetPace'] {
@@ -416,6 +514,18 @@ function buildIntelSummary(input: DraftCoachInput, decision: DraftCoachDecision)
     facts.push(`${label} is ${formatMoney(input.historicalPricing.recentAverage ?? input.historicalPricing.mostRecentValue)}.`);
   }
 
+  if (input.ownerSettings) {
+    facts.push(
+      `Draft style: ${formatOwnerSettingLabel(input.ownerSettings.rosterConstruction)} with ${formatOwnerSettingLabel(input.ownerSettings.riskTolerance).toLowerCase()} bid posture.`
+    );
+  }
+
+  if (input.liveStrategy) {
+    facts.push(
+      `Live strategy is ${formatOwnerSettingLabel(input.liveStrategy.riskMode).toLowerCase()} with a ${formatMoney(input.liveStrategy.minimumBudgetReserve)} minimum reserve.`
+    );
+  }
+
   if (input.competitionContext && input.selectedPlayer) {
     const highestThreat = input.competitionContext.highestThreat;
     if (input.competitionContext.ownersBothNeedAndAfford > 0) {
@@ -448,10 +558,12 @@ function buildBuddyMessage(
 ) {
   const question = normalizeQuestion(input.question);
   const playerName = input.selectedPlayer?.playerName;
-  const reserve = calculateMustReserve(input);
 
   if (question.includes('reserve')) {
-    return `Reserve at least ${formatMoney(reserve)} for ${reserve} remaining spots. That keeps the roster legal without changing your max-bid math.`;
+    const guidance = calculateDraftCoachReserveGuidance(input);
+    return guidance.strategicReserve !== null
+      ? `Roster legality requires ${formatMoney(guidance.rosterMinimumReserve)}, your live strategy requires ${formatMoney(guidance.strategicReserve)}, and the effective reserve is ${formatMoney(guidance.effectiveReserve)}.`
+      : `Roster legality requires ${formatMoney(guidance.rosterMinimumReserve)}, so the effective reserve is ${formatMoney(guidance.effectiveReserve)}.`;
   }
 
   if (question.includes('conservative') || question.includes('too slow')) {
@@ -518,6 +630,17 @@ function buildRiskGuidance(input: DraftCoachInput, decision: DraftCoachDecision)
     return 'Fade tag is active, so the burden of proof is higher than normal.';
   }
 
+  const riskMode =
+    input.liveStrategy?.riskMode ?? input.ownerSettings?.riskTolerance;
+
+  if (riskMode === 'conservative') {
+    return 'Your conservative setting favors passing when the edge is thin and keeping extra room for later nominations.';
+  }
+
+  if (riskMode === 'aggressive') {
+    return 'Your aggressive setting supports decisive bids on fits, but it still does not move the calculated ceiling.';
+  }
+
   return 'Risk is controlled as long as you honor the ceiling and reserve.';
 }
 
@@ -548,13 +671,238 @@ function buildCompetitionReasons(input: DraftCoachInput) {
   ]);
 }
 
+function buildOwnerSettingsReasons(input: DraftCoachInput) {
+  const settings = input.ownerSettings;
+  if (!settings) return [];
+
+  const selectedPosition = normalizePosition(input.selectedPlayer?.position);
+  const priorities = settings.positionPriorities
+    .map((position) => normalizePosition(position))
+    .filter(Boolean);
+
+  return uniqueStrings([
+    `Owner style context: ${formatOwnerSettingLabel(settings.rosterConstruction)} roster build, ${formatOwnerSettingLabel(settings.riskTolerance).toLowerCase()} bid posture, ${formatOwnerSettingLabel(settings.keeperFocus).toLowerCase()} keeper focus.`,
+    selectedPosition && priorities.includes(selectedPosition)
+      ? `${selectedPosition} is one of your stated priority positions.`
+      : priorities.length > 0
+        ? `Your stated position priorities are ${priorities.join('/')}.`
+        : null,
+    settings.rookiePreference === 'high'
+      ? 'Your settings favor rookies and breakout-player upside as a tie-breaker.'
+      : null,
+    settings.nominationStyle === 'targets'
+      ? 'Nomination style favors putting your own targets up when the price window is right.'
+      : settings.nominationStyle === 'decoys'
+        ? 'Nomination style favors draining money with players you do not want.'
+        : settings.nominationStyle === 'mixed'
+          ? 'Nomination style supports mixing targets and price-enforcement nominations.'
+          : null,
+    settings.kickerDefenseStrategy === 'minimum'
+      ? 'K/DEF setting favors minimum-dollar buys unless live context forces a different decision.'
+      : settings.kickerDefenseStrategy === 'elite-small-premium'
+        ? 'K/DEF setting allows a small premium for an elite option.'
+        : null,
+    settings.additionalNotes
+      ? `Owner note: ${settings.additionalNotes.slice(0, 160)}`
+      : null,
+  ]).slice(0, 5);
+}
+
+function buildLiveStrategyReasons(input: DraftCoachInput) {
+  const strategy = input.liveStrategy;
+  if (!strategy) return [];
+
+  const selectedPosition = normalizePosition(input.selectedPlayer?.position);
+  const priorities = strategy.priorityPositions.map(normalizePosition);
+  const deemphasized = strategy.deemphasizedPositions.map(normalizePosition);
+
+  return uniqueStrings([
+    `Live strategy override: ${formatOwnerSettingLabel(strategy.riskMode)} risk mode.`,
+    selectedPosition && priorities.includes(selectedPosition)
+      ? `${selectedPosition} is a live priority position and should win close strategic ties.`
+      : priorities.length > 0
+        ? `Live priority positions: ${priorities.join('/')}.`
+        : null,
+    selectedPosition && deemphasized.includes(selectedPosition)
+      ? `${selectedPosition} is de-emphasized; recommend it only for exceptional value or roster legality.`
+      : deemphasized.length > 0
+        ? `Live de-emphasized positions: ${deemphasized.join('/')}.`
+        : null,
+    strategy.minimumBudgetReserve !== null
+      ? `Live strategy requires preserving at least ${formatMoney(strategy.minimumBudgetReserve)}.`
+      : null,
+    strategy.opponentFocus
+      ? `Live opponent focus: ${strategy.opponentFocus.slice(0, 180)}`
+      : null,
+    strategy.additionalInstructions
+      ? `Live instruction: ${strategy.additionalInstructions.slice(0, 180)}`
+      : null,
+  ]).slice(0, 6);
+}
+
+function buildOpponentStrategyResponse(
+  input: DraftCoachInput,
+  budgetPace: DraftCoachResult['budgetPace'],
+  reserveGuidance: ReturnType<typeof calculateDraftCoachReserveGuidance>
+): DraftCoachResult {
+  const opponent = input.opponentContext;
+  if (!opponent) {
+    throw new Error('Opponent context is required.');
+  }
+
+  const safeExitPrice =
+    input.selectedPlayer &&
+    opponent.recommendedPlayerName === input.selectedPlayer.playerName &&
+    isAvailableStatus(input.selectedPlayer.status) &&
+    isFiniteNumber(input.ownerMaxBid)
+      ? input.ownerMaxBid
+      : null;
+  const positionCounts = Object.entries(opponent.positionCounts)
+    .filter(([, count]) => count > 0)
+    .map(([position, count]) => `${position} ${count}`)
+    .join(', ');
+  const snapshot = [
+    `${opponent.ownerName} (${opponent.teamName})`,
+    `budget ${formatMoney(opponent.remainingBudget)}`,
+    `legal max ${formatMoney(opponent.legalMaxBid)}`,
+    `${opponent.rosterSpotsRemaining ?? 'N/A'} roster spots open`,
+    opponent.starterNeeds.length > 0
+      ? `needs ${opponent.starterNeeds.join('/')}`
+      : 'no open starter need identified',
+    positionCounts ? `roster ${positionCounts}` : null,
+    `historical average buy ${formatMoney(opponent.historicalAveragePurchase)}`,
+    `historical biggest buy ${formatMoney(opponent.historicalBiggestPurchase)}`,
+    `${opponent.confidence.toLowerCase()} historical confidence`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const confidenceWarning =
+    opponent.confidence === 'Low'
+      ? 'Historical opponent tendencies are limited, so treat the tactic as a live-budget read rather than a fact.'
+      : null;
+  const guardrail =
+    safeExitPrice === null
+      ? 'Guardrail: nominate the player, but do not bid unless you would be comfortable winning him. Open the player detail to establish your personalized ceiling. Zero-risk price enforcement is impossible.'
+      : `Guardrail: stop at the player-specific ${formatMoney(safeExitPrice)} personalized ceiling. Only continue bidding at a price you would be comfortable paying if you win.`;
+
+  return {
+    decision: 'WAIT',
+    headline: `Recommended Move: ${opponent.recommendedMove}`,
+    buddyMessage: `Recommended Move: ${opponent.recommendedMove}. Why It Could Work: ${opponent.whyItCouldWork}`,
+    intelSummary: [
+      `Opponent Snapshot: ${snapshot}.`,
+      opponent.historicalPositionPreferences.length > 0
+        ? `Historical position preferences: ${opponent.historicalPositionPreferences.join(', ')}.`
+        : 'Historical position preferences are not reliable enough to use.',
+      opponent.purchaseTiming
+        ? `Purchase timing tendency: ${opponent.purchaseTiming}.`
+        : 'Purchase timing history is limited.',
+      opponent.currentCompetitionSummary
+        ? `Current competition context: ${opponent.currentCompetitionSummary}.`
+        : null,
+      opponent.alternatives.length > 0
+        ? `Alternatives: ${opponent.alternatives.slice(0, 3).join('; ')}.`
+        : 'Alternatives: wait for a safer nomination with a clearer budget-pressure angle.',
+    ].filter((item): item is string => Boolean(item)),
+    riskGuidance: opponent.nominationOnlyPressure
+      ? `Your Risk: zero-risk price enforcement is impossible. Use nomination-only pressure and avoid opening or continuing the bidding unless you are willing to win. ${guardrail}`
+      : `Your Risk: you may win the nomination. ${guardrail}`,
+    budgetPace,
+    spendGuidance: {
+      ...(safeExitPrice !== null ? { suggestedNextBid: safeExitPrice } : {}),
+      ...reserveGuidance,
+      mustReserve: reserveGuidance.effectiveReserve,
+    },
+    reasons: uniqueStrings([
+      opponent.whyItCouldWork,
+      `Opponent confidence: ${opponent.confidence}.`,
+      ...buildLiveStrategyReasons(input),
+    ]).slice(0, 8),
+    warnings: uniqueStrings([
+      confidenceWarning,
+      ...opponent.warnings,
+      guardrail,
+    ]).slice(0, 8),
+  };
+}
+
+function buildCompletedPurchaseResponse(
+  input: DraftCoachInput,
+  budgetPace: DraftCoachResult['budgetPace'],
+  reserveGuidance: ReturnType<typeof calculateDraftCoachReserveGuidance>
+): DraftCoachResult {
+  const purchase = input.completedPurchase;
+  if (!purchase) throw new Error('Completed purchase context is required.');
+
+  const priceLabel = formatMoney(purchase.price);
+  const ownerLabel = purchase.managerName
+    ? `${purchase.teamName} (${purchase.managerName})`
+    : purchase.teamName;
+
+  return {
+    decision: purchase.statusLabel,
+    headline: `${purchase.statusLabel}: Sale complete`,
+    buddyMessage: `${input.selectedPlayer?.playerName ?? 'This player'} is already ${purchase.statusLabel === 'KEEPER' ? 'rostered as a keeper' : 'sold'} to ${ownerLabel} for ${priceLabel}. Review the result; do not bid on or nominate this player again.`,
+    intelSummary: [
+      `Source: ${purchase.sourceLabel}.`,
+      `Market-value difference: ${formatSignedMoney(purchase.marketValueDifference)}.`,
+      `Expected-sale difference: ${formatSignedMoney(purchase.expectedSaleDifference)}.`,
+      `Recommendation-ceiling difference: ${formatSignedMoney(purchase.recommendationCeilingDifference)}.`,
+    ],
+    riskGuidance:
+      'The transaction is complete. Shift bidding and nomination decisions to available players.',
+    budgetPace,
+    spendGuidance: {
+      ...reserveGuidance,
+      mustReserve: reserveGuidance.effectiveReserve,
+    },
+    reasons: [
+      `${purchase.statusLabel} status comes from the active merged purchase state.`,
+      'Post-sale review replaces live bidding guidance for this player.',
+    ],
+    warnings: [],
+  };
+}
+
 export function buildDraftCoachResponse(input: DraftCoachInput): DraftCoachResult {
   const budgetPace = buildBudgetPace(input);
-  const mustReserve = calculateMustReserve(input);
+  const reserveGuidance = calculateDraftCoachReserveGuidance(input);
+  const mustReserve = reserveGuidance.effectiveReserve;
+  if (input.completedPurchase) {
+    return buildCompletedPurchaseResponse(
+      input,
+      budgetPace,
+      reserveGuidance
+    );
+  }
+  if (input.opponentContext) {
+    return buildOpponentStrategyResponse(input, budgetPace, reserveGuidance);
+  }
   const legalMaxBid = input.budget?.legalMaxBid;
   const currentBid = input.currentBid;
   const ownerMaxBid = getEffectiveOwnerMax(input);
-  const baseDecision = resolveBaseDecision(input);
+  const rawBaseDecision = resolveBaseDecision(input);
+  const selectedPosition = normalizePosition(input.selectedPlayer?.position);
+  const isDeemphasizedPosition =
+    Boolean(selectedPosition) &&
+    Boolean(
+      input.liveStrategy?.deemphasizedPositions
+        .map(normalizePosition)
+        .includes(selectedPosition)
+    );
+  const isUrgentRosterNeed =
+    input.selectedPlayer?.rosterNeedLevel === 'must-fill';
+  const isExceptionalValue =
+    isFiniteNumber(input.currentBid) &&
+    isFiniteNumber(input.marketValue) &&
+    input.currentBid <= input.marketValue * 0.75;
+  const baseDecision =
+    isDeemphasizedPosition &&
+    !isUrgentRosterNeed &&
+    !isExceptionalValue &&
+    (rawBaseDecision === 'BID' || rawBaseDecision === 'BUY NOW')
+      ? 'WAIT'
+      : rawBaseDecision;
   const overpay = calculateStrategicOverpay(input, budgetPace, mustReserve);
   const reserveViolation =
     isFiniteNumber(currentBid) &&
@@ -571,7 +919,10 @@ export function buildDraftCoachResponse(input: DraftCoachInput): DraftCoachResul
         : baseDecision;
   const suggestedNextBid =
     overpay.suggestedNextBid ?? getSuggestedNextBid(input, decision);
-  const reserveMessage = `Reserve at least ${formatMoney(mustReserve)} for ${mustReserve} remaining spots.`;
+  const reserveMessage =
+    reserveGuidance.strategicReserve !== null
+      ? `Roster minimum is ${formatMoney(reserveGuidance.rosterMinimumReserve)}; live strategic reserve is ${formatMoney(reserveGuidance.strategicReserve)}; effective reserve is ${formatMoney(reserveGuidance.effectiveReserve)}.`
+      : `Roster-legality minimum reserve is ${formatMoney(reserveGuidance.rosterMinimumReserve)}; effective reserve is ${formatMoney(reserveGuidance.effectiveReserve)}.`;
   const overpayReason = overpay.justifiedOverpayAmount
     ? `A strategic overpay up to ${formatMoney(overpay.justifiedOverpayAmount)} is justified by need, target status, scarcity, budget pace, and confidence.`
     : null;
@@ -612,13 +963,16 @@ export function buildDraftCoachResponse(input: DraftCoachInput): DraftCoachResul
       ...(overpay.justifiedOverpayAmount
         ? { justifiedOverpayAmount: overpay.justifiedOverpayAmount }
         : {}),
-      mustReserve,
+      ...reserveGuidance,
+      mustReserve: reserveGuidance.effectiveReserve,
     },
     reasons: uniqueStrings([
       currentBidReason,
       reserveMessage,
       budgetPace.message,
       overpayReason,
+      ...buildOwnerSettingsReasons(input),
+      ...buildLiveStrategyReasons(input),
       ...buildCompetitionReasons(input),
       ...input.intelligenceReasons,
       ...input.roomReasons,

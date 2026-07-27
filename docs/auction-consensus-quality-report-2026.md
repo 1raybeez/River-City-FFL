@@ -1,14 +1,14 @@
 # Auction Consensus Quality Report 2026
 
-Generated: 2026-07-05T21:03:03.439Z
+Generated: 2026-07-14T13:34:48.920Z
 
 ## Executive Summary
 
-- Generated players: 753
-- Source values: 1298
+- Generated players: 345
+- Source values: 709
 - Skipped source values: 0
-- Manifest warning labels: 502
-- Players with at least one warning label: 479
+- Manifest warning labels: 156
+- Players with at least one warning label: 153
 - Source imports had zero errors.
 - Production refresh design can proceed. The warnings are expected review signals, not blockers, as long as production design includes quality gates for unmatched high-value players, source-count drops, and schema failures.
 
@@ -18,10 +18,10 @@ The 502 number is not 502 broken players. It is the total number of warning labe
 
 | Warning | Count | Meaning |
 | --- | --- | --- |
-| low-source-count | 429 | Player has fewer than 2 source values. This is expected for deep players, kickers, defenses, and source-specific long-tail rows. |
-| high-source-spread | 49 | At least 2 sources disagree by $10 or by 25% of average value, whichever is larger. |
-| identity-review-needed | 12 | Generated row does not have a matched Sleeper ID and should be reviewed before production persistence. |
-| match-review-needed | 12 | At least one source row in the consensus group was ambiguous or unmatched. |
+| low-source-count | 104 | Player has fewer than 2 source values. This is expected for deep players, kickers, defenses, and source-specific long-tail rows. |
+| high-source-spread | 48 | At least 2 sources disagree by $10 or by 25% of average value, whichever is larger. |
+| identity-review-needed | 2 | Generated row does not have a matched Sleeper ID and should be reviewed before production persistence. |
+| match-review-needed | 2 | At least one source row in the consensus group was ambiguous or unmatched. |
 
 Blocker read:
 
@@ -33,18 +33,18 @@ Blocker read:
 
 | Coverage | Players |
 | --- | --- |
-| 3+ sources | 221 |
-| 2 sources | 103 |
-| 1 source | 429 |
+| 3+ sources | 123 |
+| 2 sources | 118 |
+| 1 source | 104 |
 | 0 sources | 0 |
 
 ## Source Coverage Table
 
 | Source | Rows | Matched | Unmatched | Generated Players Covered | Coverage | Import Warnings | Import Errors |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| FantasyPros | 338 | 338 | 0 | 338 | 44.9% | 0 | 0 |
-| Lineup Experts | 242 | 240 | 2 | 242 | 32.1% | 0 | 0 |
-| RotoWire | 718 | 707 | 11 | 718 | 95.4% | 0 | 0 |
+| FantasyPros | 338 | 338 | 0 | 338 | 98.0% | 0 | 0 |
+| Lineup Experts | 242 | 240 | 2 | 242 | 70.1% | 0 | 0 |
+| RotoWire | 129 | 128 | 1 | 129 | 37.4% | 0 | 0 |
 
 ## Unmatched Players By Source
 
@@ -64,26 +64,16 @@ No unmatched rows.
 | Player | Position | NFL Team | Value | Match Status |
 | --- | --- | --- | --- | --- |
 | Kenneth Gainwell | RB | TB | $1 | unmatched |
-| John Parker Romo | K | FA | $0 | unmatched |
-| Matthew Hibner | TE | BAL | $0 | unmatched |
-| Lawson Luckie | TE | FA | $0 | unmatched |
-| Chip Trayanum | RB | NYJ | $0 | unmatched |
-| Eric Singleton | WR | FA | $0 | unmatched |
-| Brett Norfleet | TE | FA | $0 | unmatched |
-| Shamar Easter | TE | FA | $0 | unmatched |
-| Raleek Brown | RB | FA | $0 | unmatched |
-| Alec Inglod | RB | LAC | $0 | unmatched |
-| Jaden Greathouse | WR | FA | $0 | unmatched |
 
 ## Confidence Score Distribution
 
 | Score Bucket | Players |
 | --- | --- |
-| 90-100 | 273 |
-| 75-89 | 51 |
-| 50-74 | 417 |
+| 90-100 | 192 |
+| 75-89 | 49 |
+| 50-74 | 102 |
 | 25-49 | 0 |
-| 0-24 | 12 |
+| 0-24 | 2 |
 
 ## Disagreement Spread Distribution
 
@@ -91,13 +81,13 @@ Only players with at least two source values are included in this spread table.
 
 | Spread Bucket | Players |
 | --- | --- |
-| $0 | 120 |
-| $1-$4 | 55 |
-| $5-$9 | 98 |
-| $10-$19 | 27 |
+| $0 | 39 |
+| $1-$4 | 86 |
+| $5-$9 | 66 |
+| $10-$19 | 26 |
 | $20+ | 24 |
 
-Eligible multi-source players: 324
+Eligible multi-source players: 241
 
 ## Top 25 Largest Source Disagreements
 
@@ -144,9 +134,9 @@ Missing-source counts:
 
 | Missing Source | Players |
 | --- | --- |
-| Lineup Experts | 511 |
-| FantasyPros | 415 |
-| RotoWire | 35 |
+| RotoWire | 216 |
+| Lineup Experts | 103 |
+| FantasyPros | 7 |
 
 Highest-value rows missing at least one major source:
 
@@ -156,40 +146,38 @@ Highest-value rows missing at least one major source:
 | Jaxon Smith-Njigba | WR | SEA | $50.5 | Lineup Experts, RotoWire | FantasyPros |
 | George Pickens | WR | DAL | $31 | Lineup Experts, RotoWire | FantasyPros |
 | TreVeyon Henderson | RB | NE | $15 | Lineup Experts, RotoWire | FantasyPros |
+| Dallas Goedert | TE | PHI | $10 | FantasyPros, Lineup Experts | RotoWire |
+| Jakobi Meyers | WR | JAC | $8 | FantasyPros, Lineup Experts | RotoWire |
 | Kenny Gainwell | RB | TB | $8 | FantasyPros | Lineup Experts, RotoWire |
+| Michael Pittman | WR | PIT | $8 | FantasyPros, Lineup Experts | RotoWire |
+| Rachaad White | RB | WSH | $7.5 | FantasyPros, Lineup Experts | RotoWire |
+| Wan'Dale Robinson | WR | TEN | $7.5 | FantasyPros, Lineup Experts | RotoWire |
+| Jordan Addison | WR | MIN | $6.5 | FantasyPros, Lineup Experts | RotoWire |
+| Quentin Johnston | WR | LAC | $6.5 | FantasyPros, Lineup Experts | RotoWire |
+| Xavier Worthy | WR | KC | $6.5 | FantasyPros, Lineup Experts | RotoWire |
 | Chigoziem Okonkwo | TE | WSH | $6 | Lineup Experts | FantasyPros, RotoWire |
-| Kenneth Gainwell | RB | TB | $3 | Lineup Experts, RotoWire | FantasyPros |
-| Denver Broncos | DEF | DEN | $1.5 | FantasyPros, Lineup Experts | RotoWire |
-| Houston Texans | DEF | HOU | $1.5 | FantasyPros, Lineup Experts | RotoWire |
-| Minnesota Vikings | DEF | MIN | $1.5 | FantasyPros, Lineup Experts | RotoWire |
-| Pittsburgh Steelers | DEF | PIT | $1.5 | FantasyPros, Lineup Experts | RotoWire |
-| Seattle Seahawks | DEF | SEA | $1.5 | FantasyPros, Lineup Experts | RotoWire |
-| Atlanta Falcons | DEF | ATL | $1 | FantasyPros | Lineup Experts, RotoWire |
-| Chicago Bears | DEF | CHI | $1 | FantasyPros | Lineup Experts, RotoWire |
-| Detroit Lions | DEF | DET | $1 | FantasyPros, Lineup Experts | RotoWire |
-| Los Angeles Chargers | DEF | LAC | $1 | FantasyPros | Lineup Experts, RotoWire |
-| Los Angeles Rams | DEF | LAR | $1 | FantasyPros, Lineup Experts | RotoWire |
-| Philadelphia Eagles | DEF | PHI | $1 | FantasyPros, Lineup Experts | RotoWire |
-| Baltimore Ravens | DEF | BAL | $0.5 | FantasyPros, Lineup Experts | RotoWire |
-| Blake Grupe | K | IND | $0.5 | Lineup Experts, RotoWire | FantasyPros |
-| Buffalo Bills | DEF | BUF | $0.5 | FantasyPros, Lineup Experts | RotoWire |
-| Chris Boswell | K | PIT | $0.5 | FantasyPros, RotoWire | Lineup Experts |
-| Cleveland Browns | DEF | CLE | $0.5 | FantasyPros, Lineup Experts | RotoWire |
-| New England Patriots | DEF | NE | $0.5 | FantasyPros, Lineup Experts | RotoWire |
-| New Orleans Saints | DEF | NO | $0.5 | FantasyPros, Lineup Experts | RotoWire |
+| Josh Downs | WR | IND | $6 | FantasyPros, Lineup Experts | RotoWire |
+| Khalil Shakir | WR | BUF | $6 | FantasyPros, Lineup Experts | RotoWire |
+| Makai Lemon | WR | PHI | $6 | FantasyPros, Lineup Experts | RotoWire |
+| Hunter Henry | TE | NE | $5.5 | FantasyPros, Lineup Experts | RotoWire |
+| Juwan Johnson | TE | NO | $5.5 | FantasyPros, Lineup Experts | RotoWire |
+| Tyler Shough | QB | NO | $5.5 | FantasyPros, Lineup Experts | RotoWire |
+| Calvin Ridley | WR | TEN | $5 | FantasyPros, Lineup Experts | RotoWire |
+| John Metchie | WR | CAR | $5 | FantasyPros, Lineup Experts | RotoWire |
+| Jonathon Brooks | RB | CAR | $5 | FantasyPros, Lineup Experts | RotoWire |
+| Matthew Golden | WR | GB | $5 | FantasyPros, Lineup Experts | RotoWire |
+| Dalton Schultz | TE | HOU | $4.5 | FantasyPros, Lineup Experts | RotoWire |
 
 ## K/DEF Warning Patterns
 
-- K/DEF generated rows: 87
-- K/DEF rows with warnings: 45
-- K/DEF rows with one source: 45
+- K/DEF generated rows: 60
+- K/DEF rows with warnings: 25
+- K/DEF rows with one source: 25
 - K/DEF high-spread rows: 0
 
 | Warning | K/DEF Count |
 | --- | --- |
-| low-source-count | 45 |
-| identity-review-needed | 1 |
-| match-review-needed | 1 |
+| low-source-count | 25 |
 
 Largest K/DEF disagreements:
 

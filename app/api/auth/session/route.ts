@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import {
+  getAuctionAccessForEmail,
+  getAuctionAllowedEmails,
+  getAuctionPilotAllowedEmails,
   getAuctionSessionCookieName,
   getAuctionSessionMaxAgeMs,
-  isAuctionAllowedEmail,
 } from "@/lib/auth/auctionAccess";
 import { adminAuth } from "@/lib/firebaseAdmin";
 
@@ -36,6 +38,23 @@ export async function POST(req: Request) {
   try {
     const decodedToken = await adminAuth.verifyIdToken(idToken, true);
     const email = normalizeEmail(decodedToken.email);
+    const allowedEmails = getAuctionAllowedEmails();
+    const pilotEmails = getAuctionPilotAllowedEmails();
+    const access = getAuctionAccessForEmail(
+      email,
+      Boolean(decodedToken.email_verified)
+    );
+    const cookieName = getAuctionSessionCookieName();
+
+    console.info("[auction-auth] Google sign-in email decoded", {
+      email,
+      emailVerified: Boolean(decodedToken.email_verified),
+      allowedEmails,
+      pilotEmails,
+      role: access.role,
+      ownerProfileId: access.ownerProfileId,
+      emailAllowed: access.canAccessWarRoom || access.canAccessMaintenance,
+    });
 
     if (!decodedToken.email_verified) {
       return NextResponse.json(
@@ -44,7 +63,7 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!isAuctionAllowedEmail(email)) {
+    if (!access.canAccessWarRoom && !access.canAccessMaintenance) {
       return NextResponse.json(
         { error: "Email is not allowed to access Auction War Room." },
         { status: 403 }
@@ -58,10 +77,11 @@ export async function POST(req: Request) {
     const response = NextResponse.json({
       success: true,
       email,
+      access,
     });
 
     response.cookies.set({
-      name: getAuctionSessionCookieName(),
+      name: cookieName,
       value: sessionCookie,
       httpOnly: true,
       secure: true,
@@ -69,6 +89,16 @@ export async function POST(req: Request) {
       path: "/",
       maxAge: Math.floor(maxAgeMs / 1000),
       expires: new Date(Date.now() + maxAgeMs),
+    });
+
+    console.info("[auction-auth] Session cookie created", {
+      email,
+      cookieName,
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+      path: "/",
+      maxAgeSeconds: Math.floor(maxAgeMs / 1000),
     });
 
     return response;

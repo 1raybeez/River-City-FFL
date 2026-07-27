@@ -4,10 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "import-player-stats": "tsx scripts/importPlayerStatsToFirestore.mts",
     "auction:quality-report": "tsx scripts/auction-consensus-quality-report.ts",
+    "auction:adp:quality": "tsx scripts/auction-adp-quality-report.ts",
+    "auction:adp:test-production-refresh": "tsx scripts/auction-adp-test-production-refresh.ts",
+    "auction:adp:update": "tsx scripts/auction-adp-update.ts",
     "auction:import-sleeper-history": "tsx scripts/auction-import-sleeper-history.ts",
+    "auction:production-readiness": "tsx scripts/auction-production-readiness.ts",
+    "auction:test-production-refresh": "tsx scripts/auction-test-production-refresh.ts",
     "auction:update-values": "tsx scripts/auction-update-values.ts",
     "start": "next start",
     "lint": "eslint"

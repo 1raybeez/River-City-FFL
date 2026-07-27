@@ -17,6 +17,15 @@ export type DraftIntelligenceBudgetState = {
   maxBid?: number | null;
 };
 
+export type DraftIntelligenceDemandContext = {
+  demandTier?: string | null;
+  demandScore?: number | null;
+  overallAdp?: number | null;
+  positionAdp?: number | null;
+  waitRisk?: string | null;
+  confidence?: string | null;
+};
+
 export type DraftIntelligenceInput = {
   consensusAverage?: number | null;
   consensusLow?: number | null;
@@ -35,6 +44,7 @@ export type DraftIntelligenceInput = {
   preferredEarlyKickerMax?: number | null;
   preferredEarlyDefenseMax?: number | null;
   contextualRecommendation?: DraftIntelligenceRecommendation | null;
+  demand?: DraftIntelligenceDemandContext | null;
 };
 
 export type DraftIntelligenceResult = {
@@ -259,6 +269,59 @@ function getLiveContinuationAmount({
   return Math.min(continuationAmount, 3);
 }
 
+function getDemandPressureAdjustment({
+  demand,
+  marketValue,
+  isStrategyPosition,
+  preference,
+  reasons,
+  warnings,
+}: {
+  demand: DraftIntelligenceDemandContext | null | undefined;
+  marketValue: number;
+  isStrategyPosition: boolean;
+  preference: BidRecommendationPreference;
+  reasons: string[];
+  warnings: string[];
+}) {
+  if (!demand || isStrategyPosition || preference === "fade" || marketValue <= 0) {
+    return 0;
+  }
+
+  const demandTier = demand.demandTier?.toUpperCase() ?? "UNKNOWN";
+  const cap = Math.min(3, marketValue * 0.05);
+  let pressureRatio = 0;
+
+  if (demandTier === "ELITE" || demandTier === "VERY HIGH") {
+    pressureRatio = 1;
+  } else if (demandTier === "HIGH") {
+    pressureRatio = 0.5;
+  }
+
+  if (pressureRatio <= 0) {
+    if (demandTier === "LOW" || demandTier === "VERY LOW") {
+      reasons.push("ADP demand is soft, so patience is reasonable.");
+    }
+    return 0;
+  }
+
+  const adjustment = Math.min(3, Math.floor(Math.max(0, pressureRatio * cap)));
+
+  if (adjustment > 0) {
+    reasons.push(
+      `ADP demand is ${demandTier.toLowerCase()}, adding ${formatMoney(adjustment)} of predicted-sale pressure.`
+    );
+  }
+
+  if (demand.waitRisk === "severe" || demand.waitRisk === "high") {
+    warnings.push(
+      `ADP wait risk is ${demand.waitRisk}; waiting too long may draw another owner in.`
+    );
+  }
+
+  return adjustment;
+}
+
 function applyLiveCurrentBidToPrediction({
   basePredictedWinningBid,
   currentBid,
@@ -473,9 +536,20 @@ export function calculateDraftIntelligence(
     warnings.push("Recommended Max is capped by legal max-bid budget math.");
   }
 
+  const demandPressureAdjustment = getDemandPressureAdjustment({
+    demand: input.demand,
+    marketValue,
+    isStrategyPosition,
+    preference,
+    reasons,
+    warnings,
+  });
+  const demandAdjustedBasePrediction = roundAuctionDollars(
+    basePredictedWinningBid + demandPressureAdjustment
+  );
   const currentBid = toNonNegativeNumber(input.currentBid);
   const predictedWinningBid = applyLiveCurrentBidToPrediction({
-    basePredictedWinningBid,
+    basePredictedWinningBid: demandAdjustedBasePrediction,
     currentBid,
     ownerMaxBid,
     comparableAverage,

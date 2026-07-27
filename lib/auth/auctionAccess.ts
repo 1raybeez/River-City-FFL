@@ -3,14 +3,24 @@ import "server-only";
 import { cookies } from "next/headers";
 import type { DecodedIdToken } from "firebase-admin/auth";
 import { adminAuth } from "@/lib/firebaseAdmin";
+import {
+  buildCommissionerAccessResult,
+  buildPilotAccessResult,
+  getAuctionPilotAllowedEmails,
+  getAuctionPilotProfileByEmail,
+  type AuctionAccessResult,
+} from "@/lib/auction/ownerProfiles";
 
-const DEFAULT_SESSION_COOKIE_NAME = "river_city_auction_session";
+export { getAuctionPilotAllowedEmails };
+
+const DEFAULT_SESSION_COOKIE_NAME = "__session";
 const DEFAULT_SESSION_MAX_AGE_DAYS = 7;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export type AuctionAccessSession = {
   email: string;
   decodedToken: DecodedIdToken;
+  access: AuctionAccessResult;
 };
 
 export class AuctionAccessError extends Error {
@@ -43,10 +53,64 @@ export function getAuctionAllowedEmails() {
 }
 
 export function isAuctionAllowedEmail(email: string | null | undefined) {
+  return getAuctionAccessForEmail(email).canAccessWarRoom;
+}
+
+export function isAuctionCommissionerEmail(email: string | null | undefined) {
   const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) return false;
 
   return getAuctionAllowedEmails().includes(normalizedEmail);
+}
+
+export function getAuctionAccessForEmail(
+  email: string | null | undefined,
+  emailVerified = true
+): AuctionAccessResult {
+  const normalizedEmail = normalizeEmail(email);
+
+  if (!emailVerified || !normalizedEmail) {
+    return {
+      authenticated: false,
+      email: normalizedEmail || null,
+      role: null,
+      ownerProfileId: null,
+      ownerProfileLabel: null,
+      ownerDisplayName: null,
+      sleeperTeamName: null,
+      sleeperRosterId: null,
+      sleeperUserId: null,
+      canAccessWarRoom: false,
+      canAccessMaintenance: false,
+      canRecordSales: false,
+      canViewCommissionerPreferences: false,
+    };
+  }
+
+  if (isAuctionCommissionerEmail(normalizedEmail)) {
+    return buildCommissionerAccessResult(normalizedEmail);
+  }
+
+  const pilotProfile = getAuctionPilotProfileByEmail(normalizedEmail);
+  if (pilotProfile) {
+    return buildPilotAccessResult(pilotProfile, normalizedEmail);
+  }
+
+  return {
+    authenticated: true,
+    email: normalizedEmail,
+    role: null,
+    ownerProfileId: null,
+    ownerProfileLabel: null,
+    ownerDisplayName: null,
+    sleeperTeamName: null,
+    sleeperRosterId: null,
+    sleeperUserId: null,
+    canAccessWarRoom: false,
+    canAccessMaintenance: false,
+    canRecordSales: false,
+    canViewCommissionerPreferences: false,
+  };
 }
 
 export function getAuctionSessionCookieName() {
@@ -66,7 +130,18 @@ export function getAuctionSessionMaxAgeMs() {
 
 export async function verifyAuctionSession(): Promise<AuctionAccessSession | null> {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get(getAuctionSessionCookieName())?.value;
+  const cookieName = getAuctionSessionCookieName();
+  const sessionCookie = cookieStore.get(cookieName)?.value;
+  const allowedEmails = getAuctionAllowedEmails();
+  const pilotEmails = getAuctionPilotAllowedEmails();
+
+  console.info("[auction-auth] Session cookie read", {
+    cookieName,
+    cookieExists: Boolean(sessionCookie),
+    cookieLength: sessionCookie?.length ?? 0,
+    allowedEmails,
+    pilotEmails,
+  });
 
   if (!sessionCookie) return null;
 
@@ -76,26 +151,67 @@ export async function verifyAuctionSession(): Promise<AuctionAccessSession | nul
       true
     );
     const email = normalizeEmail(decodedToken.email);
+    const access = getAuctionAccessForEmail(
+      email,
+      Boolean(decodedToken.email_verified)
+    );
 
-    if (!decodedToken.email_verified || !isAuctionAllowedEmail(email)) {
+    console.info("[auction-auth] Session cookie verified", {
+      email,
+      emailVerified: Boolean(decodedToken.email_verified),
+      allowedEmails,
+      pilotEmails,
+      role: access.role,
+      ownerProfileId: access.ownerProfileId,
+      canAccessWarRoom: access.canAccessWarRoom,
+      canAccessMaintenance: access.canAccessMaintenance,
+    });
+
+    if (!access.canAccessWarRoom && !access.canAccessMaintenance) {
       return null;
     }
 
     return {
       email,
       decodedToken,
+      access,
     };
-  } catch {
+  } catch (error) {
+    console.info("[auction-auth] Session cookie verification failed", {
+      cookieName,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unknown session cookie verification error.",
+    });
+
     return null;
   }
 }
 
-export async function requireAuctionAccess() {
+export async function requireAuctionAccess(
+  requirement: "maintenance" | "war-room" | "sales" = "maintenance"
+) {
   const session = await verifyAuctionSession();
 
-  if (!session) {
+  const hasRequiredAccess =
+    requirement === "war-room"
+      ? session?.access.canAccessWarRoom
+      : requirement === "sales"
+        ? session?.access.canRecordSales
+        : session?.access.canAccessMaintenance;
+
+  if (!session || !hasRequiredAccess) {
     throw new AuctionAccessError();
   }
 
   return session;
+}
+
+export async function requireAuctionWarRoomAccess() {
+  return requireAuctionAccess("war-room");
+}
+
+export async function requireAuctionSalesAccess() {
+  return requireAuctionAccess("sales");
 }

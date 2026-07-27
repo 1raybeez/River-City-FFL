@@ -18,7 +18,7 @@ import type {
 const SOURCE_VALUES_DIR = "data/auction/source-values";
 const GENERATED_DIR = "data/auction/generated";
 
-type GeneratedMasterviewSourceValue = {
+export type GeneratedMasterviewSourceValue = {
   sourceRowId: string;
   sourceId: string;
   sourceKey: AuctionValueSourceKey;
@@ -37,7 +37,7 @@ type GeneratedMasterviewSourceValue = {
   importedAt: AuctionTimestamp;
 };
 
-type GeneratedMasterviewRow = {
+export type GeneratedMasterviewRow = {
   season: AuctionSeasonYear;
   sleeperPlayerId: AuctionPlayerId | null;
   playerName: string;
@@ -53,7 +53,7 @@ type GeneratedMasterviewRow = {
   warnings: string[];
 };
 
-type GeneratedMasterviewFile = {
+export type GeneratedMasterviewFile = {
   generatedAt: AuctionTimestamp;
   season: AuctionSeasonYear;
   sourceDirectory: string;
@@ -64,7 +64,7 @@ type GeneratedMasterviewFile = {
   rows: GeneratedMasterviewRow[];
 };
 
-type GeneratedMasterviewManifest = {
+export type GeneratedMasterviewManifest = {
   generatedAt: AuctionTimestamp;
   sourceDirectory: string;
   outputDirectory: string;
@@ -87,7 +87,7 @@ type GeneratedMasterviewManifest = {
   };
 };
 
-type SourceValueFileWithPath = AuctionSourceValuesFile & {
+export type SourceValueFileWithPath = AuctionSourceValuesFile & {
   filePath: string;
   filename: string;
 };
@@ -391,8 +391,113 @@ async function writeJsonFile(filePath: string, value: unknown) {
   );
 }
 
+export function generateMasterviewFromSourceValueFiles({
+  sourceFiles,
+  generatedAt = new Date().toISOString(),
+  sourceDirectory = SOURCE_VALUES_DIR,
+  outputDirectory = GENERATED_DIR,
+}: {
+  sourceFiles: readonly SourceValueFileWithPath[];
+  generatedAt?: AuctionTimestamp;
+  sourceDirectory?: string;
+  outputDirectory?: string;
+}) {
+  if (sourceFiles.length === 0) {
+    return {
+      manifest: {
+        generatedAt,
+        sourceDirectory,
+        outputDirectory,
+        seasonsProcessed: [],
+        sourceFilesRead: [],
+        files: [],
+        totals: {
+          seasons: 0,
+          rows: 0,
+          sourceValues: 0,
+          skippedSourceValues: 0,
+          warnings: 0,
+        },
+      } satisfies GeneratedMasterviewManifest,
+      outputs: [] as GeneratedMasterviewFile[],
+    };
+  }
+
+  const sourceRows = sourceFiles.flatMap((file) => file.rows);
+  const { groups, skippedSourceValueCount } = groupRows(sourceRows);
+  const rowsBySeason = new Map<AuctionSeasonYear, GeneratedMasterviewRow[]>();
+
+  for (const group of groups) {
+    const seasonRows = rowsBySeason.get(group.season) ?? [];
+    seasonRows.push(buildMasterviewRow(group));
+    rowsBySeason.set(group.season, seasonRows);
+  }
+
+  const files: GeneratedMasterviewManifest["files"] = [];
+  const outputs: GeneratedMasterviewFile[] = [];
+  const seasonsProcessed = Array.from(rowsBySeason.keys()).sort(
+    (left, right) => left - right
+  );
+
+  for (const season of seasonsProcessed) {
+    const rows = sortMasterviewRows(rowsBySeason.get(season) ?? []);
+    const sourceValueCount = rows.reduce(
+      (count, row) => count + row.sourceValues.length,
+      0
+    );
+    const outputFile = `${outputDirectory}/masterview-${season}.json`;
+    const output: GeneratedMasterviewFile = {
+      generatedAt,
+      season,
+      sourceDirectory,
+      sourceFiles: sourceFiles.map((file) => file.filePath),
+      rowCount: rows.length,
+      sourceValueCount,
+      skippedSourceValueCount,
+      rows,
+    };
+
+    files.push({
+      season,
+      outputFile,
+      rowCount: rows.length,
+      sourceValueCount,
+      skippedSourceValueCount,
+      warningCount: rows.reduce(
+        (count, row) => count + row.warnings.length,
+        0
+      ),
+    });
+
+    outputs.push(output);
+  }
+
+  const manifest: GeneratedMasterviewManifest = {
+    generatedAt,
+    sourceDirectory,
+    outputDirectory,
+    seasonsProcessed,
+    sourceFilesRead: sourceFiles.map((file) => file.filePath),
+    files,
+    totals: {
+      seasons: seasonsProcessed.length,
+      rows: files.reduce((count, file) => count + file.rowCount, 0),
+      sourceValues: files.reduce(
+        (count, file) => count + file.sourceValueCount,
+        0
+      ),
+      skippedSourceValues: skippedSourceValueCount,
+      warnings: files.reduce((count, file) => count + file.warningCount, 0),
+    },
+  };
+
+  return {
+    manifest,
+    outputs,
+  };
+}
+
 async function main() {
-  const generatedAt = new Date().toISOString();
   const sourceFiles = await readSourceValueFiles();
 
   if (sourceFiles.length === 0) {
@@ -414,72 +519,16 @@ async function main() {
 
   await mkdir(GENERATED_DIR, { recursive: true });
 
-  const sourceRows = sourceFiles.flatMap((file) => file.rows);
-  const { groups, skippedSourceValueCount } = groupRows(sourceRows);
-  const rowsBySeason = new Map<AuctionSeasonYear, GeneratedMasterviewRow[]>();
+  const { manifest, outputs } = generateMasterviewFromSourceValueFiles({
+        sourceFiles,
+      });
 
-  for (const group of groups) {
-    const seasonRows = rowsBySeason.get(group.season) ?? [];
-    seasonRows.push(buildMasterviewRow(group));
-    rowsBySeason.set(group.season, seasonRows);
-  }
-
-  const files: GeneratedMasterviewManifest["files"] = [];
-  const seasonsProcessed = Array.from(rowsBySeason.keys()).sort(
-    (left, right) => left - right
-  );
-
-  for (const season of seasonsProcessed) {
-    const rows = sortMasterviewRows(rowsBySeason.get(season) ?? []);
-    const sourceValueCount = rows.reduce(
-      (count, row) => count + row.sourceValues.length,
-      0
+  for (const output of outputs) {
+    await writeJsonFile(
+      `${GENERATED_DIR}/masterview-${output.season}.json`,
+      output
     );
-    const outputFile = `${GENERATED_DIR}/masterview-${season}.json`;
-    const output: GeneratedMasterviewFile = {
-      generatedAt,
-      season,
-      sourceDirectory: SOURCE_VALUES_DIR,
-      sourceFiles: sourceFiles.map((file) => file.filePath),
-      rowCount: rows.length,
-      sourceValueCount,
-      skippedSourceValueCount,
-      rows,
-    };
-
-    await writeJsonFile(outputFile, output);
-
-    files.push({
-      season,
-      outputFile,
-      rowCount: rows.length,
-      sourceValueCount,
-      skippedSourceValueCount,
-      warningCount: rows.reduce(
-        (count, row) => count + row.warnings.length,
-        0
-      ),
-    });
   }
-
-  const manifest: GeneratedMasterviewManifest = {
-    generatedAt,
-    sourceDirectory: SOURCE_VALUES_DIR,
-    outputDirectory: GENERATED_DIR,
-    seasonsProcessed,
-    sourceFilesRead: sourceFiles.map((file) => file.filePath),
-    files,
-    totals: {
-      seasons: seasonsProcessed.length,
-      rows: files.reduce((count, file) => count + file.rowCount, 0),
-      sourceValues: files.reduce(
-        (count, file) => count + file.sourceValueCount,
-        0
-      ),
-      skippedSourceValues: skippedSourceValueCount,
-      warnings: files.reduce((count, file) => count + file.warningCount, 0),
-    },
-  };
 
   await writeJsonFile(`${GENERATED_DIR}/masterview-manifest.json`, manifest);
 
@@ -488,7 +537,7 @@ async function main() {
       {
         sourceFilesRead: manifest.sourceFilesRead,
         filesWritten: [
-          ...files.map((file) => file.outputFile),
+          ...manifest.files.map((file) => file.outputFile),
           `${GENERATED_DIR}/masterview-manifest.json`,
         ],
         totals: manifest.totals,
@@ -499,7 +548,9 @@ async function main() {
   );
 }
 
-main().catch((error: unknown) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+if (process.argv[1]?.endsWith("auction-generate-masterview-from-sources.ts")) {
+  main().catch((error: unknown) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}

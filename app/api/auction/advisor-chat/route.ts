@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   AuctionAccessError,
-  requireAuctionAccess,
+  requireAuctionWarRoomAccess,
 } from "@/lib/auth/auctionAccess";
 import {
   buildAuctionAdvisorContext,
@@ -14,6 +14,7 @@ import {
   type DraftCoachInput,
   type DraftCoachResult,
 } from "@/lib/auction/draftCoach";
+import { readAuctionOwnerProfileSettings } from "@/lib/auction/ownerProfileSettings";
 
 type AdvisorChatRequestBody = {
   mode?: unknown;
@@ -211,6 +212,7 @@ function buildDraftCoachContextSummary(
     currentBidIncluded:
       typeof context.currentBid === "number" && Number.isFinite(context.currentBid),
     historicalContext: context.historicalPricing?.kind ?? "none",
+    ownerSettingsApplied: Boolean(context.ownerSettings),
   };
 }
 
@@ -441,8 +443,10 @@ function buildLocalAnswer(
 }
 
 export async function POST(req: Request) {
+  let actor: Awaited<ReturnType<typeof requireAuctionWarRoomAccess>>;
+
   try {
-    await requireAuctionAccess();
+    actor = await requireAuctionWarRoomAccess();
   } catch (error) {
     if (error instanceof AuctionAccessError) {
       return NextResponse.json(
@@ -481,7 +485,43 @@ export async function POST(req: Request) {
     }
 
     try {
-      const coachResult = buildDraftCoachResponse(draftCoachContext);
+      const ownerProfileId = actor.access.ownerProfileId;
+      const ownerSettings = ownerProfileId
+        ? await readAuctionOwnerProfileSettings({ ownerProfileId }).catch(
+            () => null
+          )
+        : null;
+      const coachContextWithOwnerSettings: DraftCoachInput = {
+        ...draftCoachContext,
+        ownerSettings: ownerSettings?.onboardingCompleted
+          ? {
+              rosterConstruction: ownerSettings.rosterConstruction,
+              riskTolerance: ownerSettings.riskTolerance,
+              keeperFocus: ownerSettings.keeperFocus,
+              rookiePreference: ownerSettings.rookiePreference,
+              positionPriorities: ownerSettings.positionPriorities,
+              nominationStyle: ownerSettings.nominationStyle,
+              kickerDefenseStrategy: ownerSettings.kickerDefenseStrategy,
+              draftGoal: ownerSettings.draftGoal,
+              additionalNotes: ownerSettings.additionalNotes,
+            }
+          : null,
+        liveStrategy: ownerSettings?.liveDraftStrategy
+          ? {
+              riskMode: ownerSettings.liveDraftStrategy.riskMode,
+              priorityPositions:
+                ownerSettings.liveDraftStrategy.priorityPositions,
+              deemphasizedPositions:
+                ownerSettings.liveDraftStrategy.deemphasizedPositions,
+              minimumBudgetReserve:
+                ownerSettings.liveDraftStrategy.minimumBudgetReserve,
+              opponentFocus: ownerSettings.liveDraftStrategy.opponentFocus,
+              additionalInstructions:
+                ownerSettings.liveDraftStrategy.additionalInstructions,
+            }
+          : null,
+      };
+      const coachResult = buildDraftCoachResponse(coachContextWithOwnerSettings);
 
       return NextResponse.json({
         answer: coachResult.buddyMessage,
@@ -495,7 +535,7 @@ export async function POST(req: Request) {
         warnings: coachResult.warnings,
         source: "local-hybrid-coach",
         contextSummary: buildDraftCoachContextSummary(
-          draftCoachContext,
+          coachContextWithOwnerSettings,
           coachResult
         ),
       } satisfies DraftCoachChatResponse);

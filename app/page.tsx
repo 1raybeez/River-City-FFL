@@ -18,6 +18,19 @@ import { getAllPlayers } from '@/lib/sleeper';
 const LEAGUE_ID_2026 = "1312149033254416384";
 const RECAP_LOADING_TEXT = "Loading latest league note...";
 const RECAP_FALLBACK_TEXT = "Commish recap could not be loaded. Check back soon for the latest league update.";
+const DRAFT_START_AT = new Date("2026-08-29T10:00:00-04:00");
+const KEEPER_DEADLINE_LABEL = "Aug 22, 2026";
+const PUBLIC_AUCTION_VALUE_STATUS = "Values ready";
+const PUBLIC_ADP_STATUS = "ADP ready";
+
+function getDraftCountdownLabel(now: Date) {
+  const millisecondsUntilDraft = DRAFT_START_AT.getTime() - now.getTime();
+  if (millisecondsUntilDraft <= 0) return "Draft window open";
+
+  const days = Math.ceil(millisecondsUntilDraft / (1000 * 60 * 60 * 24));
+  if (days === 1) return "1 day to draft";
+  return `${days} days to draft`;
+}
 
 // UPDATED: Removed Jeffrey Hudgins and Landon Elliott (Co-owners)
 const managers = [
@@ -183,6 +196,8 @@ export default function Home() {
   const isPredictorPlaceholder = predictorTeams.length > 0 && (predictorOddsAreEqual || predictorValuesAreZero);
   const nextLeagueEvent = events[0];
   const nextLeagueEventTime = "10:00 AM ET";
+  const draftCountdownLabel = getDraftCountdownLabel(new Date());
+  const draftRsvpLabel = `${rsvpList.length} confirmed`;
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-20 selection:bg-orange-500">
@@ -295,10 +310,38 @@ export default function Home() {
             <div className="bg-[#0b1527] text-white p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden border border-white/10 group">
                 <MessageCircle size={100} className="absolute -top-4 -right-4 opacity-5 group-hover:scale-110 transition-transform" />
                 <h3 className="text-xs font-black uppercase italic tracking-widest text-blue-400 mb-4">Commish Corner</h3>
-                <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-white/35">Manual commissioner briefing</p>
-                <h4 className="text-3xl font-black uppercase italic mb-4 leading-none">2026 Draft Briefing</h4>
-                <p className="text-sm text-white/50 italic mb-8 leading-relaxed line-clamp-3">{liveRecap}</p>
-                <button onClick={() => setShowRecap(true)} className="w-full bg-blue-600 text-white text-[10px] font-black uppercase py-4 rounded-2xl hover:bg-blue-500 transition-all italic tracking-widest">Read Full Story</button>
+                <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-white/35">2026 public draft status</p>
+                <h4 className="text-3xl font-black uppercase italic mb-4 leading-none">Auction Draft HQ</h4>
+                <div className="mb-6 grid grid-cols-2 gap-3 text-[10px] font-black uppercase tracking-widest">
+                  <div className="rounded-2xl bg-white/5 p-3">
+                    <p className="text-white/35">Countdown</p>
+                    <p className="mt-1 text-blue-300">{draftCountdownLabel}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/5 p-3">
+                    <p className="text-white/35">RSVP</p>
+                    <p className="mt-1 text-emerald-300">{draftRsvpLabel}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/5 p-3">
+                    <p className="text-white/35">Values</p>
+                    <p className="mt-1 text-blue-300">{PUBLIC_AUCTION_VALUE_STATUS}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/5 p-3">
+                    <p className="text-white/35">ADP</p>
+                    <p className="mt-1 text-blue-300">{PUBLIC_ADP_STATUS}</p>
+                  </div>
+                </div>
+                <p className="text-sm text-white/50 italic mb-6 leading-relaxed">
+                  Draft day is August 29, 2026 at 10:00 AM ET. Keepers lock by {KEEPER_DEADLINE_LABEL}. Private War Room tools remain behind authorized access.
+                </p>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <Link href="/league-info" className="flex items-center justify-center rounded-2xl bg-white/10 px-3 py-3 text-[9px] font-black uppercase tracking-widest text-white/70 transition-all hover:bg-white/15 hover:text-white">
+                    League Info
+                  </Link>
+                  <Link href="/commish" className="flex items-center justify-center rounded-2xl bg-blue-600 px-3 py-3 text-[9px] font-black uppercase tracking-widest text-white transition-all hover:bg-blue-500">
+                    Commish
+                  </Link>
+                  <button onClick={() => setShowRecap(true)} className="rounded-2xl bg-white/10 px-3 py-3 text-[9px] font-black uppercase tracking-widest text-white/70 transition-all hover:bg-white/15 hover:text-white">Full Note</button>
+                </div>
             </div>
           </div>
 
