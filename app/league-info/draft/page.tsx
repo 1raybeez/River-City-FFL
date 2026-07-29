@@ -81,6 +81,14 @@ function getDraftPickSearchText(pick: any) {
     .toLowerCase();
 }
 
+function getTeamAuctionSpent(team: any) {
+  return team.picks.reduce(
+    (total: number, pick: any) =>
+      total + (getAuctionPrice(pick) ?? 0),
+    0
+  );
+}
+
 export default function DraftBoardPage() {
   const latestDraftYear = getLatestDraftYear();
 
@@ -103,9 +111,13 @@ export default function DraftBoardPage() {
     useState(false);
   const [searchQuery, setSearchQuery] =
     useState('');
+  const [isCompactOwnerHeaderVisible, setIsCompactOwnerHeaderVisible] =
+    useState(false);
   const searchMatchRefs = useRef(
     new Map<string, HTMLDivElement>()
   );
+  const ownerHeaderSentinelRef =
+    useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -472,6 +484,35 @@ export default function DraftBoardPage() {
       );
   }, [searchMatches.firstMatchKey]);
 
+  useEffect(() => {
+    const sentinel =
+      ownerHeaderSentinelRef.current;
+
+    if (!sentinel) {
+      setIsCompactOwnerHeaderVisible(
+        false
+      );
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsCompactOwnerHeaderVisible(
+          entry.boundingClientRect.top <= 64
+        );
+      },
+      {
+        rootMargin:
+          '-64px 0px 0px 0px',
+        threshold: 0,
+      }
+    );
+
+    observer.observe(sentinel);
+
+    return () => observer.disconnect();
+  }, [draftData]);
+
   if (!mounted) {
     return null;
   }
@@ -629,6 +670,73 @@ export default function DraftBoardPage() {
           </div>
         ) : (
           <div className="inline-block min-w-full p-6">
+            <div
+              ref={ownerHeaderSentinelRef}
+              className="h-px"
+            />
+
+            <div className="sticky top-16 z-40 h-0">
+              <div
+                aria-hidden={
+                  !isCompactOwnerHeaderVisible
+                }
+                className={`flex h-12 gap-4 border-y border-black/10 bg-white shadow-md transition-opacity dark:border-white/10 dark:bg-[#0a0a0a] ${
+                  isCompactOwnerHeaderVisible
+                    ? 'visible opacity-100'
+                    : 'invisible opacity-0'
+                }`}
+              >
+                {draftData.teams.map(
+                  (team: any) => {
+                    const ownerMatches =
+                      searchMatches.ownerIds.has(
+                        team.id
+                      );
+
+                    return (
+                      <div
+                        key={`compact-${team.id}`}
+                        className={`flex h-12 w-32 shrink-0 items-center gap-2 border-r border-black/10 px-2 dark:border-white/10 sm:w-40 ${
+                          ownerMatches
+                            ? 'bg-orange-500/10 ring-2 ring-inset ring-orange-500'
+                            : ''
+                        }`}
+                      >
+                        <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full border border-black/10 bg-black/10 dark:border-white/10 dark:bg-white/10">
+                          {team.avatar ? (
+                            <Image
+                              src={`https://sleepercdn.com/avatars/thumbs/${team.avatar}`}
+                              alt=""
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-[9px] font-black opacity-40">
+                              {team.name[0]}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="truncate text-[9px] font-black uppercase italic leading-tight tracking-tighter">
+                            {team.name}
+                          </p>
+                          <p className="mt-0.5 whitespace-nowrap text-[8px] font-black uppercase tracking-wider opacity-40">
+                            $
+                            {getTeamAuctionSpent(
+                              team
+                            )}{' '}
+                            · {team.picks.length}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+                )}
+              </div>
+            </div>
+
             <div className="flex gap-4">
               {draftData.teams.map(
                 (team: any) => {
@@ -638,16 +746,8 @@ export default function DraftBoardPage() {
                       team.id
                     );
                   const totalAuctionSpent =
-                    team.picks.reduce(
-                      (
-                        total: number,
-                        pick: any
-                      ) =>
-                        total +
-                        (getAuctionPrice(
-                          pick
-                        ) ?? 0),
-                      0
+                    getTeamAuctionSpent(
+                      team
                     );
 
                   return (
@@ -672,7 +772,7 @@ export default function DraftBoardPage() {
                           );
                         }
                       }}
-                      className="sticky top-16 z-30 flex h-28 flex-col items-center justify-center rounded-2xl border border-black/5 border-b-4 border-b-orange-600 bg-[#f2f2f2] p-3 text-center shadow-md dark:border-white/5 dark:border-b-orange-600 dark:bg-[#161616]"
+                      className="relative flex h-28 flex-col items-center justify-center rounded-2xl border border-black/5 border-b-4 border-b-orange-600 bg-[#f2f2f2] p-3 text-center shadow-md dark:border-white/5 dark:border-b-orange-600 dark:bg-[#161616]"
                     >
                       <div className="absolute left-2 top-2 text-[8px] font-black uppercase tracking-tighter opacity-20">
                         #{team.slot}
