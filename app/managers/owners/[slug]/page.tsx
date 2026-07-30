@@ -4,7 +4,10 @@ import {
   getOwnerProfileStaticParams,
   getOwnerProfileViewModelBySlug,
 } from "@/lib/managers/identitySelectors";
-import { loadOwnerCareerMatchupSummary } from "@/lib/managers/ownerMatchupSummaryLoader";
+import {
+  loadOwnerCareerMatchupSummary,
+  loadOwnerSeasonMatchupSummaries,
+} from "@/lib/managers/ownerMatchupSummaryLoader";
 
 type OwnerProfilePageProps = {
   params: Promise<{
@@ -24,7 +27,10 @@ export default async function OwnerProfilePage({
 
   if (!profile) notFound();
 
-  const careerMatchupSummary = await loadOwnerCareerMatchupSummary(slug);
+  const [careerMatchupSummary, seasonMatchupSummaries] = await Promise.all([
+    loadOwnerCareerMatchupSummary(slug),
+    loadOwnerSeasonMatchupSummaries(slug),
+  ]);
 
   if (!careerMatchupSummary) notFound();
 
@@ -32,6 +38,7 @@ export default async function OwnerProfilePage({
     <OwnerProfile
       profile={profile}
       careerMatchupSummary={careerMatchupSummary}
+      seasonMatchupSummaries={seasonMatchupSummaries}
     />
   );
 }

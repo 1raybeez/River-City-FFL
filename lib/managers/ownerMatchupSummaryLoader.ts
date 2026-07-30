@@ -10,7 +10,9 @@ import {
 import {
   buildOwnerMatchupSummaries,
   getOwnerCareerMatchupSummary,
+  getOwnerSeasonMatchupSummaries,
   type OwnerCareerMatchupSummary,
+  type OwnerSeasonMatchupSummary,
 } from "@/lib/history/ownerMatchupSummary";
 import { getAllOwnerSeasonHistory } from "@/lib/history/ownerSeasonHistory";
 import { ownerProfiles } from "@/lib/managers/identityData";
@@ -51,4 +53,11 @@ export async function loadOwnerCareerMatchupSummary(
 ): Promise<OwnerCareerMatchupSummary | null> {
   await initializeOwnerMatchupSummaries();
   return getOwnerCareerMatchupSummary(ownerIdOrSlug);
+}
+
+export async function loadOwnerSeasonMatchupSummaries(
+  ownerIdOrSlug: string
+): Promise<readonly OwnerSeasonMatchupSummary[]> {
+  await initializeOwnerMatchupSummaries();
+  return getOwnerSeasonMatchupSummaries(ownerIdOrSlug);
 }

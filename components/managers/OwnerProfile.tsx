@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   ArrowRight,
-  Flame,
   History,
   MapPin,
   MessageCircle,
@@ -19,6 +18,7 @@ import {
 import type {
   OwnerCareerMatchupSummary,
   OwnerMatchupRecord,
+  OwnerSeasonMatchupSummary,
 } from "@/lib/history/ownerMatchupSummary";
 import { teamColors } from "@/lib/themes/teamColors";
 import {
@@ -1151,30 +1151,151 @@ function Rivalry({ profile }: { profile: OwnerProfileViewModel }) {
   );
 }
 
-function Timeline({ profile }: { profile: OwnerProfileViewModel }) {
-  if (profile.timeline.length === 0) return null;
+function getSeasonCoverageDisplay(summary: OwnerSeasonMatchupSummary) {
+  if (summary.coverage.sourceAvailability === "unavailable-no-source") {
+    return {
+      label: "Source unavailable",
+      detail:
+        "Matchup-level history is unavailable for this season. No record has been inferred.",
+    };
+  }
+
+  if (
+    summary.coverage.sourceAvailability ===
+    "available-no-completed-games"
+  ) {
+    return {
+      label: "No completed games",
+      detail:
+        "Matchup source coverage is available, but no completed games have been recorded.",
+    };
+  }
+
+  if (summary.coverage.sourceAvailability === "not-applicable") {
+    return {
+      label: "Not applicable",
+      detail: "No competitive owner matchup history applies to this season.",
+    };
+  }
+
+  return {
+    label: "Available",
+    detail: "Completed competitive matchup history is available.",
+  };
+}
+
+function SeasonHistory({
+  summaries,
+}: {
+  summaries: readonly OwnerSeasonMatchupSummary[];
+}) {
+  if (summaries.length === 0) return null;
 
   return (
-    <SectionShell title="Timeline" icon={<Flame size={16} />}>
+    <SectionShell title="Season History" icon={<History size={16} />}>
       <div className="space-y-4">
-        {profile.timeline.map((item, index) => (
-          <div
-            key={`${item.year}-${item.title}-${index}`}
-            className="grid grid-cols-[72px_1fr] gap-4"
-          >
-            <p className="text-[10px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
-              {item.year}
-            </p>
-            <div className="border-l border-black/10 pb-4 pl-4 dark:border-white/10">
-              <p className="text-sm font-black uppercase">{item.title}</p>
-              {item.detail && (
-                <p className="mt-1 text-sm font-medium leading-7 text-black/55 dark:text-white/55">
-                  {item.detail}
+        {summaries.map((summary) => {
+          const recordsAvailable =
+            summary.coverage.sourceAvailability === "available";
+          const unavailableValue = "—";
+          const coverage = getSeasonCoverageDisplay(summary);
+          const overall = summary.records.overall;
+          const metrics: Array<{
+            label: string;
+            value: string | number;
+          }> = [
+            {
+              label: "Overall Record",
+              value: recordsAvailable
+                ? formatMatchupRecord(overall)
+                : unavailableValue,
+            },
+            {
+              label: "Regular Season Record",
+              value: recordsAvailable
+                ? formatMatchupRecord(summary.records.regularSeason)
+                : unavailableValue,
+            },
+            {
+              label: "Championship Playoff Record",
+              value: recordsAvailable
+                ? formatMatchupRecord(
+                    summary.records.championshipPlayoff
+                  )
+                : unavailableValue,
+            },
+            {
+              label: "Winning %",
+              value: recordsAvailable
+                ? formatWinningPercentage(overall.winningPercentage)
+                : unavailableValue,
+            },
+            {
+              label: "Points For",
+              value: recordsAvailable
+                ? formatPoints(overall.pointsFor)
+                : unavailableValue,
+            },
+            {
+              label: "Points Against",
+              value: recordsAvailable
+                ? formatPoints(overall.pointsAgainst)
+                : unavailableValue,
+            },
+            {
+              label: "Point Differential",
+              value: recordsAvailable
+                ? `${overall.pointDifferential > 0 ? "+" : ""}${formatPoints(
+                    overall.pointDifferential
+                  )}`
+                : unavailableValue,
+            },
+          ];
+
+          if (summary.records.championshipGames.games > 0) {
+            metrics.splice(3, 0, {
+              label: "Championship Game Record",
+              value: formatMatchupRecord(
+                summary.records.championshipGames
+              ),
+            });
+          }
+
+          return (
+            <article
+              key={summary.summaryKey}
+              className="rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <p className="text-2xl font-black uppercase italic">
+                  {summary.season}
                 </p>
-              )}
-            </div>
-          </div>
-        ))}
+                <div className="sm:text-right">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+                    Coverage status
+                  </p>
+                  <p className="mt-1 text-xs font-black uppercase tracking-widest">
+                    {coverage.label}
+                  </p>
+                </div>
+              </div>
+
+              <p className="mt-3 text-sm font-medium leading-6 text-black/55 dark:text-white/55">
+                {coverage.detail}
+              </p>
+
+              <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                {metrics.map((metric) => (
+                  <LegacyMetric
+                    key={metric.label}
+                    label={metric.label}
+                    value={metric.value}
+                  />
+                ))}
+              </div>
+            </article>
+          );
+        })}
       </div>
     </SectionShell>
   );
@@ -1183,15 +1304,17 @@ function Timeline({ profile }: { profile: OwnerProfileViewModel }) {
 export default function OwnerProfile({
   profile,
   careerMatchupSummary,
+  seasonMatchupSummaries,
 }: {
   profile: OwnerProfileViewModel;
   careerMatchupSummary: OwnerCareerMatchupSummary;
+  seasonMatchupSummaries: readonly OwnerSeasonMatchupSummary[];
 }) {
   const isStaff = profile.owner.status === OwnerProfileStatus.Staff;
   const hasTenures =
     profile.currentTenures.length > 0 || profile.legacyTenures.length > 0;
-  const showTimeline = !isStaff && profile.timeline.length > 0;
-  const showMainColumn = hasTenures || showTimeline;
+  const showSeasonHistory = !isStaff && seasonMatchupSummaries.length > 0;
+  const showMainColumn = hasTenures || showSeasonHistory;
   const sidebarContent = (
     <>
       <CareerSnapshot profile={profile} summary={careerMatchupSummary} />
@@ -1210,7 +1333,9 @@ export default function OwnerProfile({
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
             <div className="space-y-6">
               <TeamLegacy profile={profile} />
-              {showTimeline && <Timeline profile={profile} />}
+              {showSeasonHistory && (
+                <SeasonHistory summaries={seasonMatchupSummaries} />
+              )}
               <CurrentDivisionCard profile={profile} />
             </div>
             <aside className="space-y-6">{sidebarContent}</aside>
