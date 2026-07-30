@@ -6,20 +6,20 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   ArrowRight,
-  Award,
-  Crown,
   Flame,
   History,
   MapPin,
-  Medal,
   MessageCircle,
   Quote,
   Shield,
-  Skull,
   Swords,
   Trophy,
   UserRound,
 } from "lucide-react";
+import type {
+  OwnerCareerMatchupSummary,
+  OwnerMatchupRecord,
+} from "@/lib/history/ownerMatchupSummary";
 import { teamColors } from "@/lib/themes/teamColors";
 import {
   AccomplishmentAttribution,
@@ -467,66 +467,147 @@ function HeroSection({ profile }: { profile: OwnerProfileViewModel }) {
   );
 }
 
-function CareerSnapshot({ profile }: { profile: OwnerProfileViewModel }) {
+function formatMatchupRecord(record: OwnerMatchupRecord) {
+  return record.ties > 0
+    ? `${record.wins}-${record.losses}-${record.ties}`
+    : `${record.wins}-${record.losses}`;
+}
+
+const WINNING_PERCENTAGE_FORMATTER = new Intl.NumberFormat("en-US", {
+  style: "percent",
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
+function formatWinningPercentage(value: number | null) {
+  return value === null ? "—" : WINNING_PERCENTAGE_FORMATTER.format(value);
+}
+
+function formatPoints(value: number) {
+  return value.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function getMatchupCoverageMessage(summary: OwnerCareerMatchupSummary) {
+  if (summary.coverage.sourceAvailability === "unavailable-no-source") {
+    return "Matchup-level source data is unavailable for these represented seasons. No record has been inferred.";
+  }
+
+  if (
+    summary.coverage.sourceAvailability ===
+    "available-no-completed-games"
+  ) {
+    return "Matchup source coverage is available, but no completed games have been recorded.";
+  }
+
+  if (summary.coverage.sourceAvailability === "not-applicable") {
+    return "No competitive owner matchup history applies to this profile.";
+  }
+
+  if (summary.seasonsWithoutMatchupSource.length > 0) {
+    return "Matchup source coverage begins in 2018. Earlier owner-seasons are excluded from these records.";
+  }
+
+  return null;
+}
+
+function CareerSnapshot({
+  profile,
+  summary,
+}: {
+  profile: OwnerProfileViewModel;
+  summary: OwnerCareerMatchupSummary;
+}) {
   const accentColor = getAccentColor(profile);
-  const primarySummary = profile.statSummaries[0];
+  const recordsAvailable =
+    summary.coverage.sourceAvailability === "available";
+  const unavailableValue = "—";
+  const overall = summary.records.overall;
+  const coverageMessage = getMatchupCoverageMessage(summary);
   const tiles: Array<{
     label: string;
     value: string | number;
     icon: ReactNode;
-  }> = [];
-
-  if (primarySummary) {
-    tiles.push(
-      {
-        label: "Titles",
-        value: primarySummary.championships,
-        icon: <Crown size={16} />,
-      },
-      {
-        label: "Podiums",
-        value: primarySummary.podiums,
-        icon: <Award size={16} />,
-      }
-    );
-
-    if (primarySummary.bestFinish && primarySummary.bestFinish !== "N/A") {
-      tiles.push({
-        label: "Best Finish",
-        value: primarySummary.bestFinish,
-        icon: <Medal size={16} />,
-      });
-    }
-
-    if (typeof primarySummary.toiletBowls === "number") {
-      tiles.push({
-        label: "Toilet Bowls",
-        value: primarySummary.toiletBowls,
-        icon: <Skull size={16} />,
-      });
-    }
-  }
-
-  if (profile.yearsActiveLabel !== "N/A") {
-    tiles.push({
-      label: "Years Active",
-      value: profile.yearsActiveLabel,
-      icon: <History size={16} />,
-    });
-  }
-
-  if (primarySummary?.displayedRecord) {
-    tiles.push({
-      label: "Record",
-      value: primarySummary.displayedRecord,
+  }> = [
+    {
+      label: "Overall Record",
+      value: recordsAvailable
+        ? formatMatchupRecord(overall)
+        : unavailableValue,
       icon: <Shield size={16} />,
-    });
-  }
-
-  if (tiles.length === 0) return null;
+    },
+    {
+      label: "Regular Season Record",
+      value: recordsAvailable
+        ? formatMatchupRecord(summary.records.regularSeason)
+        : unavailableValue,
+      icon: <Shield size={16} />,
+    },
+    {
+      label: "Championship Playoff Record",
+      value: recordsAvailable
+        ? formatMatchupRecord(summary.records.championshipPlayoff)
+        : unavailableValue,
+      icon: <Swords size={16} />,
+    },
+    {
+      label: "Championship Game Record",
+      value: recordsAvailable
+        ? formatMatchupRecord(summary.records.championshipGames)
+        : unavailableValue,
+      icon: <Trophy size={16} />,
+    },
+    {
+      label: "Winning %",
+      value: recordsAvailable
+        ? formatWinningPercentage(overall.winningPercentage)
+        : unavailableValue,
+      icon: <Trophy size={16} />,
+    },
+    {
+      label: "Points For",
+      value: recordsAvailable
+        ? formatPoints(overall.pointsFor)
+        : unavailableValue,
+      icon: <ArrowRight size={16} />,
+    },
+    {
+      label: "Points Against",
+      value: recordsAvailable
+        ? formatPoints(overall.pointsAgainst)
+        : unavailableValue,
+      icon: <ArrowLeft size={16} />,
+    },
+    {
+      label: "Point Differential",
+      value: recordsAvailable
+        ? `${overall.pointDifferential > 0 ? "+" : ""}${formatPoints(
+            overall.pointDifferential
+          )}`
+        : unavailableValue,
+      icon: <Swords size={16} />,
+    },
+    {
+      label: "First Matchup Season",
+      value: summary.firstMatchupSeason ?? unavailableValue,
+      icon: <History size={16} />,
+    },
+    {
+      label: "Latest Matchup Season",
+      value: summary.latestMatchupSeason ?? unavailableValue,
+      icon: <History size={16} />,
+    },
+  ];
 
   return (
     <SectionShell title="Career Snapshot" icon={<Trophy size={16} />}>
+      {coverageMessage && (
+        <p className="mb-4 rounded-lg border border-black/10 bg-black/[0.02] p-3 text-xs font-medium leading-5 text-black/55 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/55">
+          {coverageMessage}
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-3">
         {tiles.map((tile) => (
           <StatTile
@@ -1101,8 +1182,10 @@ function Timeline({ profile }: { profile: OwnerProfileViewModel }) {
 
 export default function OwnerProfile({
   profile,
+  careerMatchupSummary,
 }: {
   profile: OwnerProfileViewModel;
+  careerMatchupSummary: OwnerCareerMatchupSummary;
 }) {
   const isStaff = profile.owner.status === OwnerProfileStatus.Staff;
   const hasTenures =
@@ -1111,7 +1194,7 @@ export default function OwnerProfile({
   const showMainColumn = hasTenures || showTimeline;
   const sidebarContent = (
     <>
-      <CareerSnapshot profile={profile} />
+      <CareerSnapshot profile={profile} summary={careerMatchupSummary} />
       <BestWayToTalkTrades profile={profile} />
       <Personality profile={profile} />
       <Rivalry profile={profile} />

@@ -4,6 +4,7 @@ import {
   getOwnerProfileStaticParams,
   getOwnerProfileViewModelBySlug,
 } from "@/lib/managers/identitySelectors";
+import { loadOwnerCareerMatchupSummary } from "@/lib/managers/ownerMatchupSummaryLoader";
 
 type OwnerProfilePageProps = {
   params: Promise<{
@@ -23,5 +24,14 @@ export default async function OwnerProfilePage({
 
   if (!profile) notFound();
 
-  return <OwnerProfile profile={profile} />;
+  const careerMatchupSummary = await loadOwnerCareerMatchupSummary(slug);
+
+  if (!careerMatchupSummary) notFound();
+
+  return (
+    <OwnerProfile
+      profile={profile}
+      careerMatchupSummary={careerMatchupSummary}
+    />
+  );
 }
