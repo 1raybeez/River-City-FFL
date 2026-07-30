@@ -288,7 +288,7 @@ const OWNER_PROFILE_OVERRIDES: Record<string, OwnerProfileOverride> = {
       favoriteNflTeam: "ATL" as TeamCode,
     },
     notes: [
-      "Ray has co-owned Prestigio Mundial with Jeffrey Hudgins for the full history of the franchise.",
+      "Ray was Prestigio Mundial's solo owner in 2011 and has co-owned it with Jeffrey Hudgins since 2013.",
       "Ray's favorite NFL team is the Atlanta Falcons.",
     ],
   },
@@ -465,8 +465,8 @@ function getSpecialFranchiseOwnerRules(ownerId: string, franchiseId: string) {
       coOwnerIds: ["ray-long", "jeffrey-hudgins"],
       statOwnerIds: ["ray-long", "jeffrey-hudgins"],
       notes: [
-        "Prestigio Mundial has been co-owned by Ray Long and Jeffrey Hudgins for the full franchise history.",
-        "Career stats for this franchise are shared by both owners.",
+        "Ray Long was Prestigio Mundial's solo owner in 2011; Ray and Jeffrey Hudgins have co-owned it since 2013.",
+        "Career stats for shared seasons are attributed to both owners.",
       ],
     };
   }
@@ -570,6 +570,22 @@ const activeOwnershipTenures: OwnershipTenure[] = activeManagers.flatMap(
 
     if (franchiseId === "prestigio-mundial") {
       return [
+        {
+          id: "ray-long-prestigio-mundial-2011",
+          ownerId: "ray-long",
+          franchiseId,
+          role: OwnershipRole.Primary,
+          startSeason: 2011,
+          endSeason: 2011,
+          isActive: false,
+          showOnActiveLanding: false,
+          showUnderRetiredOwners: false,
+          accomplishmentAttribution:
+            AccomplishmentAttribution.PrimaryFranchise,
+          notes: [
+            "Ray was the solo owner of Prestigio Mundial in 2011 and did not participate in 2012.",
+          ],
+        },
         {
           id: "ray-long-prestigio-mundial-2013",
           ownerId: "ray-long",
@@ -748,7 +764,9 @@ function buildStatSummary(
         : AccomplishmentAttribution.PrimaryFranchise,
     notes: [
       ...(isPrestigio
-        ? ["Prestigio Mundial stats are shared by Ray Long and Jeffrey Hudgins."]
+        ? [
+            "Prestigio Mundial stats are shared by Ray Long and Jeffrey Hudgins beginning in 2013.",
+          ]
         : []),
       ...(isShake
         ? [
