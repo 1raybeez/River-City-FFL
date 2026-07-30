@@ -4,8 +4,10 @@ import {
   getOwnerProfileStaticParams,
   getOwnerProfileViewModelBySlug,
 } from "@/lib/managers/identitySelectors";
+import { getOwnerProfileById } from "@/lib/managers/identityData";
 import {
   loadOwnerCareerMatchupSummary,
+  loadOwnerOpponentMatchupSummaries,
   loadOwnerSeasonMatchupSummaries,
 } from "@/lib/managers/ownerMatchupSummaryLoader";
 
@@ -27,18 +29,39 @@ export default async function OwnerProfilePage({
 
   if (!profile) notFound();
 
-  const [careerMatchupSummary, seasonMatchupSummaries] = await Promise.all([
+  const [
+    careerMatchupSummary,
+    seasonMatchupSummaries,
+    opponentMatchupSummaries,
+  ] = await Promise.all([
     loadOwnerCareerMatchupSummary(slug),
     loadOwnerSeasonMatchupSummaries(slug),
+    loadOwnerOpponentMatchupSummaries(slug),
   ]);
 
   if (!careerMatchupSummary) notFound();
+
+  const opponentIdentities = opponentMatchupSummaries.flatMap((summary) => {
+    const opponent = getOwnerProfileById(summary.opponentOwnerId);
+    return opponent
+      ? [
+          {
+            ownerId: opponent.id,
+            slug: opponent.slug,
+            fullName: opponent.fullName,
+            photo: opponent.photo,
+          },
+        ]
+      : [];
+  });
 
   return (
     <OwnerProfile
       profile={profile}
       careerMatchupSummary={careerMatchupSummary}
       seasonMatchupSummaries={seasonMatchupSummaries}
+      opponentMatchupSummaries={opponentMatchupSummaries}
+      opponentIdentities={opponentIdentities}
     />
   );
 }

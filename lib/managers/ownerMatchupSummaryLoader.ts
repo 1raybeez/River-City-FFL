@@ -10,8 +10,10 @@ import {
 import {
   buildOwnerMatchupSummaries,
   getOwnerCareerMatchupSummary,
+  getOwnerOpponentMatchupSummaries,
   getOwnerSeasonMatchupSummaries,
   type OwnerCareerMatchupSummary,
+  type OwnerOpponentMatchupSummary,
   type OwnerSeasonMatchupSummary,
 } from "@/lib/history/ownerMatchupSummary";
 import { getAllOwnerSeasonHistory } from "@/lib/history/ownerSeasonHistory";
@@ -60,4 +62,11 @@ export async function loadOwnerSeasonMatchupSummaries(
 ): Promise<readonly OwnerSeasonMatchupSummary[]> {
   await initializeOwnerMatchupSummaries();
   return getOwnerSeasonMatchupSummaries(ownerIdOrSlug);
+}
+
+export async function loadOwnerOpponentMatchupSummaries(
+  ownerIdOrSlug: string
+): Promise<readonly OwnerOpponentMatchupSummary[]> {
+  await initializeOwnerMatchupSummaries();
+  return getOwnerOpponentMatchupSummaries(ownerIdOrSlug);
 }

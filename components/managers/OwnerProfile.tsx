@@ -18,6 +18,8 @@ import {
 import type {
   OwnerCareerMatchupSummary,
   OwnerMatchupRecord,
+  OwnerMatchupSourceAvailability,
+  OwnerOpponentMatchupSummary,
   OwnerSeasonMatchupSummary,
 } from "@/lib/history/ownerMatchupSummary";
 import { teamColors } from "@/lib/themes/teamColors";
@@ -98,6 +100,13 @@ type CurrentDivisionData = {
   rank?: number;
   record?: string;
   pointsFor?: string;
+};
+
+type OpponentIdentity = {
+  ownerId: string;
+  slug: string;
+  fullName: string;
+  photo?: string | null;
 };
 
 function getAccentColor(profile: OwnerProfileViewModel) {
@@ -471,6 +480,15 @@ function formatMatchupRecord(record: OwnerMatchupRecord) {
   return record.ties > 0
     ? `${record.wins}-${record.losses}-${record.ties}`
     : `${record.wins}-${record.losses}`;
+}
+
+function getAccessibleMatchupRecord(record: OwnerMatchupRecord) {
+  const wins = `${record.wins} ${record.wins === 1 ? "win" : "wins"}`;
+  const losses = `${record.losses} ${
+    record.losses === 1 ? "loss" : "losses"
+  }`;
+  const ties = `${record.ties} ${record.ties === 1 ? "tie" : "ties"}`;
+  return `${wins}, ${losses}, ${ties}`;
 }
 
 const WINNING_PERCENTAGE_FORMATTER = new Intl.NumberFormat("en-US", {
@@ -1301,20 +1319,439 @@ function SeasonHistory({
   );
 }
 
+function getOpponentCoverageDisplay(
+  sourceAvailability: OwnerMatchupSourceAvailability
+) {
+  if (sourceAvailability === "unavailable-no-source") {
+    return {
+      title: "Opponent history unavailable",
+      copy: "Matchup-level source data is unavailable for this owner's represented seasons. No opponent records have been inferred.",
+    };
+  }
+
+  if (sourceAvailability === "available-no-completed-games") {
+    return {
+      title: "No completed opponent matchups",
+      copy: "Matchup source coverage is available, but no completed games have been recorded.",
+    };
+  }
+
+  if (sourceAvailability === "not-applicable") {
+    return {
+      title: "Opponent history not applicable",
+      copy: "This profile has no competitive owner matchup history.",
+    };
+  }
+
+  return {
+    title: "No opponent history available",
+    copy: "No supported directional opponent records are available for this owner.",
+  };
+}
+
+function OpponentBadge({
+  label,
+  tone,
+  accessibleDetail,
+}: {
+  label: string;
+  tone: "positive" | "negative" | "neutral" | "playoff" | "championship";
+  accessibleDetail?: string;
+}) {
+  const toneClasses = {
+    positive:
+      "border-emerald-600/20 bg-emerald-600/10 text-emerald-700 dark:text-emerald-300",
+    negative:
+      "border-red-600/20 bg-red-600/10 text-red-700 dark:text-red-300",
+    neutral:
+      "border-black/10 bg-black/[0.04] text-black/55 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/55",
+    playoff:
+      "border-blue-600/20 bg-blue-600/10 text-blue-700 dark:text-blue-300",
+    championship:
+      "border-yellow-500/25 bg-yellow-500/10 text-yellow-700 dark:text-yellow-300",
+  } as const;
+
+  return (
+    <span
+      className={`inline-flex rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-wider ${toneClasses[tone]}`}
+    >
+      {label}
+      {accessibleDetail && <span className="sr-only">, {accessibleDetail}</span>}
+    </span>
+  );
+}
+
+function OpponentBadges({
+  summary,
+}: {
+  summary: OwnerOpponentMatchupSummary;
+}) {
+  const overall = summary.records.overall;
+  const seriesBadge =
+    overall.games === 0
+      ? null
+      : overall.wins > overall.losses
+        ? { label: "Winning", tone: "positive" as const }
+        : overall.losses > overall.wins
+          ? { label: "Losing", tone: "negative" as const }
+          : { label: "Even", tone: "neutral" as const };
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {seriesBadge && <OpponentBadge {...seriesBadge} />}
+      {summary.records.championshipPlayoff.games > 0 && (
+        <OpponentBadge
+          label="Playoff Opponent"
+          tone="playoff"
+          accessibleDetail={`${summary.records.championshipPlayoff.games} playoff ${
+            summary.records.championshipPlayoff.games === 1
+              ? "meeting"
+              : "meetings"
+          }`}
+        />
+      )}
+      {summary.records.championshipGames.games > 0 && (
+        <OpponentBadge
+          label="Championship Opponent"
+          tone="championship"
+          accessibleDetail={`${summary.records.championshipGames.games} title-game ${
+            summary.records.championshipGames.games === 1
+              ? "meeting"
+              : "meetings"
+          }`}
+        />
+      )}
+    </div>
+  );
+}
+
+function OpponentIdentityDisplay({
+  summary,
+  identity,
+}: {
+  summary: OwnerOpponentMatchupSummary;
+  identity?: OpponentIdentity;
+}) {
+  const name = identity?.fullName ?? summary.opponentOwnerId;
+
+  return (
+    <div className="flex min-w-0 items-start gap-3">
+      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-black/10 bg-black/10 dark:border-white/10 dark:bg-white/10">
+        {identity?.photo ? (
+          <Image
+            src={identity.photo}
+            alt=""
+            fill
+            sizes="40px"
+            className="object-cover object-top"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center text-sm font-black text-black/30 dark:text-white/30">
+            {name[0]?.toUpperCase() ?? "?"}
+          </div>
+        )}
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-black uppercase">{name}</p>
+        <OpponentBadges summary={summary} />
+      </div>
+    </div>
+  );
+}
+
+function OpponentRecordDisplay({
+  record,
+}: {
+  record: OwnerMatchupRecord;
+}) {
+  return (
+    <span aria-label={getAccessibleMatchupRecord(record)}>
+      {formatMatchupRecord(record)}
+    </span>
+  );
+}
+
+function formatMeeting(reference: OwnerOpponentMatchupSummary["firstMeeting"]) {
+  return (
+    <>
+      <span className="block font-black">{reference.season}</span>
+      <span className="mt-0.5 block text-[9px] font-black uppercase tracking-wider text-black/35 dark:text-white/35">
+        Week {reference.week}
+      </span>
+    </>
+  );
+}
+
+function getSortedOpponentSummaries({
+  summaries,
+  identities,
+}: {
+  summaries: readonly OwnerOpponentMatchupSummary[];
+  identities: ReadonlyMap<string, OpponentIdentity>;
+}) {
+  return [...summaries].sort((first, second) => {
+    const firstName =
+      identities.get(first.opponentOwnerId)?.fullName ??
+      first.opponentOwnerId;
+    const secondName =
+      identities.get(second.opponentOwnerId)?.fullName ??
+      second.opponentOwnerId;
+
+    return (
+      second.meetings - first.meetings ||
+      second.latestMeeting.season - first.latestMeeting.season ||
+      second.latestMeeting.week - first.latestMeeting.week ||
+      firstName.localeCompare(secondName) ||
+      first.opponentOwnerId.localeCompare(second.opponentOwnerId)
+    );
+  });
+}
+
+function OpponentHistoryEmptyState({
+  sourceAvailability,
+}: {
+  sourceAvailability: OwnerMatchupSourceAvailability;
+}) {
+  const state = getOpponentCoverageDisplay(sourceAvailability);
+
+  return (
+    <div className="rounded-lg border border-dashed border-black/10 bg-black/[0.02] px-5 py-10 text-center dark:border-white/10 dark:bg-white/[0.04]">
+      <Swords className="mx-auto mb-3 text-black/25 dark:text-white/25" size={28} />
+      <p className="text-sm font-black uppercase italic">{state.title}</p>
+      <p className="mx-auto mt-2 max-w-md text-sm font-medium leading-6 text-black/50 dark:text-white/50">
+        {state.copy}
+      </p>
+    </div>
+  );
+}
+
+function OpponentHistory({
+  profile,
+  summaries,
+  identities,
+  sourceAvailability,
+  hasEarlierNoSourceSeasons,
+}: {
+  profile: OwnerProfileViewModel;
+  summaries: readonly OwnerOpponentMatchupSummary[];
+  identities: readonly OpponentIdentity[];
+  sourceAvailability: OwnerMatchupSourceAvailability;
+  hasEarlierNoSourceSeasons: boolean;
+}) {
+  const identitiesByOwnerId = new Map(
+    identities.map((identity) => [identity.ownerId, identity])
+  );
+  const sortedSummaries = getSortedOpponentSummaries({
+    summaries,
+    identities: identitiesByOwnerId,
+  });
+
+  return (
+    <SectionShell title="Opponent History" icon={<Swords size={16} />}>
+      {sortedSummaries.length === 0 ? (
+        <OpponentHistoryEmptyState sourceAvailability={sourceAvailability} />
+      ) : (
+        <>
+          {hasEarlierNoSourceSeasons && (
+            <p className="mb-4 rounded-lg border border-black/10 bg-black/[0.02] p-3 text-xs font-medium leading-5 text-black/55 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/55">
+              Opponent history begins with supported matchup coverage in 2018.
+              Earlier owner-seasons are excluded.
+            </p>
+          )}
+
+          <div
+            className="hidden overflow-x-auto pb-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#121212] xl:block"
+            tabIndex={0}
+            aria-label={`${profile.owner.fullName} opponent history table, horizontally scrollable`}
+          >
+            <table className="min-w-[940px] w-full border-separate border-spacing-0 text-left">
+              <caption className="sr-only">
+                Directional opponent history for {profile.owner.fullName}
+              </caption>
+              <thead>
+                <tr className="text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+                  <th scope="col" className="border-b border-black/10 px-3 py-3 dark:border-white/10">
+                    Opponent
+                  </th>
+                  <th scope="col" className="border-b border-black/10 px-3 py-3 dark:border-white/10">
+                    Overall Record
+                  </th>
+                  <th scope="col" className="border-b border-black/10 px-3 py-3 dark:border-white/10">
+                    <span aria-label="Winning percentage">Win %</span>
+                  </th>
+                  <th scope="col" className="border-b border-black/10 px-3 py-3 dark:border-white/10">
+                    Meetings
+                  </th>
+                  <th scope="col" className="border-b border-black/10 px-3 py-3 dark:border-white/10">
+                    Points For / Against
+                  </th>
+                  <th scope="col" className="border-b border-black/10 px-3 py-3 dark:border-white/10">
+                    Point Differential
+                  </th>
+                  <th scope="col" className="border-b border-black/10 px-3 py-3 dark:border-white/10">
+                    First Meeting
+                  </th>
+                  <th scope="col" className="border-b border-black/10 px-3 py-3 dark:border-white/10">
+                    Latest Meeting
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedSummaries.map((summary) => {
+                  const identity = identitiesByOwnerId.get(
+                    summary.opponentOwnerId
+                  );
+                  const overall = summary.records.overall;
+
+                  return (
+                    <tr key={summary.summaryKey} data-opponent-slug={identity?.slug}>
+                      <th
+                        scope="row"
+                        className="border-b border-black/10 px-3 py-4 font-normal dark:border-white/10"
+                      >
+                        <OpponentIdentityDisplay
+                          summary={summary}
+                          identity={identity}
+                        />
+                      </th>
+                      <td className="border-b border-black/10 px-3 py-4 text-sm font-black dark:border-white/10">
+                        <OpponentRecordDisplay record={overall} />
+                      </td>
+                      <td className="border-b border-black/10 px-3 py-4 text-sm font-black dark:border-white/10">
+                        {formatWinningPercentage(overall.winningPercentage)}
+                      </td>
+                      <td className="border-b border-black/10 px-3 py-4 text-sm font-black dark:border-white/10">
+                        {summary.meetings}
+                      </td>
+                      <td className="border-b border-black/10 px-3 py-4 text-sm dark:border-white/10">
+                        <span className="block font-black">
+                          {formatPoints(overall.pointsFor)}
+                        </span>
+                        <span className="mt-0.5 block text-[9px] font-black uppercase tracking-wider text-black/35 dark:text-white/35">
+                          Against {formatPoints(overall.pointsAgainst)}
+                        </span>
+                      </td>
+                      <td className="border-b border-black/10 px-3 py-4 text-sm font-black dark:border-white/10">
+                        {overall.pointDifferential > 0 ? "+" : ""}
+                        {formatPoints(overall.pointDifferential)}
+                      </td>
+                      <td className="border-b border-black/10 px-3 py-4 text-sm dark:border-white/10">
+                        {formatMeeting(summary.firstMeeting)}
+                      </td>
+                      <td className="border-b border-black/10 px-3 py-4 text-sm dark:border-white/10">
+                        {formatMeeting(summary.latestMeeting)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="grid gap-3 xl:hidden sm:grid-cols-2">
+            {sortedSummaries.map((summary) => {
+              const identity = identitiesByOwnerId.get(
+                summary.opponentOwnerId
+              );
+              const overall = summary.records.overall;
+              const metrics = [
+                {
+                  label: "Record",
+                  value: formatMatchupRecord(overall),
+                  accessibleValue: getAccessibleMatchupRecord(overall),
+                },
+                {
+                  label: "Win %",
+                  value: formatWinningPercentage(overall.winningPercentage),
+                },
+                { label: "Meetings", value: summary.meetings },
+                {
+                  label: "PF / PA",
+                  value: `${formatPoints(overall.pointsFor)} / ${formatPoints(
+                    overall.pointsAgainst
+                  )}`,
+                },
+                {
+                  label: "Point Differential",
+                  value: `${
+                    overall.pointDifferential > 0 ? "+" : ""
+                  }${formatPoints(overall.pointDifferential)}`,
+                },
+                {
+                  label: "First / Latest",
+                  value: `${summary.firstMeeting.season} / ${summary.latestMeeting.season}`,
+                },
+              ];
+
+              return (
+                <article
+                  key={summary.summaryKey}
+                  data-opponent-slug={identity?.slug}
+                  className="rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]"
+                >
+                  <OpponentIdentityDisplay
+                    summary={summary}
+                    identity={identity}
+                  />
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    {metrics.map((metric) => (
+                      <div
+                        key={metric.label}
+                        className="rounded-md bg-white p-3 dark:bg-black/20"
+                      >
+                        <p
+                          className="text-sm font-black"
+                          aria-label={metric.accessibleValue}
+                        >
+                          {metric.value}
+                        </p>
+                        <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+                          {metric.label}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </SectionShell>
+  );
+}
+
 export default function OwnerProfile({
   profile,
   careerMatchupSummary,
   seasonMatchupSummaries,
+  opponentMatchupSummaries,
+  opponentIdentities,
 }: {
   profile: OwnerProfileViewModel;
   careerMatchupSummary: OwnerCareerMatchupSummary;
   seasonMatchupSummaries: readonly OwnerSeasonMatchupSummary[];
+  opponentMatchupSummaries: readonly OwnerOpponentMatchupSummary[];
+  opponentIdentities: readonly OpponentIdentity[];
 }) {
   const isStaff = profile.owner.status === OwnerProfileStatus.Staff;
   const hasTenures =
     profile.currentTenures.length > 0 || profile.legacyTenures.length > 0;
   const showSeasonHistory = !isStaff && seasonMatchupSummaries.length > 0;
   const showMainColumn = hasTenures || showSeasonHistory;
+  const opponentHistory = (
+    <OpponentHistory
+      profile={profile}
+      summaries={opponentMatchupSummaries}
+      identities={opponentIdentities}
+      sourceAvailability={
+        careerMatchupSummary.coverage.sourceAvailability
+      }
+      hasEarlierNoSourceSeasons={
+        careerMatchupSummary.seasonsWithoutMatchupSource.length > 0
+      }
+    />
+  );
   const sidebarContent = (
     <>
       <CareerSnapshot profile={profile} summary={careerMatchupSummary} />
@@ -1336,12 +1773,14 @@ export default function OwnerProfile({
               {showSeasonHistory && (
                 <SeasonHistory summaries={seasonMatchupSummaries} />
               )}
+              {opponentHistory}
               <CurrentDivisionCard profile={profile} />
             </div>
             <aside className="space-y-6">{sidebarContent}</aside>
           </div>
         ) : (
           <div className="grid gap-6 lg:grid-cols-2">
+            {opponentHistory}
             {sidebarContent}
           </div>
         )}
