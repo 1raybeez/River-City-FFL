@@ -1,5 +1,7 @@
 # Owner Matchup History Specification
 
+> **Status after Phase 3B.2:** This file remains the Phase 3A source audit and historical architecture record. `owner-matchup-projection-spec.md` is the authoritative implemented Phase 3B.2 contract for franchise mapping, owner-side projection records, stable keys, APIs, counting safeguards, and validation. Where this earlier document proposes a projection shape, scope, or API, the Phase 3B.2 specification supersedes it.
+
 ## 1. Purpose and status
 
 This document is the Phase 3A discovery and architecture specification for River City Owner Matchup History. It does not implement the engine.
@@ -134,7 +136,7 @@ For 2026:
 | 2015 | `manual-history.ts`; no Sleeper ID | No weekly source | No bracket source | No bracket source | No scores or matchup IDs | Owner-season identities exist but cannot be joined to games | Prestigio shared tenure known | No schedules, scores, brackets, or matchup IDs | None for matchups |
 | 2016 | `manual-history.ts`; no Sleeper ID | No weekly source | No bracket source | No bracket source | No scores or matchup IDs | Owner-season identities exist but cannot be joined to games | Prestigio shared tenure known | No schedules, scores, brackets, or matchup IDs | None for matchups |
 | 2017 | `manual-history.ts`; no Sleeper ID | No weekly source | No bracket source | No bracket source | No scores or matchup IDs | Owner-season identities exist but cannot be joined to games | Prestigio shared tenure known; Jordan begins independent Shake-N-Bakers tenure | No schedules, scores, brackets, or matchup IDs | None for matchups |
-| 2018 | Sleeper `342868033913540608` | Weeks 1–13 complete: 78 paired games | Weeks 14–16 scores; winners bracket 7/7 complete | Losers bracket 7/7 complete | Regular IDs complete; playoff bye rows partly null; Week 17 unpaired after league leg | 7/12 direct; 11/12 have legacy-map potential; roster 5 owner ID `342885779137216512` is unmapped; same limits apply to franchises | Sleeper and tenure both support Prestigio | Five direct historical ID gaps; the unresolved roster 5 account displays `landonelliott`; unpaired trailing week | High raw; medium attribution |
+| 2018 | Sleeper `342868033913540608` | Weeks 1–13 complete: 78 paired games | Weeks 14–16 scores; winners bracket 7/7 complete | Losers bracket 7/7 complete | Regular IDs complete; playoff bye rows partly null; Week 17 unpaired after league leg | Discovery found 7/12 direct and 11/12 legacy-map potential; Ray later confirmed roster 5 ID `342885779137216512` as Landon and Special Brownies | Sleeper and tenure support Prestigio; commissioner ruling resolves Special Brownies | Five direct historical ID gaps at discovery time; unpaired trailing week | High raw; attribution resolved by reviewed mapping |
 | 2019 | Sleeper `466632190273253376` | Weeks 1–13 complete: 78 paired games | Weeks 14–16 scores; winners bracket 7/7 complete | Losers bracket 7/7 complete | Regular IDs complete; playoff IDs partial; Week 17 unpaired and contains one zero row | 9/12 direct; 12/12 have legacy-map potential; franchise mapping possible after review | Prestigio confirmed | Landon, Patrick, and Billy depend on duplicate historical maps | High raw; medium attribution |
 | 2020 | Sleeper `530115541505298432` | Weeks 1–13 complete: 78 paired games | Weeks 14–16 scores; winners bracket 7/7 complete | Losers bracket 7/7 complete | Regular IDs complete; playoff IDs partial; Week 17 unpaired and contains one zero row | 9/12 direct; 12/12 have legacy-map potential | Prestigio confirmed | Landon, Adam, and Billy depend on duplicate historical maps | High raw; medium attribution |
 | 2021 | Sleeper `677751457528762368` | Weeks 1–14 complete: 84 paired games | Weeks 15–17 scores; winners bracket 7/7 complete | Losers bracket 7/7 complete | Regular IDs complete; playoff IDs partial; Week 18 unpaired after league leg | 9/12 direct; 12/12 have legacy-map potential | Prestigio confirmed | Landon, Adam, and Billy depend on duplicate historical maps | High raw; medium attribution |
@@ -634,15 +636,13 @@ The matchup engine or a factual summary helper in the same Phase 3 boundary shou
 
 All outputs remain raw values. Formatting such as `10-4`, `.714`, or `won 4 straight` belongs to consumers.
 
-### Recommended default scope
+### Approved projection eligibility
 
-Pending Ray’s approval:
-
-- `careerRecord`: regular season + championship playoff + third-place;
+- `careerRecord`: regular season + championship playoff;
 - `playoffRecord`: championship advancement games and championship final, excluding third/fifth placement;
-- `rivalryRecord`: same games as career record;
+- `rivalryRecord`: regular season + championship playoff;
 - streaks: same games as rivalry record;
-- consolation and Toilet Bowl: separate records;
+- third-place, placement, consolation, and Toilet Bowl: separate records;
 - `allCompletedRecord`: optional explicit query across every completed class.
 
 Every owner record carries eligibility booleans so no summary silently changes game definitions.
@@ -840,15 +840,15 @@ Cross-check completed regular-season totals against Sleeper roster settings and 
 
 - 2011–2017 have no weekly matchup source in the repository or configured Sleeper league IDs.
 - Final standings cannot reconstruct schedules, scores, opponent records, or streaks.
-- The 2018 roster 5 owner ID (`342885779137216512`), whose Sleeper display is `landonelliott`, is not present in canonical identity or the duplicate historical ID maps. Treating it as Landon requires approval.
+- The 2018 roster 5 owner ID (`342885779137216512`) is commissioner-confirmed as Landon Elliott's historical Sleeper ID, and the roster maps to Special Brownies.
 - Historical team names are not canonical matchup identities.
-- 2018–2024 retired-owner Sleeper IDs are distributed across duplicate maps rather than approved identity data.
+- Some 2018–2024 retired-owner Sleeper IDs remain distributed across duplicate maps; Landon's current and historical IDs are now approved identity data.
 
 ### Attachment evidence and attribution rulings
 
 - Aaron’s 2023 attachment to Doug’s roster is confirmed as a draft-helper workaround. Doug remains the sole owner and Aaron receives no attribution.
 - Billy remains the approved sole owner in his final season. The reported `NakedBuddha` helper attachment and “The Oracle” identity are unresolved in repository evidence; neither may create ownership, and neither may be identified as Aaron.
-- Landon’s current Sleeper ID is present in duplicate maps but absent from his canonical owner profile.
+- Landon's current and commissioner-confirmed 2018 historical Sleeper IDs are attached to his single canonical owner profile.
 
 ### Source and classification risks
 
@@ -896,18 +896,15 @@ The existing `getIntensityLabel` thresholds are display logic, not an approved r
 - Produce one physical/logical game per canonical key.
 - Keep owner attribution out of canonical records.
 
-### Phase 3B.2 — Owner attribution and factual summaries (not started)
+### Phase 3B.2 — Owner projection (completed)
 
-- Create a reviewed season-roster-to-owner/franchise mapping input.
-- Reconcile duplicate Sleeper ID maps without changing Phase 1/2 behavior.
+- Implemented all 96 commissioner-approved season-roster-to-franchise mappings.
+- Recorded Landon's confirmed historical Sleeper ID without creating a second identity.
 - Preserve raw attached-user metadata as evidence while excluding it from canonical ownership.
-- Record unresolved primary IDs and ignored attachments explicitly.
-- Project canonical games through approved Owner Season History.
-- Implement Ray/Jeffrey and Jordan/Landon boundary tests.
-- Prove that temporary draft-helper attachments create no owner projections or statistics.
-- Implement the confirmed Doug-only 2023 and ignored `NakedBuddha` 2024 tests.
-- Add records, points, margins, streaks, opponent summaries, season summaries, and immutable accessors.
-- Cross-check regular-season aggregates against Sleeper roster settings.
+- Implemented deterministic owner-side projection through approved Owner Season History.
+- Implemented Ray/Jeffrey, Jordan/Landon, Doug/Aaron, and Billy/helper boundary tests.
+- Added immutable raw projection accessors and coverage.
+- Deferred records, streaks, opponent summaries, season summaries, Rivalries, and UI.
 
 ### Later review
 
@@ -915,14 +912,17 @@ The existing `getIntensityLabel` thresholds are display logic, not an approved r
 - Do not change Managers, Matchups, Archives, Treasury, or Rivalry UI.
 - Do not begin rivalry interpretation until Phase 3B facts are approved.
 
-## 18. Decisions required before Phase 3B
+## 18. Decision status after Phase 3B.2
 
-Ray must approve:
+Approved and implemented:
 
-1. Whether versioned repository snapshots, rather than live API calls, are the canonical reproducible matchup input.
-2. The reviewed historical roster mappings, especially the unresolved 2018 roster 5 account displaying `landonelliott`.
-3. The recommended default `careerRecord` and `rivalryRecord` scopes.
-4. Whether third-place games count in career and rivalry records while remaining outside the championship-playoff record.
-5. Whether career streaks cross season boundaries.
-6. The season-specific interpretation of every historical losers bracket as Toilet Bowl versus ordinary consolation.
-7. Whether existing hard-coded profile records should later be treated as comparison data only or as evidence requiring reconciliation.
+1. all 96 historical roster mappings, including Landon's 2018 Special Brownies roster;
+2. overall and future rivalry eligibility limited to regular and championship-playoff contests;
+3. third-place, placement, consolation, and Toilet Bowl as separate scopes;
+4. coverage-only handling for byes and incomplete contests; and
+5. existing hard-coded profile records remaining comparison-only.
+
+Deferred:
+
+1. whether versioned repository snapshots become mandatory; and
+2. whether future career streaks cross season boundaries.

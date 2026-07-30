@@ -44,6 +44,10 @@ const FRANCHISE_ID_OVERRIDES: Record<string, string> = {
 };
 
 const JEFFREY_SLEEPER_ID = "356621920969555968";
+const LANDON_SLEEPER_IDS = [
+  "469199353672626176",
+  "342885779137216512",
+] as const;
 const LANDON_SHAKE_START_SEASON = 2025;
 
 const rawManagerRecords: RawManagerRecord[] = [
@@ -387,6 +391,7 @@ const OWNER_PROFILE_OVERRIDES: Record<string, OwnerProfileOverride> = {
   "landon-elliott": {
     status: OwnerProfileStatus.Active,
     location: "Richmond, VA",
+    sleeperIds: [...LANDON_SLEEPER_IDS],
     landingGroups: [
       ManagerLandingGroup.Active,
       ManagerLandingGroup.RetiredOwners,
@@ -396,6 +401,7 @@ const OWNER_PROFILE_OVERRIDES: Record<string, OwnerProfileOverride> = {
     notes: [
       "Landon joined Jordan Maslyn as co-owner of The Shake-N-Bakers beginning in 2025.",
       "Landon's historical Special Brownies accomplishments remain a separate retired-owner legacy.",
+      "Sleeper ID 342885779137216512 is a commissioner-confirmed historical alias used for Landon's 2018 Special Brownies roster.",
     ],
   },
   "damon-davis": {
