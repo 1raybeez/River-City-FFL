@@ -33,3 +33,40 @@ No identity or ownership-tenure record may be created solely from a helper attac
 4. Sleeper `co_owners`, substitute managers, draft helpers, and attached users are evidence only.
 5. Platform attachment alone never creates canonical ownership.
 6. Unapproved or unresolved attached users receive no historical attribution.
+
+## Historical final standings
+
+- The commissioner workbook archived at
+  `data/source/historical/river-city-final-standings-and-payouts.xlsx` is the
+  approved source evidence for the typed Historical Season Results layer.
+- The application must consume reviewed TypeScript data and must not parse the
+  XLSX during production builds.
+- 2011 was a 10-team season. The workbook's ten-place order is authoritative;
+  no eleventh-place, twelfth-place, or synthetic unknown result may be
+  created.
+- 2012 onward was a 12-team league.
+- Final season results do not create pre-Sleeper matchup records, scores,
+  points, winning percentages, playoff game records, or opponent history.
+
+## 2022 co-championship
+
+- The Damar Hamlin game left the 2022 fantasy championship unresolved.
+- Sleeper/platform order remains Tommy Moore first and David Besedich second.
+- River City historical recognition awards the 2022 championship to both
+  Tommy and Dave.
+- Typed history must preserve `platformChampion` Tommy,
+  `platformRunnerUp` Dave, and historical champion credit for both owners.
+- The ruling does not create a combined Tommy/Dave owner identity.
+- JD Dowling finished 12th and last in 2022. Jordan Maslyn finished 11th and
+  next-to-last.
+
+## ESPN-era franchise mappings
+
+- Landon Elliott's ESPN-era franchise is Special Brownies, normalized as
+  `special-brownies`.
+- Travis Miller's ESPN-era franchise is I'm Your Huckleberry, normalized to
+  his canonical `kissed-by-a-freckle` franchise continuity.
+- Darren Kusaj's ESPN-era franchise is Team Darren, normalized as
+  `team-kusaj`.
+- These commissioner-approved mappings resolve the corresponding 2012 typed
+  season results without creating new owner identities or franchises.
