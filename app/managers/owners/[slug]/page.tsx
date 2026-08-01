@@ -6,6 +6,7 @@ import {
 } from "@/lib/managers/identitySelectors";
 import { getOwnerProfileById } from "@/lib/managers/identityData";
 import { getOwnerSeasonHistory } from "@/lib/history/ownerSeasonHistory";
+import { getOwnerCareerSummary } from "@/lib/history/ownerCareerSummary";
 import { buildOwnerCareerTimeline } from "@/lib/managers/ownerCareerTimeline";
 import {
   loadOwnerCareerMatchupSummary,
@@ -35,6 +36,9 @@ export default async function OwnerProfilePage({
     profile,
     getOwnerSeasonHistory(profile.owner.id)
   );
+  const ownerCareerSummary = getOwnerCareerSummary(profile.owner.id);
+
+  if (!ownerCareerSummary) notFound();
 
   const [
     careerMatchupSummary,
@@ -66,6 +70,7 @@ export default async function OwnerProfilePage({
     <OwnerProfile
       profile={profile}
       careerTimeline={careerTimeline}
+      ownerCareerSummary={ownerCareerSummary}
       careerMatchupSummary={careerMatchupSummary}
       seasonHistoryEntries={seasonHistoryEntries}
       opponentMatchupSummaries={opponentMatchupSummaries}

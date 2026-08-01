@@ -22,6 +22,7 @@ import type {
   OwnerOpponentMatchupSummary,
   OwnerSeasonMatchupSummary,
 } from "@/lib/history/ownerMatchupSummary";
+import type { OwnerCareerSummary } from "@/lib/history/ownerCareerSummary";
 import type { OwnerSeasonHistoryRecord } from "@/lib/history/ownerSeasonHistory";
 import type { OwnerCareerTimelineEvent } from "@/lib/managers/ownerCareerTimeline";
 import { teamColors } from "@/lib/themes/teamColors";
@@ -239,36 +240,6 @@ function buildCurrentDivisionData({
     record: getRosterRecord(roster),
     pointsFor: pointsFor > 0 ? pointsFor.toFixed(2) : undefined,
   };
-}
-
-function clampTradeAggression(value: number) {
-  return Math.min(10, Math.max(0, value));
-}
-
-function getTradeAggressionColor(value: number) {
-  const score = clampTradeAggression(value);
-
-  if (score <= 2) return "#dc2626";
-  if (score <= 4) return "#ea580c";
-  if (score <= 7) return "#eab308";
-  return "#16a34a";
-}
-
-function hasTradeReadinessData(survey: OwnerSurveyProfile) {
-  return Boolean(
-    survey.preferredContact ||
-      typeof survey.tradeAggression === "number" ||
-      survey.valuePosition ||
-      survey.teamBuildingMode ||
-      survey.draftPreference
-  );
-}
-
-function shouldShowTradeCard(profile: OwnerProfileViewModel) {
-  return (
-    profile.owner.status === OwnerProfileStatus.Active &&
-    hasTradeReadinessData(profile.owner.survey)
-  );
 }
 
 function getStatLabel(summary: FranchiseStatSummary) {
@@ -655,6 +626,283 @@ function CareerSnapshot({
   );
 }
 
+function OverviewPanel({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]">
+      <div className="mb-4 flex items-center gap-2">
+        <span className="text-black/40 dark:text-white/40">{icon}</span>
+        <h3 className="text-[10px] font-black uppercase tracking-widest text-black/45 dark:text-white/45">
+          {title}
+        </h3>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function OwnerOverview({
+  profile,
+  careerSummary,
+  matchupSummary,
+  opponentSummaries,
+  opponentIdentities,
+}: {
+  profile: OwnerProfileViewModel;
+  careerSummary: OwnerCareerSummary;
+  matchupSummary: OwnerCareerMatchupSummary;
+  opponentSummaries: readonly OwnerOpponentMatchupSummary[];
+  opponentIdentities: readonly OpponentIdentity[];
+}) {
+  const { survey } = profile.owner;
+  const matchupAvailable =
+    matchupSummary.coverage.sourceAvailability === "available";
+  const matchupCoverageMessage = getMatchupCoverageMessage(matchupSummary);
+  const hasCompetitiveCareer = careerSummary.seasons.seasonsRepresented > 0;
+  const latestTeam =
+    careerSummary.latestFranchise?.franchiseName ?? profile.primaryTeamLabel;
+  const favoriteNflTeam = getNflTeamLabel(survey.favoriteNflTeam);
+  const favoritePlayer = getFavoritePlayerLabel(survey);
+  const valuePosition = getValuePositionLabel(survey.valuePosition);
+  const contactMethod = getContactMethod(survey.preferredContact);
+  const scoutingFields = [
+    survey.teamBuildingMode
+      ? { label: "Team Mode", value: survey.teamBuildingMode }
+      : null,
+    survey.draftPreference
+      ? { label: "Draft Style", value: survey.draftPreference }
+      : null,
+    typeof survey.tradeAggression === "number"
+      ? { label: "Trade Aggression", value: `${survey.tradeAggression}/10` }
+      : null,
+    valuePosition ? { label: "Value Position", value: valuePosition } : null,
+    favoriteNflTeam
+      ? { label: "Favorite NFL Team", value: favoriteNflTeam }
+      : null,
+    favoritePlayer
+      ? { label: "Favorite Player", value: favoritePlayer }
+      : null,
+  ].filter((field): field is { label: string; value: string } => field !== null);
+  const rivalSummary = survey.rivalOwnerId
+    ? opponentSummaries.find(
+        (summary) => summary.opponentOwnerId === survey.rivalOwnerId
+      )
+    : undefined;
+  const rivalIdentity = survey.rivalOwnerId
+    ? opponentIdentities.find(
+        (identity) => identity.ownerId === survey.rivalOwnerId
+      )
+    : undefined;
+  const rivalName = survey.rivalName ?? rivalIdentity?.fullName;
+  const rivalPhoto = survey.rivalImage ?? rivalIdentity?.photo;
+  const showContactAndQuote = Boolean(contactMethod || survey.philosophy);
+
+  return (
+    <SectionShell id="overview" title="Owner Overview" icon={<UserRound size={16} />}>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+        <div className="space-y-4">
+          <OverviewPanel title="Owner Summary" icon={<Shield size={15} />}>
+            <p className="text-2xl font-black uppercase italic">
+              {profile.owner.fullName}
+            </p>
+            <p className="mt-1 text-sm font-black uppercase tracking-wider text-black/50 dark:text-white/50">
+              {latestTeam}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="rounded-full border border-black/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider dark:border-white/10">
+                {profile.statusLabel}
+              </span>
+              {profile.owner.roles.map((role) => (
+                <span
+                  key={role}
+                  className="rounded-full border border-black/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-black/55 dark:border-white/10 dark:text-white/55"
+                >
+                  {role}
+                </span>
+              ))}
+            </div>
+          </OverviewPanel>
+
+          <OverviewPanel title="Career Record" icon={<Swords size={15} />}>
+            {matchupAvailable ? (
+              <div className="grid grid-cols-2 gap-2">
+                <LegacyMetric
+                  label="Overall Record"
+                  value={formatMatchupRecord(matchupSummary.records.overall)}
+                />
+                <LegacyMetric
+                  label="Winning %"
+                  value={formatWinningPercentage(
+                    matchupSummary.records.overall.winningPercentage
+                  )}
+                />
+              </div>
+            ) : (
+              <p className="text-sm font-medium leading-6 text-black/55 dark:text-white/55">
+                {matchupCoverageMessage ??
+                  "No competitive matchup record is available for this profile."}
+              </p>
+            )}
+          </OverviewPanel>
+
+          <OverviewPanel title="Career Success" icon={<Trophy size={15} />}>
+            {hasCompetitiveCareer ? (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <LegacyMetric
+                  label="League-Recognized Titles"
+                  value={careerSummary.placements.historicalChampionships}
+                />
+                {careerSummary.placements.platformChampionships !==
+                  careerSummary.placements.historicalChampionships && (
+                  <LegacyMetric
+                    label="Platform First-Place Finishes"
+                    value={careerSummary.placements.platformChampionships}
+                  />
+                )}
+                <LegacyMetric
+                  label="Podiums"
+                  value={careerSummary.placements.podiums}
+                />
+                {careerSummary.placements.bestFinish !== null && (
+                  <LegacyMetric
+                    label="Best Finish"
+                    value={formatPlacement(
+                      careerSummary.placements.bestFinish
+                    )}
+                  />
+                )}
+                <LegacyMetric
+                  label="Active Seasons"
+                  value={careerSummary.seasons.seasonsRepresented}
+                />
+              </div>
+            ) : (
+              <p className="text-sm font-medium leading-6 text-black/55 dark:text-white/55">
+                No competitive owner career applies to this profile.
+              </p>
+            )}
+          </OverviewPanel>
+        </div>
+
+        <div className="space-y-4">
+          {scoutingFields.length > 0 && (
+            <OverviewPanel title="Scouting Report" icon={<UserRound size={15} />}>
+              <div className="grid grid-cols-2 gap-2">
+                {scoutingFields.map((field) => (
+                  <PersonalityField
+                    key={field.label}
+                    label={field.label}
+                    value={field.value}
+                  />
+                ))}
+              </div>
+            </OverviewPanel>
+          )}
+
+          {rivalName && (
+            <OverviewPanel title="Primary Rival" icon={<Swords size={15} />}>
+              <div className="flex items-center gap-3">
+                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-black/10 bg-black/10 dark:border-white/10 dark:bg-white/10">
+                  {rivalPhoto ? (
+                    <Image
+                      src={rivalPhoto}
+                      alt={`${rivalName} profile photo`}
+                      fill
+                      sizes="48px"
+                      className="object-cover object-top"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-lg font-black text-black/30 dark:text-white/30">
+                      {rivalName[0]}
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-lg font-black uppercase italic">
+                    {rivalName}
+                  </p>
+                  {rivalSummary && (
+                    <p className="mt-1 text-xs font-black uppercase tracking-wider text-black/45 dark:text-white/45">
+                      {formatMatchupRecord(rivalSummary.records.overall)} ·{" "}
+                      {rivalSummary.meetings} meetings ·{" "}
+                      {formatWinningPercentage(
+                        rivalSummary.records.overall.winningPercentage
+                      )}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {profile.rivalProfilePath && (
+                  <Link
+                    href={profile.rivalProfilePath}
+                    className="inline-flex items-center gap-2 rounded-md bg-black px-3 py-2 text-[9px] font-black uppercase tracking-widest text-white transition hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80"
+                  >
+                    View Rival Profile
+                    <ArrowRight size={12} />
+                  </Link>
+                )}
+                <Link
+                  href="/league-info/rivalries"
+                  className="inline-flex rounded-md border border-black/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-black/50 transition hover:text-black dark:border-white/10 dark:text-white/50 dark:hover:text-white"
+                >
+                  Rivalry Hub
+                </Link>
+              </div>
+            </OverviewPanel>
+          )}
+
+          {showContactAndQuote && (
+            <OverviewPanel title="Contact & Quote" icon={<MessageCircle size={15} />}>
+              {contactMethod && (
+                <div className="flex items-center gap-3">
+                  {contactMethod.icon && (
+                    <Image
+                      src={contactMethod.icon}
+                      alt=""
+                      width={24}
+                      height={24}
+                      className="h-6 w-6 object-contain"
+                    />
+                  )}
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+                      Preferred Contact
+                    </p>
+                    <p className="mt-1 text-sm font-black">
+                      {contactMethod.label}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {survey.philosophy && (
+                <div className={`${contactMethod ? "mt-4 border-t border-black/10 pt-4 dark:border-white/10" : ""}`}>
+                  <div className="mb-2 flex items-center gap-2 text-black/35 dark:text-white/35">
+                    <Quote size={13} />
+                    <span className="text-[9px] font-black uppercase tracking-widest">
+                      Owner Quote
+                    </span>
+                  </div>
+                  <p className="text-sm font-black italic leading-6">
+                    “{survey.philosophy}”
+                  </p>
+                </div>
+              )}
+            </OverviewPanel>
+          )}
+        </div>
+      </div>
+    </SectionShell>
+  );
+}
+
 function TeamLegacy({ profile }: { profile: OwnerProfileViewModel }) {
   const tenureGroups = [...profile.currentTenures, ...profile.legacyTenures];
 
@@ -920,88 +1168,6 @@ function LegacyMetric({
   );
 }
 
-function Personality({ profile }: { profile: OwnerProfileViewModel }) {
-  const { survey } = profile.owner;
-  const accentColor = getAccentColor(profile);
-  const showTradeCard = shouldShowTradeCard(profile);
-  const fields: Array<{ label: string; value: string }> = [];
-  const favoriteNflTeam = getNflTeamLabel(survey.favoriteNflTeam);
-  const favoritePlayer = getFavoritePlayerLabel(survey);
-  const valuePosition = getValuePositionLabel(survey.valuePosition);
-
-  if (favoriteNflTeam) {
-    fields.push({ label: "Favorite NFL Team", value: favoriteNflTeam });
-  }
-
-  if (favoritePlayer) {
-    fields.push({ label: "Favorite Player", value: favoritePlayer });
-  }
-
-  if (!showTradeCard) {
-    if (survey.teamBuildingMode) {
-      fields.push({ label: "Team Mode", value: survey.teamBuildingMode });
-    }
-
-    if (survey.draftPreference) {
-      fields.push({ label: "Draft Style", value: survey.draftPreference });
-    }
-
-    if (valuePosition) {
-      fields.push({ label: "Value Position", value: valuePosition });
-    }
-  }
-
-  const showPersonalityTradeMeter =
-    !showTradeCard && typeof survey.tradeAggression === "number";
-
-  if (fields.length === 0 && !survey.philosophy && !showPersonalityTradeMeter) {
-    return null;
-  }
-
-  return (
-    <SectionShell
-      title={
-        profile.owner.status === OwnerProfileStatus.Staff
-          ? "Profile Details"
-          : "Owner Personality"
-      }
-      icon={<UserRound size={16} />}
-    >
-      {fields.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {fields.map((field) => (
-            <PersonalityField
-              key={field.label}
-              label={field.label}
-              value={field.value}
-            />
-          ))}
-        </div>
-      )}
-
-      {showPersonalityTradeMeter && (
-        <div className="mt-5">
-          <TradeAggressionMeter value={survey.tradeAggression as number} />
-        </div>
-      )}
-
-      {survey.philosophy && (
-        <div className="mt-6 border-l-4 pl-4" style={{ borderColor: accentColor }}>
-          <div className="mb-3 flex items-center gap-2 text-black/35 dark:text-white/35">
-            <Quote size={15} />
-            <span className="text-[10px] font-black uppercase tracking-widest">
-              Owner Quote
-            </span>
-          </div>
-          <p className="text-lg font-black italic leading-8">
-            "{survey.philosophy}"
-          </p>
-        </div>
-      )}
-    </SectionShell>
-  );
-}
-
 function PersonalityField({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]">
@@ -1010,176 +1176,6 @@ function PersonalityField({ label, value }: { label: string; value: string }) {
       </p>
       <p className="mt-2 text-sm font-black">{value}</p>
     </div>
-  );
-}
-
-function TradeReadinessField({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div>
-      <p className="text-[10px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
-        {label}
-      </p>
-      <p className="mt-1 text-sm font-black">{value}</p>
-    </div>
-  );
-}
-
-function TradeAggressionMeter({ value }: { value: number }) {
-  const score = clampTradeAggression(value);
-  const meterColor = getTradeAggressionColor(score);
-  const fillWidth = score === 0 ? 8 : score * 10;
-
-  return (
-    <div className="mb-4 rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="text-[10px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
-          Trade Aggression
-        </p>
-        <p className="text-sm font-black">{score}/10</p>
-      </div>
-      <div
-        className="h-3 overflow-hidden rounded-full bg-black/10 dark:bg-white/15"
-        aria-label={`Trade aggression ${score} out of 10`}
-        role="meter"
-        aria-valuemin={0}
-        aria-valuemax={10}
-        aria-valuenow={score}
-      >
-        <div
-          className="h-full rounded-full transition-[width]"
-          style={{
-            width: `${fillWidth}%`,
-            backgroundColor: meterColor,
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function BestWayToTalkTrades({ profile }: { profile: OwnerProfileViewModel }) {
-  if (!shouldShowTradeCard(profile)) return null;
-
-  const { survey } = profile.owner;
-  const accentColor = getAccentColor(profile);
-  const contactMethod = getContactMethod(survey.preferredContact);
-  const valuePosition = getValuePositionLabel(survey.valuePosition);
-  const fields: Array<{ label: string; value: string }> = [];
-
-  if (valuePosition) {
-    fields.push({ label: "Value Position", value: valuePosition });
-  }
-
-  if (survey.teamBuildingMode) {
-    fields.push({ label: "Team Mode", value: survey.teamBuildingMode });
-  }
-
-  if (survey.draftPreference) {
-    fields.push({ label: "Draft Style", value: survey.draftPreference });
-  }
-
-  return (
-    <SectionShell title="Best Way to Talk Trades" icon={<MessageCircle size={16} />}>
-      {contactMethod && (
-        <div
-          className="mb-4 flex items-center gap-3 rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]"
-          style={{ borderLeftColor: accentColor, borderLeftWidth: 4 }}
-        >
-          {contactMethod.icon && (
-            <Image
-              src={contactMethod.icon}
-              alt={`${contactMethod.label} icon`}
-              width={28}
-              height={28}
-              className="h-7 w-7 object-contain"
-            />
-          )}
-          <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
-              Preferred Contact
-            </p>
-            <p className="mt-1 truncate text-sm font-black">
-              {contactMethod.label}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {typeof survey.tradeAggression === "number" && (
-        <TradeAggressionMeter value={survey.tradeAggression} />
-      )}
-
-      {fields.length > 0 && (
-        <div className="grid grid-cols-2 gap-4 rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]">
-          {fields.map((field) => (
-            <TradeReadinessField
-              key={field.label}
-              label={field.label}
-              value={field.value}
-            />
-          ))}
-        </div>
-      )}
-    </SectionShell>
-  );
-}
-
-function Rivalry({ profile }: { profile: OwnerProfileViewModel }) {
-  const { rivalImage, rivalName } = profile.owner.survey;
-
-  if (!rivalName) return null;
-
-  return (
-    <SectionShell title="Rivalry" icon={<Swords size={16} />}>
-      <div className="flex items-center gap-4 rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]">
-        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-black/10 bg-black/10 dark:border-white/10 dark:bg-white/10">
-          {rivalImage ? (
-            <Image
-              src={rivalImage}
-              alt={`${rivalName} profile photo`}
-              fill
-              sizes="56px"
-              className="object-cover"
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-xl font-black text-black/30 dark:text-white/30">
-              {rivalName[0]}
-            </div>
-          )}
-        </div>
-        <div className="min-w-0">
-          <p className="text-[10px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
-            Primary Rival
-          </p>
-          <p className="mt-1 truncate text-2xl font-black uppercase italic">
-            {rivalName}
-          </p>
-        </div>
-      </div>
-      <div className="mt-5 flex flex-wrap gap-2">
-        {profile.rivalProfilePath && (
-          <Link
-            href={profile.rivalProfilePath}
-            className="inline-flex items-center gap-2 rounded-md bg-black px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80"
-          >
-            View Rival Profile
-            <ArrowRight size={13} />
-          </Link>
-        )}
-        <Link
-          href="/league-info/rivalries"
-          className="inline-flex rounded-md border border-black/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-black/50 transition hover:text-black dark:border-white/10 dark:text-white/50 dark:hover:text-white"
-        >
-          Rivalry Hub
-        </Link>
-      </div>
-    </SectionShell>
   );
 }
 
@@ -2055,6 +2051,7 @@ function ProfileSectionNavigation({
 export default function OwnerProfile({
   profile,
   careerTimeline,
+  ownerCareerSummary,
   careerMatchupSummary,
   seasonHistoryEntries,
   opponentMatchupSummaries,
@@ -2062,6 +2059,7 @@ export default function OwnerProfile({
 }: {
   profile: OwnerProfileViewModel;
   careerTimeline: readonly OwnerCareerTimelineEvent[];
+  ownerCareerSummary: OwnerCareerSummary;
   careerMatchupSummary: OwnerCareerMatchupSummary;
   seasonHistoryEntries: readonly SeasonHistoryEntry[];
   opponentMatchupSummaries: readonly OwnerOpponentMatchupSummary[];
@@ -2089,24 +2087,26 @@ export default function OwnerProfile({
     />
   );
   const sidebarContent = (
-    <>
-      <CareerSnapshot profile={profile} summary={careerMatchupSummary} />
-      <BestWayToTalkTrades profile={profile} />
-      <Personality profile={profile} />
-      <Rivalry profile={profile} />
-    </>
+    <CareerSnapshot profile={profile} summary={careerMatchupSummary} />
   );
 
   return (
     <main className="min-h-screen bg-white px-4 py-6 text-black dark:bg-[#0a0a0a] dark:text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div id="overview" className="scroll-mt-6">
+        <div>
           <HeroSection profile={profile} />
         </div>
         <ProfileSectionNavigation
           showTimeline={showCareerTimeline}
           showSeasons={showSeasonHistory}
           showDivision={showDivision}
+        />
+        <OwnerOverview
+          profile={profile}
+          careerSummary={ownerCareerSummary}
+          matchupSummary={careerMatchupSummary}
+          opponentSummaries={opponentMatchupSummaries}
+          opponentIdentities={opponentIdentities}
         />
 
         {showMainColumn ? (
