@@ -15,7 +15,7 @@ The engine must not:
 
 ## Source and identity contract
 
-`lib/history/ownerSeasonHistory.ts` is the only Phase 2 season-result input. Canonical owner metadata comes from `lib/managers/identityData.ts`.
+`lib/history/ownerSeasonHistory.ts` is the only Owner Career Summary input. Owner Season History in turn consumes `lib/history/historicalSeasonResults.ts` as the authoritative final-placement source. Canonical owner metadata comes from `lib/managers/identityData.ts`.
 
 Every consumed owner-season record is identified by its immutable `ownerSeasonKey`. Phase 2 de-duplicates by that key defensively and reports duplicate consumed keys. One summary is created per canonical resolved owner identity, keyed by owner ID and addressable by owner ID or slug.
 
@@ -58,7 +58,8 @@ The implemented primary type is `OwnerCareerSummary`:
 
 `OwnerCareerPlacementSummary` contains raw numeric values for:
 
-- championships;
+- platform championships;
+- historical championships;
 - runner-up finishes;
 - third-place finishes;
 - podiums;
@@ -79,7 +80,8 @@ Each `OwnerCareerFranchiseSummary` contains:
 - first and latest represented seasons;
 - unique seasons represented;
 - ownership roles used in those records;
-- championships;
+- platform championships;
+- historical championships;
 - runner-up finishes;
 - third-place finishes;
 - podiums; and
@@ -153,8 +155,8 @@ No barrel export is required in Phase 2.
 1. **One summary per resolved owner.** Unresolved historical records contribute to coverage only.
 2. **Unique seasons.** Season totals count unique owner-season records and never count an `ownerSeasonKey` twice. A known placement is not required for `seasonsRepresented`.
 3. **Known-placement totals.** `seasonsWithKnownPlacement` includes only seasons with a non-null final placement.
-4. **Placement flags.** Championship, runner-up, third-place, and last-place totals use the corresponding Phase 1 flags.
-5. **Podiums.** `podiums = championships + runnerUpFinishes + thirdPlaceFinishes`.
+4. **Championships.** `platformChampionships` counts first-place platform finishes. `historicalChampionships` counts commissioner-approved league recognition. Neither is exposed through an ambiguous default `championships` field.
+5. **Other placement flags.** Runner-up, third-place, podium, and last-place totals use their corresponding owner-season placement flags. Dave's 2022 result is one second-place podium and one historical co-championship, not two podium finishes.
 6. **Best and worst.** The minimum known placement is best; the maximum known placement is worst.
 7. **Average finish.** The arithmetic mean uses known placements only. Missing placement is never treated as zero, last place, or an inferred result.
 8. **Last place.** Use Phase 1 `isLastPlace`; do not assume the last-place rank is always 12.
@@ -166,7 +168,9 @@ No barrel export is required in Phase 2.
 
 ## Co-owner and tenure attribution
 
-Owner career summaries are personal views. Approved co-owners receive the same franchise placement during shared seasons. This can produce two personal championship attributions for one franchise title; league-wide title totals must continue to count the underlying franchise result only once.
+Owner career summaries are personal views. Approved co-owners receive the same franchise placement during shared seasons. This can produce two personal platform or historical championship attributions for one physical franchise result; league-wide title totals must continue to count the underlying result only once.
+
+The 2022 championship preserves Tommy Moore as platform champion and Dave Besedich as platform runner-up while granting both one historical championship. Platform order is not rewritten as a tie.
 
 ### Prestigio
 
@@ -191,7 +195,7 @@ Retired owners retain summaries from historical records regardless of current Sl
 
 Phase 2 calculates only placement, season, ownership-role, franchise résumé, notes, and coverage values supported by Owner Season History. It does not change Phase 1 records or Managers presentation.
 
-Regular-season, playoff, scoring, finance, matchup, rivalry, draft, auction, keeper, trade, transaction, award, and record-book enrichment is deferred. Historical team-name reconstruction and season-specific division presentation are also deferred unless and until approved sources and later phases define them.
+Regular-season, playoff, scoring, finance, matchup, rivalry, draft, auction, keeper, trade, transaction, award, and record-book enrichment is deferred. Exact historical team names remain unavailable where Historical Season Results has no approved source, and season-specific division presentation remains deferred.
 
 ## Validation contract
 
@@ -199,7 +203,8 @@ Regular-season, playoff, scoring, finance, matchup, rivalry, draft, auction, kee
 
 - unique career-summary owner IDs;
 - no duplicate consumed owner-season;
-- podium arithmetic;
+- separate platform and historical championship totals, including the 2022 co-championship;
+- placement-based podium totals;
 - averages based only on known placements;
 - correct latest-franchise selection;
 - separation of franchise histories;

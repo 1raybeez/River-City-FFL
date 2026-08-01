@@ -59,7 +59,8 @@ Managers v1 must reuse the repository’s canonical sources and must not create 
 
 - `lib/managers/identityData.ts` owns normalized owner profiles, franchises, ownership tenures, co-owner relationships, and league-service tenures.
 - Existing identity types, selectors, and resolvers own canonical IDs, slugs, statuses, and identity lookup behavior.
-- `lib/manual-history.ts` owns the available final-placement ledger. Its manager label is preserved as source evidence.
+- `lib/history/historicalSeasonResults.ts` owns the approved final-placement ledger. Owner Season History consumes that typed layer directly; `lib/manual-history.ts` is not an independent placement source.
+- The unused manual ledger remains present for compatibility; removal is deferred to a separately approved cleanup milestone.
 - Existing franchise identity data owns normalized franchise IDs and current canonical franchise names.
 - Existing season-to-league mappings own the Sleeper league ID for each season.
 - Sleeper-derived data may be used where it is already available, but current Sleeper membership must not erase retired-owner history.
@@ -68,7 +69,7 @@ Managers v1 must reuse the repository’s canonical sources and must not create 
 
 Raw historical labels and normalized values serve different purposes. The raw placement label must remain traceable, while normalized owner and franchise fields come from the canonical identity and tenure model. A current canonical franchise name is not evidence of the exact historical team name in every season.
 
-Unknown 2011 placement entries remain unresolved. No owner identity or franchise may be invented for them.
+All ten approved 2011 placement identities resolve. JD's fifth-place result remains explicitly franchise-unresolved because no approved 2011 franchise mapping exists; no franchise may be invented for it.
 
 ## Season-specific division rules
 
@@ -118,7 +119,7 @@ Prestigio therefore has franchise continuity across Ray’s 2011 solo season and
 
 `lib/history/ownerSeasonHistory.ts` is the reusable, framework-free season history source. It emits typed owner-season records containing immutable identity, normalized owner and franchise fields, ownership role and co-owners, placement flags, season activity, Sleeper league linkage, source metadata, coverage states, and notes.
 
-Resolved owners may have one record per owner-season attribution. Approved co-owners therefore receive separate personal records pointing to the same franchise result. Unresolved historical rows remain available for coverage reporting but do not become owners.
+Resolved owners may have one record per owner-season attribution. Approved co-owners therefore receive separate personal records pointing to the same physical Historical Season Result. Platform placement and historical championship recognition are separate fields. Current-season tenure records may exist without a completed season result.
 
 ### Phase 2 — Owner Career Summary
 
@@ -141,7 +142,9 @@ The approved implemented foundation is limited to:
 
 - canonical owner/franchise/tenure reuse;
 - normalized owner-season records;
-- placement and last-place flags from manual history;
+- placement and actual-season last-place flags from Historical Season Results;
+- separate platform-championship and historical-championship recognition;
+- raw historical team names when the approved source supplies them;
 - approved co-owner attribution;
 - unresolved and coverage reporting;
 - placement-, season-, role-, and franchise-based career summaries;
@@ -171,12 +174,13 @@ Typed Phase 2 placeholders for deferred career enrichment remain null and do not
 
 Each engine must have a focused TypeScript validation script consistent with the repository’s conventions.
 
-Owner Season History validation must cover Ray, Jeffrey, Jordan, Landon, one active solo owner, one retired owner, unresolved 2011 rows, duplicate keys, missing franchise assignments, seasons covered, and special ownership boundaries.
+Owner Season History validation must cover Ray, Jeffrey, Jordan, Landon, one active solo owner, one retired owner, the ten-team 2011 result set, JD's unresolved 2011 franchise, duplicate keys, seasons covered, source coverage, and special ownership boundaries.
 
 Owner Career Summary validation must cover:
 
 - unique summary owner IDs and unique consumed `ownerSeasonKey` values;
-- podium arithmetic;
+- distinct platform and historical championship totals;
+- placement-based podium totals;
 - averages calculated from known placements only;
 - latest-franchise selection;
 - separate franchise histories;

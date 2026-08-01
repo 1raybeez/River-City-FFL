@@ -47,6 +47,10 @@ No identity or ownership-tenure record may be created solely from a helper attac
 - 2012 onward was a 12-team league.
 - Final season results do not create pre-Sleeper matchup records, scores,
   points, winning percentages, playoff game records, or opponent history.
+- Historical Season Results is the authoritative final-placement source for
+  Owner Season History. The former manual ledger is not applied independently.
+- Last place derives from the accepted season's actual final result: tenth in
+  the 10-team 2011 season and twelfth in 12-team seasons.
 
 ## 2022 co-championship
 
@@ -56,6 +60,9 @@ No identity or ownership-tenure record may be created solely from a helper attac
   Tommy and Dave.
 - Typed history must preserve `platformChampion` Tommy,
   `platformRunnerUp` Dave, and historical champion credit for both owners.
+- Owner Career Summary reports platform and historical championship totals as
+  separate fields. Dave's historical co-championship does not change his
+  second-place platform finish or create another podium result.
 - The ruling does not create a combined Tommy/Dave owner identity.
 - JD Dowling finished 12th and last in 2022. Jordan Maslyn finished 11th and
   next-to-last.
@@ -70,3 +77,15 @@ No identity or ownership-tenure record may be created solely from a helper attac
   `team-kusaj`.
 - These commissioner-approved mappings resolve the corresponding 2012 typed
   season results without creating new owner identities or franchises.
+
+## Confirmed unresolved and deferred history work
+
+- JD Dowling's approved fifth-place 2011 result remains franchise-unresolved.
+  No franchise may be inferred without a later commissioner ruling.
+- `LB Winner` remains an unresolved workbook label and must not be classified
+  as Toilet Bowl winner.
+- Payout reconciliation remains deferred. Workbook payout entries remain
+  source evidence rather than normalized career finance data.
+- `lib/manual-history.ts` remains in the repository but is no longer an Owner
+  Season History placement source. Removing it is deferred to a separate
+  cleanup milestone.

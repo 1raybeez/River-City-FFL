@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   buildOwnerSeasonHistory,
   getAllOwnerSeasonHistory,
   getOwnerSeasonHistory,
   getOwnerSeasonHistoryCoverageSummary,
+  getOwnerSeasonHistoryForSeason,
   getUnresolvedOwnerSeasonHistory,
   type OwnerSeasonHistoryRecord,
 } from "../lib/history/ownerSeasonHistory";
@@ -41,6 +43,43 @@ const jordan = getOwnerSeasonHistory("jordan-maslyn");
 const landon = getOwnerSeasonHistory("landon-elliott");
 const aaron = getOwnerSeasonHistory("aaron-hawkins");
 const gordie = getOwnerSeasonHistory("gordie-gahagan");
+const rachel = getOwnerSeasonHistory("rachel-woolard");
+const tommy = getOwnerSeasonHistory("tommy-moore");
+const dave = getOwnerSeasonHistory("david-besedich");
+
+const ownerSeasonSource = readFileSync(
+  new URL("../lib/history/ownerSeasonHistory.ts", import.meta.url),
+  "utf8"
+);
+assert.doesNotMatch(ownerSeasonSource, /MANUAL_HISTORY|manual-history/);
+
+const records2011 = getOwnerSeasonHistoryForSeason(2011);
+assert.equal(records2011.length, 10);
+assert.deepEqual(
+  records2011.map((record) => record.finalPlacement),
+  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+);
+assert.equal(records2011.some((record) => record.finalPlacement === 11), false);
+assert.equal(records2011.some((record) => record.finalPlacement === 12), false);
+
+const rachel2011 = requireSeason(rachel, 2011, "Rachel");
+assert.equal(rachel2011.finalPlacement, 10);
+assert.equal(rachel2011.isLastPlace, true);
+assert.equal(rachel2011.coverage.matchupSource, "unavailable-no-source");
+
+const tommy2022 = requireSeason(tommy, 2022, "Tommy");
+const dave2022 = requireSeason(dave, 2022, "Dave");
+assert.equal(tommy2022.finalPlacement, 1);
+assert.equal(tommy2022.isPlatformChampion, true);
+assert.equal(tommy2022.isPlatformRunnerUp, false);
+assert.equal(tommy2022.isHistoricalChampion, true);
+assert.equal(tommy2022.historicalChampionshipType, "co-champion");
+assert.equal(dave2022.finalPlacement, 2);
+assert.equal(dave2022.isPlatformChampion, false);
+assert.equal(dave2022.isPlatformRunnerUp, true);
+assert.equal(dave2022.isHistoricalChampion, true);
+assert.equal(dave2022.historicalChampionshipType, "co-champion");
+assert.match(dave2022.championshipNote ?? "", /Damar Hamlin/i);
 
 const ray2025 = requireSeason(ray, 2025, "Ray");
 const jeffrey2025 = requireSeason(jeffrey, 2025, "Jeffrey");
@@ -69,6 +108,8 @@ assert.equal(ray2011.isCoOwner, false);
 assert.deepEqual(ray2011.coOwners, []);
 assert.equal(ray2011.coverage.ownership, "resolved");
 assert.equal(ray2011.coverage.franchise, "resolved");
+assert.equal(ray2011.sources.placement, "historical-season-results");
+assert.equal(ray2011.coverage.seasonResult, "resolved");
 assert.equal(ray.some((record) => record.season === 2012), false);
 assert.equal(jeffrey.some((record) => record.season === 2011), false);
 
@@ -113,36 +154,48 @@ assert.equal(gordie2011.finalPlacement, 1);
 assert.equal(gordie2011.isChampion, true);
 assert.equal(gordie2011.ownerStatus, "retired");
 
-const unresolved2011 = getUnresolvedOwnerSeasonHistory().filter(
-  (record) => record.season === 2011
+const jd2011 = requireSeason(getOwnerSeasonHistory("jd-dowling"), 2011, "JD");
+assert.equal(jd2011.finalPlacement, 5);
+assert.equal(jd2011.franchiseId, null);
+assert.equal(jd2011.coverage.franchise, "unresolved");
+assert.equal(getUnresolvedOwnerSeasonHistory().length, 0);
+
+const travis2012 = requireSeason(
+  getOwnerSeasonHistory("travis-miller"),
+  2012,
+  "Travis"
 );
-assert.equal(unresolved2011.length, 3);
-assert.deepEqual(
-  unresolved2011.map((record) => record.finalPlacement).sort((a, b) => {
-    return (a ?? 0) - (b ?? 0);
-  }),
-  [5, 9, 12]
+const darren2012 = requireSeason(
+  getOwnerSeasonHistory("darren-kusaj"),
+  2012,
+  "Darren"
 );
+assert.equal(travis2012.teamName, "I'm Your Huckleberry");
+assert.equal(travis2012.historicalTeamName, "I'm Your Huckleberry");
+assert.equal(travis2012.franchiseId, "kissed-by-a-freckle");
+assert.equal(darren2012.teamName, "Team Darren");
+assert.equal(darren2012.historicalTeamName, "Team Darren");
+assert.equal(darren2012.franchiseId, "team-kusaj");
 
 assert.deepEqual(summary.seasons, [
   2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022,
   2023, 2024, 2025, 2026,
 ]);
 assert.equal(summary.ownersRepresented, 28);
-assert.equal(summary.totalRecords, 210);
-assert.equal(summary.unresolvedRecords, 3);
+assert.equal(summary.totalRecords, 206);
+assert.equal(summary.unresolvedRecords, 0);
 assert.deepEqual(summary.duplicateRecordKeys, []);
-assert.equal(summary.missingFranchiseAssignments, 3);
+assert.equal(summary.missingFranchiseAssignments, 1);
+assert.equal(summary.recordsWithSeasonResult, 192);
+assert.equal(summary.recordsWithoutSeasonResult, 14);
+assert.equal(summary.recordsWithHistoricalTeamName, 147);
+assert.equal(summary.recordsWithUnavailableMatchupSource, 87);
 assert.deepEqual(
   allRecords
     .filter((record) => record.ownerId !== null && record.franchiseId === null)
     .map((record) => `${record.season}:${record.ownerId}`)
     .sort(),
-  [
-    "2012:darren-kusaj",
-    "2012:landon-elliott",
-    "2012:travis-miller",
-  ]
+  ["2011:jd-dowling"]
 );
 assert.deepEqual(
   allRecords
@@ -154,8 +207,39 @@ assert.deepEqual(
     )
     .map((record) => `${record.season}:${record.ownerId}`)
     .sort(),
-  ["2012:keith-polarek", "2013:zach-woolard"]
+  []
 );
+assert.equal(
+  getOwnerSeasonHistory("keith-polarek").some(
+    (record) => record.season === 2012
+  ),
+  false
+);
+assert.equal(
+  getOwnerSeasonHistory("zach-woolard").some(
+    (record) => record.season === 2013
+  ),
+  false
+);
+
+const forbiddenMatchupFields = [
+  "wins",
+  "losses",
+  "ties",
+  "winningPercentage",
+  "pointsFor",
+  "pointsAgainst",
+  "opponentHistory",
+  "matchups",
+];
+allRecords
+  .filter((record) => record.season < 2018)
+  .forEach((record) => {
+    assert.equal(record.coverage.matchupSource, "unavailable-no-source");
+    forbiddenMatchupFields.forEach((field) => {
+      assert.equal(Object.hasOwn(record, field), false);
+    });
+  });
 
 const requestedSamples = {
   ray: ray2025,

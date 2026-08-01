@@ -1,7 +1,12 @@
+import {
+  getAllHistoricalSeasonResults,
+  getHistoricalSeasonResultsCoverage,
+  type HistoricalMatchupSourceAvailability,
+  type HistoricalSeasonResult,
+} from "@/lib/history/historicalSeasonResults";
 import { LEAGUE_HISTORY_IDS } from "@/lib/leagueAlgorithm";
 import {
   franchisesById,
-  ownerProfiles,
   ownerProfilesById,
   ownershipTenures,
 } from "@/lib/managers/identityData";
@@ -11,12 +16,6 @@ import {
   type OwnerProfile,
   type OwnershipTenure,
 } from "@/lib/managers/identityTypes";
-import { MANUAL_HISTORY } from "@/lib/manual-history";
-
-type ManualPlacement = {
-  rank: number;
-  manager: string;
-};
 
 export type OwnerSeasonCoverageState =
   | "resolved"
@@ -29,6 +28,8 @@ export type OwnerSeasonPlacementAttribution =
   | "shared-franchise"
   | null;
 
+export type HistoricalChampionshipType = "sole" | "co-champion" | null;
+
 export type OwnerSeasonCoOwner = {
   ownerId: string;
   ownerSlug: string;
@@ -37,12 +38,9 @@ export type OwnerSeasonCoOwner = {
 };
 
 export type OwnerSeasonHistoryRecord = {
-  /**
-   * Immutable identity for this owner-season attribution.
-   * Resolved records use season + canonical owner ID + franchise ID; unresolved
-   * manual-history rows use season + "unresolved" + their source placement rank.
-   */
+  /** Immutable season + owner + franchise attribution key. */
   ownerSeasonKey: string;
+  /** Backward-compatible alias for ownerSeasonKey. */
   recordId: string;
   season: number;
   ownerId: string | null;
@@ -52,6 +50,9 @@ export type OwnerSeasonHistoryRecord = {
   sourceManagerName: string | null;
   franchiseId: string | null;
   franchiseName: string | null;
+  /** Raw historical team name when the approved source provides one. */
+  historicalTeamName: string | null;
+  /** Backward-compatible season team-name field. */
   teamName: string | null;
   ownershipRole: OwnershipRole | null;
   isPrimaryOwner: boolean | null;
@@ -60,26 +61,38 @@ export type OwnerSeasonHistoryRecord = {
   isActiveForSeason: boolean | null;
   isCurrentSeason: boolean;
   finalPlacement: number | null;
+  isPlatformChampion: boolean;
+  isPlatformRunnerUp: boolean;
+  isHistoricalChampion: boolean;
+  historicalChampionshipType: HistoricalChampionshipType;
+  championshipNote: string | null;
+  /** @deprecated Use isPlatformChampion. */
   isChampion: boolean;
+  /** @deprecated Use isPlatformRunnerUp. */
   isRunnerUp: boolean;
   isThirdPlace: boolean;
   isPodium: boolean;
   isLastPlace: boolean;
   placementAttribution: OwnerSeasonPlacementAttribution;
   placementSourceOwnerId: string | null;
+  historicalSeasonResultKey: string | null;
   sleeperLeagueId: string | null;
   coverage: {
     identity: OwnerSeasonCoverageState;
     ownership: OwnerSeasonCoverageState;
     franchise: OwnerSeasonCoverageState;
+    seasonResult: OwnerSeasonCoverageState;
     placement: OwnerSeasonCoverageState;
+    historicalTeamName: OwnerSeasonCoverageState;
     teamName: OwnerSeasonCoverageState;
+    matchupSource: HistoricalMatchupSourceAvailability;
     sleeperLeague: OwnerSeasonCoverageState;
   };
   sources: {
     identity: "identity-data" | "unresolved";
-    ownership: "ownership-tenure" | "unresolved";
-    placement: "manual-history" | "not-available";
+    ownership: "ownership-tenure" | "historical-season-results" | "unresolved";
+    placement: "historical-season-results" | "not-available";
+    seasonResult: "historical-season-results" | "not-available";
     sleeperLeague: "league-history-ids" | "not-available";
   };
   notes: string[];
@@ -92,111 +105,69 @@ export type OwnerSeasonHistoryCoverageSummary = {
   unresolvedRecords: number;
   duplicateRecordKeys: string[];
   missingFranchiseAssignments: number;
+  recordsWithSeasonResult: number;
+  recordsWithoutSeasonResult: number;
+  recordsWithHistoricalTeamName: number;
+  recordsWithUnavailableMatchupSource: number;
 };
 
-type MutableOwnerSeasonHistoryRecord = OwnerSeasonHistoryRecord;
-
-const manualHistoryEntries = Object.entries(MANUAL_HISTORY) as Array<
-  [string, readonly ManualPlacement[]]
->;
-
-const MANUAL_HISTORY_SEASONS = manualHistoryEntries
-  .map(([season]) => Number(season))
-  .sort((first, second) => first - second);
+const historicalCoverage = getHistoricalSeasonResultsCoverage();
 
 export const OWNER_SEASON_HISTORY_FIRST_SEASON =
-  MANUAL_HISTORY_SEASONS[0] ?? 2011;
+  historicalCoverage.firstSeason;
 
 export const OWNER_SEASON_HISTORY_CURRENT_SEASON = Math.max(
-  MANUAL_HISTORY_SEASONS.at(-1) ?? OWNER_SEASON_HISTORY_FIRST_SEASON,
+  historicalCoverage.latestSeason,
   ...Object.keys(LEAGUE_HISTORY_IDS).map(Number)
 );
-
-const ownerByNormalizedName = new Map(
-  ownerProfiles.map((owner) => [normalizeName(owner.fullName), owner])
-);
-
-const manualPlacementsByOwnerId = buildManualPlacementsByOwnerId();
 
 function normalizeName(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function buildManualPlacementsByOwnerId() {
-  const placements = new Map<string, number[]>();
-
-  manualHistoryEntries.forEach(([seasonValue, standings]) => {
-    const season = Number(seasonValue);
-
-    standings.forEach((standing) => {
-      const owner = ownerByNormalizedName.get(normalizeName(standing.manager));
-      if (!owner) return;
-
-      const seasons = placements.get(owner.id) ?? [];
-      seasons.push(season);
-      placements.set(owner.id, seasons);
-    });
-  });
-
-  return placements;
-}
-
-function getManualSeasonPlacements(season: number) {
-  return (
-    manualHistoryEntries.find(
-      ([seasonValue]) => Number(seasonValue) === season
-    )?.[1] ?? []
-  );
-}
-
-function getLastPlaceRank(season: number) {
-  const placements = getManualSeasonPlacements(season);
-  if (placements.length === 0) return null;
-
-  return Math.max(...placements.map((placement) => placement.rank));
+function buildRecordId(
+  season: number,
+  ownerId: string,
+  franchiseId: string | null
+) {
+  return `${season}:${ownerId}:${franchiseId ?? "unassigned"}`;
 }
 
 function getSleeperLeagueId(season: number) {
   return LEAGUE_HISTORY_IDS[season] ?? null;
 }
 
-function isTenureActiveInSeason(tenure: OwnershipTenure, season: number) {
-  if (season < tenure.startSeason) return false;
-  if (tenure.endSeason !== undefined) return season <= tenure.endSeason;
-  if (tenure.isActive) return season <= OWNER_SEASON_HISTORY_CURRENT_SEASON;
-
-  return manualPlacementsByOwnerId.get(tenure.ownerId)?.includes(season) ?? false;
-}
-
-function getTenureSeasons(tenure: OwnershipTenure) {
-  if (tenure.endSeason !== undefined || tenure.isActive) {
-    const endSeason =
-      tenure.endSeason ?? OWNER_SEASON_HISTORY_CURRENT_SEASON;
-
-    return Array.from(
-      { length: Math.max(0, endSeason - tenure.startSeason + 1) },
-      (_, index) => tenure.startSeason + index
-    );
-  }
-
-  return (manualPlacementsByOwnerId.get(tenure.ownerId) ?? []).filter(
-    (season) => season >= tenure.startSeason
+function tenureIncludesSeason(tenure: OwnershipTenure, season: number) {
+  return (
+    season >= tenure.startSeason &&
+    (tenure.endSeason === undefined || season <= tenure.endSeason)
   );
 }
 
-function buildRecordId({
-  season,
-  ownerId,
-  franchiseId,
-  unresolvedRank,
-}: {
-  season: number;
-  ownerId: string | null;
-  franchiseId: string | null;
-  unresolvedRank?: number;
-}) {
-  if (!ownerId) return `${season}:unresolved:${unresolvedRank ?? "unknown"}`;
-  return `${season}:${ownerId}:${franchiseId ?? "unassigned"}`;
+function findTenure(
+  ownerId: string,
+  franchiseId: string | null,
+  season: number
+) {
+  const ownerTenures = ownershipTenures.filter(
+    (tenure) => tenure.ownerId === ownerId
+  );
+  const exactTenure = ownerTenures.find(
+    (tenure) =>
+      tenure.franchiseId === franchiseId && tenureIncludesSeason(tenure, season)
+  );
+  if (exactTenure) return exactTenure;
+
+  if (franchiseId) {
+    const matchingFranchiseTenures = ownerTenures.filter(
+      (tenure) => tenure.franchiseId === franchiseId
+    );
+    if (matchingFranchiseTenures.length === 1) {
+      return matchingFranchiseTenures[0];
+    }
+  }
+
+  return null;
 }
 
 function getRoleFlags(role: OwnershipRole | null) {
@@ -211,50 +182,179 @@ function getRoleFlags(role: OwnershipRole | null) {
   };
 }
 
-function createOwnerRecord({
-  season,
-  owner,
-  tenure,
-  notes = [],
-}: {
-  season: number;
-  owner: OwnerProfile;
-  tenure: OwnershipTenure | null;
-  notes?: string[];
-}): MutableOwnerSeasonHistoryRecord {
-  const franchise = tenure ? franchisesById[tenure.franchiseId] : undefined;
-  const sleeperLeagueId = getSleeperLeagueId(season);
-  const isCurrentSeason = season === OWNER_SEASON_HISTORY_CURRENT_SEASON;
+function getHistoricalChampionshipType(
+  result: HistoricalSeasonResult
+): HistoricalChampionshipType {
+  if (!result.isHistoricalChampion) return null;
+  return result.season === 2022 ? "co-champion" : "sole";
+}
+
+function getCoOwners(
+  result: HistoricalSeasonResult,
+  ownerId: string
+): OwnerSeasonCoOwner[] {
+  return result.ownerIds.flatMap((coOwnerId) => {
+    if (coOwnerId === ownerId) return [];
+    const owner = ownerProfilesById[coOwnerId];
+    if (!owner) return [];
+    const tenure = findTenure(coOwnerId, result.franchiseId, result.season);
+    if (!tenure) return [];
+
+    return [
+      {
+        ownerId: owner.id,
+        ownerSlug: owner.slug,
+        ownerName: owner.fullName,
+        ownershipRole: tenure.role,
+      },
+    ];
+  });
+}
+
+function createHistoricalOwnerRecord(
+  result: HistoricalSeasonResult,
+  ownerId: string,
+  ownerCreditIndex: number
+): OwnerSeasonHistoryRecord {
+  const owner = ownerProfilesById[ownerId];
+  if (!owner) {
+    throw new Error(
+      `Historical season result ${result.seasonResultKey} references unknown owner ${ownerId}.`
+    );
+  }
+
+  const tenure = findTenure(ownerId, result.franchiseId, result.season);
+  const franchise = result.franchiseId
+    ? franchisesById[result.franchiseId]
+    : undefined;
   const role = tenure?.role ?? null;
   const roleFlags = getRoleFlags(role);
+  const sleeperLeagueId = getSleeperLeagueId(result.season);
+  const ownerSeasonKey = buildRecordId(
+    result.season,
+    owner.id,
+    result.franchiseId
+  );
+  const historicalTeamNameCoverage = result.rawTeamName
+    ? "resolved"
+    : "not-available";
 
   return {
-    ownerSeasonKey: buildRecordId({
-      season,
-      ownerId: owner.id,
-      franchiseId: franchise?.id ?? null,
-    }),
-    recordId: buildRecordId({
-      season,
-      ownerId: owner.id,
-      franchiseId: franchise?.id ?? null,
-    }),
+    ownerSeasonKey,
+    recordId: ownerSeasonKey,
+    season: result.season,
+    ownerId: owner.id,
+    ownerSlug: owner.slug,
+    ownerName: owner.fullName,
+    ownerStatus: owner.status,
+    sourceManagerName: result.rawOwnerLabel,
+    franchiseId: result.franchiseId,
+    franchiseName: franchise?.currentTeamName ?? null,
+    historicalTeamName: result.rawTeamName,
+    teamName: result.rawTeamName,
+    ownershipRole: role,
+    ...roleFlags,
+    coOwners: getCoOwners(result, owner.id),
+    isActiveForSeason: true,
+    isCurrentSeason: false,
+    finalPlacement: result.finalPlacement,
+    isPlatformChampion: result.isPlatformChampion,
+    isPlatformRunnerUp: result.isPlatformRunnerUp,
+    isHistoricalChampion: result.isHistoricalChampion,
+    historicalChampionshipType: getHistoricalChampionshipType(result),
+    championshipNote: result.championshipNote,
+    isChampion: result.isPlatformChampion,
+    isRunnerUp: result.isPlatformRunnerUp,
+    isThirdPlace: result.isThirdPlace,
+    isPodium: result.isPodium,
+    isLastPlace: result.isLastPlace,
+    placementAttribution: ownerCreditIndex === 0 ? "direct" : "shared-franchise",
+    placementSourceOwnerId: result.ownerIds[0] ?? null,
+    historicalSeasonResultKey: result.seasonResultKey,
+    sleeperLeagueId,
+    coverage: {
+      identity: "resolved",
+      ownership: tenure ? "resolved" : "missing",
+      franchise: result.franchiseId ? "resolved" : "unresolved",
+      seasonResult: "resolved",
+      placement: "resolved",
+      historicalTeamName: historicalTeamNameCoverage,
+      teamName: historicalTeamNameCoverage,
+      matchupSource: result.coverage.matchupSource,
+      sleeperLeague: sleeperLeagueId ? "resolved" : "not-available",
+    },
+    sources: {
+      identity: "identity-data",
+      ownership: tenure ? "ownership-tenure" : "historical-season-results",
+      placement: "historical-season-results",
+      seasonResult: "historical-season-results",
+      sleeperLeague: sleeperLeagueId
+        ? "league-history-ids"
+        : "not-available",
+    },
+    notes: [...(tenure?.notes ?? []), ...result.notes],
+  };
+}
+
+function getCurrentCoOwners(
+  tenure: OwnershipTenure,
+  activeTenures: readonly OwnershipTenure[]
+) {
+  return activeTenures.flatMap((candidate) => {
+    if (
+      candidate.ownerId === tenure.ownerId ||
+      candidate.franchiseId !== tenure.franchiseId
+    ) {
+      return [];
+    }
+    const owner = ownerProfilesById[candidate.ownerId];
+    if (!owner) return [];
+    return [
+      {
+        ownerId: owner.id,
+        ownerSlug: owner.slug,
+        ownerName: owner.fullName,
+        ownershipRole: candidate.role,
+      },
+    ];
+  });
+}
+
+function createCurrentOwnerRecord(
+  owner: OwnerProfile,
+  tenure: OwnershipTenure,
+  activeTenures: readonly OwnershipTenure[]
+): OwnerSeasonHistoryRecord {
+  const season = OWNER_SEASON_HISTORY_CURRENT_SEASON;
+  const franchise = franchisesById[tenure.franchiseId];
+  const sleeperLeagueId = getSleeperLeagueId(season);
+  const ownerSeasonKey = buildRecordId(season, owner.id, tenure.franchiseId);
+  const roleFlags = getRoleFlags(tenure.role);
+
+  return {
+    ownerSeasonKey,
+    recordId: ownerSeasonKey,
     season,
     ownerId: owner.id,
     ownerSlug: owner.slug,
     ownerName: owner.fullName,
     ownerStatus: owner.status,
     sourceManagerName: owner.fullName,
-    franchiseId: franchise?.id ?? null,
+    franchiseId: tenure.franchiseId,
     franchiseName: franchise?.currentTeamName ?? null,
-    teamName:
-      isCurrentSeason && franchise ? franchise.currentTeamName : null,
-    ownershipRole: role,
+    historicalTeamName: null,
+    teamName: franchise?.currentTeamName ?? null,
+    ownershipRole: tenure.role,
     ...roleFlags,
-    coOwners: [],
-    isActiveForSeason: tenure ? isTenureActiveInSeason(tenure, season) : null,
-    isCurrentSeason,
+    coOwners: getCurrentCoOwners(tenure, activeTenures),
+    isActiveForSeason: true,
+    isCurrentSeason: true,
     finalPlacement: null,
+    isPlatformChampion: false,
+    isPlatformRunnerUp: false,
+    isHistoricalChampion: false,
+    historicalChampionshipType: null,
+    championshipNote: null,
     isChampion: false,
     isRunnerUp: false,
     isThirdPlace: false,
@@ -262,253 +362,52 @@ function createOwnerRecord({
     isLastPlace: false,
     placementAttribution: null,
     placementSourceOwnerId: null,
+    historicalSeasonResultKey: null,
     sleeperLeagueId,
     coverage: {
       identity: "resolved",
-      ownership: tenure ? "resolved" : "missing",
+      ownership: "resolved",
       franchise: franchise ? "resolved" : "missing",
+      seasonResult: "not-available",
       placement: "not-available",
-      teamName: isCurrentSeason && franchise ? "resolved" : "not-available",
+      historicalTeamName: "not-available",
+      teamName: franchise ? "resolved" : "not-available",
+      matchupSource: sleeperLeagueId
+        ? "available-in-separate-engine"
+        : "unavailable-no-source",
       sleeperLeague: sleeperLeagueId ? "resolved" : "not-available",
     },
     sources: {
       identity: "identity-data",
-      ownership: tenure ? "ownership-tenure" : "unresolved",
+      ownership: "ownership-tenure",
       placement: "not-available",
+      seasonResult: "not-available",
       sleeperLeague: sleeperLeagueId
         ? "league-history-ids"
         : "not-available",
     },
-    notes: [...(tenure?.notes ?? []), ...notes],
+    notes: [...(tenure.notes ?? [])],
   };
-}
-
-function createUnresolvedPlacementRecord({
-  season,
-  placement,
-}: {
-  season: number;
-  placement: ManualPlacement;
-}): MutableOwnerSeasonHistoryRecord {
-  const sleeperLeagueId = getSleeperLeagueId(season);
-  const lastPlaceRank = getLastPlaceRank(season);
-
-  return {
-    ownerSeasonKey: buildRecordId({
-      season,
-      ownerId: null,
-      franchiseId: null,
-      unresolvedRank: placement.rank,
-    }),
-    recordId: buildRecordId({
-      season,
-      ownerId: null,
-      franchiseId: null,
-      unresolvedRank: placement.rank,
-    }),
-    season,
-    ownerId: null,
-    ownerSlug: null,
-    ownerName: null,
-    ownerStatus: null,
-    sourceManagerName: placement.manager,
-    franchiseId: null,
-    franchiseName: null,
-    teamName: null,
-    ownershipRole: null,
-    isPrimaryOwner: null,
-    isCoOwner: null,
-    coOwners: [],
-    isActiveForSeason: null,
-    isCurrentSeason: season === OWNER_SEASON_HISTORY_CURRENT_SEASON,
-    finalPlacement: placement.rank,
-    isChampion: placement.rank === 1,
-    isRunnerUp: placement.rank === 2,
-    isThirdPlace: placement.rank === 3,
-    isPodium: placement.rank <= 3,
-    isLastPlace: lastPlaceRank !== null && placement.rank === lastPlaceRank,
-    placementAttribution: null,
-    placementSourceOwnerId: null,
-    sleeperLeagueId,
-    coverage: {
-      identity: "unresolved",
-      ownership: "unresolved",
-      franchise: "unresolved",
-      placement: "resolved",
-      teamName: "not-available",
-      sleeperLeague: sleeperLeagueId ? "resolved" : "not-available",
-    },
-    sources: {
-      identity: "unresolved",
-      ownership: "unresolved",
-      placement: "manual-history",
-      sleeperLeague: sleeperLeagueId
-        ? "league-history-ids"
-        : "not-available",
-    },
-    notes: [
-      `Manual history identifies the ${season} rank ${placement.rank} entry as "${placement.manager}", but no canonical River City owner can be resolved.`,
-    ],
-  };
-}
-
-function applyPlacement({
-  record,
-  placement,
-  sourceOwnerId,
-  attribution,
-}: {
-  record: MutableOwnerSeasonHistoryRecord;
-  placement: ManualPlacement;
-  sourceOwnerId: string;
-  attribution: Exclude<OwnerSeasonPlacementAttribution, null>;
-}) {
-  const lastPlaceRank = getLastPlaceRank(record.season);
-
-  if (
-    record.finalPlacement !== null &&
-    record.finalPlacement !== placement.rank
-  ) {
-    record.notes.push(
-      `Conflicting manual placements found: ${record.finalPlacement} and ${placement.rank}.`
-    );
-    return;
-  }
-
-  record.finalPlacement = placement.rank;
-  record.isChampion = placement.rank === 1;
-  record.isRunnerUp = placement.rank === 2;
-  record.isThirdPlace = placement.rank === 3;
-  record.isPodium = placement.rank <= 3;
-  record.isLastPlace =
-    lastPlaceRank !== null && placement.rank === lastPlaceRank;
-  record.placementAttribution = attribution;
-  record.placementSourceOwnerId = sourceOwnerId;
-  record.coverage.placement = "resolved";
-  record.sources.placement = "manual-history";
-
-  if (attribution === "shared-franchise") {
-    record.notes.push(
-      `Placement shared from ${placement.manager}'s manual-history row through the season's franchise ownership.`
-    );
-  }
-}
-
-function populateCoOwners(records: MutableOwnerSeasonHistoryRecord[]) {
-  const recordsBySeasonFranchise = new Map<
-    string,
-    MutableOwnerSeasonHistoryRecord[]
-  >();
-
-  records.forEach((record) => {
-    if (!record.franchiseId || !record.ownerId) return;
-
-    const key = `${record.season}:${record.franchiseId}`;
-    const groupedRecords = recordsBySeasonFranchise.get(key) ?? [];
-    groupedRecords.push(record);
-    recordsBySeasonFranchise.set(key, groupedRecords);
-  });
-
-  recordsBySeasonFranchise.forEach((groupedRecords) => {
-    groupedRecords.forEach((record) => {
-      record.coOwners = groupedRecords
-        .filter(
-          (candidate) =>
-            candidate.ownerId !== record.ownerId &&
-            candidate.ownerId !== null &&
-            candidate.ownerSlug !== null &&
-            candidate.ownerName !== null &&
-            candidate.ownershipRole !== null
-        )
-        .map((candidate) => ({
-          ownerId: candidate.ownerId as string,
-          ownerSlug: candidate.ownerSlug as string,
-          ownerName: candidate.ownerName as string,
-          ownershipRole: candidate.ownershipRole as OwnershipRole,
-        }));
-    });
-  });
 }
 
 export function buildOwnerSeasonHistory(): OwnerSeasonHistoryRecord[] {
-  const records: MutableOwnerSeasonHistoryRecord[] = [];
-
-  ownershipTenures.forEach((tenure) => {
+  const historicalRecords = getAllHistoricalSeasonResults().flatMap((result) =>
+    result.ownerIds.map((ownerId, index) =>
+      createHistoricalOwnerRecord(result, ownerId, index)
+    )
+  );
+  const activeTenures = ownershipTenures.filter(
+    (tenure) =>
+      tenure.isActive &&
+      tenureIncludesSeason(tenure, OWNER_SEASON_HISTORY_CURRENT_SEASON)
+  );
+  const currentRecords = activeTenures.flatMap((tenure) => {
     const owner = ownerProfilesById[tenure.ownerId];
-    if (!owner || owner.status === OwnerProfileStatus.Staff) return;
-
-    const hasOpenInactiveBoundary =
-      !tenure.isActive && tenure.endSeason === undefined;
-
-    getTenureSeasons(tenure).forEach((season) => {
-      records.push(
-        createOwnerRecord({
-          season,
-          owner,
-          tenure,
-          notes: hasOpenInactiveBoundary
-            ? [
-                "This inactive tenure has no explicit end season; only seasons with a matching manual placement are included.",
-              ]
-            : [],
-        })
-      );
-    });
+    if (!owner || owner.status === OwnerProfileStatus.Staff) return [];
+    return [createCurrentOwnerRecord(owner, tenure, activeTenures)];
   });
 
-  manualHistoryEntries.forEach(([seasonValue, standings]) => {
-    const season = Number(seasonValue);
-
-    standings.forEach((placement) => {
-      const owner = ownerByNormalizedName.get(normalizeName(placement.manager));
-
-      if (!owner) {
-        records.push(createUnresolvedPlacementRecord({ season, placement }));
-        return;
-      }
-
-      let ownerSeasonRecords = records.filter(
-        (record) => record.season === season && record.ownerId === owner.id
-      );
-
-      if (ownerSeasonRecords.length === 0) {
-        const missingTenureRecord = createOwnerRecord({
-          season,
-          owner,
-          tenure: null,
-          notes: [
-            `Manual history includes ${owner.fullName} in ${season}, but no ownership tenure covers that season.`,
-          ],
-        });
-        records.push(missingTenureRecord);
-        ownerSeasonRecords = [missingTenureRecord];
-      }
-
-      ownerSeasonRecords.forEach((ownerRecord) => {
-        const sharedFranchiseRecords = ownerRecord.franchiseId
-          ? records.filter(
-              (record) =>
-                record.season === season &&
-                record.franchiseId === ownerRecord.franchiseId
-            )
-          : [ownerRecord];
-
-        sharedFranchiseRecords.forEach((record) => {
-          applyPlacement({
-            record,
-            placement,
-            sourceOwnerId: owner.id,
-            attribution:
-              record.ownerId === owner.id ? "direct" : "shared-franchise",
-          });
-        });
-      });
-    });
-  });
-
-  populateCoOwners(records);
-
-  return records.sort(
+  return [...historicalRecords, ...currentRecords].sort(
     (first, second) =>
       second.season - first.season ||
       (first.finalPlacement ?? Number.MAX_SAFE_INTEGER) -
@@ -541,8 +440,7 @@ export function getOwnerSeasonHistory(ownerIdOrSlug: string) {
   return ownerSeasonHistory
     .filter(
       (record) =>
-        record.ownerId === normalizedKey ||
-        record.ownerSlug === normalizedKey
+        record.ownerId === normalizedKey || record.ownerSlug === normalizedKey
     )
     .map(cloneRecord);
 }
@@ -587,6 +485,18 @@ export function getOwnerSeasonHistoryCoverageSummary(
       .sort(),
     missingFranchiseAssignments: records.filter(
       (record) => record.ownerId !== null && record.franchiseId === null
+    ).length,
+    recordsWithSeasonResult: records.filter(
+      (record) => record.coverage.seasonResult === "resolved"
+    ).length,
+    recordsWithoutSeasonResult: records.filter(
+      (record) => record.coverage.seasonResult === "not-available"
+    ).length,
+    recordsWithHistoricalTeamName: records.filter(
+      (record) => record.coverage.historicalTeamName === "resolved"
+    ).length,
+    recordsWithUnavailableMatchupSource: records.filter(
+      (record) => record.coverage.matchupSource === "unavailable-no-source"
     ).length,
   };
 }

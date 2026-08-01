@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { getHistoricalSeasonResultsForOwner } from "../lib/history/historicalSeasonResults";
 import {
   buildOwnerCareerSummaries,
   getActiveOwnerCareerSummaries,
@@ -48,6 +49,9 @@ assert.equal(rebuiltSummaries.length, allSummaries.length);
 
 allSummaries.forEach((summary) => {
   const ownerRecords = getOwnerSeasonHistory(summary.ownerId);
+  const historicalResults = getHistoricalSeasonResultsForOwner(
+    summary.ownerId
+  );
   const uniqueOwnerSeasonKeys = new Set(
     ownerRecords.map((record) => record.ownerSeasonKey)
   );
@@ -73,10 +77,8 @@ allSummaries.forEach((summary) => {
   );
   assert.equal(
     summary.placements.podiums,
-    summary.placements.championships +
-      summary.placements.runnerUpFinishes +
-      summary.placements.thirdPlaceFinishes,
-    `${summary.ownerId} podium arithmetic must balance.`
+    ownerRecords.filter((record) => record.isPodium).length,
+    `${summary.ownerId} podiums must use placement-based owner-season flags.`
   );
   assert.equal(
     summary.placements.averageFinish,
@@ -87,6 +89,22 @@ allSummaries.forEach((summary) => {
     summary.coverage.ownerSeasonRecords,
     ownerRecords.length,
     `${summary.ownerId} coverage must match consumed records.`
+  );
+  assert.equal(
+    ownerRecords.filter((record) => record.historicalSeasonResultKey !== null)
+      .length,
+    historicalResults.length,
+    `${summary.ownerId} must consume every approved historical owner credit once.`
+  );
+  assert.equal(
+    summary.placements.platformChampionships,
+    historicalResults.filter((result) => result.isPlatformChampion).length,
+    `${summary.ownerId} platform titles must reconcile to Historical Season Results.`
+  );
+  assert.equal(
+    summary.placements.historicalChampionships,
+    historicalResults.filter((result) => result.isHistoricalChampion).length,
+    `${summary.ownerId} historical titles must reconcile to Historical Season Results.`
   );
   assert.equal(summary.coverage.unresolvedRecordsAttributed, 0);
   assert.equal(summary.futureEnrichment.regularSeasonRecord, null);
@@ -111,6 +129,8 @@ const jordan = requireSummary("jordan-maslyn");
 const landon = requireSummary("landon-elliott");
 const aaron = requireSummary("aaron-hawkins");
 const gordie = requireSummary("gordie-gahagan");
+const tommy = requireSummary("tommy-moore");
+const dave = requireSummary("david-besedich");
 const travis = requireSummary("travis-miller");
 const keith = requireSummary("keith-polarek");
 const damon = requireSummary("damon-davis");
@@ -119,14 +139,16 @@ const rayPrestigio = requireFranchise(ray, "prestigio-mundial");
 const jeffreyPrestigio = requireFranchise(jeffrey, "prestigio-mundial");
 assert.deepEqual(
   {
-    championships: rayPrestigio.championships,
+    platformChampionships: rayPrestigio.platformChampionships,
+    historicalChampionships: rayPrestigio.historicalChampionships,
     runnerUpFinishes: rayPrestigio.runnerUpFinishes,
     thirdPlaceFinishes: rayPrestigio.thirdPlaceFinishes,
     podiums: rayPrestigio.podiums,
     lastPlaceFinishes: rayPrestigio.lastPlaceFinishes,
   },
   {
-    championships: jeffreyPrestigio.championships,
+    platformChampionships: jeffreyPrestigio.platformChampionships,
+    historicalChampionships: jeffreyPrestigio.historicalChampionships,
     runnerUpFinishes: jeffreyPrestigio.runnerUpFinishes,
     thirdPlaceFinishes: jeffreyPrestigio.thirdPlaceFinishes,
     podiums: jeffreyPrestigio.podiums,
@@ -151,15 +173,23 @@ assert.equal(
   ),
   false
 );
-assert.equal(ray.placements.championships, 0);
+assert.equal(ray.placements.platformChampionships, 0);
+assert.equal(ray.placements.historicalChampionships, 0);
 assert.equal(ray.placements.runnerUpFinishes, 0);
 assert.equal(ray.placements.thirdPlaceFinishes, 3);
-assert.equal(jeffrey.placements.championships, 0);
+assert.equal(jeffrey.placements.platformChampionships, 0);
+assert.equal(jeffrey.placements.historicalChampionships, 0);
 assert.equal(jeffrey.placements.runnerUpFinishes, 0);
 assert.equal(jeffrey.placements.thirdPlaceFinishes, 3);
 assert.equal(ray.coverage.missingFranchiseRecords, 0);
 assert.equal(ray.latestFranchise?.franchiseId, "prestigio-mundial");
 assert.equal(jeffrey.latestFranchise?.franchiseId, "prestigio-mundial");
+assert.equal(tommy.placements.platformChampionships, 5);
+assert.equal(tommy.placements.historicalChampionships, 5);
+assert.equal(dave.placements.platformChampionships, 1);
+assert.equal(dave.placements.historicalChampionships, 2);
+assert.equal(dave.placements.runnerUpFinishes, 1);
+assert.equal(dave.placements.podiums, 3);
 assert.equal(
   resolvedSeasonRecords.filter(
     (record) =>
@@ -178,8 +208,10 @@ assert.equal(jordan.franchiseHistory.length, 1);
 assert.equal(landonSpecialBrownies.latestSeason, 2024);
 assert.equal(landonShake.firstSeason, 2025);
 assert.equal(landonShake.latestSeason, 2026);
-assert.equal(landonShake.championships, 0);
-assert.equal(jordanShake.championships, 1);
+assert.equal(landonShake.platformChampionships, 0);
+assert.equal(landonShake.historicalChampionships, 0);
+assert.equal(jordanShake.platformChampionships, 1);
+assert.equal(jordanShake.historicalChampionships, 1);
 assert.equal(
   getOwnerSeasonHistory("landon-elliott").some(
     (record) =>
@@ -194,14 +226,15 @@ assert.equal(
   false
 );
 
-assert.equal(aaron.placements.championships, 1);
+assert.equal(aaron.placements.platformChampionships, 1);
+assert.equal(aaron.placements.historicalChampionships, 1);
 assert.equal(aaron.latestFranchise?.franchiseId, "hawkins-heroes");
 assert.equal(gordie.ownerStatus, "retired");
 assert.equal(gordie.latestFranchise?.franchiseId, "freakshow-freaks");
 
-assert.equal(travis.coverage.missingFranchiseRecords, 1);
-assert.equal(coverage.missingFranchiseRecords, 3);
-assert.equal(keith.seasons.seasonsRepresented, 5);
+assert.equal(travis.coverage.missingFranchiseRecords, 0);
+assert.equal(coverage.missingFranchiseRecords, 1);
+assert.equal(keith.seasons.seasonsRepresented, 4);
 assert.equal(keith.seasons.seasonsWithKnownPlacement, 4);
 assert.equal(keith.placements.averageFinish, 3.5);
 

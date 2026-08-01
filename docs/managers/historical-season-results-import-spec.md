@@ -433,11 +433,12 @@ even though Jeffrey must receive no 2011 credit.
 ### 10.2 Must remain unresolved or deferred
 
 - exact 2011–2014 historical team names;
-- JD's 2011 franchise ID;
+- JD's 2011 franchise ID, which remains unresolved by commissioner decision;
 - Keith's apparent nonparticipation in 2012 and Zach's apparent
   nonparticipation in 2013 versus their current tenure ranges;
-- whether `LB Winner` is identical to Toilet Bowl winner;
-- payout totals and net earnings until reconciled; and
+- `LB Winner`, which remains an unresolved workbook label and must not be
+  classified as Toilet Bowl winner;
+- payout totals and net earnings, with reconciliation deferred; and
 - regular-season aggregate W-L-T/PF/PA until separately validated and
   approved.
 
@@ -535,21 +536,26 @@ Completed in this phase:
 3. Focused validation covers placement counts, championship recognition,
    ESPN-era mappings, ownership credit, source coverage, and immutability.
 
+Completed migration:
+
+1. `ownerSeasonHistory.ts` consumes Historical Season Results as its only
+   final-placement source. It no longer imports or applies `MANUAL_HISTORY`.
+2. One physical result projects to each approved owner credit without changing
+   resolved `ownerSeasonKey` semantics.
+3. Platform finish, historical championship recognition, raw historical team
+   name, season-result coverage, and matchup-source coverage remain distinct.
+4. `ownerCareerSummary.ts` derives separate platform and historical title
+   counts, podiums, best finish, and last-place totals from Owner Season
+   History.
+5. `lib/manual-history.ts` remains in the repository for compatibility but is
+   not consumed as a placement source. Its removal is deferred to a separate
+   cleanup milestone.
+
 Deferred integration:
 
-1. Make `historicalSeasonResults.ts` the season-result source consumed by
-   `ownerSeasonHistory.ts`.
-2. Retire or adapt `MANUAL_HISTORY` after exact parity validation; do not keep
-   two active final-placement ledgers.
-3. Keep canonical identity and ownership tenure authoritative for owner
-   credit. `ownerSeasonHistory.ts` should project one franchise result to each
-   approved owner without changing `ownerSeasonKey` semantics.
-4. Let `ownerCareerSummary.ts` continue deriving titles, podiums, best finish,
-   and last-place totals from Owner Season History rather than reading the
-   workbook or recalculating in React.
-5. Keep historical payout awards separate from placement summaries and
+1. Keep historical payout awards separate from placement summaries and
    matchup summaries.
-6. Add a server presentation adapter that joins owner-season result facts
+2. Add a server presentation adapter that joins owner-season result facts
    with `OwnerSeasonMatchupSummary` by canonical owner and season. Do not add
    placement facts to Canonical Matchup History or fabricate canonical
    matchups.
@@ -605,7 +611,8 @@ Focused validation asserts:
 - 2011 contains exactly 10 physical results and no manufactured lower ranks;
 - 2012–2025 contains 168 accepted physical franchise-season results;
 - 2015–2025 contains 132 raw team-name rows;
-- 2012–2025 typed placements reconcile exactly with the current manual ledger;
+- 2012–2025 typed placements were reconciled against the former manual ledger
+  before Owner Season History migration;
 - 2022 preserves Tommy first, Dave second, and both owners as historical
   co-champions;
 - all accepted raw owner labels resolve to canonical identities;
@@ -627,11 +634,12 @@ Validation should include a focused import test, Owner Season History and
 Owner Career Summary regression tests, TypeScript, scoped ESLint, production
 build, and `git diff --check`.
 
-## 15. Remaining decisions
+## 15. Confirmed unresolved and deferred work
 
-1. Does `LB Winner` mean Toilet Bowl winner for 2020–2022?
-2. Should payout work begin now, or should monetary reconciliation remain
-   deferred while the typed layer exposes final results only?
-3. What franchise should be assigned to JD's approved 2011 result?
-4. Did Keith participate in 2012 and did Zach participate in 2013, despite
-   their absence from both final-standings sources?
+1. JD's approved 2011 result remains franchise-unresolved; no franchise is
+   inferred.
+2. `LB Winner` remains an unresolved workbook label and is not classified as
+   Toilet Bowl winner.
+3. Payout reconciliation remains deferred.
+4. Removal of the unused manual placement ledger remains deferred to a
+   separate cleanup milestone.

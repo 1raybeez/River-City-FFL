@@ -21,7 +21,8 @@ export type OwnerCareerSeasonSummary = {
 };
 
 export type OwnerCareerPlacementSummary = {
-  championships: number;
+  platformChampionships: number;
+  historicalChampionships: number;
   runnerUpFinishes: number;
   thirdPlaceFinishes: number;
   podiums: number;
@@ -45,7 +46,8 @@ export type OwnerCareerFranchiseSummary = {
   latestSeason: number;
   seasonsRepresented: number;
   ownershipRoles: OwnershipRole[];
-  championships: number;
+  platformChampionships: number;
+  historicalChampionships: number;
   runnerUpFinishes: number;
   thirdPlaceFinishes: number;
   podiums: number;
@@ -185,17 +187,25 @@ function getPlacementSummary(
   const knownPlacements = records.flatMap((record) =>
     record.finalPlacement === null ? [] : [record.finalPlacement]
   );
-  const championships = records.filter((record) => record.isChampion).length;
-  const runnerUpFinishes = records.filter((record) => record.isRunnerUp).length;
+  const platformChampionships = records.filter(
+    (record) => record.isPlatformChampion
+  ).length;
+  const historicalChampionships = records.filter(
+    (record) => record.isHistoricalChampion
+  ).length;
+  const runnerUpFinishes = records.filter(
+    (record) => record.isPlatformRunnerUp
+  ).length;
   const thirdPlaceFinishes = records.filter(
     (record) => record.isThirdPlace
   ).length;
 
   return {
-    championships,
+    platformChampionships,
+    historicalChampionships,
     runnerUpFinishes,
     thirdPlaceFinishes,
-    podiums: championships + runnerUpFinishes + thirdPlaceFinishes,
+    podiums: records.filter((record) => record.isPodium).length,
     bestFinish:
       knownPlacements.length > 0 ? Math.min(...knownPlacements) : null,
     worstFinish:
@@ -281,7 +291,8 @@ function getFranchiseHistory(
         latestSeason: seasons.at(-1) as number,
         seasonsRepresented: seasons.length,
         ownershipRoles,
-        championships: placements.championships,
+        platformChampionships: placements.platformChampionships,
+        historicalChampionships: placements.historicalChampionships,
         runnerUpFinishes: placements.runnerUpFinishes,
         thirdPlaceFinishes: placements.thirdPlaceFinishes,
         podiums: placements.podiums,
