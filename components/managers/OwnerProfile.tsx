@@ -23,6 +23,7 @@ import type {
   OwnerSeasonMatchupSummary,
 } from "@/lib/history/ownerMatchupSummary";
 import type { OwnerSeasonHistoryRecord } from "@/lib/history/ownerSeasonHistory";
+import type { OwnerCareerTimelineEvent } from "@/lib/managers/ownerCareerTimeline";
 import { teamColors } from "@/lib/themes/teamColors";
 import {
   AccomplishmentAttribution,
@@ -1177,6 +1178,55 @@ function Rivalry({ profile }: { profile: OwnerProfileViewModel }) {
   );
 }
 
+function CareerTimeline({
+  events,
+}: {
+  events: readonly OwnerCareerTimelineEvent[];
+}) {
+  if (events.length === 0) return null;
+
+  return (
+    <SectionShell title="Career Timeline" icon={<History size={16} />}>
+      <ol className="ml-1 border-l border-black/10 dark:border-white/10">
+        {events.map((event) => (
+          <li
+            key={event.eventKey}
+            className="relative pb-5 pl-5 last:pb-0"
+          >
+            <span
+              aria-hidden="true"
+              className="absolute -left-[5px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-red-600 dark:border-[#0a0a0a]"
+            />
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-black/35 dark:text-white/35">
+              {event.year}
+            </p>
+            <h3 className="mt-1 text-sm font-black uppercase italic sm:text-base">
+              {event.title}
+            </h3>
+            {event.detail && (
+              <p className="mt-1 text-xs font-medium leading-5 text-black/50 dark:text-white/50 sm:text-sm">
+                {event.detail}
+              </p>
+            )}
+            {event.badges.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {event.badges.map((badge) => (
+                  <span
+                    key={badge}
+                    className="inline-flex rounded-full border border-black/10 bg-black/[0.02] px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-black/55 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/55"
+                  >
+                    {badge}
+                  </span>
+                ))}
+              </div>
+            )}
+          </li>
+        ))}
+      </ol>
+    </SectionShell>
+  );
+}
+
 function getSeasonCoverageDisplay(summary: OwnerSeasonMatchupSummary | null) {
   if (!summary) {
     return {
@@ -1888,12 +1938,14 @@ function OpponentHistory({
 
 export default function OwnerProfile({
   profile,
+  careerTimeline,
   careerMatchupSummary,
   seasonHistoryEntries,
   opponentMatchupSummaries,
   opponentIdentities,
 }: {
   profile: OwnerProfileViewModel;
+  careerTimeline: readonly OwnerCareerTimelineEvent[];
   careerMatchupSummary: OwnerCareerMatchupSummary;
   seasonHistoryEntries: readonly SeasonHistoryEntry[];
   opponentMatchupSummaries: readonly OwnerOpponentMatchupSummary[];
@@ -1903,7 +1955,9 @@ export default function OwnerProfile({
   const hasTenures =
     profile.currentTenures.length > 0 || profile.legacyTenures.length > 0;
   const showSeasonHistory = !isStaff && seasonHistoryEntries.length > 0;
-  const showMainColumn = hasTenures || showSeasonHistory;
+  const showCareerTimeline = careerTimeline.length > 0;
+  const showMainColumn =
+    hasTenures || showCareerTimeline || showSeasonHistory;
   const opponentHistory = (
     <OpponentHistory
       profile={profile}
@@ -1935,6 +1989,9 @@ export default function OwnerProfile({
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
             <div className="space-y-6">
               <TeamLegacy profile={profile} />
+              {showCareerTimeline && (
+                <CareerTimeline events={careerTimeline} />
+              )}
               {showSeasonHistory && (
                 <SeasonHistory entries={seasonHistoryEntries} />
               )}

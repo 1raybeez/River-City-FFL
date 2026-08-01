@@ -79,7 +79,7 @@ function getRosterDivisionId(roster: SleeperRoster) {
 export default function ManagersPage() {
   const [view, setView] = useState<ManagerTab>("active");
   const [activeLayout, setActiveLayout] =
-    useState<ActiveOwnerLayout>("all");
+    useState<ActiveOwnerLayout>("division");
 
   // ⭐ THE FIX: Use "as unknown as any[]" to strip the Read-Only status
   // Then cast it back to ActiveManager[] so your cards still work.
