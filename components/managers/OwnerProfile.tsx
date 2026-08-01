@@ -22,6 +22,7 @@ import type {
   OwnerOpponentMatchupSummary,
   OwnerSeasonMatchupSummary,
 } from "@/lib/history/ownerMatchupSummary";
+import type { OwnerSeasonHistoryRecord } from "@/lib/history/ownerSeasonHistory";
 import { teamColors } from "@/lib/themes/teamColors";
 import {
   AccomplishmentAttribution,
@@ -108,6 +109,13 @@ type OpponentIdentity = {
   fullName: string;
   photo?: string | null;
 };
+
+type SeasonHistoryEntry = Readonly<{
+  season: number;
+  ownerId: string;
+  ownerSeason: OwnerSeasonHistoryRecord | null;
+  matchupSummary: OwnerSeasonMatchupSummary | null;
+}>;
 
 function getAccentColor(profile: OwnerProfileViewModel) {
   const teamCode =
@@ -1169,7 +1177,14 @@ function Rivalry({ profile }: { profile: OwnerProfileViewModel }) {
   );
 }
 
-function getSeasonCoverageDisplay(summary: OwnerSeasonMatchupSummary) {
+function getSeasonCoverageDisplay(summary: OwnerSeasonMatchupSummary | null) {
+  if (!summary) {
+    return {
+      label: "Summary unavailable",
+      detail: "No matchup summary is available for this season.",
+    };
+  }
+
   if (summary.coverage.sourceAvailability === "unavailable-no-source") {
     return {
       label: "Source unavailable",
@@ -1202,75 +1217,202 @@ function getSeasonCoverageDisplay(summary: OwnerSeasonMatchupSummary) {
   };
 }
 
-function SeasonHistory({
-  summaries,
+function formatPlacement(placement: number) {
+  const remainder = placement % 100;
+  if (remainder >= 11 && remainder <= 13) return `${placement}th`;
+
+  const suffix =
+    placement % 10 === 1
+      ? "st"
+      : placement % 10 === 2
+        ? "nd"
+        : placement % 10 === 3
+          ? "rd"
+          : "th";
+  return `${placement}${suffix}`;
+}
+
+function getOwnershipRoleLabel(record: OwnerSeasonHistoryRecord) {
+  if (record.ownershipRole === "primary") return "Primary Owner";
+  if (record.ownershipRole === "co-owner") return "Co-Owner";
+  if (record.ownershipRole === "legacy-owner") return "Legacy Owner";
+  return null;
+}
+
+function getSeasonResultBadges(record: OwnerSeasonHistoryRecord) {
+  const badges: string[] = [];
+
+  if (record.isPlatformChampion) badges.push("Champion");
+  else if (record.isPlatformRunnerUp) badges.push("Runner-Up");
+  else if (record.isThirdPlace) badges.push("Third Place");
+  else if (record.isPodium) badges.push("Podium");
+
+  if (record.historicalChampionshipType === "co-champion") {
+    badges.push("Historical Co-Champion");
+  } else if (record.isHistoricalChampion && !record.isPlatformChampion) {
+    badges.push("Historical Champion");
+  }
+
+  if (record.isLastPlace) badges.push("Last Place");
+
+  const ownershipRole = getOwnershipRoleLabel(record);
+  if (ownershipRole) badges.push(ownershipRole);
+
+  return badges;
+}
+
+function SeasonResultDetails({
+  record,
 }: {
-  summaries: readonly OwnerSeasonMatchupSummary[];
+  record: OwnerSeasonHistoryRecord | null;
 }) {
-  if (summaries.length === 0) return null;
+  if (!record || record.coverage.seasonResult !== "resolved") {
+    return (
+      <div className="mt-4 rounded-md border border-dashed border-black/10 px-3 py-3 dark:border-white/10">
+        <p className="text-xs font-black uppercase tracking-widest text-black/45 dark:text-white/45">
+          Season result not yet available
+        </p>
+      </div>
+    );
+  }
+
+  const badges = getSeasonResultBadges(record);
+  const ownershipRole = getOwnershipRoleLabel(record);
+  const coOwnerNames = record.coOwners.map((owner) => owner.ownerName);
+
+  return (
+    <>
+      {badges.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2" aria-label="Season facts">
+          {badges.map((badge) => (
+            <span
+              key={badge}
+              className="inline-flex rounded-full border border-black/10 bg-white px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-black/60 dark:border-white/10 dark:bg-black/20 dark:text-white/60"
+            >
+              {badge}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-md bg-white p-3 dark:bg-black/20">
+          <p className="text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+            Final finish
+          </p>
+          <p className="mt-1 text-xl font-black uppercase italic">
+            {record.finalPlacement === null
+              ? "Unavailable"
+              : formatPlacement(record.finalPlacement)}
+          </p>
+        </div>
+
+        <div className="rounded-md bg-white p-3 dark:bg-black/20">
+          <p className="text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+            Franchise
+          </p>
+          <p className="mt-1 text-sm font-black">
+            {record.franchiseName ?? "Unresolved"}
+          </p>
+        </div>
+
+        {record.historicalTeamName && (
+          <div className="rounded-md bg-white p-3 dark:bg-black/20">
+            <p className="text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+              Historical team
+            </p>
+            <p className="mt-1 text-sm font-black">
+              {record.historicalTeamName}
+            </p>
+          </div>
+        )}
+
+        {(ownershipRole || coOwnerNames.length > 0) && (
+          <div className="rounded-md bg-white p-3 dark:bg-black/20">
+            <p className="text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+              Ownership
+            </p>
+            <p className="mt-1 text-sm font-black">
+              {ownershipRole ?? "Approved owner"}
+            </p>
+            {coOwnerNames.length > 0 && (
+              <p className="mt-1 text-xs font-medium text-black/50 dark:text-white/50">
+                With {coOwnerNames.join(" and ")}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {record.championshipNote && record.isHistoricalChampion && (
+        <p className="mt-3 rounded-md border border-black/10 px-3 py-2 text-xs font-medium leading-5 text-black/55 dark:border-white/10 dark:text-white/55">
+          {record.championshipNote}
+        </p>
+      )}
+    </>
+  );
+}
+
+function SeasonHistory({
+  entries,
+}: {
+  entries: readonly SeasonHistoryEntry[];
+}) {
+  if (entries.length === 0) return null;
 
   return (
     <SectionShell title="Season History" icon={<History size={16} />}>
       <div className="space-y-4">
-        {summaries.map((summary) => {
+        {entries.map((entry) => {
+          const summary = entry.matchupSummary;
           const recordsAvailable =
-            summary.coverage.sourceAvailability === "available";
-          const unavailableValue = "—";
+            summary?.coverage.sourceAvailability === "available";
           const coverage = getSeasonCoverageDisplay(summary);
-          const overall = summary.records.overall;
+          const overall = summary?.records.overall;
           const metrics: Array<{
             label: string;
             value: string | number;
-          }> = [
-            {
-              label: "Overall Record",
-              value: recordsAvailable
-                ? formatMatchupRecord(overall)
-                : unavailableValue,
-            },
-            {
-              label: "Regular Season Record",
-              value: recordsAvailable
-                ? formatMatchupRecord(summary.records.regularSeason)
-                : unavailableValue,
-            },
-            {
-              label: "Championship Playoff Record",
-              value: recordsAvailable
-                ? formatMatchupRecord(
-                    summary.records.championshipPlayoff
-                  )
-                : unavailableValue,
-            },
-            {
-              label: "Winning %",
-              value: recordsAvailable
-                ? formatWinningPercentage(overall.winningPercentage)
-                : unavailableValue,
-            },
-            {
-              label: "Points For",
-              value: recordsAvailable
-                ? formatPoints(overall.pointsFor)
-                : unavailableValue,
-            },
-            {
-              label: "Points Against",
-              value: recordsAvailable
-                ? formatPoints(overall.pointsAgainst)
-                : unavailableValue,
-            },
-            {
-              label: "Point Differential",
-              value: recordsAvailable
-                ? `${overall.pointDifferential > 0 ? "+" : ""}${formatPoints(
-                    overall.pointDifferential
-                  )}`
-                : unavailableValue,
-            },
-          ];
+          }> =
+            recordsAvailable && summary && overall
+              ? [
+                  {
+                    label: "Overall Record",
+                    value: formatMatchupRecord(overall),
+                  },
+                  {
+                    label: "Regular Season Record",
+                    value: formatMatchupRecord(summary.records.regularSeason),
+                  },
+                  {
+                    label: "Championship Playoff Record",
+                    value: formatMatchupRecord(
+                      summary.records.championshipPlayoff
+                    ),
+                  },
+                  {
+                    label: "Winning %",
+                    value: formatWinningPercentage(
+                      overall.winningPercentage
+                    ),
+                  },
+                  {
+                    label: "Points For",
+                    value: formatPoints(overall.pointsFor),
+                  },
+                  {
+                    label: "Points Against",
+                    value: formatPoints(overall.pointsAgainst),
+                  },
+                  {
+                    label: "Point Differential",
+                    value: `${overall.pointDifferential > 0 ? "+" : ""}${formatPoints(
+                      overall.pointDifferential
+                    )}`,
+                  },
+                ]
+              : [];
 
-          if (summary.records.championshipGames.games > 0) {
+          if (summary && summary.records.championshipGames.games > 0) {
             metrics.splice(3, 0, {
               label: "Championship Game Record",
               value: formatMatchupRecord(
@@ -1281,35 +1423,58 @@ function SeasonHistory({
 
           return (
             <article
-              key={summary.summaryKey}
+              key={`${entry.ownerId}:${entry.season}`}
               className="rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <p className="text-2xl font-black uppercase italic">
-                  {summary.season}
-                </p>
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+                    Season result
+                  </p>
+                  <p className="mt-1 text-2xl font-black uppercase italic">
+                    {entry.season}
+                  </p>
+                </div>
                 <div className="sm:text-right">
                   <p className="text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
-                    Coverage status
+                    Result status
                   </p>
                   <p className="mt-1 text-xs font-black uppercase tracking-widest">
-                    {coverage.label}
+                    {entry.ownerSeason?.coverage.seasonResult === "resolved"
+                      ? "Available"
+                      : "Not available"}
                   </p>
                 </div>
               </div>
 
-              <p className="mt-3 text-sm font-medium leading-6 text-black/55 dark:text-white/55">
-                {coverage.detail}
-              </p>
+              <SeasonResultDetails record={entry.ownerSeason} />
 
-              <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-                {metrics.map((metric) => (
-                  <LegacyMetric
-                    key={metric.label}
-                    label={metric.label}
-                    value={metric.value}
-                  />
-                ))}
+              <div className="mt-4 border-t border-black/10 pt-4 dark:border-white/10">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+                      Matchup history
+                    </p>
+                    <p className="mt-1 text-xs font-black uppercase tracking-widest">
+                      {coverage.label}
+                    </p>
+                  </div>
+                  <p className="max-w-xl text-xs font-medium leading-5 text-black/50 dark:text-white/50 sm:text-right">
+                    {coverage.detail}
+                  </p>
+                </div>
+
+                {metrics.length > 0 && (
+                  <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                    {metrics.map((metric) => (
+                      <LegacyMetric
+                        key={metric.label}
+                        label={metric.label}
+                        value={metric.value}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </article>
           );
@@ -1724,20 +1889,20 @@ function OpponentHistory({
 export default function OwnerProfile({
   profile,
   careerMatchupSummary,
-  seasonMatchupSummaries,
+  seasonHistoryEntries,
   opponentMatchupSummaries,
   opponentIdentities,
 }: {
   profile: OwnerProfileViewModel;
   careerMatchupSummary: OwnerCareerMatchupSummary;
-  seasonMatchupSummaries: readonly OwnerSeasonMatchupSummary[];
+  seasonHistoryEntries: readonly SeasonHistoryEntry[];
   opponentMatchupSummaries: readonly OwnerOpponentMatchupSummary[];
   opponentIdentities: readonly OpponentIdentity[];
 }) {
   const isStaff = profile.owner.status === OwnerProfileStatus.Staff;
   const hasTenures =
     profile.currentTenures.length > 0 || profile.legacyTenures.length > 0;
-  const showSeasonHistory = !isStaff && seasonMatchupSummaries.length > 0;
+  const showSeasonHistory = !isStaff && seasonHistoryEntries.length > 0;
   const showMainColumn = hasTenures || showSeasonHistory;
   const opponentHistory = (
     <OpponentHistory
@@ -1771,7 +1936,7 @@ export default function OwnerProfile({
             <div className="space-y-6">
               <TeamLegacy profile={profile} />
               {showSeasonHistory && (
-                <SeasonHistory summaries={seasonMatchupSummaries} />
+                <SeasonHistory entries={seasonHistoryEntries} />
               )}
               {opponentHistory}
               <CurrentDivisionCard profile={profile} />

@@ -8,7 +8,7 @@ import { getOwnerProfileById } from "@/lib/managers/identityData";
 import {
   loadOwnerCareerMatchupSummary,
   loadOwnerOpponentMatchupSummaries,
-  loadOwnerSeasonMatchupSummaries,
+  loadOwnerProfileSeasonHistory,
 } from "@/lib/managers/ownerMatchupSummaryLoader";
 
 type OwnerProfilePageProps = {
@@ -31,11 +31,11 @@ export default async function OwnerProfilePage({
 
   const [
     careerMatchupSummary,
-    seasonMatchupSummaries,
+    seasonHistoryEntries,
     opponentMatchupSummaries,
   ] = await Promise.all([
     loadOwnerCareerMatchupSummary(slug),
-    loadOwnerSeasonMatchupSummaries(slug),
+    loadOwnerProfileSeasonHistory(slug),
     loadOwnerOpponentMatchupSummaries(slug),
   ]);
 
@@ -59,7 +59,7 @@ export default async function OwnerProfilePage({
     <OwnerProfile
       profile={profile}
       careerMatchupSummary={careerMatchupSummary}
-      seasonMatchupSummaries={seasonMatchupSummaries}
+      seasonHistoryEntries={seasonHistoryEntries}
       opponentMatchupSummaries={opponentMatchupSummaries}
       opponentIdentities={opponentIdentities}
     />
