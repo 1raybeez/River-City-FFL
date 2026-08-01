@@ -329,16 +329,21 @@ function StatTile({
 }
 
 function SectionShell({
+  id,
   title,
   icon,
   children,
 }: {
+  id?: string;
   title: string;
   icon: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#121212]">
+    <section
+      id={id}
+      className="scroll-mt-6 rounded-lg border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#121212]"
+    >
       <div className="mb-5 flex items-center gap-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-md bg-black text-white dark:bg-white dark:text-black">
           {icon}
@@ -738,7 +743,7 @@ function CurrentDivisionCard({ profile }: { profile: OwnerProfileViewModel }) {
 
   if (status === "loading" || status === "idle") {
     return (
-      <SectionShell title="Current Division" icon={<Shield size={16} />}>
+      <SectionShell id="division" title="Current Division" icon={<Shield size={16} />}>
         <p className="text-sm font-medium text-black/55 dark:text-white/55">
           Loading current Sleeper division context...
         </p>
@@ -748,7 +753,7 @@ function CurrentDivisionCard({ profile }: { profile: OwnerProfileViewModel }) {
 
   if (status === "error") {
     return (
-      <SectionShell title="Current Division" icon={<Shield size={16} />}>
+      <SectionShell id="division" title="Current Division" icon={<Shield size={16} />}>
         <p className="text-sm font-medium text-black/55 dark:text-white/55">
           {error || "Current division context is unavailable right now."}
         </p>
@@ -779,7 +784,7 @@ function CurrentDivisionCard({ profile }: { profile: OwnerProfileViewModel }) {
   }
 
   return (
-    <SectionShell title="Current Division" icon={<Shield size={16} />}>
+    <SectionShell id="division" title="Current Division" icon={<Shield size={16} />}>
       <div
         className="rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]"
         style={{ borderLeftColor: accentColor, borderLeftWidth: 4 }}
@@ -1186,7 +1191,7 @@ function CareerTimeline({
   if (events.length === 0) return null;
 
   return (
-    <SectionShell title="Career Timeline" icon={<History size={16} />}>
+    <SectionShell id="timeline" title="Career Timeline" icon={<History size={16} />}>
       <ol className="ml-1 border-l border-black/10 dark:border-white/10">
         {events.map((event) => (
           <li
@@ -1405,130 +1410,166 @@ function SeasonResultDetails({
 
 function SeasonHistory({
   entries,
+  isCompetitive,
 }: {
   entries: readonly SeasonHistoryEntry[];
+  isCompetitive: boolean;
 }) {
-  if (entries.length === 0) return null;
+  const orderedEntries = useMemo(
+    () => [...entries].sort((first, second) => second.season - first.season),
+    [entries]
+  );
+  const [selectedSeason, setSelectedSeason] = useState<number | null>(
+    () => orderedEntries[0]?.season ?? null
+  );
+  const selectedEntry =
+    orderedEntries.find((entry) => entry.season === selectedSeason) ??
+    orderedEntries[0] ??
+    null;
+
+  if (!selectedEntry) {
+    return (
+      <SectionShell id="seasons" title="Season History" icon={<History size={16} />}>
+        <div className="rounded-lg border border-dashed border-black/10 bg-black/[0.02] px-5 py-8 text-center dark:border-white/10 dark:bg-white/[0.04]">
+          <p className="text-sm font-black uppercase italic">
+            {isCompetitive
+              ? "No season history available"
+              : "Season history not applicable"}
+          </p>
+          <p className="mx-auto mt-2 max-w-md text-sm font-medium leading-6 text-black/50 dark:text-white/50">
+            {isCompetitive
+              ? "No approved owner-season results are available for this profile."
+              : "This staff profile has no competitive owner-season history."}
+          </p>
+        </div>
+      </SectionShell>
+    );
+  }
+
+  const summary = selectedEntry.matchupSummary;
+  const recordsAvailable =
+    summary?.coverage.sourceAvailability === "available";
+  const coverage = getSeasonCoverageDisplay(summary);
+  const overall = summary?.records.overall;
+  const metrics: Array<{
+    label: string;
+    value: string | number;
+  }> =
+    recordsAvailable && summary && overall
+      ? [
+          {
+            label: "Overall Record",
+            value: formatMatchupRecord(overall),
+          },
+          {
+            label: "Regular Season Record",
+            value: formatMatchupRecord(summary.records.regularSeason),
+          },
+          {
+            label: "Championship Playoff Record",
+            value: formatMatchupRecord(summary.records.championshipPlayoff),
+          },
+          {
+            label: "Winning %",
+            value: formatWinningPercentage(overall.winningPercentage),
+          },
+          {
+            label: "Points For",
+            value: formatPoints(overall.pointsFor),
+          },
+          {
+            label: "Points Against",
+            value: formatPoints(overall.pointsAgainst),
+          },
+          {
+            label: "Point Differential",
+            value: `${overall.pointDifferential > 0 ? "+" : ""}${formatPoints(
+              overall.pointDifferential
+            )}`,
+          },
+        ]
+      : [];
+
+  if (summary && summary.records.championshipGames.games > 0) {
+    metrics.splice(3, 0, {
+      label: "Championship Game Record",
+      value: formatMatchupRecord(summary.records.championshipGames),
+    });
+  }
 
   return (
-    <SectionShell title="Season History" icon={<History size={16} />}>
+    <SectionShell id="seasons" title="Season History" icon={<History size={16} />}>
       <div className="space-y-4">
-        {entries.map((entry) => {
-          const summary = entry.matchupSummary;
-          const recordsAvailable =
-            summary?.coverage.sourceAvailability === "available";
-          const coverage = getSeasonCoverageDisplay(summary);
-          const overall = summary?.records.overall;
-          const metrics: Array<{
-            label: string;
-            value: string | number;
-          }> =
-            recordsAvailable && summary && overall
-              ? [
-                  {
-                    label: "Overall Record",
-                    value: formatMatchupRecord(overall),
-                  },
-                  {
-                    label: "Regular Season Record",
-                    value: formatMatchupRecord(summary.records.regularSeason),
-                  },
-                  {
-                    label: "Championship Playoff Record",
-                    value: formatMatchupRecord(
-                      summary.records.championshipPlayoff
-                    ),
-                  },
-                  {
-                    label: "Winning %",
-                    value: formatWinningPercentage(
-                      overall.winningPercentage
-                    ),
-                  },
-                  {
-                    label: "Points For",
-                    value: formatPoints(overall.pointsFor),
-                  },
-                  {
-                    label: "Points Against",
-                    value: formatPoints(overall.pointsAgainst),
-                  },
-                  {
-                    label: "Point Differential",
-                    value: `${overall.pointDifferential > 0 ? "+" : ""}${formatPoints(
-                      overall.pointDifferential
-                    )}`,
-                  },
-                ]
-              : [];
+        <label className="block" htmlFor="season-history-select">
+          <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-black/40 dark:text-white/40">
+            Select season
+          </span>
+          <select
+            id="season-history-select"
+            value={selectedEntry.season}
+            onChange={(event) => setSelectedSeason(Number(event.target.value))}
+            className="w-full rounded-md border border-black/10 bg-white px-3 py-2.5 text-sm font-black text-black outline-none transition focus:border-red-600 focus:ring-2 focus:ring-red-600/20 dark:border-white/10 dark:bg-[#0a0a0a] dark:text-white"
+          >
+            {orderedEntries.map((entry) => (
+              <option key={`${entry.ownerId}:${entry.season}`} value={entry.season}>
+                {entry.season}
+              </option>
+            ))}
+          </select>
+        </label>
 
-          if (summary && summary.records.championshipGames.games > 0) {
-            metrics.splice(3, 0, {
-              label: "Championship Game Record",
-              value: formatMatchupRecord(
-                summary.records.championshipGames
-              ),
-            });
-          }
+        <article className="rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+                Season result
+              </p>
+              <p className="mt-1 text-2xl font-black uppercase italic">
+                {selectedEntry.season}
+              </p>
+            </div>
+            <div className="sm:text-right">
+              <p className="text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+                Result status
+              </p>
+              <p className="mt-1 text-xs font-black uppercase tracking-widest">
+                {selectedEntry.ownerSeason?.coverage.seasonResult === "resolved"
+                  ? "Available"
+                  : "Not available"}
+              </p>
+            </div>
+          </div>
 
-          return (
-            <article
-              key={`${entry.ownerId}:${entry.season}`}
-              className="rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]"
-            >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
-                    Season result
-                  </p>
-                  <p className="mt-1 text-2xl font-black uppercase italic">
-                    {entry.season}
-                  </p>
-                </div>
-                <div className="sm:text-right">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
-                    Result status
-                  </p>
-                  <p className="mt-1 text-xs font-black uppercase tracking-widest">
-                    {entry.ownerSeason?.coverage.seasonResult === "resolved"
-                      ? "Available"
-                      : "Not available"}
-                  </p>
-                </div>
+          <SeasonResultDetails record={selectedEntry.ownerSeason} />
+
+          <div className="mt-4 border-t border-black/10 pt-4 dark:border-white/10">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+                  Matchup history
+                </p>
+                <p className="mt-1 text-xs font-black uppercase tracking-widest">
+                  {coverage.label}
+                </p>
               </div>
+              <p className="max-w-xl text-xs font-medium leading-5 text-black/50 dark:text-white/50 sm:text-right">
+                {coverage.detail}
+              </p>
+            </div>
 
-              <SeasonResultDetails record={entry.ownerSeason} />
-
-              <div className="mt-4 border-t border-black/10 pt-4 dark:border-white/10">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
-                      Matchup history
-                    </p>
-                    <p className="mt-1 text-xs font-black uppercase tracking-widest">
-                      {coverage.label}
-                    </p>
-                  </div>
-                  <p className="max-w-xl text-xs font-medium leading-5 text-black/50 dark:text-white/50 sm:text-right">
-                    {coverage.detail}
-                  </p>
-                </div>
-
-                {metrics.length > 0 && (
-                  <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-                    {metrics.map((metric) => (
-                      <LegacyMetric
-                        key={metric.label}
-                        label={metric.label}
-                        value={metric.value}
-                      />
-                    ))}
-                  </div>
-                )}
+            {metrics.length > 0 && (
+              <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                {metrics.map((metric) => (
+                  <LegacyMetric
+                    key={metric.label}
+                    label={metric.label}
+                    value={metric.value}
+                  />
+                ))}
               </div>
-            </article>
-          );
-        })}
+            )}
+          </div>
+        </article>
       </div>
     </SectionShell>
   );
@@ -1753,16 +1794,28 @@ function OpponentHistory({
   sourceAvailability: OwnerMatchupSourceAvailability;
   hasEarlierNoSourceSeasons: boolean;
 }) {
-  const identitiesByOwnerId = new Map(
-    identities.map((identity) => [identity.ownerId, identity])
+  const identitiesByOwnerId = useMemo(
+    () => new Map(identities.map((identity) => [identity.ownerId, identity])),
+    [identities]
   );
-  const sortedSummaries = getSortedOpponentSummaries({
-    summaries,
-    identities: identitiesByOwnerId,
-  });
+  const sortedSummaries = useMemo(
+    () =>
+      getSortedOpponentSummaries({
+        summaries,
+        identities: identitiesByOwnerId,
+      }),
+    [identitiesByOwnerId, summaries]
+  );
+  const [selectedSummaryKey, setSelectedSummaryKey] = useState(
+    () => sortedSummaries[0]?.summaryKey ?? ""
+  );
+  const selectedSummary =
+    sortedSummaries.find(
+      (summary) => summary.summaryKey === selectedSummaryKey
+    ) ?? sortedSummaries[0];
 
   return (
-    <SectionShell title="Opponent History" icon={<Swords size={16} />}>
+    <SectionShell id="opponents" title="Opponent History" icon={<Swords size={16} />}>
       {sortedSummaries.length === 0 ? (
         <OpponentHistoryEmptyState sourceAvailability={sourceAvailability} />
       ) : (
@@ -1773,6 +1826,32 @@ function OpponentHistory({
               Earlier owner-seasons are excluded.
             </p>
           )}
+
+          <label className="mb-4 block" htmlFor="opponent-history-select">
+            <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-black/40 dark:text-white/40">
+              Select opponent
+            </span>
+            <select
+              id="opponent-history-select"
+              value={selectedSummary.summaryKey}
+              onChange={(event) => setSelectedSummaryKey(event.target.value)}
+              className="w-full rounded-md border border-black/10 bg-white px-3 py-2.5 text-sm font-black text-black outline-none transition focus:border-red-600 focus:ring-2 focus:ring-red-600/20 dark:border-white/10 dark:bg-[#0a0a0a] dark:text-white"
+            >
+              {sortedSummaries.map((summary) => {
+                const identity = identitiesByOwnerId.get(
+                  summary.opponentOwnerId
+                );
+                const name = identity?.fullName ?? summary.opponentOwnerId;
+
+                return (
+                  <option key={summary.summaryKey} value={summary.summaryKey}>
+                    {name} · {summary.meetings}{" "}
+                    {summary.meetings === 1 ? "meeting" : "meetings"}
+                  </option>
+                );
+              })}
+            </select>
+          </label>
 
           <div
             className="hidden overflow-x-auto pb-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#121212] xl:block"
@@ -1812,7 +1891,7 @@ function OpponentHistory({
                 </tr>
               </thead>
               <tbody>
-                {sortedSummaries.map((summary) => {
+                {[selectedSummary].map((summary) => {
                   const identity = identitiesByOwnerId.get(
                     summary.opponentOwnerId
                   );
@@ -1864,7 +1943,7 @@ function OpponentHistory({
           </div>
 
           <div className="grid gap-3 xl:hidden sm:grid-cols-2">
-            {sortedSummaries.map((summary) => {
+            {[selectedSummary].map((summary) => {
               const identity = identitiesByOwnerId.get(
                 summary.opponentOwnerId
               );
@@ -1936,6 +2015,43 @@ function OpponentHistory({
   );
 }
 
+function ProfileSectionNavigation({
+  showTimeline,
+  showSeasons,
+  showDivision,
+}: {
+  showTimeline: boolean;
+  showSeasons: boolean;
+  showDivision: boolean;
+}) {
+  const links = [
+    { href: "#overview", label: "Overview", show: true },
+    { href: "#timeline", label: "Timeline", show: showTimeline },
+    { href: "#seasons", label: "Seasons", show: showSeasons },
+    { href: "#opponents", label: "Opponents", show: true },
+    { href: "#division", label: "Division", show: showDivision },
+  ].filter((link) => link.show);
+
+  return (
+    <nav
+      aria-label="Manager profile sections"
+      className="overflow-x-auto rounded-lg border border-black/10 bg-white p-2 dark:border-white/10 dark:bg-[#121212]"
+    >
+      <div className="flex min-w-max gap-1">
+        {links.map((link) => (
+          <a
+            key={link.href}
+            href={link.href}
+            className="rounded-md px-3 py-2 text-[10px] font-black uppercase tracking-widest text-black/50 transition hover:bg-black/[0.04] hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 dark:text-white/50 dark:hover:bg-white/[0.06] dark:hover:text-white"
+          >
+            {link.label}
+          </a>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
 export default function OwnerProfile({
   profile,
   careerTimeline,
@@ -1954,8 +2070,9 @@ export default function OwnerProfile({
   const isStaff = profile.owner.status === OwnerProfileStatus.Staff;
   const hasTenures =
     profile.currentTenures.length > 0 || profile.legacyTenures.length > 0;
-  const showSeasonHistory = !isStaff && seasonHistoryEntries.length > 0;
+  const showSeasonHistory = seasonHistoryEntries.length > 0 || isStaff;
   const showCareerTimeline = careerTimeline.length > 0;
+  const showDivision = profile.owner.status === OwnerProfileStatus.Active;
   const showMainColumn =
     hasTenures || showCareerTimeline || showSeasonHistory;
   const opponentHistory = (
@@ -1983,7 +2100,14 @@ export default function OwnerProfile({
   return (
     <main className="min-h-screen bg-white px-4 py-6 text-black dark:bg-[#0a0a0a] dark:text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <HeroSection profile={profile} />
+        <div id="overview" className="scroll-mt-6">
+          <HeroSection profile={profile} />
+        </div>
+        <ProfileSectionNavigation
+          showTimeline={showCareerTimeline}
+          showSeasons={showSeasonHistory}
+          showDivision={showDivision}
+        />
 
         {showMainColumn ? (
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
@@ -1993,7 +2117,10 @@ export default function OwnerProfile({
                 <CareerTimeline events={careerTimeline} />
               )}
               {showSeasonHistory && (
-                <SeasonHistory entries={seasonHistoryEntries} />
+                <SeasonHistory
+                  entries={seasonHistoryEntries}
+                  isCompetitive={!isStaff}
+                />
               )}
               {opponentHistory}
               <CurrentDivisionCard profile={profile} />

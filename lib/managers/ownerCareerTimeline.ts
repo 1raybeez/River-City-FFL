@@ -95,6 +95,12 @@ function getCompletedSeasonRecords(records: readonly OwnerSeasonHistoryRecord[])
 function buildSeasonEvents(records: readonly OwnerSeasonHistoryRecord[]) {
   const completedRecords = getCompletedSeasonRecords(records);
   const firstSeason = completedRecords[0]?.season ?? null;
+  const firstPodiumSeason = completedRecords.find(
+    (record) => record.isPodium
+  )?.season;
+  const firstLastPlaceSeason = completedRecords.find(
+    (record) => record.isLastPlace
+  )?.season;
   const representedSeasons = new Set(
     completedRecords.map((record) => record.season)
   );
@@ -111,17 +117,37 @@ function buildSeasonEvents(records: readonly OwnerSeasonHistoryRecord[]) {
         : returnedAfterGap
           ? "Returned to River City"
           : null;
+    const isChampionshipMilestone =
+      record.isPlatformChampion || record.isHistoricalChampion;
+    const isFirstPodium =
+      record.season === firstPodiumSeason && record.isPodium;
+    const isFirstLastPlace =
+      record.season === firstLastPlaceSeason && record.isLastPlace;
+    const placement = formatPlacement(record.finalPlacement as number);
+    const achievementTitle = record.isPlatformChampion
+      ? `League Champion · Finished ${placement}`
+      : record.historicalChampionshipType === "co-champion"
+        ? `Historical Co-Champion · Finished ${placement}`
+        : record.isHistoricalChampion
+          ? `Historical Champion · Finished ${placement}`
+          : isFirstPodium
+            ? `First podium · Finished ${placement}`
+            : isFirstLastPlace
+              ? `First last-place finish · Finished ${placement}`
+              : null;
 
-    events.push({
-      eventKey: `season-result:${record.ownerSeasonKey}`,
-      year: `${record.season}`,
-      title: `${participationTitle ? `${participationTitle} · ` : ""}Finished ${formatPlacement(record.finalPlacement as number)}`,
-      detail: getSeasonDetail(record),
-      badges: getSeasonBadges(record),
-      source: "owner-season-history",
-      sortYear: record.season,
-      sortOrder: 30,
-    });
+    if (participationTitle || isChampionshipMilestone || isFirstPodium || isFirstLastPlace) {
+      events.push({
+        eventKey: `season-milestone:${record.ownerSeasonKey}`,
+        year: `${record.season}`,
+        title: participationTitle ?? (achievementTitle as string),
+        detail: `${getSeasonDetail(record)} · Finished ${placement}`,
+        badges: getSeasonBadges(record),
+        source: "owner-season-history",
+        sortYear: record.season,
+        sortOrder: 30,
+      });
+    }
 
     if (!previousRecord || !returnedAfterGap) return;
 

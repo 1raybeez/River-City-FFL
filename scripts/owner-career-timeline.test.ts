@@ -29,24 +29,43 @@ function requireEvent(
 }
 
 const ray = getTimeline("ray-long");
-const ray2011 = requireEvent(ray, "2011", /Joined River City · Finished 8th/);
+assert.equal(ray.length, 6);
+const ray2011 = requireEvent(ray, "2011", /^Joined River City$/);
+assert.match(ray2011.detail ?? "", /Prestigio Mundial/);
 assert.match(ray2011.detail ?? "", /Primary Owner/);
+assert.match(ray2011.detail ?? "", /Finished 8th/);
 assert.doesNotMatch(ray2011.detail ?? "", /Jeffrey/);
 requireEvent(ray, "2012", /Did not participate/);
 const ray2013 = requireEvent(
   ray,
   "2013",
-  /Returned to River City · Finished 10th/
+  /^Returned to River City$/
 );
 assert.match(ray2013.detail ?? "", /Co-Owner/);
 assert.match(ray2013.detail ?? "", /Jeffrey Hudgins/);
+assert.match(ray2013.detail ?? "", /Finished 10th/);
 requireEvent(ray, "2014-present", /^Commissioner$/);
-const ray2025 = requireEvent(ray, "2025", /Finished 12th/);
+const ray2016 = requireEvent(ray, "2016", /First podium · Finished 3rd/);
+assert.deepEqual(ray2016.badges, ["Third Place"]);
+const ray2025 = requireEvent(
+  ray,
+  "2025",
+  /First last-place finish · Finished 12th/
+);
 assert.deepEqual(ray2025.badges, ["Last Place"]);
 assert.equal(
   ray.filter((event) => event.source === "owner-season-history").length,
-  15
+  5
 );
+assert.equal(ray.some((event) => event.year === "2015"), false);
+assert.equal(ray.some((event) => event.year === "2017"), false);
+assert.equal(ray.some((event) => event.year === "2018"), false);
+assert.equal(ray.some((event) => event.year === "2019"), false);
+assert.equal(ray.some((event) => event.year === "2020"), false);
+assert.equal(ray.some((event) => event.year === "2021"), false);
+assert.equal(ray.some((event) => event.year === "2022"), false);
+assert.equal(ray.some((event) => event.year === "2023"), false);
+assert.equal(ray.some((event) => event.year === "2024"), false);
 
 const jeffrey = getTimeline("jeffrey-hudgins");
 assert.equal(jeffrey.some((event) => event.year === "2011"), false);
@@ -58,7 +77,7 @@ assert.match(
 
 const landon = getTimeline("landon-elliott");
 assert.match(
-  requireEvent(landon, "2012", /Joined River City · Finished 6th/).detail ?? "",
+  requireEvent(landon, "2012", /^Joined River City$/).detail ?? "",
   /Special Brownies/
 );
 requireEvent(landon, "2024", /Final season as Special Brownies owner/);
