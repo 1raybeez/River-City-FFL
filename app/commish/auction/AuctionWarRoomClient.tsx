@@ -57,14 +57,14 @@ import {
   getByeWeekForNflTeam,
 } from '@/lib/auction/byeWeeks';
 import {
-  fadePlayerNames,
-  targetPlayerNames,
-  watchlistPlayerNames,
-} from '@/lib/auction/draftPreferences';
-import {
   type AuctionOwnerPlayerPreference,
   type AuctionOwnerPreferenceTag,
 } from '@/lib/auction/ownerPreferenceTypes';
+import {
+  resolveAuctionPreferenceTag,
+  resolveAuctionPreferenceTags,
+  type AuctionPreferenceFallbacks,
+} from '@/lib/auction/preferenceFallbacks';
 import type { AuctionOwnerProfileSettings } from '@/lib/auction/ownerProfileSettingsTypes';
 import type { AuctionAccessResult } from '@/lib/auction/ownerProfiles';
 import {
@@ -975,33 +975,36 @@ function getDraftPlanPreferenceForPlayer(
 
 function getEffectivePlayerPoolPreferenceTags(
   player: ProcessedPlayerValueRow,
-  preferencesByPlayerId: DraftPlanPreferenceMap
+  preferencesByPlayerId: DraftPlanPreferenceMap,
+  preferenceFallbacks: AuctionPreferenceFallbacks
 ) {
   const savedPreference = getDraftPlanPreferenceForPlayer(
     player,
     preferencesByPlayerId
   );
 
-  if (savedPreference) {
-    return savedPreference.tag === 'open'
-      ? []
-      : [savedPreference.tag as PlayerPoolPreferenceTag];
-  }
-
-  return getPlayerPoolPreferenceTags(player);
+  return resolveAuctionPreferenceTags({
+    fallbacks: preferenceFallbacks,
+    playerNames: [player.originalPlayerName, player.matchedSleeperName],
+    savedTag: savedPreference?.tag,
+  });
 }
 
 function getDraftPlanEditorTag(
   player: ProcessedPlayerValueRow,
-  preferencesByPlayerId: DraftPlanPreferenceMap
+  preferencesByPlayerId: DraftPlanPreferenceMap,
+  preferenceFallbacks: AuctionPreferenceFallbacks
 ) {
   const savedPreference = getDraftPlanPreferenceForPlayer(
     player,
     preferencesByPlayerId
   );
-  if (savedPreference) return savedPreference.tag;
 
-  return getPlayerPoolPreferenceTags(player)[0] ?? 'open';
+  return resolveAuctionPreferenceTag({
+    fallbacks: preferenceFallbacks,
+    playerNames: [player.originalPlayerName, player.matchedSleeperName],
+    savedTag: savedPreference?.tag,
+  });
 }
 
 function hasDraftPlanDetails(preference: AuctionOwnerPlayerPreference | null) {
@@ -1413,10 +1416,6 @@ function sortPlayerPoolStatuses(statuses: string[]) {
   });
 }
 
-const targetPlayerNameSet = new Set(targetPlayerNames.map(normalizeFilterValue));
-const fadePlayerNameSet = new Set(fadePlayerNames.map(normalizeFilterValue));
-const watchlistPlayerNameSet = new Set(watchlistPlayerNames.map(normalizeFilterValue));
-
 function formatPlayerPoolStatus(status?: ProcessedPlayerValueStatus | null) {
   if (status?.taken) return status.taken;
 
@@ -1603,28 +1602,6 @@ function sortPlayerPoolRows(
       secondPlayer.originalPlayerName
     );
   });
-}
-
-function getPlayerPoolPreferenceTags(player: ProcessedPlayerValueRow) {
-  const playerNames = [
-    normalizeFilterValue(player.originalPlayerName),
-    normalizeFilterValue(player.matchedSleeperName),
-  ].filter(Boolean);
-  const tags: PlayerPoolPreferenceTag[] = [];
-
-  if (playerNames.some((name) => targetPlayerNameSet.has(name))) {
-    tags.push('target');
-  }
-
-  if (playerNames.some((name) => fadePlayerNameSet.has(name))) {
-    tags.push('fade');
-  }
-
-  if (playerNames.some((name) => watchlistPlayerNameSet.has(name))) {
-    tags.push('watch');
-  }
-
-  return tags;
 }
 
 function getBidRecommendationPreference(
@@ -2531,7 +2508,7 @@ function buildAuctionAdvisorPlayerValues(
   rosterPlayers: readonly RosterGuidancePlayer[],
   getPreferenceTags: (
     player: ProcessedPlayerValueRow
-  ) => PlayerPoolPreferenceTag[] = getPlayerPoolPreferenceTags
+  ) => PlayerPoolPreferenceTag[] = () => []
 ): AuctionAdvisorPlayerValue[] {
   return localPlayerPoolRows.map((player) => {
     const preferenceTags = getPreferenceTags(player);
@@ -3884,6 +3861,7 @@ export default function AuctionWarRoomClient({
   initialValueSource,
   initialAdpSource,
   initialOwnerPreferences,
+  initialPreferenceFallbacks,
   initialOwnerSettings,
   initialPurchaseDecisions,
 }: {
@@ -3891,6 +3869,7 @@ export default function AuctionWarRoomClient({
   initialValueSource?: AuctionWarRoomInitialValueSource;
   initialAdpSource?: AuctionWarRoomInitialAdpSource;
   initialOwnerPreferences?: AuctionWarRoomInitialOwnerPreference[];
+  initialPreferenceFallbacks: AuctionPreferenceFallbacks;
   initialOwnerSettings?: AuctionWarRoomInitialOwnerSettings | null;
   initialPurchaseDecisions?: AuctionWarRoomInitialPurchaseDecision[];
 }) {
@@ -4413,9 +4392,10 @@ export default function AuctionWarRoomClient({
     (player: ProcessedPlayerValueRow) =>
       getEffectivePlayerPoolPreferenceTags(
         player,
-        draftPlanPreferencesByPlayerId
+        draftPlanPreferencesByPlayerId,
+        initialPreferenceFallbacks
       ),
-    [draftPlanPreferencesByPlayerId]
+    [draftPlanPreferencesByPlayerId, initialPreferenceFallbacks]
   );
   const availableTargetCount = localPlayerPoolRows.filter((player) => {
     const playerStatus = getPlayerPoolDisplayStatus(
@@ -4651,7 +4631,11 @@ export default function AuctionWarRoomClient({
     ? getEffectivePreferenceTags(selectedPlayer)
     : [];
   const selectedPlayerDraftPlanEditorTag = selectedPlayer
-    ? getDraftPlanEditorTag(selectedPlayer, draftPlanPreferencesByPlayerId)
+    ? getDraftPlanEditorTag(
+        selectedPlayer,
+        draftPlanPreferencesByPlayerId,
+        initialPreferenceFallbacks
+      )
     : 'open';
   const selectedPlayerHasDraftPlan =
     selectedPlayerPreferenceTags.length > 0 ||
@@ -6437,11 +6421,7 @@ export default function AuctionWarRoomClient({
       warnings: guidanceWarnings,
       positionCounts: guidancePositionCounts,
     },
-    preferences: {
-      targetPlayerNames,
-      fadePlayerNames,
-      watchlistPlayerNames,
-    },
+    preferences: initialPreferenceFallbacks,
     byeWeekRisks: {
       maxSameByeWeekRosterCount: Math.max(
         0,

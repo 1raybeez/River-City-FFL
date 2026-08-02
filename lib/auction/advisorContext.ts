@@ -19,10 +19,9 @@ import {
 } from "@/lib/auction/calculations";
 import { getByeWeekForNflTeam } from "@/lib/auction/byeWeeks";
 import {
-  fadePlayerNames,
-  targetPlayerNames,
-  watchlistPlayerNames,
-} from "@/lib/auction/draftPreferences";
+  getAuctionFallbackPreferenceTags,
+} from "@/lib/auction/preferenceFallbacks";
+import { getAuctionPreferenceFallbacksForProfile } from "@/lib/auction/preferenceFallbackData";
 import {
   calculateAuctionInflationState,
   recommendRayJeffreyMaxBid,
@@ -97,6 +96,7 @@ type AdvisorContextPurchaseRow = {
 };
 
 export type BuildAuctionAdvisorContextInput = {
+  ownerProfileId?: string | null;
   selectedPlayerName?: string | null;
   selectedSleeperPlayerId?: string | null;
   activePurchaseSource?: AdvisorContextPurchaseSource | null;
@@ -186,12 +186,6 @@ const DEFAULT_WARNING_LIMIT = 5;
 const MAX_VALUE_TARGET_LIMIT = 10;
 const MAX_WARNING_LIMIT = 10;
 
-const targetPlayerNameSet = new Set(targetPlayerNames.map(normalizeFilterValue));
-const fadePlayerNameSet = new Set(fadePlayerNames.map(normalizeFilterValue));
-const watchlistPlayerNameSet = new Set(
-  watchlistPlayerNames.map(normalizeFilterValue)
-);
-
 function normalizeFilterValue(value: string | null | undefined) {
   return value?.trim().toLowerCase() ?? "";
 }
@@ -239,30 +233,21 @@ function getSortableNumber(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value) ? value : -1;
 }
 
-function getPreferenceTags(player: ProcessedPlayerValueRow) {
-  const playerNames = [
-    normalizeFilterValue(player.originalPlayerName),
-    normalizeFilterValue(player.matchedSleeperName),
-  ].filter(Boolean);
-  const tags: Array<Exclude<AuctionAdvisorPreference, "none">> = [];
-
-  if (playerNames.some((name) => targetPlayerNameSet.has(name))) {
-    tags.push("target");
-  }
-
-  if (playerNames.some((name) => fadePlayerNameSet.has(name))) {
-    tags.push("fade");
-  }
-
-  if (playerNames.some((name) => watchlistPlayerNameSet.has(name))) {
-    tags.push("watch");
-  }
-
-  return tags;
+function getPreferenceTags(
+  player: ProcessedPlayerValueRow,
+  ownerProfileId: string | null | undefined
+) {
+  return getAuctionFallbackPreferenceTags({
+    fallbacks: getAuctionPreferenceFallbacksForProfile(ownerProfileId),
+    playerNames: [player.originalPlayerName, player.matchedSleeperName],
+  });
 }
 
-function getPreference(player: ProcessedPlayerValueRow): AuctionAdvisorPreference {
-  const tags = getPreferenceTags(player);
+function getPreference(
+  player: ProcessedPlayerValueRow,
+  ownerProfileId: string | null | undefined
+): AuctionAdvisorPreference {
+  const tags = getPreferenceTags(player, ownerProfileId);
 
   if (tags.includes("fade")) return "fade";
   if (tags.includes("target")) return "target";
@@ -510,7 +495,8 @@ const guidancePlayerValues: RosterGuidancePlayerValue[] = localPlayerPoolRows.ma
 
 function buildAuctionAdvisorPlayerValues(
   purchases: readonly AdvisorContextPurchaseRow[],
-  rosterPlayers: readonly RosterGuidancePlayer[]
+  rosterPlayers: readonly RosterGuidancePlayer[],
+  ownerProfileId: string | null | undefined
 ): AuctionAdvisorPlayerValue[] {
   return localPlayerPoolRows.map((player) => {
     const status = getDisplayStatus(player, purchases);
@@ -526,7 +512,7 @@ function buildAuctionAdvisorPlayerValues(
       highValue: player.highValue,
       averageValue: player.averageValue,
       status,
-      preference: getPreference(player),
+      preference: getPreference(player, ownerProfileId),
       byeWeek,
       sameByeWeekRosterCount:
         byeWeek === null
@@ -631,7 +617,7 @@ function buildSelectedPlayerContext(
       positionCount: positionCounts[playerPosition] ?? 0,
       targetPositionCount: benchNeed?.target ?? null,
     },
-    preference: getPreference(selectedPlayer),
+    preference: getPreference(selectedPlayer, input.ownerProfileId),
     byeWeekRisk: {
       byeWeek,
       sameByeWeekRosterCount:
@@ -653,7 +639,7 @@ function buildSelectedPlayerContext(
     highValue: selectedPlayer.highValue ?? null,
     averageValue: selectedPlayer.averageValue ?? null,
     status,
-    preference: getPreference(selectedPlayer),
+    preference: getPreference(selectedPlayer, input.ownerProfileId),
     recommendation,
   };
 }
@@ -790,8 +776,15 @@ export function buildAuctionAdvisorContext(
   const market = {
     inflation: calculateAuctionInflationState(bidRecommendationPurchaseSamples),
   };
+  const preferenceFallbacks = getAuctionPreferenceFallbacksForProfile(
+    input.ownerProfileId
+  );
   const advisorSummary = buildAuctionAdvisorSummary({
-    playerValues: buildAuctionAdvisorPlayerValues(purchases, rosterPlayers),
+    playerValues: buildAuctionAdvisorPlayerValues(
+      purchases,
+      rosterPlayers,
+      input.ownerProfileId
+    ),
     activePurchaseSource: appliedPurchaseSource,
     teamBudget: budgetSummary
       ? {
@@ -812,11 +805,7 @@ export function buildAuctionAdvisorContext(
       warnings: guidanceWarnings,
       positionCounts,
     },
-    preferences: {
-      targetPlayerNames,
-      fadePlayerNames,
-      watchlistPlayerNames,
-    },
+    preferences: preferenceFallbacks,
     byeWeekRisks: {
       maxSameByeWeekRosterCount: Math.max(
         0,

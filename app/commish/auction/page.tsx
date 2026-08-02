@@ -6,6 +6,7 @@ import {
 } from "@/lib/auth/auctionAccess";
 import { readPublishedAdpConsensusFromFirestore } from "@/lib/auction/adpRefreshService";
 import { readAuctionOwnerPreferences } from "@/lib/auction/ownerPreferences";
+import { getAuctionPreferenceFallbacksForProfile } from "@/lib/auction/preferenceFallbackData";
 import { readAuctionOwnerProfileSettings } from "@/lib/auction/ownerProfileSettings";
 import { readAuctionPurchaseDecisionSnapshots } from "@/lib/auction/purchaseDecisions";
 import { readPublishedMasterviewFromFirestore } from "@/lib/auction/valueRefreshService";
@@ -173,6 +174,8 @@ export default async function AuctionWarRoomPage() {
   }
 
   const initialOwnerSettings = await readInitialOwnerSettings(ownerProfileId);
+  const initialPreferenceFallbacks =
+    getAuctionPreferenceFallbacksForProfile(ownerProfileId);
 
   if (
     actor.access.role === "pilot-owner" &&
@@ -199,6 +202,7 @@ export default async function AuctionWarRoomPage() {
       initialValueSource={initialValueSource}
       initialAdpSource={initialAdpSource}
       initialOwnerPreferences={initialOwnerPreferences}
+      initialPreferenceFallbacks={initialPreferenceFallbacks}
       initialOwnerSettings={initialOwnerSettings}
       initialPurchaseDecisions={initialPurchaseDecisions}
     />
