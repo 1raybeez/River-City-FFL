@@ -89,3 +89,41 @@ No identity or ownership-tenure record may be created solely from a helper attac
 - `lib/manual-history.ts` remains in the repository but is no longer an Owner
   Season History placement source. Removing it is deferred to a separate
   cleanup milestone.
+
+## Franchise History rulings
+
+### Ownership-era boundaries
+
+- Start a new franchise ownership era when the approved owner set changes, an
+  ownership role changes, the franchise returns after inactivity, or an
+  explicit commissioner ruling changes franchise identity.
+- Historical team names, Sleeper roster IDs, temporary helper accounts,
+  spelling variations, and temporary nicknames do not create ownership eras.
+
+### Historical-name presentation
+
+- Complete Franchise Name History preserves every sourced historical team
+  name, including temporary names and misspellings.
+- The primary Franchise Timeline includes only sustained names or separately
+  approved historically meaningful changes. It must not list every raw label.
+
+### Franchise status
+
+- `active` means currently competing.
+- `dormant` means not currently competing while continuity remains available
+  for a future return.
+- `retired` means explicitly concluded with no expected continuation.
+- Special Brownies is dormant after 2024. It remains Landon Elliott's separate
+  franchise history and is not merged into Shake-N-Bakers.
+
+### Succession and matchup scope
+
+- No predecessor or successor relationship exists without an explicit
+  commissioner ruling. Roster-slot reuse, owner movement, co-owner changes,
+  inactivity, and a new franchise using a former owner are insufficient.
+- Special Brownies is not a predecessor of Shake-N-Bakers.
+- The default franchise matchup résumé includes only overall, regular,
+  championship-playoff, and championship-game records. Overall contains only
+  regular and championship-playoff games.
+- Third-place, placement, consolation, and Toilet Bowl records remain separate
+  secondary scopes. Byes and incomplete contests create no statistics.
