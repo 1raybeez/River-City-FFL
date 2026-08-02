@@ -1,4 +1,8 @@
-import { activeManagers } from "@/lib/managers/activeManagers";
+import {
+  ACTIVE_MANAGER_TRADE_AGGRESSION_CALCULATED_THROUGH_SEASON,
+  ACTIVE_MANAGER_TRADE_AGGRESSION_GENERATED_AT,
+  activeManagers,
+} from "@/lib/managers/activeManagers";
 import { retiredManagers } from "@/lib/managers/retiredManagers";
 import { staffManagers } from "@/lib/managers/staff";
 import { RETIRED_TRADE_SCORES } from "@/lib/tradeScores";
@@ -17,8 +21,10 @@ import {
   type FranchiseStatSummary,
   type LeagueServiceTenure,
   type OwnerProfile,
+  type OwnerContactPreference,
   type OwnerSurveyProfile,
   type OwnershipTenure,
+  type TradeAggressionRating,
 } from "@/lib/managers/identityTypes";
 
 type RawManagerRecord =
@@ -44,6 +50,10 @@ const FRANCHISE_ID_OVERRIDES: Record<string, string> = {
 };
 
 const JEFFREY_SLEEPER_ID = "356621920969555968";
+const LANDON_SLEEPER_IDS = [
+  "469199353672626176",
+  "342885779137216512",
+] as const;
 const LANDON_SHAKE_START_SEASON = 2025;
 
 const rawManagerRecords: RawManagerRecord[] = [
@@ -180,12 +190,72 @@ function getMembershipEndSeason(manager: RawManagerRecord) {
   return getMembershipHistory(ownerId)?.endSeason;
 }
 
-function buildSurveyProfile(manager: RawManagerRecord): OwnerSurveyProfile {
+const PUBLIC_CONTACT_PREFERENCES: Record<string, OwnerContactPreference> = {
+  Text: {
+    method: "sms",
+    publicLabel: "iMessage",
+    audience: "public",
+    ownerConsent: false,
+    actionStatus: "label-only",
+  },
+  WhatsApp: {
+    method: "whatsapp",
+    publicLabel: "WhatsApp",
+    audience: "public",
+    ownerConsent: false,
+    actionStatus: "label-only",
+  },
+  Sleeper: {
+    method: "sleeper",
+    publicLabel: "Sleeper DM",
+    audience: "public",
+    ownerConsent: false,
+    actionStatus: "label-only",
+  },
+};
+
+function getTradeAggressionRating(
+  manager: RawManagerRecord,
+  status: OwnerProfileStatus
+): TradeAggressionRating | undefined {
+  const generatedValue = getNumber(manager, "tradeAggression");
+
+  if (status === OwnerProfileStatus.Active && generatedValue !== undefined) {
+    return {
+      value: generatedValue,
+      source: "trade-history-calculation",
+      generatedAt: ACTIVE_MANAGER_TRADE_AGGRESSION_GENERATED_AT,
+      calculatedThroughSeason:
+        ACTIVE_MANAGER_TRADE_AGGRESSION_CALCULATED_THROUGH_SEASON,
+      methodologyVersion: "trade-aggression-v1",
+      description: "Calculated from recorded River City trades since 2018.",
+    };
+  }
+
+  const curatedValue = RETIRED_TRADE_SCORES[manager.fullName];
+  if (curatedValue === undefined) return undefined;
+
+  return {
+    value: curatedValue,
+    source: "commissioner-curated",
+    description: "Commissioner-curated legacy profile rating.",
+  };
+}
+
+function getContactPreference(manager: RawManagerRecord) {
+  const preferredContact = getString(manager, "preferredContact");
+  return preferredContact
+    ? PUBLIC_CONTACT_PREFERENCES[preferredContact]
+    : undefined;
+}
+
+function buildSurveyProfile(
+  manager: RawManagerRecord,
+  status: OwnerProfileStatus
+): OwnerSurveyProfile {
   const rivalName = getRivalName(manager);
   const favoritePlayerId = getNumber(manager, "favoritePlayer");
-  const tradeAggression =
-    getNumber(manager, "tradeAggression") ??
-    RETIRED_TRADE_SCORES[manager.fullName];
+  const tradeAggressionRating = getTradeAggressionRating(manager, status);
 
   return {
     surveyComplete: Boolean(
@@ -209,8 +279,10 @@ function buildSurveyProfile(manager: RawManagerRecord): OwnerSurveyProfile {
       | DraftPreference
       | undefined,
     teamBuildingMode: getString(manager, "mode"),
-    tradeAggression,
+    tradeAggression: tradeAggressionRating?.value,
+    tradeAggressionRating,
     preferredContact: getString(manager, "preferredContact"),
+    contactPreference: getContactPreference(manager),
   };
 }
 
@@ -241,7 +313,7 @@ function buildOwnerProfile(
       status === OwnerProfileStatus.Active ? [franchiseId] : [],
     legacyFranchiseIds:
       status === OwnerProfileStatus.Retired ? [franchiseId] : [],
-    survey: buildSurveyProfile(manager),
+    survey: buildSurveyProfile(manager, status),
   };
 }
 
@@ -267,6 +339,11 @@ const jeffreyOwnerProfile: OwnerProfile = {
     favoritePlayerId: 9509,
     favoritePlayerName: "Bijan Robinson",
     tradeAggression: 9,
+    tradeAggressionRating: {
+      value: 9,
+      source: "commissioner-curated",
+      description: "Commissioner-curated profile rating.",
+    },
     rivalName: "Wade",
     rivalOwnerId: "wade-cameron",
     rivalImage: "/managers/Wade.png",
@@ -288,7 +365,7 @@ const OWNER_PROFILE_OVERRIDES: Record<string, OwnerProfileOverride> = {
       favoriteNflTeam: "ATL" as TeamCode,
     },
     notes: [
-      "Ray has co-owned Prestigio Mundial with Jeffrey Hudgins for the full history of the franchise.",
+      "Ray was Prestigio Mundial's solo owner in 2011 and has co-owned it with Jeffrey Hudgins since 2013.",
       "Ray's favorite NFL team is the Atlanta Falcons.",
     ],
   },
@@ -387,6 +464,7 @@ const OWNER_PROFILE_OVERRIDES: Record<string, OwnerProfileOverride> = {
   "landon-elliott": {
     status: OwnerProfileStatus.Active,
     location: "Richmond, VA",
+    sleeperIds: [...LANDON_SLEEPER_IDS],
     landingGroups: [
       ManagerLandingGroup.Active,
       ManagerLandingGroup.RetiredOwners,
@@ -396,6 +474,7 @@ const OWNER_PROFILE_OVERRIDES: Record<string, OwnerProfileOverride> = {
     notes: [
       "Landon joined Jordan Maslyn as co-owner of The Shake-N-Bakers beginning in 2025.",
       "Landon's historical Special Brownies accomplishments remain a separate retired-owner legacy.",
+      "Sleeper ID 342885779137216512 is a commissioner-confirmed historical alias used for Landon's 2018 Special Brownies roster.",
     ],
   },
   "damon-davis": {
@@ -465,8 +544,8 @@ function getSpecialFranchiseOwnerRules(ownerId: string, franchiseId: string) {
       coOwnerIds: ["ray-long", "jeffrey-hudgins"],
       statOwnerIds: ["ray-long", "jeffrey-hudgins"],
       notes: [
-        "Prestigio Mundial has been co-owned by Ray Long and Jeffrey Hudgins for the full franchise history.",
-        "Career stats for this franchise are shared by both owners.",
+        "Ray Long was Prestigio Mundial's solo owner in 2011; Ray and Jeffrey Hudgins have co-owned it since 2013.",
+        "Career stats for shared seasons are attributed to both owners.",
       ],
     };
   }
@@ -570,6 +649,22 @@ const activeOwnershipTenures: OwnershipTenure[] = activeManagers.flatMap(
 
     if (franchiseId === "prestigio-mundial") {
       return [
+        {
+          id: "ray-long-prestigio-mundial-2011",
+          ownerId: "ray-long",
+          franchiseId,
+          role: OwnershipRole.Primary,
+          startSeason: 2011,
+          endSeason: 2011,
+          isActive: false,
+          showOnActiveLanding: false,
+          showUnderRetiredOwners: false,
+          accomplishmentAttribution:
+            AccomplishmentAttribution.PrimaryFranchise,
+          notes: [
+            "Ray was the solo owner of Prestigio Mundial in 2011 and did not participate in 2012.",
+          ],
+        },
         {
           id: "ray-long-prestigio-mundial-2013",
           ownerId: "ray-long",
@@ -748,7 +843,9 @@ function buildStatSummary(
         : AccomplishmentAttribution.PrimaryFranchise,
     notes: [
       ...(isPrestigio
-        ? ["Prestigio Mundial stats are shared by Ray Long and Jeffrey Hudgins."]
+        ? [
+            "Prestigio Mundial stats are shared by Ray Long and Jeffrey Hudgins beginning in 2013.",
+          ]
         : []),
       ...(isShake
         ? [

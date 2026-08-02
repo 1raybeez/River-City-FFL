@@ -1,5 +1,14 @@
 import { activeManagers } from "@/lib/managers/activeManagers";
 import { riverCityAuctionLeagueSettings } from "@/lib/auction/leagueSettings";
+import {
+  AUCTION_OWNER_PROFILE_LABEL_RAY_JEFFREY,
+  AUCTION_OWNER_PROFILE_RAY_JEFFREY,
+} from "@/lib/auction/ownerProfileIds";
+
+export {
+  AUCTION_OWNER_PROFILE_LABEL_RAY_JEFFREY,
+  AUCTION_OWNER_PROFILE_RAY_JEFFREY,
+} from "@/lib/auction/ownerProfileIds";
 
 export type AuctionOwnerRole =
   | "commissioner"
@@ -86,9 +95,6 @@ function profileFromManager({
     updatedAt,
   };
 }
-
-export const AUCTION_OWNER_PROFILE_RAY_JEFFREY = "ray-jeffrey";
-export const AUCTION_OWNER_PROFILE_LABEL_RAY_JEFFREY = "Prestigio Mundial";
 
 const rayManager = findManager("Ray Long");
 

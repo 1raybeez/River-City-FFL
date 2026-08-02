@@ -3,7 +3,7 @@ export const AUCTION_OWNER_PREFERENCES_COLLECTION =
 export {
   AUCTION_OWNER_PROFILE_LABEL_RAY_JEFFREY as AUCTION_OWNER_PROFILE_LABEL,
   AUCTION_OWNER_PROFILE_RAY_JEFFREY as AUCTION_OWNER_PROFILE_ID,
-} from "@/lib/auction/ownerProfiles";
+} from "@/lib/auction/ownerProfileIds";
 
 export type AuctionOwnerPreferenceTag = "open" | "target" | "watch" | "fade";
 

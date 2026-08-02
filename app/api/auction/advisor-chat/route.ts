@@ -550,6 +550,7 @@ export async function POST(req: Request) {
 
   try {
     const context = buildAuctionAdvisorContext({
+      ownerProfileId: actor.access.ownerProfileId,
       selectedPlayerName,
       topValueTargetLimit: 5,
       warningLimit: 5,

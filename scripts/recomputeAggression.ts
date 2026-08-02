@@ -4,7 +4,6 @@
 // from 2018 → currentYear. Automatically includes new years as trades occur.
 // Writes updated aggression scores back into lib/managers/activeManagers.ts.
 
-import { firestore as db } from "../lib/firebaseAdmin";
 import { getHistoricalTradesForYear } from "../lib/history/tradeHistory";
 import { normalizeSingleTrade } from "../lib/history/normalizeTrade";
 import { computeTradeAggression } from "../lib/tradeAggressionEngine";
@@ -88,8 +87,13 @@ async function recomputeAggression() {
   });
 
   // Write updated file
+  const generatedAt = new Date().toISOString();
   const fileContents = `// AUTO-GENERATED FILE — DO NOT EDIT
-// Updated: ${new Date().toISOString()}
+// Updated: ${generatedAt}
+
+export const ACTIVE_MANAGER_TRADE_AGGRESSION_GENERATED_AT =
+  ${JSON.stringify(generatedAt)};
+export const ACTIVE_MANAGER_TRADE_AGGRESSION_CALCULATED_THROUGH_SEASON = ${CURRENT_YEAR};
 
 export const activeManagers = ${JSON.stringify(updatedManagers, null, 2)} as const;
 `;

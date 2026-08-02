@@ -4,6 +4,16 @@ import {
   getOwnerProfileStaticParams,
   getOwnerProfileViewModelBySlug,
 } from "@/lib/managers/identitySelectors";
+import { getOwnerProfileById } from "@/lib/managers/identityData";
+import { getOwnerSeasonHistory } from "@/lib/history/ownerSeasonHistory";
+import { getOwnerCareerSummary } from "@/lib/history/ownerCareerSummary";
+import { buildOwnerCareerTimeline } from "@/lib/managers/ownerCareerTimeline";
+import { toPublicOwnerProfileViewModel } from "@/lib/managers/ownerProfilePresentation";
+import {
+  loadOwnerCareerMatchupSummary,
+  loadOwnerOpponentMatchupSummaries,
+  loadOwnerProfileSeasonHistory,
+} from "@/lib/managers/ownerMatchupSummaryLoader";
 
 type OwnerProfilePageProps = {
   params: Promise<{
@@ -23,5 +33,51 @@ export default async function OwnerProfilePage({
 
   if (!profile) notFound();
 
-  return <OwnerProfile profile={profile} />;
+  const careerTimeline = buildOwnerCareerTimeline(
+    profile,
+    getOwnerSeasonHistory(profile.owner.id)
+  );
+  const ownerCareerSummary = getOwnerCareerSummary(profile.owner.id);
+
+  if (!ownerCareerSummary) notFound();
+
+  const [
+    careerMatchupSummary,
+    seasonHistoryEntries,
+    opponentMatchupSummaries,
+  ] = await Promise.all([
+    loadOwnerCareerMatchupSummary(slug),
+    loadOwnerProfileSeasonHistory(slug),
+    loadOwnerOpponentMatchupSummaries(slug),
+  ]);
+
+  if (!careerMatchupSummary) notFound();
+
+  const publicProfile = toPublicOwnerProfileViewModel(profile);
+
+  const opponentIdentities = opponentMatchupSummaries.flatMap((summary) => {
+    const opponent = getOwnerProfileById(summary.opponentOwnerId);
+    return opponent
+      ? [
+          {
+            ownerId: opponent.id,
+            slug: opponent.slug,
+            fullName: opponent.fullName,
+            photo: opponent.photo,
+          },
+        ]
+      : [];
+  });
+
+  return (
+    <OwnerProfile
+      profile={publicProfile}
+      careerTimeline={careerTimeline}
+      ownerCareerSummary={ownerCareerSummary}
+      careerMatchupSummary={careerMatchupSummary}
+      seasonHistoryEntries={seasonHistoryEntries}
+      opponentMatchupSummaries={opponentMatchupSummaries}
+      opponentIdentities={opponentIdentities}
+    />
+  );
 }
