@@ -71,6 +71,22 @@ Raw historical labels and normalized values serve different purposes. The raw pl
 
 All ten approved 2011 placement identities resolve. JD's fifth-place result remains explicitly franchise-unresolved because no approved 2011 franchise mapping exists; no franchise may be invented for it.
 
+## Trade-aggression and contact metadata
+
+Trade-aggression values retain their existing 0–10 scores, but their provenance is not uniform:
+
+- active-manager ratings are calculated from recorded River City trades beginning with the 2018 Sleeper source period and carry the generated timestamp, calculated-through season, and methodology version written with the generated active-manager data;
+- retired-manager fallback ratings are commissioner-curated legacy profile values; and
+- Jeffrey Hudgins's standalone profile rating is commissioner-curated.
+
+Staff profiles and profiles without an approved value omit the rating. The Manager Profile meter is presentation only: it displays the stored value, defensively clamps only the visual fill to the 0–10 range, and does not recalculate the score. Its continuous red-to-yellow-to-green spectrum represents willingness to trade: 0 is not willing, 5 is situational or moderate, and 10 is very willing. The full muted spectrum remains visible behind the saturated filled extent so the unfilled remainder stays distinct. The visible source label is `Trade-history score` for calculated active-manager values and `Curated profile rating` for commissioner-curated values.
+
+Preferred-contact metadata is public, label-only profile content. The normalized public model supports SMS, WhatsApp, Sleeper, and email methods and records the method, public label, intended audience, action consent state, and action status, but contains no phone number, email address, username, Sleeper user ID, URL, or other raw target. Existing labels remain `iMessage`, `WhatsApp`, and `Sleeper DM` where applicable. Current entries have `actionStatus: label-only`; no SMS, email, WhatsApp, or Sleeper link is generated.
+
+Raw contact targets remain outside `OwnerSurveyProfile` and outside serialized Manager Profile props. Actual phone numbers and email addresses must not be stored in public profile data. Action consent is distinct from permission to display the existing public preference label. Clickable actions are deferred until a future authenticated league-member boundary, explicit target verification, audience approval, and server-only target store are implemented. A generic phone number must not be treated as WhatsApp-enabled. Sleeper DM remains unlinked until a verified stable URL or explicit approved URL is stored rather than inferred from a numeric Sleeper ID.
+
+The future access boundary is intentionally separate from the Auction War Room authorization model unless a general shared authentication layer is deliberately approved later. Public visitors receive only the preferred-method label and icon. Authenticated league members may eventually receive approved click-to-text, email, WhatsApp, or verified Sleeper actions. Commissioners may eventually manage private targets, consent, audience, verification, revocation, and updates. This specification documents that extension boundary but does not authorize contact actions or authentication work in the current phase.
+
 ## Season-specific division rules
 
 Division membership is season-level data, not an enduring owner or franchise property.

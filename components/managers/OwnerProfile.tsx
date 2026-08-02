@@ -29,8 +29,11 @@ import { teamColors } from "@/lib/themes/teamColors";
 import {
   AccomplishmentAttribution,
   OwnerProfileStatus,
+  type ContactMethod,
   type FranchiseStatSummary,
+  type OwnerContactPreference,
   type OwnerSurveyProfile,
+  type TradeAggressionRating,
 } from "@/lib/managers/identityTypes";
 import type {
   OwnerProfileViewModel,
@@ -63,15 +66,10 @@ const VALUE_POSITION_LABELS: Record<string, string> = {
   DEF: "Defense / Special Teams (DEF)",
 };
 
-type ContactMethodDisplay = {
-  label: string;
-  icon?: string;
-};
-
-const CONTACT_METHODS: Record<string, ContactMethodDisplay> = {
-  Text: { label: "iMessage", icon: "/logos/iMessage.png" },
-  WhatsApp: { label: "WhatsApp", icon: "/logos/WhatsApp.png" },
-  Sleeper: { label: "Sleeper DM", icon: "/logos/Sleeper.png" },
+const CONTACT_METHOD_ICONS: Partial<Record<ContactMethod, string>> = {
+  sms: "/logos/iMessage.png",
+  whatsapp: "/logos/WhatsApp.png",
+  sleeper: "/logos/Sleeper.png",
 };
 
 const SLEEPER_LEAGUE_ID = "1312149033254416384";
@@ -140,9 +138,73 @@ function getValuePositionLabel(valuePosition?: string) {
   return VALUE_POSITION_LABELS[valuePosition] ?? valuePosition;
 }
 
-function getContactMethod(preferredContact?: string) {
-  if (!preferredContact) return undefined;
-  return CONTACT_METHODS[preferredContact] ?? { label: preferredContact };
+function getContactMethod(preference?: OwnerContactPreference) {
+  if (!preference) return undefined;
+  return {
+    label: preference.publicLabel,
+    icon: CONTACT_METHOD_ICONS[preference.method],
+  };
+}
+
+function getTradeAggressionSourceLabel(rating: TradeAggressionRating) {
+  return rating.source === "trade-history-calculation"
+    ? "Trade-history score"
+    : "Curated profile rating";
+}
+
+export function TradeAggressionMeter({
+  rating,
+}: {
+  rating: TradeAggressionRating;
+}) {
+  const clampedScore = Math.min(10, Math.max(0, rating.value));
+  const clampedWidth = clampedScore * 10;
+  const gradientWidth = clampedScore > 0 ? 1000 / clampedScore : 0;
+  const meterGradient =
+    "linear-gradient(90deg, #b91c1c 0%, #ef4444 24%, #eab308 50%, #84cc16 74%, #15803d 100%)";
+
+  return (
+    <div className="rounded-lg border border-black/10 bg-black/[0.02] p-3 dark:border-white/10 dark:bg-white/[0.04]">
+      <div className="mb-2 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+            Trade Aggression
+          </p>
+          <p className="mt-1 text-[9px] font-bold uppercase tracking-wider text-black/45 dark:text-white/45">
+            {getTradeAggressionSourceLabel(rating)}
+          </p>
+        </div>
+        <p className="text-sm font-black">{rating.value}/10</p>
+      </div>
+      <div
+        className="relative h-2 overflow-hidden rounded-full bg-black/10 ring-1 ring-inset ring-black/10 dark:bg-white/15 dark:ring-white/15"
+        aria-label={`Trade aggression ${rating.value} out of 10`}
+        role="meter"
+        aria-valuemin={0}
+        aria-valuemax={10}
+        aria-valuenow={rating.value}
+      >
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 opacity-25"
+          style={{ background: meterGradient }}
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 left-0 overflow-hidden rounded-full"
+          style={{ width: `${clampedWidth}%` }}
+        >
+          <div
+            className="h-full"
+            style={{
+              width: `${gradientWidth}%`,
+              background: meterGradient,
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function getDivisionName(
@@ -671,16 +733,14 @@ function OwnerOverview({
   const favoriteNflTeam = getNflTeamLabel(survey.favoriteNflTeam);
   const favoritePlayer = getFavoritePlayerLabel(survey);
   const valuePosition = getValuePositionLabel(survey.valuePosition);
-  const contactMethod = getContactMethod(survey.preferredContact);
+  const contactMethod = getContactMethod(survey.contactPreference);
+  const tradeAggressionRating = survey.tradeAggressionRating;
   const scoutingFields = [
     survey.teamBuildingMode
       ? { label: "Team Mode", value: survey.teamBuildingMode }
       : null,
     survey.draftPreference
       ? { label: "Draft Style", value: survey.draftPreference }
-      : null,
-    typeof survey.tradeAggression === "number"
-      ? { label: "Trade Aggression", value: `${survey.tradeAggression}/10` }
       : null,
     valuePosition ? { label: "Value Position", value: valuePosition } : null,
     favoriteNflTeam
@@ -690,6 +750,9 @@ function OwnerOverview({
       ? { label: "Favorite Player", value: favoritePlayer }
       : null,
   ].filter((field): field is { label: string; value: string } => field !== null);
+  const showScoutingReport = Boolean(
+    tradeAggressionRating || scoutingFields.length > 0
+  );
   const rivalSummary = survey.rivalOwnerId
     ? opponentSummaries.find(
         (summary) => summary.opponentOwnerId === survey.rivalOwnerId
@@ -792,17 +855,24 @@ function OwnerOverview({
         </div>
 
         <div className="space-y-4">
-          {scoutingFields.length > 0 && (
+          {showScoutingReport && (
             <OverviewPanel title="Scouting Report" icon={<UserRound size={15} />}>
-              <div className="grid grid-cols-2 gap-2">
-                {scoutingFields.map((field) => (
-                  <PersonalityField
-                    key={field.label}
-                    label={field.label}
-                    value={field.value}
-                  />
-                ))}
-              </div>
+              {tradeAggressionRating && (
+                <TradeAggressionMeter rating={tradeAggressionRating} />
+              )}
+              {scoutingFields.length > 0 && (
+                <div
+                  className={`grid grid-cols-2 gap-2 ${tradeAggressionRating ? "mt-2" : ""}`}
+                >
+                  {scoutingFields.map((field) => (
+                    <PersonalityField
+                      key={field.label}
+                      label={field.label}
+                      value={field.value}
+                    />
+                  ))}
+                </div>
+              )}
             </OverviewPanel>
           )}
 
@@ -878,6 +948,9 @@ function OwnerOverview({
                     </p>
                     <p className="mt-1 text-sm font-black">
                       {contactMethod.label}
+                    </p>
+                    <p className="mt-1 text-[10px] font-medium text-black/45 dark:text-white/45">
+                      Member contact action coming later.
                     </p>
                   </div>
                 </div>

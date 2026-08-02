@@ -8,6 +8,7 @@ import { getOwnerProfileById } from "@/lib/managers/identityData";
 import { getOwnerSeasonHistory } from "@/lib/history/ownerSeasonHistory";
 import { getOwnerCareerSummary } from "@/lib/history/ownerCareerSummary";
 import { buildOwnerCareerTimeline } from "@/lib/managers/ownerCareerTimeline";
+import { toPublicOwnerProfileViewModel } from "@/lib/managers/ownerProfilePresentation";
 import {
   loadOwnerCareerMatchupSummary,
   loadOwnerOpponentMatchupSummaries,
@@ -52,6 +53,8 @@ export default async function OwnerProfilePage({
 
   if (!careerMatchupSummary) notFound();
 
+  const publicProfile = toPublicOwnerProfileViewModel(profile);
+
   const opponentIdentities = opponentMatchupSummaries.flatMap((summary) => {
     const opponent = getOwnerProfileById(summary.opponentOwnerId);
     return opponent
@@ -68,7 +71,7 @@ export default async function OwnerProfilePage({
 
   return (
     <OwnerProfile
-      profile={profile}
+      profile={publicProfile}
       careerTimeline={careerTimeline}
       ownerCareerSummary={ownerCareerSummary}
       careerMatchupSummary={careerMatchupSummary}

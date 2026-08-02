@@ -45,6 +45,40 @@ export const AccomplishmentAttribution = {
 export type AccomplishmentAttribution =
   (typeof AccomplishmentAttribution)[keyof typeof AccomplishmentAttribution];
 
+export type TradeAggressionRatingSource =
+  | "trade-history-calculation"
+  | "commissioner-curated"
+  | "owner-submitted";
+
+export interface TradeAggressionRating {
+  value: number;
+  source: TradeAggressionRatingSource;
+  generatedAt?: string;
+  calculatedThroughSeason?: number;
+  methodologyVersion?: string;
+  description?: string;
+}
+
+export type ContactMethod = "sms" | "whatsapp" | "sleeper" | "email";
+
+export type ContactAudience =
+  | "public"
+  | "authenticated-league-members"
+  | "commissioner-only";
+
+export interface OwnerContactPreference {
+  method: ContactMethod;
+  publicLabel: string;
+  audience: ContactAudience;
+  /** Consent for an actionable contact target, not for the public label. */
+  ownerConsent: boolean;
+  verificationSource?: "owner-confirmed" | "commissioner-confirmed";
+  verifiedAt?: string;
+  actionStatus: "label-only" | "actionable";
+  /** An opaque server-only reference. Raw contact targets are never allowed here. */
+  targetRef?: string;
+}
+
 export interface OwnerSurveyProfile {
   surveyComplete: boolean;
   bio?: string;
@@ -59,7 +93,9 @@ export interface OwnerSurveyProfile {
   draftPreference?: DraftPreference;
   teamBuildingMode?: string;
   tradeAggression?: number;
+  tradeAggressionRating?: TradeAggressionRating;
   preferredContact?: string;
+  contactPreference?: OwnerContactPreference;
 }
 
 export interface OwnerProfile {
