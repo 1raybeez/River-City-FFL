@@ -1888,12 +1888,14 @@ function OpponentHistory({
   profile,
   summaries,
   identities,
+  supportedHeadToHeadOpponentIds,
   sourceAvailability,
   hasEarlierNoSourceSeasons,
 }: {
   profile: OwnerProfileViewModel;
   summaries: readonly OwnerOpponentMatchupSummary[];
   identities: readonly OpponentIdentity[];
+  supportedHeadToHeadOpponentIds: readonly string[];
   sourceAvailability: OwnerMatchupSourceAvailability;
   hasEarlierNoSourceSeasons: boolean;
 }) {
@@ -1916,6 +1918,15 @@ function OpponentHistory({
     sortedSummaries.find(
       (summary) => summary.summaryKey === selectedSummaryKey
     ) ?? sortedSummaries[0];
+  const selectedIdentity = selectedSummary
+    ? identitiesByOwnerId.get(selectedSummary.opponentOwnerId)
+    : undefined;
+  const fullHeadToHeadHref =
+    selectedSummary &&
+    selectedIdentity &&
+    supportedHeadToHeadOpponentIds.includes(selectedSummary.opponentOwnerId)
+      ? `/managers/owners/${profile.owner.slug}/opponents/${selectedIdentity.slug}`
+      : null;
 
   return (
     <SectionShell id="opponents" title="Opponent History" icon={<Swords size={16} />}>
@@ -2112,6 +2123,19 @@ function OpponentHistory({
               );
             })}
           </div>
+
+          {fullHeadToHeadHref && selectedIdentity && (
+            <div className="mt-4 flex justify-end">
+              <Link
+                href={fullHeadToHeadHref}
+                className="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#121212]"
+                aria-label={`View full head-to-head: ${profile.owner.fullName} versus ${selectedIdentity.fullName}`}
+              >
+                View Full Head-to-Head
+                <ArrowRight size={13} />
+              </Link>
+            </div>
+          )}
         </>
       )}
     </SectionShell>
@@ -2163,6 +2187,7 @@ export default function OwnerProfile({
   seasonHistoryEntries,
   opponentMatchupSummaries,
   opponentIdentities,
+  supportedHeadToHeadOpponentIds,
   franchiseLegacy,
 }: {
   profile: OwnerProfileViewModel;
@@ -2172,6 +2197,7 @@ export default function OwnerProfile({
   seasonHistoryEntries: readonly SeasonHistoryEntry[];
   opponentMatchupSummaries: readonly OwnerOpponentMatchupSummary[];
   opponentIdentities: readonly OpponentIdentity[];
+  supportedHeadToHeadOpponentIds: readonly string[];
   franchiseLegacy: OwnerFranchiseLegacyPresentation;
 }) {
   const isStaff = profile.owner.status === OwnerProfileStatus.Staff;
@@ -2187,6 +2213,7 @@ export default function OwnerProfile({
       profile={profile}
       summaries={opponentMatchupSummaries}
       identities={opponentIdentities}
+      supportedHeadToHeadOpponentIds={supportedHeadToHeadOpponentIds}
       sourceAvailability={
         careerMatchupSummary.coverage.sourceAvailability
       }

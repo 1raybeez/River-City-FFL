@@ -17,6 +17,10 @@ import {
   type OwnerSeasonMatchupSummary,
 } from "@/lib/history/ownerMatchupSummary";
 import {
+  buildOwnerHeadToHeadDetails,
+  getAllSupportedDirectionalHeadToHeadPairs,
+} from "@/lib/history/ownerHeadToHeadDetail";
+import {
   getAllOwnerSeasonHistory,
   getOwnerSeasonHistory,
   type OwnerSeasonHistoryRecord,
@@ -32,7 +36,7 @@ export type OwnerProfileSeasonHistoryEntry = Readonly<{
   matchupSummary: OwnerSeasonMatchupSummary | null;
 }>;
 
-function initializeOwnerMatchupSummaries() {
+export function initializeOwnerMatchupHistory() {
   if (initialization) return initialization;
 
   initialization = (async () => {
@@ -46,9 +50,23 @@ function initializeOwnerMatchupSummaries() {
       ownerSeasonRecords,
     });
 
-    buildOwnerMatchupSummaries({
+    const summaryBuild = buildOwnerMatchupSummaries({
       projections,
       ownerSeasonRecords,
+      ownerProfiles: ownerProfiles.map(({ id, slug, status }) => ({
+        id,
+        slug,
+        status,
+      })),
+      projectionCoverage: getOwnerMatchupProjectionCoverage(),
+    });
+
+    buildOwnerHeadToHeadDetails({
+      canonicalMatchups,
+      projections,
+      opponentSummaries: summaryBuild.opponentSummaries,
+      careerSummaries: summaryBuild.careerSummaries,
+      seasonSummaries: summaryBuild.seasonSummaries,
       ownerProfiles: ownerProfiles.map(({ id, slug, status }) => ({
         id,
         slug,
@@ -64,21 +82,21 @@ function initializeOwnerMatchupSummaries() {
 export async function loadOwnerCareerMatchupSummary(
   ownerIdOrSlug: string
 ): Promise<OwnerCareerMatchupSummary | null> {
-  await initializeOwnerMatchupSummaries();
+  await initializeOwnerMatchupHistory();
   return getOwnerCareerMatchupSummary(ownerIdOrSlug);
 }
 
 export async function loadOwnerSeasonMatchupSummaries(
   ownerIdOrSlug: string
 ): Promise<readonly OwnerSeasonMatchupSummary[]> {
-  await initializeOwnerMatchupSummaries();
+  await initializeOwnerMatchupHistory();
   return getOwnerSeasonMatchupSummaries(ownerIdOrSlug);
 }
 
 export async function loadOwnerProfileSeasonHistory(
   ownerIdOrSlug: string
 ): Promise<readonly OwnerProfileSeasonHistoryEntry[]> {
-  await initializeOwnerMatchupSummaries();
+  await initializeOwnerMatchupHistory();
 
   const seasonResults = getOwnerSeasonHistory(ownerIdOrSlug);
   const matchupSummaries = getOwnerSeasonMatchupSummaries(ownerIdOrSlug);
@@ -125,6 +143,27 @@ export async function loadOwnerProfileSeasonHistory(
 export async function loadOwnerOpponentMatchupSummaries(
   ownerIdOrSlug: string
 ): Promise<readonly OwnerOpponentMatchupSummary[]> {
-  await initializeOwnerMatchupSummaries();
+  await initializeOwnerMatchupHistory();
   return getOwnerOpponentMatchupSummaries(ownerIdOrSlug);
+}
+
+export async function loadSupportedOwnerHeadToHeadOpponentIds(
+  ownerIdOrSlug: string
+): Promise<readonly string[]> {
+  await initializeOwnerMatchupHistory();
+  const normalized = ownerIdOrSlug.trim().toLowerCase();
+  const ownerId =
+    ownerProfiles.find(
+      (profile) =>
+        profile.id.toLowerCase() === normalized ||
+        profile.slug.toLowerCase() === normalized
+    )?.id ?? null;
+  if (!ownerId) return [];
+
+  return Object.freeze(
+    getAllSupportedDirectionalHeadToHeadPairs()
+      .filter((detail) => detail.ownerId === ownerId)
+      .map((detail) => detail.opponentOwnerId)
+      .sort()
+  );
 }

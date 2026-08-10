@@ -13,24 +13,25 @@ import {
   loadOwnerCareerMatchupSummary,
   loadOwnerOpponentMatchupSummaries,
   loadOwnerProfileSeasonHistory,
+  loadSupportedOwnerHeadToHeadOpponentIds,
 } from "@/lib/managers/ownerMatchupSummaryLoader";
 import { loadOwnerFranchiseLegacy } from "@/lib/managers/franchiseHistoryLoader";
 
 type OwnerProfilePageProps = {
   params: Promise<{
-    slug: string;
+    owner: string;
   }>;
 };
 
 export function generateStaticParams() {
-  return getOwnerProfileStaticParams();
+  return getOwnerProfileStaticParams().map(({ slug }) => ({ owner: slug }));
 }
 
 export default async function OwnerProfilePage({
   params,
 }: OwnerProfilePageProps) {
-  const { slug } = await params;
-  const profile = getOwnerProfileViewModelBySlug(slug);
+  const { owner } = await params;
+  const profile = getOwnerProfileViewModelBySlug(owner);
 
   if (!profile) notFound();
 
@@ -46,12 +47,14 @@ export default async function OwnerProfilePage({
     careerMatchupSummary,
     seasonHistoryEntries,
     opponentMatchupSummaries,
+    supportedHeadToHeadOpponentIds,
     franchiseLegacy,
   ] = await Promise.all([
-    loadOwnerCareerMatchupSummary(slug),
-    loadOwnerProfileSeasonHistory(slug),
-    loadOwnerOpponentMatchupSummaries(slug),
-    loadOwnerFranchiseLegacy(slug),
+    loadOwnerCareerMatchupSummary(owner),
+    loadOwnerProfileSeasonHistory(owner),
+    loadOwnerOpponentMatchupSummaries(owner),
+    loadSupportedOwnerHeadToHeadOpponentIds(owner),
+    loadOwnerFranchiseLegacy(owner),
   ]);
 
   if (!careerMatchupSummary || !franchiseLegacy) notFound();
@@ -81,6 +84,7 @@ export default async function OwnerProfilePage({
       seasonHistoryEntries={seasonHistoryEntries}
       opponentMatchupSummaries={opponentMatchupSummaries}
       opponentIdentities={opponentIdentities}
+      supportedHeadToHeadOpponentIds={supportedHeadToHeadOpponentIds}
       franchiseLegacy={franchiseLegacy}
     />
   );
