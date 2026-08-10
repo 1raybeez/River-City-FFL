@@ -321,14 +321,32 @@ const details = seeds.flatMap((seed) => {
   return [
     {
       relationshipKey: relationshipKey(seed.ownerA, seed.ownerB),
+      ownerId: seed.ownerA,
+      opponentOwnerId: seed.ownerB,
       summary,
     } as OwnerHeadToHeadDetail,
     {
       relationshipKey: relationshipKey(seed.ownerB, seed.ownerA),
-      summary: null,
+      ownerId: seed.ownerB,
+      opponentOwnerId: seed.ownerA,
+      summary,
     } as OwnerHeadToHeadDetail,
   ];
 });
+details.push(
+  {
+    relationshipKey: relationshipKey("ray-long", "jeffrey-hudgins"),
+    ownerId: "ray-long",
+    opponentOwnerId: "jeffrey-hudgins",
+    summary: null,
+  } as OwnerHeadToHeadDetail,
+  {
+    relationshipKey: relationshipKey("jeffrey-hudgins", "ray-long"),
+    ownerId: "jeffrey-hudgins",
+    opponentOwnerId: "ray-long",
+    summary: null,
+  } as OwnerHeadToHeadDetail
+);
 
 const methodology: RivalryScoreMethodology = {
   version: RIVALRY_SCORE_VERSION,
@@ -396,6 +414,13 @@ const card = (key: string) => {
   assert.ok(result, `Missing card ${key}`);
   return result;
 };
+const finderOwner = (ownerId: string) => {
+  const result = presentation.headToHeadFinderOwners.find(
+    (owner) => owner.ownerId === ownerId
+  );
+  assert.ok(result, `Missing Head-to-Head Finder owner ${ownerId}`);
+  return result;
+};
 
 assert.equal(RIVALRY_HUB_INITIAL_CARD_COUNT, 3);
 assert.equal(presentation.initialCardCount, 3);
@@ -444,7 +469,42 @@ assert.equal(
 
 const ray = card("rivalry:ray-long:wade-cameron");
 const jeffrey = card("rivalry:jeffrey-hudgins:wade-cameron");
+const rayFinder = finderOwner("ray-long");
+const jeffreyFinder = finderOwner("jeffrey-hudgins");
+const wadeFinder = finderOwner("wade-cameron");
+const jordanFinder = finderOwner("jordan-maslyn");
 assert.notEqual(ray.ownerA.ownerId, jeffrey.ownerA.ownerId);
+assert.notEqual(rayFinder.ownerId, jeffreyFinder.ownerId);
+assert.equal(rayFinder.opponents.length > 0, true);
+assert.equal(
+  rayFinder.opponents.some((owner) => owner.ownerId === "jeffrey-hudgins"),
+  false
+);
+assert.equal(jeffreyFinder.opponents.length > 0, true);
+assert.equal(
+  jeffreyFinder.opponents.some((owner) => owner.ownerId === "ray-long"),
+  false
+);
+assert.equal(
+  rayFinder.opponents.find((owner) => owner.ownerId === "wade-cameron")?.href,
+  "/managers/owners/ray-long/opponents/wade-cameron"
+);
+assert.equal(
+  wadeFinder.opponents.find((owner) => owner.ownerId === "ray-long")?.href,
+  "/managers/owners/wade-cameron/opponents/ray-long"
+);
+assert.equal(
+  jordanFinder.opponents.some((owner) => owner.ownerId === "landon-elliott"),
+  true
+);
+assert.equal(
+  presentation.headToHeadFinderOwners.some((owner) => owner.ownerId === "league-staff"),
+  false
+);
+assert.equal(
+  presentation.headToHeadFinderOwners.some((owner) => owner.ownerId === "temporary-helper"),
+  false
+);
 assert.equal(
   presentation.cards.some(
     (item) => item.ownerIds.includes("ray-long") && item.ownerIds.includes("jeffrey-hudgins")
@@ -593,6 +653,9 @@ assert.doesNotMatch(
 );
 assert.match(clientSource, /aria-pressed=\{scope === value\}/);
 assert.match(clientSource, /role="status"/);
+assert.match(clientSource, /disabled=\{!headToHeadOwner\}/);
+assert.match(clientSource, /disabled=\{!headToHeadOpponent\}/);
+assert.match(clientSource, /Choose an owner first/);
 
 console.log("Rivalry Hub presentation tests passed.");
 console.log(

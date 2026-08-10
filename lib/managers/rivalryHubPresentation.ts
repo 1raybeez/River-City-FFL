@@ -32,6 +32,22 @@ export type RivalryHubOwnerInput = Readonly<{
 
 export type RivalryOwnerPresentation = RivalryHubOwnerInput;
 
+export type HeadToHeadFinderOpponentPresentation = Readonly<{
+  ownerId: string;
+  slug: string;
+  fullName: string;
+  photo: string | null;
+  href: string;
+}>;
+
+export type HeadToHeadFinderOwnerPresentation = Readonly<{
+  ownerId: string;
+  slug: string;
+  fullName: string;
+  photo: string | null;
+  opponents: readonly HeadToHeadFinderOpponentPresentation[];
+}>;
+
 export type RivalryScoreExplanationPresentation = Readonly<{
   key:
     | "competitiveness"
@@ -100,6 +116,7 @@ export type RivalryCategoryPresentation = Readonly<{
 export type RivalryHubPresentation = Readonly<{
   initialCardCount: 3;
   ownerOptions: readonly RivalryOwnerPresentation[];
+  headToHeadFinderOwners: readonly HeadToHeadFinderOwnerPresentation[];
   cards: readonly RivalryCardPresentation[];
   topRivalryKeys: readonly string[];
   categories: readonly RivalryCategoryPresentation[];
@@ -341,6 +358,35 @@ export function buildRivalryHubPresentation(
   const detailByKey = new Map(
     input.headToHeadDetails.map((detail) => [detail.relationshipKey, detail])
   );
+  const competitiveOwner = (owner: RivalryHubOwnerInput) =>
+    owner.status === "active" || owner.status === "retired";
+  const finderOpponentsByOwnerId = new Map<
+    string,
+    HeadToHeadFinderOpponentPresentation[]
+  >();
+
+  input.headToHeadDetails.forEach((detail) => {
+    if (!detail.summary) return;
+    const owner = ownerById.get(detail.ownerId);
+    const opponent = ownerById.get(detail.opponentOwnerId);
+    if (
+      !owner ||
+      !opponent ||
+      !competitiveOwner(owner) ||
+      !competitiveOwner(opponent)
+    ) {
+      return;
+    }
+    const opponents = finderOpponentsByOwnerId.get(owner.ownerId) ?? [];
+    opponents.push({
+      ownerId: opponent.ownerId,
+      slug: opponent.slug,
+      fullName: opponent.fullName,
+      photo: opponent.photo,
+      href: `/managers/owners/${owner.slug}/opponents/${opponent.slug}`,
+    });
+    finderOpponentsByOwnerId.set(owner.ownerId, opponents);
+  });
 
   const cards = input.rivalries.map((rivalry) => {
     const ownerA = ownerById.get(rivalry.ownerIds[0]);
@@ -510,6 +556,20 @@ export function buildRivalryHubPresentation(
     initialCardCount: RIVALRY_HUB_INITIAL_CARD_COUNT,
     ownerOptions: [...ownerById.values()]
       .filter((owner) => cards.some((card) => card.ownerIds.includes(owner.ownerId)))
+      .sort((first, second) => first.fullName.localeCompare(second.fullName)),
+    headToHeadFinderOwners: [...finderOpponentsByOwnerId.entries()]
+      .map(([ownerId, opponents]) => {
+        const owner = ownerById.get(ownerId) as RivalryHubOwnerInput;
+        return {
+          ownerId: owner.ownerId,
+          slug: owner.slug,
+          fullName: owner.fullName,
+          photo: owner.photo,
+          opponents: opponents.sort((first, second) =>
+            first.fullName.localeCompare(second.fullName)
+          ),
+        };
+      })
       .sort((first, second) => first.fullName.localeCompare(second.fullName)),
     cards,
     topRivalryKeys: keys(input.topRivalries),

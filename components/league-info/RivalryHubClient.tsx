@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
@@ -262,6 +263,9 @@ export default function RivalryHubClient({
 }: {
   presentation: RivalryHubPresentation;
 }) {
+  const router = useRouter();
+  const [headToHeadOwnerId, setHeadToHeadOwnerId] = useState("");
+  const [headToHeadOpponentId, setHeadToHeadOpponentId] = useState("");
   const [selectedOwnerId, setSelectedOwnerId] = useState("all");
   const [scope, setScope] = useState<RivalryScope>("all-time");
   const [selectedCategoryId, setSelectedCategoryId] =
@@ -274,6 +278,12 @@ export default function RivalryHubClient({
     presentation.categories.find(
       (category) => category.id === selectedCategoryId
     ) ?? presentation.categories[0];
+  const headToHeadOwner = presentation.headToHeadFinderOwners.find(
+    (owner) => owner.ownerId === headToHeadOwnerId
+  );
+  const headToHeadOpponent = headToHeadOwner?.opponents.find(
+    (opponent) => opponent.ownerId === headToHeadOpponentId
+  );
 
   const cardFilter = {
     ownerId: selectedOwnerId === "all" ? null : selectedOwnerId,
@@ -378,6 +388,87 @@ export default function RivalryHubClient({
             </ul>
           </details>
         </header>
+
+        <section
+          aria-labelledby="head-to-head-finder-heading"
+          className="rounded-lg border border-red-600/20 bg-red-600/[0.035] p-4 dark:bg-red-600/[0.06] sm:p-5"
+        >
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[0.24em] text-red-600">
+              Matchup History
+            </p>
+            <h2
+              id="head-to-head-finder-heading"
+              className="mt-1 text-lg font-black uppercase italic sm:text-xl"
+            >
+              Find a Head-to-Head
+            </h2>
+            <p className="mt-1 text-sm font-medium text-black/55 dark:text-white/55">
+              Choose a specific owner matchup to open its supported factual history.
+            </p>
+          </div>
+          <form
+            className="mt-4 grid min-w-0 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (headToHeadOpponent) router.push(headToHeadOpponent.href);
+            }}
+          >
+            <label className="block min-w-0" htmlFor="head-to-head-owner">
+              <span className="mb-2 block text-[9px] font-black uppercase tracking-widest text-black/45 dark:text-white/45">
+                Owner
+              </span>
+              <select
+                id="head-to-head-owner"
+                value={headToHeadOwnerId}
+                onChange={(event) => {
+                  setHeadToHeadOwnerId(event.target.value);
+                  setHeadToHeadOpponentId("");
+                }}
+                className="w-full min-w-0 rounded-md border border-black/10 bg-white px-3 py-2.5 text-sm font-black outline-none focus:border-red-600 focus:ring-2 focus:ring-red-600/20 dark:border-white/10 dark:bg-[#121212]"
+              >
+                <option value="">Choose an owner</option>
+                {presentation.headToHeadFinderOwners.map((owner) => (
+                  <option key={owner.ownerId} value={owner.ownerId}>
+                    {owner.fullName}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block min-w-0" htmlFor="head-to-head-opponent">
+              <span className="mb-2 block text-[9px] font-black uppercase tracking-widest text-black/45 dark:text-white/45">
+                Opponent
+              </span>
+              <select
+                id="head-to-head-opponent"
+                value={headToHeadOpponentId}
+                disabled={!headToHeadOwner}
+                aria-describedby="head-to-head-opponent-help"
+                onChange={(event) => setHeadToHeadOpponentId(event.target.value)}
+                className="w-full min-w-0 rounded-md border border-black/10 bg-white px-3 py-2.5 text-sm font-black outline-none disabled:cursor-not-allowed disabled:opacity-50 focus:border-red-600 focus:ring-2 focus:ring-red-600/20 dark:border-white/10 dark:bg-[#121212]"
+              >
+                <option value="">
+                  {headToHeadOwner ? "Choose an opponent" : "Choose an owner first"}
+                </option>
+                {headToHeadOwner?.opponents.map((opponent) => (
+                  <option key={opponent.ownerId} value={opponent.ownerId}>
+                    {opponent.fullName}
+                  </option>
+                ))}
+              </select>
+              <span id="head-to-head-opponent-help" className="sr-only">
+                Select an owner first. Only opponents with supported Head-to-Head history are available.
+              </span>
+            </label>
+            <button
+              type="submit"
+              disabled={!headToHeadOpponent}
+              className="w-full rounded-md bg-black px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-black dark:hover:bg-red-600 dark:hover:text-white md:w-auto"
+            >
+              View Head-to-Head
+            </button>
+          </form>
+        </section>
 
         <section aria-labelledby="rivalry-filters" className="rounded-lg border border-black/10 p-4 dark:border-white/10 sm:p-5">
           <h2 id="rivalry-filters" className="text-xs font-black uppercase tracking-widest">
