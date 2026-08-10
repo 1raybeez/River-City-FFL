@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  BadgeDollarSign,
   History,
   MapPin,
   MessageCircle,
@@ -26,6 +27,7 @@ import type { OwnerCareerSummary } from "@/lib/history/ownerCareerSummary";
 import type { OwnerSeasonHistoryRecord } from "@/lib/history/ownerSeasonHistory";
 import type { OwnerCareerTimelineEvent } from "@/lib/managers/ownerCareerTimeline";
 import type { OwnerFranchiseLegacyPresentation } from "@/lib/managers/franchiseLegacyPresentation";
+import type { OwnerFinancialSnapshotPresentation } from "@/lib/managers/ownerFinancialSnapshotPresentation";
 import { teamColors } from "@/lib/themes/teamColors";
 import {
   OwnerProfileStatus,
@@ -678,12 +680,14 @@ function OverviewPanel({
 function OwnerOverview({
   profile,
   careerSummary,
+  financialSnapshot,
   matchupSummary,
   opponentSummaries,
   opponentIdentities,
 }: {
   profile: OwnerProfileViewModel;
   careerSummary: OwnerCareerSummary;
+  financialSnapshot: OwnerFinancialSnapshotPresentation | null;
   matchupSummary: OwnerCareerMatchupSummary;
   opponentSummaries: readonly OwnerOpponentMatchupSummary[];
   opponentIdentities: readonly OpponentIdentity[];
@@ -757,6 +761,51 @@ function OwnerOverview({
               ))}
             </div>
           </OverviewPanel>
+
+          {financialSnapshot && (
+            <OverviewPanel
+              title={financialSnapshot.title}
+              icon={<BadgeDollarSign size={15} />}
+            >
+              {financialSnapshot.recordedWinningsLabel ? (
+                <p className="break-words text-3xl font-black italic tracking-tighter">
+                  {financialSnapshot.recordedWinningsLabel}
+                </p>
+              ) : (
+                <p className="text-sm font-black leading-6">
+                  {financialSnapshot.statusMessage}
+                </p>
+              )}
+              <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-black/45 dark:text-white/45">
+                {financialSnapshot.coverageLabel}
+              </p>
+              {financialSnapshot.activityLabel && (
+                <p className="mt-2 text-xs font-medium text-black/55 dark:text-white/55">
+                  {financialSnapshot.activityLabel}
+                </p>
+              )}
+              {financialSnapshot.cashPaidLabel && (
+                <p className="mt-2 text-xs font-medium text-black/55 dark:text-white/55">
+                  {financialSnapshot.cashPaidLabel}
+                </p>
+              )}
+              {financialSnapshot.attributionNote && (
+                <p className="mt-3 text-xs font-medium leading-5 text-black/60 dark:text-white/60">
+                  {financialSnapshot.attributionNote}
+                </p>
+              )}
+              <p className="mt-2 text-[10px] font-medium leading-4 text-black/40 dark:text-white/40">
+                {financialSnapshot.scopeNote}
+              </p>
+              <Link
+                href={financialSnapshot.financialHistoryHref}
+                className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-md border border-black/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-black/55 transition hover:border-black/25 hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 dark:border-white/10 dark:text-white/55 dark:hover:border-white/25 dark:hover:text-white dark:focus-visible:ring-offset-[#121212]"
+              >
+                View Financial History
+                <ArrowRight size={12} aria-hidden="true" />
+              </Link>
+            </OverviewPanel>
+          )}
 
           <OverviewPanel title="Career Record" icon={<Swords size={15} />}>
             {matchupAvailable ? (
@@ -2189,6 +2238,7 @@ export default function OwnerProfile({
   opponentIdentities,
   supportedHeadToHeadOpponentIds,
   franchiseLegacy,
+  financialSnapshot,
 }: {
   profile: OwnerProfileViewModel;
   careerTimeline: readonly OwnerCareerTimelineEvent[];
@@ -2199,6 +2249,7 @@ export default function OwnerProfile({
   opponentIdentities: readonly OpponentIdentity[];
   supportedHeadToHeadOpponentIds: readonly string[];
   franchiseLegacy: OwnerFranchiseLegacyPresentation;
+  financialSnapshot: OwnerFinancialSnapshotPresentation | null;
 }) {
   const isStaff = profile.owner.status === OwnerProfileStatus.Staff;
   const hasTenures =
@@ -2240,6 +2291,7 @@ export default function OwnerProfile({
         <OwnerOverview
           profile={profile}
           careerSummary={ownerCareerSummary}
+          financialSnapshot={financialSnapshot}
           matchupSummary={careerMatchupSummary}
           opponentSummaries={opponentMatchupSummaries}
           opponentIdentities={opponentIdentities}

@@ -16,6 +16,7 @@ import {
   loadSupportedOwnerHeadToHeadOpponentIds,
 } from "@/lib/managers/ownerMatchupSummaryLoader";
 import { loadOwnerFranchiseLegacy } from "@/lib/managers/franchiseHistoryLoader";
+import { loadOwnerFinancialSnapshot } from "@/lib/managers/ownerFinancialSnapshotLoader";
 
 type OwnerProfilePageProps = {
   params: Promise<{
@@ -60,6 +61,12 @@ export default async function OwnerProfilePage({
   if (!careerMatchupSummary || !franchiseLegacy) notFound();
 
   const publicProfile = toPublicOwnerProfileViewModel(profile);
+  const financialSnapshot = loadOwnerFinancialSnapshot({
+    ownerId: profile.owner.id,
+    ownerStatus: profile.owner.status,
+    careerFirstSeason: ownerCareerSummary.seasons.firstSeason,
+    careerLatestSeason: ownerCareerSummary.seasons.latestSeason,
+  });
 
   const opponentIdentities = opponentMatchupSummaries.flatMap((summary) => {
     const opponent = getOwnerProfileById(summary.opponentOwnerId);
@@ -86,6 +93,7 @@ export default async function OwnerProfilePage({
       opponentIdentities={opponentIdentities}
       supportedHeadToHeadOpponentIds={supportedHeadToHeadOpponentIds}
       franchiseLegacy={franchiseLegacy}
+      financialSnapshot={financialSnapshot}
     />
   );
 }
