@@ -19,6 +19,7 @@ import {
 import {
   buildOwnerHeadToHeadDetails,
   getAllSupportedDirectionalHeadToHeadPairs,
+  type OwnerHeadToHeadDetailBuildResult,
 } from "@/lib/history/ownerHeadToHeadDetail";
 import {
   getAllOwnerSeasonHistory,
@@ -27,7 +28,7 @@ import {
 } from "@/lib/history/ownerSeasonHistory";
 import { ownerProfiles } from "@/lib/managers/identityData";
 
-let initialization: Promise<void> | null = null;
+let initialization: Promise<OwnerHeadToHeadDetailBuildResult> | null = null;
 
 export type OwnerProfileSeasonHistoryEntry = Readonly<{
   season: number;
@@ -61,7 +62,7 @@ export function initializeOwnerMatchupHistory() {
       projectionCoverage: getOwnerMatchupProjectionCoverage(),
     });
 
-    buildOwnerHeadToHeadDetails({
+    return buildOwnerHeadToHeadDetails({
       canonicalMatchups,
       projections,
       opponentSummaries: summaryBuild.opponentSummaries,
