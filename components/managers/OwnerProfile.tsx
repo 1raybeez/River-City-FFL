@@ -25,12 +25,11 @@ import type {
 import type { OwnerCareerSummary } from "@/lib/history/ownerCareerSummary";
 import type { OwnerSeasonHistoryRecord } from "@/lib/history/ownerSeasonHistory";
 import type { OwnerCareerTimelineEvent } from "@/lib/managers/ownerCareerTimeline";
+import type { OwnerFranchiseLegacyPresentation } from "@/lib/managers/franchiseLegacyPresentation";
 import { teamColors } from "@/lib/themes/teamColors";
 import {
-  AccomplishmentAttribution,
   OwnerProfileStatus,
   type ContactMethod,
-  type FranchiseStatSummary,
   type OwnerContactPreference,
   type OwnerSurveyProfile,
   type TradeAggressionRating,
@@ -38,7 +37,6 @@ import {
 import type {
   OwnerProfileViewModel,
   ProfileRelationship,
-  ProfileTenure,
 } from "@/lib/managers/identitySelectors";
 
 const NFL_TEAM_NAMES: Record<string, string> = {
@@ -302,39 +300,6 @@ function buildCurrentDivisionData({
     record: getRosterRecord(roster),
     pointsFor: pointsFor > 0 ? pointsFor.toFixed(2) : undefined,
   };
-}
-
-function getStatLabel(summary: FranchiseStatSummary) {
-  if (
-    summary.accomplishmentAttribution ===
-    AccomplishmentAttribution.SharedFranchise
-  ) {
-    return "Shared Franchise Record";
-  }
-
-  if (
-    summary.accomplishmentAttribution === AccomplishmentAttribution.LegacyOwner
-  ) {
-    return "Retired Owner Legacy";
-  }
-
-  return "Franchise Record";
-}
-
-function getSharedStatCopy(summary: FranchiseStatSummary) {
-  if (summary.franchiseId === "prestigio-mundial") {
-    return "Prestigio Mundial record, shared by Ray Long and Jeffrey Hudgins.";
-  }
-
-  if (summary.franchiseId === "shake-n-bakers") {
-    return "The Shake-N-Bakers record is attributed to Jordan Maslyn as primary owner.";
-  }
-
-  if (summary.franchiseId === "special-brownies") {
-    return "Special Brownies remains Landon Elliott's retired-owner legacy.";
-  }
-
-  return summary.notes?.[0];
 }
 
 function StatTile({
@@ -976,18 +941,174 @@ function OwnerOverview({
   );
 }
 
-function TeamLegacy({ profile }: { profile: OwnerProfileViewModel }) {
-  const tenureGroups = [...profile.currentTenures, ...profile.legacyTenures];
-
-  if (tenureGroups.length === 0) return null;
-
+function TeamLegacy({
+  legacy,
+}: {
+  legacy: OwnerFranchiseLegacyPresentation;
+}) {
   return (
     <SectionShell title="Team Legacy" icon={<Shield size={16} />}>
-      <div className="space-y-4">
-        {tenureGroups.map((tenure) => (
-          <LegacyRow key={tenure.id} tenure={tenure} />
-        ))}
-      </div>
+      {legacy.cards.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-black/10 bg-black/[0.02] px-5 py-8 text-center dark:border-white/10 dark:bg-white/[0.04]">
+          <p className="text-sm font-black uppercase italic">
+            No franchise legacy
+          </p>
+          <p className="mx-auto mt-2 max-w-md text-sm font-medium leading-6 text-black/50 dark:text-white/50">
+            {legacy.emptyMessage}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {legacy.cards.map((card) => (
+            <article
+              key={card.franchiseId}
+              className="rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <h3 className="text-lg font-black uppercase italic">
+                    {card.franchiseName}
+                  </h3>
+                  <p className="mt-1 text-xs font-black uppercase tracking-widest text-black/40 dark:text-white/40">
+                    {card.ownerRelationshipLabel} · {card.ownerSeasonLabel}
+                  </p>
+                </div>
+                <span className="w-fit shrink-0 rounded-full border border-black/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-black/50 dark:border-white/10 dark:text-white/50">
+                  {card.statusLabel}
+                </span>
+              </div>
+
+              <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-black/40 dark:text-white/40">
+                Canonical Franchise Career
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+                {card.metrics.map((metric) => (
+                  <LegacyMetric
+                    key={metric.label}
+                    label={metric.label}
+                    value={metric.value}
+                  />
+                ))}
+              </div>
+
+              <div className="mt-4 rounded-md border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-black/20">
+                <p className="text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+                  Franchise Matchup Record
+                </p>
+                <p className="mt-1 text-sm font-black">{card.matchupSummary}</p>
+                {card.matchupSeasonLabel && (
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-black/40 dark:text-white/40">
+                    Matchup coverage {card.matchupSeasonLabel}
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-5 grid gap-5 md:grid-cols-2">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-black/40 dark:text-white/40">
+                    Ownership Story
+                  </p>
+                  <ol className="mt-3 border-l border-black/10 dark:border-white/10">
+                    {card.ownershipRows.map((row) => (
+                      <li
+                        key={row.rowKey}
+                        className={`relative ml-4 pb-4 last:pb-0 ${
+                          row.viewerParticipates
+                            ? "text-black dark:text-white"
+                            : "text-black/45 dark:text-white/45"
+                        }`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-[#121212] ${
+                            row.viewerParticipates
+                              ? "bg-red-600"
+                              : "bg-black/25 dark:bg-white/25"
+                          }`}
+                        />
+                        <p className="text-[9px] font-black uppercase tracking-widest opacity-60">
+                          {row.yearLabel}
+                        </p>
+                        <p className="mt-1 text-sm font-black">{row.title}</p>
+                        <p className="mt-0.5 text-xs font-medium opacity-60">
+                          {row.detail}
+                        </p>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+
+                <div>
+                  {card.primaryNames.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-black/40 dark:text-white/40">
+                        Meaningful Team Names
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {card.primaryNames.map((name) => (
+                          <span
+                            key={name.nameEraKey}
+                            className="rounded-md border border-black/10 bg-white px-3 py-2 text-[10px] font-black dark:border-white/10 dark:bg-black/20"
+                          >
+                            {name.historicalName} · {name.yearLabel}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {card.completeNameHistory.length > 0 && (
+                    <details className="mt-4 rounded-md border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-black/20">
+                      <summary className="cursor-pointer text-[10px] font-black uppercase tracking-widest text-black/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 dark:text-white/50">
+                        Complete Name History
+                      </summary>
+                      <ul className="mt-3 space-y-2">
+                        {card.completeNameHistory.map((name) => (
+                          <li
+                            key={name.nameEraKey}
+                            className="flex items-start justify-between gap-3 text-xs font-medium"
+                          >
+                            <span>{name.historicalName}</span>
+                            <span className="shrink-0 text-black/40 dark:text-white/40">
+                              {name.yearLabel}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+                </div>
+              </div>
+
+              {card.timeline.length > 0 && (
+                <div className="mt-5 border-t border-black/10 pt-4 dark:border-white/10">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-black/40 dark:text-white/40">
+                    Franchise Highlights
+                  </p>
+                  <ol className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {card.timeline.map((event) => (
+                      <li
+                        key={event.eventKey}
+                        className="rounded-md bg-white p-3 dark:bg-black/20"
+                      >
+                        <p className="text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+                          {event.season}
+                        </p>
+                        <p className="mt-1 text-sm font-black">{event.title}</p>
+                        {event.detail && (
+                          <p className="mt-1 text-xs font-medium leading-5 text-black/50 dark:text-white/50">
+                            {event.detail}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
     </SectionShell>
   );
 }
@@ -1134,93 +1255,6 @@ function CurrentDivisionCard({ profile }: { profile: OwnerProfileViewModel }) {
         </p>
       )}
     </SectionShell>
-  );
-}
-
-function getTenureFallbackCopy(tenure: ProfileTenure) {
-  if (
-    tenure.ownerId === "landon-elliott" &&
-    tenure.franchiseId === "shake-n-bakers"
-  ) {
-    return "Current co-owner role; Shake-N-Bakers stats remain attributed to Jordan Maslyn.";
-  }
-
-  return undefined;
-}
-
-function LegacyRow({ tenure }: { tenure: ProfileTenure }) {
-  const summary = tenure.statSummary;
-  const fallbackCopy = getTenureFallbackCopy(tenure);
-  const metrics: Array<{ label: string; value: string | number }> = [];
-
-  if (summary) {
-    metrics.push(
-      { label: "Titles", value: summary.championships },
-      { label: "Podiums", value: summary.podiums }
-    );
-
-    if (summary.bestFinish && summary.bestFinish !== "N/A") {
-      metrics.push({ label: "Best", value: summary.bestFinish });
-    }
-
-    if (typeof summary.toiletBowls === "number") {
-      metrics.push({ label: "Toilets", value: summary.toiletBowls });
-    }
-  }
-
-  return (
-    <div className="rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-lg font-black uppercase italic">
-            {tenure.franchise?.currentTeamName ?? tenure.franchiseId}
-          </p>
-          <p className="mt-1 text-xs font-black uppercase tracking-widest text-black/40 dark:text-white/40">
-            {tenure.roleLabel} | {tenure.yearLabel}
-          </p>
-        </div>
-        {summary && (
-          <span className="rounded-full border border-black/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-black/50 dark:border-white/10 dark:text-white/50">
-            {getStatLabel(summary)}
-          </span>
-        )}
-      </div>
-
-      {tenure.relatedOwnerLabels.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {tenure.relatedOwnerLabels.map((label) => (
-            <span
-              key={label}
-              className="rounded-md bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-black/50 dark:bg-black/20 dark:text-white/50"
-            >
-              {label}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {summary && metrics.length > 0 ? (
-        <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-          {metrics.map((metric) => (
-            <LegacyMetric
-              key={metric.label}
-              label={metric.label}
-              value={metric.value}
-            />
-          ))}
-        </div>
-      ) : fallbackCopy ? (
-        <p className="mt-4 text-sm font-medium leading-7 text-black/55 dark:text-white/55">
-          {fallbackCopy}
-        </p>
-      ) : null}
-
-      {summary && getSharedStatCopy(summary) && (
-        <p className="mt-4 text-sm font-medium leading-7 text-black/55 dark:text-white/55">
-          {getSharedStatCopy(summary)}
-        </p>
-      )}
-    </div>
   );
 }
 
@@ -2129,6 +2163,7 @@ export default function OwnerProfile({
   seasonHistoryEntries,
   opponentMatchupSummaries,
   opponentIdentities,
+  franchiseLegacy,
 }: {
   profile: OwnerProfileViewModel;
   careerTimeline: readonly OwnerCareerTimelineEvent[];
@@ -2137,6 +2172,7 @@ export default function OwnerProfile({
   seasonHistoryEntries: readonly SeasonHistoryEntry[];
   opponentMatchupSummaries: readonly OwnerOpponentMatchupSummary[];
   opponentIdentities: readonly OpponentIdentity[];
+  franchiseLegacy: OwnerFranchiseLegacyPresentation;
 }) {
   const isStaff = profile.owner.status === OwnerProfileStatus.Staff;
   const hasTenures =
@@ -2185,7 +2221,7 @@ export default function OwnerProfile({
         {showMainColumn ? (
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
             <div className="space-y-6">
-              <TeamLegacy profile={profile} />
+              <TeamLegacy legacy={franchiseLegacy} />
               {showCareerTimeline && (
                 <CareerTimeline events={careerTimeline} />
               )}

@@ -14,6 +14,7 @@ import {
   loadOwnerOpponentMatchupSummaries,
   loadOwnerProfileSeasonHistory,
 } from "@/lib/managers/ownerMatchupSummaryLoader";
+import { loadOwnerFranchiseLegacy } from "@/lib/managers/franchiseHistoryLoader";
 
 type OwnerProfilePageProps = {
   params: Promise<{
@@ -45,13 +46,15 @@ export default async function OwnerProfilePage({
     careerMatchupSummary,
     seasonHistoryEntries,
     opponentMatchupSummaries,
+    franchiseLegacy,
   ] = await Promise.all([
     loadOwnerCareerMatchupSummary(slug),
     loadOwnerProfileSeasonHistory(slug),
     loadOwnerOpponentMatchupSummaries(slug),
+    loadOwnerFranchiseLegacy(slug),
   ]);
 
-  if (!careerMatchupSummary) notFound();
+  if (!careerMatchupSummary || !franchiseLegacy) notFound();
 
   const publicProfile = toPublicOwnerProfileViewModel(profile);
 
@@ -78,6 +81,7 @@ export default async function OwnerProfilePage({
       seasonHistoryEntries={seasonHistoryEntries}
       opponentMatchupSummaries={opponentMatchupSummaries}
       opponentIdentities={opponentIdentities}
+      franchiseLegacy={franchiseLegacy}
     />
   );
 }
