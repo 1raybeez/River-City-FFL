@@ -46,6 +46,8 @@ const ownerSeeds = [
   ["jordan-maslyn", "Jordan Maslyn", "Jordan", "Shake-N-Bakers", "active"],
   ["chris-smith", "Chris Smith", "Chris", "Retired Franchise", "retired"],
   ["gordie-locke", "Gordie Locke", "Gordie", "Legacy Franchise", "retired"],
+  ["adam-lind", "Adam Lind", "Adam", "Former Franchise", "retired"],
+  ["league-staff", "League Staff", "Staff", "River City FFL", "staff"],
 ] as const;
 
 const owners: RivalryHubOwnerInput[] = ownerSeeds.map(
@@ -260,6 +262,30 @@ const seeds: PairSeed[] = [
     statuses: ["retired", "retired"],
   },
   {
+    ownerA: "adam-lind",
+    ownerB: "brian-stevens",
+    score: 45,
+    rank: 8,
+    competitiveness: 0.5,
+    meetings: 5,
+    seasons: [2018, 2019],
+    wins: 2,
+    losses: 3,
+    statuses: ["retired", "active"],
+  },
+  {
+    ownerA: "brian-stevens",
+    ownerB: "league-staff",
+    score: 40,
+    rank: 9,
+    competitiveness: 0.5,
+    meetings: 4,
+    seasons: [2024, 2025],
+    wins: 2,
+    losses: 2,
+    statuses: ["active", "staff"],
+  },
+  {
     ownerA: "brian-stevens",
     ownerB: "wade-cameron",
     score: null,
@@ -326,12 +352,12 @@ const methodology: RivalryScoreMethodology = {
 
 const buildCoverage: RivalryBuildCoverage = {
   undirectedRivalryRecords: rivalries.length,
-  calculatedEligibleRivalries: 7,
+  calculatedEligibleRivalries: 9,
   unrankedRivalryRecords: 1,
   supportedEraOnlyScoredRivalries: 2,
   recognizedRivalries: 0,
   highestCalculatedScore: 90.04,
-  lowestCalculatedScore: 50,
+  lowestCalculatedScore: 40,
   dimensionRanges: Object.fromEntries(
     Object.keys(RIVALRY_SCORE_WEIGHTS).map((key) => [
       key,
@@ -471,23 +497,76 @@ const rayTop = filterOrderedRivalryCards(
   presentation.topRivalryKeys,
   { ownerId: "ray-long", activeOwnersOnly: false }
 );
+const retiredOwnerAllTime = filterOrderedRivalryCards(
+  presentation.cards,
+  presentation.topRivalryKeys,
+  { ownerId: "adam-lind", activeOwnersOnly: false }
+);
+const retiredOwnerActive = filterOrderedRivalryCards(
+  presentation.cards,
+  presentation.topRivalryKeys,
+  { ownerId: "adam-lind", activeOwnersOnly: true }
+);
 assert.equal(
   allTimeTop.some((item) => item.ownerStatuses.includes("retired")),
+  true
+);
+assert.equal(
+  allTimeTop.some((item) =>
+    item.ownerStatuses.every((status) => status === "retired")
+  ),
   true
 );
 assert.equal(
   activeTop.some((item) => item.ownerStatuses.includes("retired")),
   false
 );
+assert.equal(
+  allTimeTop.some(
+    (item) =>
+      item.ownerStatuses.includes("active") &&
+      item.ownerStatuses.includes("retired")
+  ),
+  true
+);
+assert.equal(
+  activeTop.every((item) =>
+    item.ownerStatuses.every((status) => status === "active")
+  ),
+  true
+);
+assert.equal(
+  allTimeTop.some((item) => item.ownerStatuses.includes("staff")),
+  false
+);
 assert.deepEqual(rayTop.map((item) => item.rivalryKey), [ray.rivalryKey]);
 assert.equal(rayTop[0].calculatedScore, ray.calculatedScore);
+assert.equal(retiredOwnerAllTime.length, 1);
+assert.equal(retiredOwnerAllTime[0].rivalryKey, "rivalry:adam-lind:brian-stevens");
+assert.deepEqual(retiredOwnerActive, []);
+presentation.categories.forEach((item) => {
+  const activeCategoryCards = filterOrderedRivalryCards(
+    presentation.cards,
+    item.orderedRivalryKeys,
+    { ownerId: null, activeOwnersOnly: true }
+  );
+  assert.equal(
+    activeCategoryCards.every((candidate) =>
+      candidate.ownerStatuses.every((status) => status === "active")
+    ),
+    true,
+    `${item.label} retained an inactive owner pair.`
+  );
+});
 assert.deepEqual(
   limitRivalryCards(allTimeTop, false).map((item) => item.rivalryKey),
   presentation.topRivalryKeys.slice(0, 3)
 );
 assert.deepEqual(
   limitRivalryCards(allTimeTop, true).map((item) => item.rivalryKey),
-  presentation.topRivalryKeys
+  presentation.topRivalryKeys.filter(
+    (key) => key !== "rivalry:brian-stevens:league-staff"
+  )
 );
 assert.equal(Object.isFrozen(presentation), true);
 assert.equal(Object.isFrozen(presentation.cards), true);
@@ -512,6 +591,8 @@ assert.doesNotMatch(
   pageSource + clientSource,
   /Blood Feud|Recent Heat|getIntensityLabel|currentStreak/
 );
+assert.match(clientSource, /aria-pressed=\{scope === value\}/);
+assert.match(clientSource, /role="status"/);
 
 console.log("Rivalry Hub presentation tests passed.");
 console.log(

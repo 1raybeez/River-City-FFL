@@ -315,6 +315,9 @@ export function filterOrderedRivalryCards(
     .filter((card): card is RivalryCardPresentation => Boolean(card))
     .filter(
       (card) =>
+        card.ownerStatuses.every(
+          (status) => status === "active" || status === "retired"
+        ) &&
         (filter.ownerId === null || card.ownerIds.includes(filter.ownerId)) &&
         (!filter.activeOwnersOnly ||
           card.ownerStatuses.every((status) => status === "active"))

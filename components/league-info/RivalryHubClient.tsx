@@ -433,6 +433,16 @@ export default function RivalryHubClient({
               </div>
             </fieldset>
           </div>
+          <p
+            className="mt-4 rounded-md bg-black/[0.035] px-3 py-2 text-[10px] font-black uppercase tracking-wider text-black/55 dark:bg-white/[0.05] dark:text-white/55"
+            role="status"
+            aria-live="polite"
+          >
+            {scope === "active" ? "Active Owners" : "All-Time"} scope ·{" "}
+            {topCards.length} calculated rivalries · {categoryCards.length}{" "}
+            {selectedCategory.label} results
+            {selectedOwnerId !== "all" && " for selected owner"}
+          </p>
         </section>
 
         <section aria-labelledby="top-rivalries-heading">
