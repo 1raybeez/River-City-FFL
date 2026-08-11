@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Gavel, Grid3X3, Home, Shield, Users, Wrench } from 'lucide-react';
+import { ArrowLeft, Gavel, Grid3X3, Home, Shield, Users, WalletCards, Wrench } from 'lucide-react';
 import { ModeToggle } from '@/components/ModeToggle';
 import {
   AuctionAccessError,
@@ -10,6 +10,12 @@ import { getAuctionPilotProfiles } from '@/lib/auction/ownerProfiles';
 import { readAuctionOwnerProfileSettings } from '@/lib/auction/ownerProfileSettings';
 
 const hubLinks = [
+  {
+    title: '2026 Finance',
+    description: 'Review dues status, record Venmo payments, and inspect ledger activity.',
+    href: '/commish/finance/2026',
+    icon: WalletCards,
+  },
   {
     title: 'Legislative Hub',
     description: 'Review proposals, session status, and rule-change workflow.',
@@ -92,7 +98,7 @@ export default async function CommishPage() {
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           {hubLinks.map((item) => {
             const Icon = item.icon;
             return (

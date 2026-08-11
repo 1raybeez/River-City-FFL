@@ -53,6 +53,29 @@ assert.doesNotMatch(
   /\.(?:delete|recursiveDelete)\s*\(/
 );
 
+const operationalFinanceDashboardClient = read(
+  "app/commish/finance/2026/OperationalFinanceDashboardClient.tsx"
+);
+assert.doesNotMatch(
+  operationalFinanceDashboardClient,
+  /firebase\/firestore|@\/lib\/firebase/,
+  "Commissioner finance React code must not access Firestore directly."
+);
+const operationalFinanceMutationRoute = read(
+  "app/api/commish/finance/[season]/dues/[obligationId]/settlements/route.ts"
+);
+assert.match(
+  operationalFinanceMutationRoute,
+  /requireOperationalFinanceCommissioner/,
+  "Every operational finance mutation must authorize the commissioner server-side."
+);
+assert.match(operationalFinanceMutationRoute, /Cross-origin request denied/);
+assert.match(operationalFinanceMutationRoute, /getOperationalFinanceLedgerRepository/);
+assert.doesNotMatch(
+  operationalFinanceMutationRoute,
+  /firebase\/firestore|@\/lib\/firebase(?:"|')/
+);
+
 for (const collectionName of [
   "siteContent",
   "rsvps",

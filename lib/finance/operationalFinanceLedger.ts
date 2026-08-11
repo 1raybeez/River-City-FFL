@@ -505,7 +505,23 @@ export async function recordSettlement(
   requireCommissioner(actor);
   return repository.runTransaction(async (transaction) => {
     const duplicate = await existingTarget(transaction, idempotencyKey, "settlement-created", (id) => transaction.getSettlement(id));
-    if (duplicate) return duplicate;
+    if (duplicate) {
+      const existing = duplicate.value;
+      const matchesRequest =
+        existing.season === input.season &&
+        existing.obligationId === input.obligationId &&
+        existing.direction === input.direction &&
+        existing.amountCents === input.amountCents &&
+        existing.paymentMethod === input.paymentMethod &&
+        existing.actualPaidAt === input.actualPaidAt &&
+        existing.externalReference === (input.externalReference ?? null) &&
+        existing.commissionerNote === (input.commissionerNote ?? null) &&
+        existing.sourceRef === input.sourceRef;
+      if (!matchesRequest) {
+        throw new Error("Idempotency key was already used for a different settlement request.");
+      }
+      return duplicate;
+    }
     return deepFreeze({ created: true, value: await putSettlement(transaction, input, actor, idempotencyKey, recordedAt) });
   });
 }

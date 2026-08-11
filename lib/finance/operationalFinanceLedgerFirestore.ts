@@ -211,40 +211,40 @@ export class FirestoreOperationalFinanceLedgerRepository
   }
 }
 
-function repositoryFor(season: number) {
+export function getOperationalFinanceLedgerRepository(season: number) {
   return new FirestoreOperationalFinanceLedgerRepository(firestore, season);
 }
 
 export async function getOperationalFinanceSeason(season: number) {
-  return (await repositoryFor(season).getSnapshot()).seasons[0] ?? null;
+  return (await getOperationalFinanceLedgerRepository(season).getSnapshot()).seasons[0] ?? null;
 }
 
 export async function getObligation(obligationId: string) {
-  const snapshot = await repositoryFor(seasonFromLedgerId(obligationId)).getSnapshot();
+  const snapshot = await getOperationalFinanceLedgerRepository(seasonFromLedgerId(obligationId)).getSnapshot();
   return snapshot.obligations.find((entry) => entry.obligationId === obligationId) ?? null;
 }
 
 export async function getAllObligations(season: number) {
-  return (await repositoryFor(season).getSnapshot()).obligations;
+  return (await getOperationalFinanceLedgerRepository(season).getSnapshot()).obligations;
 }
 
 export async function getSettlementsForObligation(obligationId: string) {
-  const snapshot = await repositoryFor(seasonFromLedgerId(obligationId)).getSnapshot();
+  const snapshot = await getOperationalFinanceLedgerRepository(seasonFromLedgerId(obligationId)).getSnapshot();
   return snapshot.settlements.filter((entry) => entry.obligationId === obligationId);
 }
 
 export async function getAllSettlements(season: number) {
-  return (await repositoryFor(season).getSnapshot()).settlements;
+  return (await getOperationalFinanceLedgerRepository(season).getSnapshot()).settlements;
 }
 
 export async function getAuditEvents(season: number) {
-  return (await repositoryFor(season).getSnapshot()).auditEvents;
+  return (await getOperationalFinanceLedgerRepository(season).getSnapshot()).auditEvents;
 }
 
 export async function getDuesStatus(season: number) {
-  return deriveDuesStatusFromRepository(repositoryFor(season), season);
+  return deriveDuesStatusFromRepository(getOperationalFinanceLedgerRepository(season), season);
 }
 
 export async function getOperationalFinanceTotals(season: number) {
-  return deriveTotalsFromRepository(repositoryFor(season), season);
+  return deriveTotalsFromRepository(getOperationalFinanceLedgerRepository(season), season);
 }
