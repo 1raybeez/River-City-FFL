@@ -48,6 +48,14 @@ service cloud.firestore {
       }
     }
 
+    match /operational_finance_seasons/{season} {
+      allow read, write: if false;
+
+      match /{document=**} {
+        allow read, write: if false;
+      }
+    }
+
     // Deny every collection not explicitly approved above. Admin SDK access is
     // not governed by client security rules and remains available server-side.
     match /{document=**} {

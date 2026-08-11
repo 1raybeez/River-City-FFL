@@ -34,6 +34,25 @@ for (const collectionName of ["finance_rules", "finance_seasons"]) {
   );
 }
 
+assert.match(
+  rules,
+  /match\s+\/operational_finance_seasons\/\{season\}\s*\{[\s\S]*?allow\s+read\s*,\s*write\s*:\s*if\s+false\s*;[\s\S]*?match\s+\/\{document=\*\*\}\s*\{[\s\S]*?allow\s+read\s*,\s*write\s*:\s*if\s+false\s*;/m,
+  "Operational finance season roots and subcollections must deny direct client access."
+);
+
+const operationalLedgerServer = read(
+  "lib/finance/operationalFinanceLedgerFirestore.ts"
+);
+assert.match(operationalLedgerServer, /@\/lib\/firebaseAdmin/);
+assert.doesNotMatch(
+  operationalLedgerServer,
+  /firebase\/firestore|@\/lib\/firebase"/
+);
+assert.doesNotMatch(
+  operationalLedgerServer,
+  /\.(?:delete|recursiveDelete)\s*\(/
+);
+
 for (const collectionName of [
   "siteContent",
   "rsvps",
