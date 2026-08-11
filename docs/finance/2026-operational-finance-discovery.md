@@ -889,3 +889,52 @@ Still requiring approval:
 
 1. **Managed backup billing/cadence.** Proposed plan: one daily backup with 14-day retention. Do not create the schedule until its paid storage/restore implications are explicitly approved.
 2. **Future international payment exception.** Add another payment method only if Jordan later requires it and the commissioner explicitly approves it; the base model should remain extensible without exposing generic provider complexity now.
+
+## PHASE 6.2 — OPERATIONAL FINANCE RULES AND TYPES FOUNDATION
+
+Phase 6.2 converts the approved 2026 policy into a typed, immutable, deterministic foundation without reading or writing Firestore. The authoritative specification is `docs/finance/2026-operational-finance-rules-spec.md`.
+
+### Source audit result
+
+- Constitution §1.3 corroborates a 12-member league; §§11.1–11.2 delegate current financial details to the website and intentionally omit fixed amounts.
+- The 2024 legislative archive directly supports the $25 division award, the removal of fourth-place and Toilet Bowl payments, third place at the entry-fee amount, recap-independent weekly awards, and separately split auctioneer food.
+- `lib/league-finance.ts` corroborates the entry fee and fixed award amounts but its fixed `$219` champion value is superseded by the approved variable ring formula.
+- `lib/finance/paymentHandles.ts` is an older calculation path with fixed champion/custom division logic and is not reused by the Phase 6.2 foundation.
+- `lib/managers/activeManagers.ts` and `lib/managers/identityData.ts` corroborate the 12 active franchise IDs and sporting co-owner relationships.
+- The commissioner-approved 2026 ruling controls where older/general text differs: Sleeper resolves weekly/division results and tiebreakers, and a ring over $80 cannot reduce champion cash without explicit approval.
+
+### Implemented boundary
+
+`lib/finance/operationalFinanceTypes.ts` defines the season rules, awards, expenses, identity, finality, validation, reconciliation, payment method, public-dues policy, and future migration-input contracts. `lib/finance/operationalFinanceRules.ts` provides the frozen 2026 configuration and pure calculators/validators.
+
+Weekly, division, placement, and championship award eligibility all require the
+applicable Sleeper result to be final. The future public boundary permits only
+paid/not-paid state, aggregate totals, approved winnings, and approved expenses;
+amount owed, payment details, references, timestamps, and commissioner notes stay
+private.
+
+The baseline reconciliation is:
+
+```text
+60,000 dues
+- 14,000 weekly
+-  7,500 divisions
+-  5,000 third
+- 10,000 runner-up
+= 23,500 championship allocation
+```
+
+Champion cash equals `23,500 - effective approved ring expense`. The default dues-funded ring cap is 8,000 cents. Any excess remains unresolved unless a sufficient commissioner-approved override is supplied.
+
+Financial-owner attribution uses canonical IDs. `prestigio-mundial` maps to `ray-long`, excluding `jeffrey-hudgins` from duplicate finance identity. `shake-n-bakers` maps to `jordan-maslyn`, excluding `landon-elliott` from duplicate finance identity. All 12 active franchises have exactly one mapping.
+
+The five confirmed paid states are represented only as future migration inputs with unknown authoritative payment timestamps. No legacy document was migrated, no finance record was written, and the checked-in/deployed Firestore security boundary was not changed.
+
+### Deferred beyond Phase 6.2
+
+- commissioner finance UI and protected mutation routes;
+- operational Firestore ledger and migration;
+- Sleeper result acquisition/proposals;
+- idempotency and transaction provenance;
+- season close/archive;
+- any non-Venmo payment exception.
