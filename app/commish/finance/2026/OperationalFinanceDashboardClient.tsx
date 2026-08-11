@@ -12,10 +12,11 @@ import {
 } from "lucide-react";
 
 import { ModeToggle } from "@/components/ModeToggle";
+import type { OperationalFinanceCommissionerDashboardPresentation } from "@/lib/finance/operationalFinanceAwardReview";
 import type {
   OperationalFinanceDashboardDuesRow,
-  OperationalFinanceDashboardPresentation,
 } from "@/lib/finance/operationalFinanceDashboardPresentation";
+import OperationalFinanceAwardReviewSection from "./OperationalFinanceAwardReviewSection";
 
 function formatCurrency(cents: number) {
   return new Intl.NumberFormat("en-US", {
@@ -68,7 +69,7 @@ function newPaymentDraft(row: OperationalFinanceDashboardDuesRow): PaymentDraft 
 export default function OperationalFinanceDashboardClient({
   initialDashboard,
 }: {
-  initialDashboard: OperationalFinanceDashboardPresentation;
+  initialDashboard: OperationalFinanceCommissionerDashboardPresentation;
 }) {
   const [dashboard, setDashboard] = useState(initialDashboard);
   const [activeObligationId, setActiveObligationId] = useState<string | null>(null);
@@ -130,7 +131,7 @@ export default function OperationalFinanceDashboardClient({
         }
       );
       const payload = (await response.json()) as {
-        dashboard?: OperationalFinanceDashboardPresentation;
+        dashboard?: OperationalFinanceCommissionerDashboardPresentation;
         created?: boolean;
         error?: string;
       };
@@ -329,6 +330,12 @@ export default function OperationalFinanceDashboardClient({
           </div>
           <p className="mt-4 text-xs font-semibold text-gray-500 dark:text-gray-400">Existing payments are append-only. Corrections require a future protected reversal workflow; no payment can be edited or deleted here.</p>
         </section>
+
+        <OperationalFinanceAwardReviewSection
+          dashboard={dashboard}
+          onDashboard={setDashboard}
+          onConfirmation={setConfirmation}
+        />
 
         <section aria-labelledby="activity-heading" className="mt-10 rounded-3xl border border-black/10 bg-white p-5 shadow-xl dark:border-white/10 dark:bg-[#121212] sm:p-6">
           <div className="mb-5 flex items-center gap-3">

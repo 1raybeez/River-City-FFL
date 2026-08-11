@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { AuctionAccessError } from "@/lib/auth/auctionAccess";
-import { recordCommissionerDuesPayment } from "@/lib/finance/operationalFinanceDashboard";
+import {
+  acquireOperationalFinanceAwardProposalSource,
+  approveOperationalFinanceAward,
+} from "@/lib/finance/operationalFinanceAwardReview";
 import { requireOperationalFinanceCommissioner } from "@/lib/finance/operationalFinanceDashboardAuth";
 import { getOperationalFinanceLedgerRepository } from "@/lib/finance/operationalFinanceLedgerFirestore";
-import { loadOperationalFinanceDashboardFromFirestore } from "@/lib/finance/operationalFinanceDashboardLoader";
 
 export const runtime = "nodejs";
 
@@ -24,13 +26,13 @@ async function readJsonBody(req: Request) {
   try {
     return (await req.json()) as Record<string, unknown>;
   } catch {
-    throw new Error("A valid JSON payment request is required.");
+    throw new Error("A valid JSON award approval request is required.");
   }
 }
 
 export async function POST(
   req: Request,
-  context: { params: Promise<{ season: string; obligationId: string }> }
+  context: { params: Promise<{ season: string }> }
 ) {
   let authorization;
   try {
@@ -47,35 +49,24 @@ export async function POST(
   if (!req.headers.get("content-type")?.toLowerCase().includes("application/json")) {
     return NextResponse.json({ error: "JSON request required." }, { status: 415 });
   }
-
-  const params = await context.params;
-  const season = Number(params.season);
+  const season = Number((await context.params).season);
   if (season !== 2026) {
-    return NextResponse.json({ error: "Operational finance mutations currently support 2026 only." }, { status: 404 });
+    return NextResponse.json({ error: "Award approval currently supports 2026 only." }, { status: 404 });
   }
 
   try {
-    const body = await readJsonBody(req);
-    if (body.obligationId !== undefined && body.obligationId !== params.obligationId) {
-      throw new Error("Payment obligation does not match the protected route.");
-    }
-    const result = await recordCommissionerDuesPayment(
+    const result = await approveOperationalFinanceAward(
       getOperationalFinanceLedgerRepository(season),
       season,
-      { ...body, obligationId: params.obligationId },
+      await readJsonBody(req),
       authorization.actor,
-      new Date().toISOString()
+      new Date().toISOString(),
+      acquireOperationalFinanceAwardProposalSource
     );
-    return NextResponse.json(
-      {
-        ...result,
-        dashboard: await loadOperationalFinanceDashboardFromFirestore(season),
-      },
-      { status: result.created ? 201 : 200 }
-    );
+    return NextResponse.json(result, { status: result.created ? 201 : 200 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Payment could not be recorded.";
-    const status = /Idempotency key was already used/.test(message) ? 409 : 400;
+    const message = error instanceof Error ? error.message : "Award approval failed.";
+    const status = /changed|Idempotency|conflict|no longer/.test(message) ? 409 : 400;
     return NextResponse.json({ error: message }, { status });
   }
 }

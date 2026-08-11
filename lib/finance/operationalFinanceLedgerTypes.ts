@@ -40,6 +40,17 @@ export interface OperationalFinanceSeasonLedger {
   readonly sourceLeagueId: string;
 }
 
+export type OperationalFinanceProposalEvidence = Readonly<{
+  proposalVersion: string;
+  sourceType: string;
+  sourceRef: string;
+  sourceSnapshotAt: string | null;
+  leagueId: string | null;
+  eventKey: string;
+  finalityState: "sleeper-final";
+  facts: Readonly<Record<string, string | number | boolean | null>>;
+}>;
+
 export interface OperationalFinanceObligation {
   readonly obligationId: string;
   readonly season: number;
@@ -49,6 +60,7 @@ export interface OperationalFinanceObligation {
   readonly franchiseId: string | null;
   readonly financialOwnerId: string | null;
   readonly proposalKey: string | null;
+  readonly proposalEvidence: OperationalFinanceProposalEvidence | null;
   readonly duePolicy: "before-draft" | null;
   readonly dueAt: string | null;
   readonly ruleRef: string;

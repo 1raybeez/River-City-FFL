@@ -83,6 +83,15 @@ const EVENT_LABELS: Record<OperationalFinanceAuditEvent["eventType"], string> = 
   "migration-recorded": "Opening migration recorded",
 };
 
+function awardCategoryLabel(category: string) {
+  if (category === "weekly-high-score") return "Weekly High Score";
+  if (category === "division-winner") return "Division Winner";
+  if (category === "third-place") return "Third Place";
+  if (category === "runner-up") return "Runner-Up";
+  if (category === "champion") return "Champion";
+  return "Award";
+}
+
 const EVENT_SORT_PRIORITY: Record<OperationalFinanceAuditEvent["eventType"], number> = {
   "migration-recorded": 7,
   "settlement-created": 6,
@@ -121,7 +130,7 @@ function settlementPresentation(
 function activityTargetLabel(
   event: OperationalFinanceAuditEvent,
   settlementObligations: ReadonlyMap<string, string>,
-  obligationOwners: ReadonlyMap<string, string>
+  obligationLabels: ReadonlyMap<string, string>
 ) {
   const obligationId =
     event.targetType === "settlement"
@@ -129,10 +138,31 @@ function activityTargetLabel(
       : event.targetType === "obligation"
         ? event.targetId
         : null;
-  if (obligationId) return obligationOwners.get(obligationId) ?? "Finance record";
+  if (obligationId) return obligationLabels.get(obligationId) ?? "Finance record";
   if (event.targetType === "season") return `${event.season} season`;
   if (event.targetType === "migration") return `${event.season} opening ledger`;
   return "Finance record";
+}
+
+function activityEventLabel(
+  event: OperationalFinanceAuditEvent,
+  obligationById: ReadonlyMap<string, OperationalFinanceLedgerSnapshot["obligations"][number]>,
+  settlementObligations: ReadonlyMap<string, string>
+) {
+  const obligationId =
+    event.targetType === "obligation"
+      ? event.targetId
+      : event.targetType === "settlement"
+        ? settlementObligations.get(event.targetId)
+        : null;
+  const obligation = obligationId ? obligationById.get(obligationId) : null;
+  if (event.eventType === "obligation-created" && obligation?.proposalKey) {
+    return `${awardCategoryLabel(obligation.category)} approved`;
+  }
+  if (event.eventType === "settlement-created" && obligation?.proposalKey) {
+    return `${awardCategoryLabel(obligation.category)} payment recorded`;
+  }
+  return EVENT_LABELS[event.eventType];
 }
 
 export function buildOperationalFinanceDashboardPresentation(
@@ -204,28 +234,51 @@ export function buildOperationalFinanceDashboardPresentation(
       first.financialOwnerName.localeCompare(second.financialOwnerName)
     );
 
-  const obligationOwners = new Map(
-    duesRows.map((entry) => [entry.obligationId, entry.financialOwnerName])
-  );
   const settlementObligations = new Map(
     settlements.map((entry) => [entry.settlementId, entry.obligationId])
+  );
+  const obligationById = new Map(
+    obligations.map((entry) => [entry.obligationId, entry])
+  );
+  const obligationLabels = new Map(
+    obligations.map((entry) => {
+      const ownerName = entry.financialOwnerId
+        ? getOwnerProfileById(entry.financialOwnerId)?.fullName ?? entry.financialOwnerId
+        : "League";
+      if (!entry.proposalKey) return [entry.obligationId, ownerName];
+      const week = entry.proposalEvidence?.facts.week;
+      const eventLabel =
+        entry.category === "weekly-high-score" && typeof week === "number"
+          ? `Week ${week}`
+          : awardCategoryLabel(entry.category);
+      return [
+        entry.obligationId,
+        `${eventLabel} · ${ownerName} · ${(entry.amountCents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" })}`,
+      ];
+    })
   );
   const recentActivity = snapshot.auditEvents
     .filter((entry) => entry.season === season)
     .sort(
       (first, second) =>
         second.createdAt.localeCompare(first.createdAt) ||
+        Number(second.actorRole === "commissioner") -
+          Number(first.actorRole === "commissioner") ||
         EVENT_SORT_PRIORITY[second.eventType] - EVENT_SORT_PRIORITY[first.eventType] ||
         second.eventId.localeCompare(first.eventId)
     )
     .slice(0, 15)
     .map((event): OperationalFinanceDashboardActivity => ({
       eventId: event.eventId,
-      eventLabel: EVENT_LABELS[event.eventType],
+      eventLabel: activityEventLabel(
+        event,
+        obligationById,
+        settlementObligations
+      ),
       targetLabel: activityTargetLabel(
         event,
         settlementObligations,
-        obligationOwners
+        obligationLabels
       ),
       actorLabel: event.actorRole === "commissioner" ? "Commissioner" : "System",
       createdAt: event.createdAt,

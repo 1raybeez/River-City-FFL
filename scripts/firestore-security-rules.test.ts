@@ -75,6 +75,17 @@ assert.doesNotMatch(
   operationalFinanceMutationRoute,
   /firebase\/firestore|@\/lib\/firebase(?:"|')/
 );
+const operationalFinanceAwardRoute = read(
+  "app/api/commish/finance/[season]/awards/approve/route.ts"
+);
+assert.match(operationalFinanceAwardRoute, /requireOperationalFinanceCommissioner/);
+assert.match(operationalFinanceAwardRoute, /Cross-origin request denied/);
+assert.match(operationalFinanceAwardRoute, /acquireOperationalFinanceAwardProposalSource/);
+assert.match(operationalFinanceAwardRoute, /getOperationalFinanceLedgerRepository/);
+assert.doesNotMatch(
+  operationalFinanceAwardRoute,
+  /firebase\/firestore|@\/lib\/firebase(?:"|')/
+);
 
 for (const collectionName of [
   "siteContent",

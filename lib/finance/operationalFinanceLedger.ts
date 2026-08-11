@@ -16,6 +16,7 @@ import type {
   OperationalFinanceMigrationRecord,
   OperationalFinanceObligation,
   OperationalFinanceObligationCategory,
+  OperationalFinanceProposalEvidence,
   OperationalFinanceReversal,
   OperationalFinanceSeasonLedger,
   OperationalFinanceSettlement,
@@ -41,6 +42,7 @@ export interface RecordObligationInput {
   readonly franchiseId: string | null;
   readonly financialOwnerId: string | null;
   readonly proposalKey?: string | null;
+  readonly proposalEvidence?: OperationalFinanceProposalEvidence | null;
   readonly duePolicy?: "before-draft" | null;
   readonly dueAt?: string | null;
   readonly ruleRef: string;
@@ -258,6 +260,7 @@ async function putObligation(
   const value = deepFreeze<OperationalFinanceObligation>({
     ...input,
     proposalKey: input.proposalKey ?? null,
+    proposalEvidence: input.proposalEvidence ?? null,
     duePolicy: input.duePolicy ?? null,
     dueAt: input.dueAt ?? null,
     replacesObligationId: input.replacesObligationId ?? null,
@@ -282,7 +285,12 @@ async function putObligation(
       idempotencyKey,
       input.replacesObligationId ?? null,
       value.obligationId,
-      { category: value.category, amountCents: value.amountCents }
+      {
+        category: value.category,
+        amountCents: value.amountCents,
+        proposalKey: value.proposalKey,
+        sourceRef: value.sourceRef,
+      }
     )
   );
   await transaction.putIdempotency(
@@ -306,7 +314,33 @@ export async function recordObligation(
       "obligation-created",
       (id) => transaction.getObligation(id)
     );
-    if (duplicate) return duplicate;
+    if (duplicate) {
+      const existing = duplicate.value;
+      const matchesRequest =
+        existing.obligationId === input.obligationId &&
+        existing.season === input.season &&
+        existing.category === input.category &&
+        existing.amountCents === input.amountCents &&
+        existing.fundingSource === input.fundingSource &&
+        existing.franchiseId === input.franchiseId &&
+        existing.financialOwnerId === input.financialOwnerId &&
+        existing.proposalKey === (input.proposalKey ?? null) &&
+        JSON.stringify(existing.proposalEvidence) ===
+          JSON.stringify(input.proposalEvidence ?? null) &&
+        existing.duePolicy === (input.duePolicy ?? null) &&
+        existing.dueAt === (input.dueAt ?? null) &&
+        existing.ruleRef === input.ruleRef &&
+        JSON.stringify(existing.ruleProvenance) ===
+          JSON.stringify(input.ruleProvenance) &&
+        existing.sourceRef === input.sourceRef &&
+        existing.replacesObligationId === (input.replacesObligationId ?? null) &&
+        existing.replacementForReversalId ===
+          (input.replacementForReversalId ?? null);
+      if (!matchesRequest) {
+        throw new Error("Idempotency key was already used for a different obligation request.");
+      }
+      return duplicate;
+    }
     return deepFreeze({
       created: true,
       value: await putObligation(transaction, input, actor, idempotencyKey, recordedAt),
@@ -368,6 +402,23 @@ export async function recordApprovedAwardProposal(
         : OPERATIONAL_FINANCE_SEASON_2026.placementAwards.find(
             (entry) => entry.category === proposal.category
           );
+  const evidenceFactKeys = [
+    "week",
+    "divisionId",
+    "divisionName",
+    "winnerRosterId",
+    "winnerPoints",
+    "bracketMatchId",
+    "round",
+    "canonicalFranchiseId",
+    "finalityEvidence",
+  ];
+  const evidenceFacts = Object.fromEntries(
+    evidenceFactKeys.flatMap((key) => {
+      const value = proposal.sourceFacts[key];
+      return value === undefined ? [] : [[key, value]];
+    })
+  );
   return recordObligation(
     repository,
     {
@@ -379,6 +430,19 @@ export async function recordApprovedAwardProposal(
       franchiseId: proposal.franchiseId,
       financialOwnerId: proposal.financialOwnerId,
       proposalKey: proposal.proposalKey,
+      proposalEvidence: {
+        proposalVersion: OPERATIONAL_FINANCE_SEASON_2026.schemaVersion,
+        sourceType: proposal.sourceType,
+        sourceRef: proposal.sourceRef,
+        sourceSnapshotAt: proposal.createdFromSnapshotAt,
+        leagueId:
+          typeof proposal.sourceFacts.leagueId === "string"
+            ? proposal.sourceFacts.leagueId
+            : null,
+        eventKey: proposal.proposalKey,
+        finalityState: "sleeper-final",
+        facts: evidenceFacts,
+      },
       ruleRef: proposal.ruleRef,
       ruleProvenance:
         rule?.provenance ?? OPERATIONAL_FINANCE_SEASON_2026.championshipAllocation.provenance,
