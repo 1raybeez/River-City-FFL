@@ -1,15 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { 
   ArrowLeft, Gavel, Check, X, Lock, Unlock, PlusCircle, Clock, 
   ShieldCheck, Archive
 } from 'lucide-react';
-import { db } from "@/lib/firebase";
-import { collection, onSnapshot, doc, updateDoc, arrayUnion, getDoc } from "firebase/firestore";
-import { ratifyProposal } from "@/lib/legislativeLogic";
 import {
   ArchivedProposal,
   getArchiveSession,
@@ -44,6 +41,7 @@ export default function ProposalsPage() {
   const [now, setNow] = useState(new Date());
   const [isOverrideOpen, setIsOverrideOpen] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [proposalError, setProposalError] = useState<string | null>(null);
   const [finalizeMessage, setFinalizeMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [selectedArchiveYear, setSelectedArchiveYear] = useState<number>(LEGISLATIVE_ARCHIVE_YEARS[0]);
   const [selectedArchivedProposal, setSelectedArchivedProposal] = useState<ArchivedProposal | null>(null);
@@ -70,28 +68,62 @@ export default function ProposalsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  // Sync Global Voting Override
-  useEffect(() => {
-    const unsub = onSnapshot(doc(db, "league_settings", "voting_state"), (doc) => {
-      if (doc.exists()) setIsOverrideOpen(doc.data().isOverrideOpen);
-    });
-    return () => unsub();
+  const applyProposalState = useCallback((payload: {
+    proposals?: unknown;
+    isOverrideOpen?: unknown;
+  }) => {
+    setProposals(Array.isArray(payload.proposals) ? payload.proposals : []);
+    setIsOverrideOpen(payload.isOverrideOpen === true);
   }, []);
 
-  // Sync Proposals
+  const loadProposalState = useCallback(async () => {
+    const response = await fetch("/api/commish/proposals", { cache: "no-store" });
+    const payload = (await response.json()) as {
+      proposals?: unknown;
+      isOverrideOpen?: unknown;
+      error?: string;
+    };
+    if (!response.ok) throw new Error(payload.error || "Proposal data could not be loaded.");
+    applyProposalState(payload);
+    setProposalError(null);
+  }, [applyProposalState]);
+
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 60000);
-    const unsubscribe = onSnapshot(collection(db, "proposals"), (snapshot) => {
-      setProposals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    void loadProposalState().catch((error) => {
+      console.error(error);
+      setProposalError(error instanceof Error ? error.message : "Proposal data could not be loaded.");
     });
-    return () => { unsubscribe(); clearInterval(timer); };
-  }, []);
+    const timer = setInterval(() => {
+      setNow(new Date());
+      void loadProposalState().catch((error) => console.error(error));
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [loadProposalState]);
+
+  const updateProposalState = async (body: Record<string, unknown>) => {
+    const response = await fetch("/api/commish/proposals", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const payload = (await response.json()) as {
+      proposals?: unknown;
+      isOverrideOpen?: unknown;
+      error?: string;
+      passedCount?: number;
+      failedCount?: number;
+    };
+    if (!response.ok) throw new Error(payload.error || "Legislative update failed.");
+    applyProposalState(payload);
+    return payload;
+  };
 
   const toggleFloor = async () => {
     if (selectedManagerId !== "342828350391230464") return;
     try {
-      await updateDoc(doc(db, "league_settings", "voting_state"), {
-        isOverrideOpen: !isOverrideOpen
+      await updateProposalState({
+        action: "set-voting-override",
+        isOverrideOpen: !isOverrideOpen,
       });
     } catch (err) { console.error(err); }
   };
@@ -108,35 +140,9 @@ export default function ProposalsPage() {
     setFinalizeMessage(null);
 
     try {
-      let passedCount = 0;
-      let failedCount = 0;
-
-      for (const proposal of activeProposals) {
-        const yesCount = proposal.votes?.yes?.length || 0;
-        const noCount = proposal.votes?.no?.length || 0;
-
-        if (yesCount > noCount) {
-          const result = await ratifyProposal({
-            ...proposal,
-            status: "active",
-            votes: {
-              yes: proposal.votes?.yes ?? [],
-              no: proposal.votes?.no ?? [],
-            },
-          });
-
-          if (!result.success) {
-            throw new Error(`Failed to ratify "${proposal.title}".`);
-          }
-
-          passedCount++;
-        } else {
-          await updateDoc(doc(db, "proposals", proposal.id), {
-            status: "failed",
-          });
-          failedCount++;
-        }
-      }
+      const result = await updateProposalState({ action: "finalize" });
+      const passedCount = result.passedCount ?? 0;
+      const failedCount = result.failedCount ?? 0;
 
       setFinalizeMessage({
         type: "success",
@@ -155,26 +161,13 @@ export default function ProposalsPage() {
 
   const handleVote = async (proposalId: string, type: 'yes' | 'no') => {
     if (!selectedManagerId || !isVotingOpen) return;
-    const coOwnerMap: { [key: string]: string } = {
-      "342828350391230464": "356621920969555968",
-      "356621920969555968": "342828350391230464",
-      "341412060426436608": "469199353672626176",
-      "469199353672626176": "341412060426436608"
-    };
-    const partnerId = coOwnerMap[selectedManagerId];
-    const proposalRef = doc(db, "proposals", proposalId);
-    const oppType = type === 'yes' ? 'no' : 'yes';
-
     try {
-      await updateDoc(proposalRef, {
-        [`votes.${type}`]: arrayUnion(selectedManagerId, ...(partnerId ? [partnerId] : []))
+      await updateProposalState({
+        action: "vote",
+        proposalId,
+        managerId: selectedManagerId,
+        voteType: type,
       });
-      const proposalSnap = await getDoc(proposalRef);
-      const data = proposalSnap.data();
-      if (data?.votes?.[oppType]) {
-        const cleanedOppVotes = data.votes[oppType].filter((id: string) => id !== selectedManagerId && id !== partnerId);
-        await updateDoc(proposalRef, { [`votes.${oppType}`]: cleanedOppVotes });
-      }
     } catch (error) { console.error(error); }
   };
 
@@ -389,6 +382,12 @@ export default function ProposalsPage() {
                 {isFinalizing ? "Finalizing..." : "Finalize Voting"}
               </button>
             </div>
+          </div>
+        )}
+
+        {proposalError && (
+          <div className="mb-10 rounded-2xl border border-red-600/20 bg-red-600/10 p-4 text-sm font-bold text-red-600">
+            {proposalError}
           </div>
         )}
 

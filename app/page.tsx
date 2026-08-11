@@ -11,7 +11,7 @@ import {
 
 // --- FIREBASE IMPORTS ---
 import { db } from "@/lib/firebase"; 
-import { doc, getDoc, collection, onSnapshot, setDoc, serverTimestamp } from "firebase/firestore"; 
+import { doc, getDoc, collection, onSnapshot } from "firebase/firestore";
 import { getAllPlayers } from '@/lib/sleeper'; 
 
 // --- CONFIGURATION ---
@@ -165,13 +165,13 @@ export default function Home() {
   const handleRsvp = async () => {
     if (!selectedManagerId) return;
     setIsSubmittingRsvp(true);
-    const manager = managers.find(m => m.id === selectedManagerId);
     try {
-      await setDoc(doc(db, "rsvps", selectedManagerId), {
-        name: manager?.name,
-        timestamp: serverTimestamp(),
-        status: "Attending"
+      const response = await fetch("/api/rsvps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ managerId: selectedManagerId }),
       });
+      if (!response.ok) throw new Error("RSVP request failed.");
     } catch (err) { console.error(err); } finally { setIsSubmittingRsvp(false); }
   };
 

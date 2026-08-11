@@ -1,0 +1,57 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Public presentation data. These collections are written only by trusted
+    // server/Admin tooling, but their current site consumers read directly.
+    match /siteContent/{document} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /rsvps/{document} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /player_stats/{document} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /historical_distribution/{document} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /ratified_rules/{document} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /version_history_updates/{document} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Operational finance is server-only. Future commissioner mutations must
+    // pass through authenticated server endpoints using the Admin SDK.
+    match /finance_rules/{document} {
+      allow read, write: if false;
+    }
+
+    match /finance_seasons/{season} {
+      allow read, write: if false;
+
+      match /{document=**} {
+        allow read, write: if false;
+      }
+    }
+
+    // Deny every collection not explicitly approved above. Admin SDK access is
+    // not governed by client security rules and remains available server-side.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

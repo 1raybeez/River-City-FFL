@@ -5,8 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTheme } from "next-themes";
 import { ArrowLeft, Send, Sun, Moon, Monitor, Gavel } from 'lucide-react';
-import { db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 const managers = [
   { name: "Aaron Dogg", id: "583513420586848256", img: "Aaron.png" },
@@ -25,8 +23,6 @@ const managers = [
   { name: "Wade Cameron", id: "342838548870762496", img: "Wade.png" }
 ];
 
-const CURRENT_LEGISLATIVE_SESSION_YEAR = 2027;
-
 export default function NewProposalPage() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
@@ -38,26 +34,22 @@ export default function NewProposalPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db) return;
     setLoading(true);
-    const selectedManager = managers.find(m => m.id === formData.managerId);
 
     try {
-      await addDoc(collection(db, "proposals"), {
-        ...formData,
-        submittedBy: selectedManager?.name,
-        // CORRECT PATH: No "public" prefix
-        managerImage: `/managers/${selectedManager?.img}`, 
-        sleeperId: selectedManager?.id,
-        sessionYear: CURRENT_LEGISLATIVE_SESSION_YEAR,
-        status: 'active',
-        votes: { yes: [], no: [] },
-        createdAt: serverTimestamp()
+      const response = await fetch("/api/commish/proposals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
       });
+      if (!response.ok) {
+        const payload = (await response.json()) as { error?: string };
+        throw new Error(payload.error || "Submission failed.");
+      }
       router.push('/commish/proposals');
     } catch (err) {
       console.error(err);
-      alert("Submission failed.");
+      alert(err instanceof Error ? err.message : "Submission failed.");
     } finally {
       setLoading(false);
     }
