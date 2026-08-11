@@ -21,7 +21,29 @@ const PUBLIC_RSVP_MANAGERS: Record<string, string> = {
 
 function isSameOrigin(req: Request) {
   const origin = req.headers.get("origin");
-  return !origin || origin === new URL(req.url).origin;
+  if (!origin) return true;
+
+  const requestOrigins = new Set([new URL(req.url).origin]);
+  const forwardedHost = req.headers
+    .get("x-forwarded-host")
+    ?.split(",")[0]
+    ?.trim();
+  const forwardedProtocol = req.headers
+    .get("x-forwarded-proto")
+    ?.split(",")[0]
+    ?.trim();
+  if (forwardedHost) {
+    requestOrigins.add(`${forwardedProtocol || "https"}://${forwardedHost}`);
+  }
+
+  const publicHost = process.env.VERCEL_URL?.trim();
+  if (publicHost) {
+    requestOrigins.add(
+      publicHost.startsWith("http") ? publicHost : `https://${publicHost}`
+    );
+  }
+
+  return requestOrigins.has(origin);
 }
 
 async function readManagerId(req: Request) {

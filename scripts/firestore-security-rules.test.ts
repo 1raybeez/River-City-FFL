@@ -75,11 +75,15 @@ const rsvpRoute = read("app/api/rsvps/route.ts");
 assert.match(rsvpRoute, /@\/lib\/firebaseAdmin/);
 assert.match(rsvpRoute, /PUBLIC_RSVP_MANAGERS/);
 assert.match(rsvpRoute, /Cross-origin request denied/);
+assert.match(rsvpRoute, /x-forwarded-host/);
+assert.match(rsvpRoute, /VERCEL_URL/);
 
 const proposalRoute = read("app/api/commish/proposals/route.ts");
 assert.match(proposalRoute, /requireAuctionAccess/);
 assert.match(proposalRoute, /@\/lib\/legislativeServer/);
 assert.match(proposalRoute, /Cross-origin request denied/);
+assert.match(proposalRoute, /x-forwarded-host/);
+assert.match(proposalRoute, /VERCEL_URL/);
 
 const legislativeServer = read("lib/legislativeServer.ts");
 assert.match(legislativeServer, /import\s+"server-only"/);
