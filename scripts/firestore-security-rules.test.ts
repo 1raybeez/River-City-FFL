@@ -40,6 +40,18 @@ assert.match(
   "Operational finance season roots and subcollections must deny direct client access."
 );
 
+assert.match(
+  rules,
+  /match\s+\/operational_finance_payment_contacts\/\{ownerId\}\s*\{[\s\S]*?allow\s+read\s*,\s*write\s*:\s*if\s+false\s*;[\s\S]*?match\s+\/\{document=\*\*\}\s*\{[\s\S]*?allow\s+read\s*,\s*write\s*:\s*if\s+false\s*;/m,
+  "Private payment contacts and all nested evidence must deny direct client access."
+);
+
+const paymentContactServer = read(
+  "lib/finance/operationalFinancePaymentContactsFirestore.ts"
+);
+assert.match(paymentContactServer, /@\/lib\/firebaseAdmin/);
+assert.doesNotMatch(paymentContactServer, /firebase\/firestore|\.delete\s*\(/);
+
 const operationalLedgerServer = read(
   "lib/finance/operationalFinanceLedgerFirestore.ts"
 );
@@ -84,6 +96,26 @@ assert.match(operationalFinanceAwardRoute, /acquireOperationalFinanceAwardPropos
 assert.match(operationalFinanceAwardRoute, /getOperationalFinanceLedgerRepository/);
 assert.doesNotMatch(
   operationalFinanceAwardRoute,
+  /firebase\/firestore|@\/lib\/firebase(?:"|')/
+);
+const operationalFinanceAwardSettlementRoute = read(
+  "app/api/commish/finance/[season]/awards/[obligationId]/settlements/route.ts"
+);
+assert.match(operationalFinanceAwardSettlementRoute, /requireOperationalFinanceCommissioner/);
+assert.match(operationalFinanceAwardSettlementRoute, /Cross-origin request denied/);
+assert.match(operationalFinanceAwardSettlementRoute, /getOperationalFinanceLedgerRepository/);
+assert.doesNotMatch(
+  operationalFinanceAwardSettlementRoute,
+  /firebase\/firestore|@\/lib\/firebase(?:"|')/
+);
+const operationalFinancePaymentContactRoute = read(
+  "app/api/commish/finance/[season]/payment-contacts/[ownerId]/route.ts"
+);
+assert.match(operationalFinancePaymentContactRoute, /requireOperationalFinanceCommissioner/);
+assert.match(operationalFinancePaymentContactRoute, /Cross-origin request denied/);
+assert.match(operationalFinancePaymentContactRoute, /getOperationalFinancePaymentContactRepository/);
+assert.doesNotMatch(
+  operationalFinancePaymentContactRoute,
   /firebase\/firestore|@\/lib\/firebase(?:"|')/
 );
 

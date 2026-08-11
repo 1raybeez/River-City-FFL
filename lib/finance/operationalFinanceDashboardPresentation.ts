@@ -77,6 +77,7 @@ const EVENT_LABELS: Record<OperationalFinanceAuditEvent["eventType"], string> = 
   "season-metadata-created": "Season ledger created",
   "obligation-created": "Dues assessment created",
   "settlement-created": "Dues payment recorded",
+  "award-settlement-recorded": "Award payment recorded",
   "obligation-reversed": "Obligation reversed",
   "obligation-replaced": "Obligation replaced",
   "settlement-reversed": "Payment reversed",
@@ -94,6 +95,7 @@ function awardCategoryLabel(category: string) {
 
 const EVENT_SORT_PRIORITY: Record<OperationalFinanceAuditEvent["eventType"], number> = {
   "migration-recorded": 7,
+  "award-settlement-recorded": 6,
   "settlement-created": 6,
   "settlement-reversed": 5,
   "obligation-replaced": 4,
@@ -159,7 +161,11 @@ function activityEventLabel(
   if (event.eventType === "obligation-created" && obligation?.proposalKey) {
     return `${awardCategoryLabel(obligation.category)} approved`;
   }
-  if (event.eventType === "settlement-created" && obligation?.proposalKey) {
+  if (
+    (event.eventType === "settlement-created" ||
+      event.eventType === "award-settlement-recorded") &&
+    obligation?.proposalKey
+  ) {
     return `${awardCategoryLabel(obligation.category)} payment recorded`;
   }
   return EVENT_LABELS[event.eventType];

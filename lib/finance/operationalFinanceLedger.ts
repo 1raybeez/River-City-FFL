@@ -549,12 +549,16 @@ async function putSettlement(
     createdBy: { ...actor },
     idempotencyKey,
   });
+  const auditOperation =
+    input.direction === "outgoing-award"
+      ? "award-settlement-recorded"
+      : "settlement-created";
   await transaction.putSettlement(value);
   await transaction.putAuditEvent(
-    auditEvent(input.season, "settlement-created", actor, "settlement", value.settlementId, recordedAt, "Actual money movement recorded separately from its obligation.", idempotencyKey, input.obligationId, value.settlementId, { amountCents: value.amountCents, direction: value.direction })
+    auditEvent(input.season, auditOperation, actor, "settlement", value.settlementId, recordedAt, "Actual money movement recorded separately from its obligation.", idempotencyKey, input.obligationId, value.settlementId, { amountCents: value.amountCents, direction: value.direction })
   );
   await transaction.putIdempotency(
-    idempotencyRecord(input.season, "settlement-created", "settlement", value.settlementId, idempotencyKey, recordedAt)
+    idempotencyRecord(input.season, auditOperation, "settlement", value.settlementId, idempotencyKey, recordedAt)
   );
   return value;
 }
@@ -568,7 +572,11 @@ export async function recordSettlement(
 ): Promise<OperationalFinanceMutationResult<OperationalFinanceSettlement>> {
   requireCommissioner(actor);
   return repository.runTransaction(async (transaction) => {
-    const duplicate = await existingTarget(transaction, idempotencyKey, "settlement-created", (id) => transaction.getSettlement(id));
+    const auditOperation =
+      input.direction === "outgoing-award"
+        ? "award-settlement-recorded"
+        : "settlement-created";
+    const duplicate = await existingTarget(transaction, idempotencyKey, auditOperation, (id) => transaction.getSettlement(id));
     if (duplicate) {
       const existing = duplicate.value;
       const matchesRequest =

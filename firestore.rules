@@ -56,6 +56,16 @@ service cloud.firestore {
       }
     }
 
+    // Private commissioner payment contacts and their revision/audit history.
+    // Access is exclusively through authenticated Admin SDK server paths.
+    match /operational_finance_payment_contacts/{ownerId} {
+      allow read, write: if false;
+
+      match /{document=**} {
+        allow read, write: if false;
+      }
+    }
+
     // Deny every collection not explicitly approved above. Admin SDK access is
     // not governed by client security rules and remains available server-side.
     match /{document=**} {

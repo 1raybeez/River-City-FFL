@@ -13,6 +13,7 @@ import type {
   OperationalFinanceAwardReviewItem,
   OperationalFinanceCommissionerDashboardPresentation,
 } from "@/lib/finance/operationalFinanceAwardReview";
+import OperationalFinanceAwardPaymentControls from "./OperationalFinanceAwardPaymentControls";
 
 function formatCurrency(cents: number) {
   return new Intl.NumberFormat("en-US", {
@@ -235,6 +236,11 @@ export default function OperationalFinanceAwardReviewSection({
                     <span className={`rounded-full border px-2.5 py-1 text-[9px] font-black tracking-widest ${paymentStatusClasses(award.paymentStatusLabel)}`}>{award.paymentStatusLabel}</span>
                     {award.paymentStatusLabel === "UNPAID" && <span className="text-xs font-semibold text-gray-500">Payment: Not recorded</span>}
                   </div>
+                  <OperationalFinanceAwardPaymentControls
+                    award={award}
+                    onDashboard={onDashboard}
+                    onConfirmation={onConfirmation}
+                  />
                 </li>
               ))}
             </ul>

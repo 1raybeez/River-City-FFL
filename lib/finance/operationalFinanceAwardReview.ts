@@ -25,6 +25,7 @@ import {
   type OperationalFinanceSleeperAcquisitionSummary,
 } from "@/lib/finance/operationalFinanceSleeperAdapter";
 import { getFranchiseById, getOwnerProfileById } from "@/lib/managers/identityData";
+import type { OperationalFinancePaymentContact } from "@/lib/finance/operationalFinancePaymentContacts";
 
 const APPROVABLE_CATEGORIES = new Set<OperationalFinanceProposalCategory>([
   "weekly-high-score",
@@ -55,16 +56,23 @@ export type OperationalFinanceAwardReviewItem = Readonly<{
 export type OperationalFinanceApprovedAwardItem = Readonly<{
   obligationId: string;
   proposalKey: string;
+  financialOwnerId: string;
   categoryLabel: string;
   eventLabel: string;
   financialOwnerName: string;
   franchiseName: string;
   amountCents: number;
   settledCents: number;
+  remainingCents: number;
   paymentState: AwardPaymentState;
   paymentStatusLabel: "UNPAID" | "PARTIAL" | "PAID";
   approvedAt: string;
   discrepancy: string | null;
+  paymentContact: Readonly<{
+    method: "venmo";
+    handle: string;
+    status: "active" | "unverified" | "inactive";
+  }> | null;
 }>;
 
 export type OperationalFinanceAwardIssue = Readonly<{
@@ -270,7 +278,8 @@ function awardPaymentState(
 
 export function buildOperationalFinanceAwardReviewPresentation(
   snapshot: OperationalFinanceLedgerSnapshot,
-  source: OperationalFinanceAwardProposalSource
+  source: OperationalFinanceAwardProposalSource,
+  paymentContacts: readonly OperationalFinancePaymentContact[] = []
 ): OperationalFinanceAwardReviewPresentation {
   const reversedObligationIds = new Set(
     snapshot.reversals
@@ -356,6 +365,7 @@ export function buildOperationalFinanceAwardReviewPresentation(
       return {
         obligationId: obligation.obligationId,
         proposalKey: obligation.proposalKey as string,
+        financialOwnerId: obligation.financialOwnerId as string,
         categoryLabel: categoryLabel(
           obligation.category as OperationalFinanceProposalCategory
         ),
@@ -370,6 +380,7 @@ export function buildOperationalFinanceAwardReviewPresentation(
           : "League",
         amountCents: obligation.amountCents,
         settledCents: payment.settledCents,
+        remainingCents: Math.max(0, obligation.amountCents - payment.settledCents),
         paymentState: payment.state,
         paymentStatusLabel:
           payment.state === "paid"
@@ -379,6 +390,20 @@ export function buildOperationalFinanceAwardReviewPresentation(
               : "UNPAID",
         approvedAt: obligation.createdAt,
         discrepancy,
+        paymentContact: obligation.financialOwnerId
+          ? (() => {
+              const contact = paymentContacts.find(
+                (entry) => entry.ownerId === obligation.financialOwnerId
+              );
+              return contact
+                ? {
+                    method: contact.method,
+                    handle: contact.handle,
+                    status: contact.status,
+                  }
+                : null;
+            })()
+          : null,
       };
     })
     .sort((first, second) => second.approvedAt.localeCompare(first.approvedAt));
@@ -478,11 +503,16 @@ export function buildOperationalFinanceAwardReviewPresentation(
 export function buildOperationalFinanceCommissionerDashboardPresentation(
   snapshot: OperationalFinanceLedgerSnapshot,
   season: number,
-  source: OperationalFinanceAwardProposalSource
+  source: OperationalFinanceAwardProposalSource,
+  paymentContacts: readonly OperationalFinancePaymentContact[] = []
 ): OperationalFinanceCommissionerDashboardPresentation {
   return {
     ...buildOperationalFinanceDashboardPresentation(snapshot, season),
-    awardReview: buildOperationalFinanceAwardReviewPresentation(snapshot, source),
+    awardReview: buildOperationalFinanceAwardReviewPresentation(
+      snapshot,
+      source,
+      paymentContacts
+    ),
   };
 }
 

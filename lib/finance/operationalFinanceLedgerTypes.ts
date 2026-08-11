@@ -105,6 +105,7 @@ export type OperationalFinanceAuditEventType =
   | "season-metadata-created"
   | "obligation-created"
   | "settlement-created"
+  | "award-settlement-recorded"
   | "obligation-reversed"
   | "obligation-replaced"
   | "settlement-reversed"
