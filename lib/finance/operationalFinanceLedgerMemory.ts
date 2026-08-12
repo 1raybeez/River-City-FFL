@@ -1,5 +1,6 @@
 import type {
   OperationalFinanceAuditEvent,
+  OperationalFinanceArchive,
   OperationalFinanceIdempotencyRecord,
   OperationalFinanceLedgerRepository,
   OperationalFinanceLedgerSnapshot,
@@ -19,6 +20,7 @@ type MemoryState = {
   auditEvents: Map<string, OperationalFinanceAuditEvent>;
   migrationRecords: Map<string, OperationalFinanceMigrationRecord>;
   idempotencyRecords: Map<string, OperationalFinanceIdempotencyRecord>;
+  archive: OperationalFinanceArchive | null;
 };
 
 function deepFreeze<T>(value: T): T {
@@ -42,6 +44,7 @@ function cloneState(state: MemoryState): MemoryState {
     auditEvents: new Map([...state.auditEvents].map(([key, value]) => [key, clone(value)])),
     migrationRecords: new Map([...state.migrationRecords].map(([key, value]) => [key, clone(value)])),
     idempotencyRecords: new Map([...state.idempotencyRecords].map(([key, value]) => [key, clone(value)])),
+    archive: clone(state.archive),
   };
 }
 
@@ -67,6 +70,9 @@ function transactionFor(state: MemoryState): OperationalFinanceLedgerTransaction
     async getIdempotency(key) {
       return clone(state.idempotencyRecords.get(key) ?? null);
     },
+    async getArchive(season) {
+      return season === state.archive?.season ? clone(state.archive) : null;
+    },
     async getAllObligations(season) {
       return clone([...state.obligations.values()].filter((entry) => entry.season === season));
     },
@@ -78,6 +84,10 @@ function transactionFor(state: MemoryState): OperationalFinanceLedgerTransaction
     },
     async putSeason(value) {
       if (state.seasons.has(value.season)) throw new Error(`Season ${value.season} already exists.`);
+      state.seasons.set(value.season, clone(value));
+    },
+    async updateSeason(value) {
+      if (!state.seasons.has(value.season)) throw new Error(`Season ${value.season} does not exist.`);
       state.seasons.set(value.season, clone(value));
     },
     async putObligation(value) {
@@ -98,6 +108,10 @@ function transactionFor(state: MemoryState): OperationalFinanceLedgerTransaction
     async putIdempotency(value) {
       putUnique(state.idempotencyRecords, value.idempotencyKey, value, "Idempotency record");
     },
+    async putArchive(value) {
+      if (state.archive) throw new Error(`Season archive ${value.season} already exists.`);
+      state.archive = clone(value);
+    },
   };
 }
 
@@ -112,6 +126,7 @@ export class InMemoryOperationalFinanceLedgerRepository
     auditEvents: new Map(),
     migrationRecords: new Map(),
     idempotencyRecords: new Map(),
+    archive: null,
   };
 
   async runTransaction<T>(
@@ -133,5 +148,9 @@ export class InMemoryOperationalFinanceLedgerRepository
       migrationRecords: clone([...this.state.migrationRecords.values()]),
       idempotencyRecords: clone([...this.state.idempotencyRecords.values()]),
     });
+  }
+
+  async getArchive(season: number) {
+    return deepFreeze(clone(this.state.archive?.season === season ? this.state.archive : null));
   }
 }

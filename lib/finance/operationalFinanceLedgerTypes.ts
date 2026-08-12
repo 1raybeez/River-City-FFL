@@ -5,6 +5,24 @@ export type OperationalFinanceActor = Readonly<{
   role: "commissioner" | "system";
 }>;
 
+export type OperationalFinanceArchive = Readonly<{
+  archiveId: string;
+  season: number;
+  schemaVersion: string;
+  rulesVersion: string;
+  sourceLeagueId: string;
+  closedAt: string;
+  closedBy: OperationalFinanceActor;
+  reconciliation: Readonly<Record<string, unknown>>;
+  obligations: readonly Readonly<Record<string, unknown>>[];
+  settlements: readonly Readonly<Record<string, unknown>>[];
+  reversals: readonly Readonly<Record<string, unknown>>[];
+  expenses: readonly Readonly<Record<string, unknown>>[];
+  contributions: readonly Readonly<Record<string, unknown>>[];
+  coverage: Readonly<Record<string, unknown>> | null;
+  archiveHash: string;
+}>;
+
 export type OperationalFinanceObligationCategory =
   | "dues-assessment"
   | "weekly-high-score"
@@ -35,6 +53,8 @@ export interface OperationalFinanceSeasonLedger {
   readonly updatedAt: string;
   readonly closedAt: string | null;
   readonly closedBy: string | null;
+  readonly archiveId?: string | null;
+  readonly archiveHash?: string | null;
   readonly rulesSnapshotHash: string;
   readonly financialOwnerMappingVersion: string;
   readonly sourceLeagueId: string;
@@ -124,7 +144,8 @@ export type OperationalFinanceAuditEventType =
   | "obligation-reversed"
   | "obligation-replaced"
   | "settlement-reversed"
-  | "migration-recorded";
+  | "migration-recorded"
+  | "season-closed";
 
 export interface OperationalFinanceAuditEvent {
   readonly eventId: string;
@@ -223,9 +244,11 @@ export interface OperationalFinanceLedgerTransaction {
   getSettlement(settlementId: string): Promise<OperationalFinanceSettlement | null>;
   getMigrationRecord(migrationId: string): Promise<OperationalFinanceMigrationRecord | null>;
   getIdempotency(key: string): Promise<OperationalFinanceIdempotencyRecord | null>;
+  getArchive(season: number): Promise<OperationalFinanceArchive | null>;
   getAllObligations(season: number): Promise<readonly OperationalFinanceObligation[]>;
   getAllSettlements(season: number): Promise<readonly OperationalFinanceSettlement[]>;
   getAllReversals(season: number): Promise<readonly OperationalFinanceReversal[]>;
+  updateSeason(value: OperationalFinanceSeasonLedger): Promise<void>;
   putSeason(value: OperationalFinanceSeasonLedger): Promise<void>;
   putObligation(value: OperationalFinanceObligation): Promise<void>;
   putSettlement(value: OperationalFinanceSettlement): Promise<void>;
@@ -233,6 +256,7 @@ export interface OperationalFinanceLedgerTransaction {
   putAuditEvent(value: OperationalFinanceAuditEvent): Promise<void>;
   putMigrationRecord(value: OperationalFinanceMigrationRecord): Promise<void>;
   putIdempotency(value: OperationalFinanceIdempotencyRecord): Promise<void>;
+  putArchive(value: OperationalFinanceArchive): Promise<void>;
 }
 
 export interface OperationalFinanceLedgerRepository {
@@ -240,4 +264,5 @@ export interface OperationalFinanceLedgerRepository {
     operation: (transaction: OperationalFinanceLedgerTransaction) => Promise<T>
   ): Promise<T>;
   getSnapshot(): Promise<OperationalFinanceLedgerSnapshot>;
+  getArchive(season: number): Promise<OperationalFinanceArchive | null>;
 }

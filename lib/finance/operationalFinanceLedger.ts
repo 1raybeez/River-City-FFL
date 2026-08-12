@@ -223,6 +223,8 @@ export function createOperationalFinanceSeasonLedger(
     updatedAt: recordedAt,
     closedAt: null,
     closedBy: null,
+    archiveId: null,
+    archiveHash: null,
     rulesSnapshotHash: `operational-finance-rules:${OPERATIONAL_FINANCE_SEASON_2026.schemaVersion}`,
     financialOwnerMappingVersion: `financial-owner-mappings:${OPERATIONAL_FINANCE_SEASON_2026.schemaVersion}`,
     sourceLeagueId: OPERATIONAL_FINANCE_2026_LEAGUE_ID,

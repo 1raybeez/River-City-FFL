@@ -131,6 +131,15 @@ for (const expenseRoutePath of [
   assert.doesNotMatch(source, /firebase\/firestore|@\/lib\/firebase(?:"|')/);
 }
 
+const seasonCloseRoute = read("app/api/commish/finance/[season]/close/route.ts");
+assert.match(seasonCloseRoute, /requireOperationalFinanceCommissioner/);
+assert.match(seasonCloseRoute, /Cross-origin request denied/);
+assert.match(seasonCloseRoute, /getOperationalFinanceLedgerRepository/);
+assert.doesNotMatch(seasonCloseRoute, /firebase\/firestore|@\/lib\/firebase(?::|["'])/);
+const archiveServer = read("lib/finance/operationalFinanceArchive.ts");
+assert.match(seasonCloseRoute, /export const runtime = ["']nodejs["']/);
+assert.doesNotMatch(archiveServer, /payment|venmo/i);
+
 for (const collectionName of [
   "siteContent",
   "rsvps",

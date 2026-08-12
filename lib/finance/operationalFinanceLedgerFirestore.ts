@@ -10,6 +10,7 @@ import {
 } from "@/lib/finance/operationalFinanceLedger";
 import type {
   OperationalFinanceAuditEvent,
+  OperationalFinanceArchive,
   OperationalFinanceIdempotencyRecord,
   OperationalFinanceLedgerRepository,
   OperationalFinanceLedgerSnapshot,
@@ -28,7 +29,9 @@ type LedgerRecord =
   | OperationalFinanceReversal
   | OperationalFinanceAuditEvent
   | OperationalFinanceMigrationRecord
-  | OperationalFinanceIdempotencyRecord;
+  | OperationalFinanceIdempotencyRecord
+  | OperationalFinanceArchive;
+
 
 const SUBCOLLECTIONS = {
   obligations: "obligations",
@@ -59,6 +62,7 @@ function transactionAdapter(
   const collection = (name: string) => seasonRef.collection(name);
   const pending = new Map<string, Map<string, LedgerRecord>>();
   let pendingSeason: OperationalFinanceSeasonLedger | null = null;
+  let pendingSeasonUpdate: OperationalFinanceSeasonLedger | null = null;
   const pendingCollection = (name: string) => {
     const existing = pending.get(name);
     if (existing) return existing;
@@ -114,6 +118,13 @@ function transactionAdapter(
       const snapshot = await transaction.get(collection(SUBCOLLECTIONS.idempotency).doc(key));
       return snapshot.exists ? clone(snapshot.data() as OperationalFinanceIdempotencyRecord) : null;
     },
+    async getArchive(requestedSeason) {
+      if (requestedSeason !== season) return null;
+      const queued = pending.get("archive")?.get("closed");
+      if (queued) return clone(queued as OperationalFinanceArchive);
+      const snapshot = await transaction.get(seasonRef.collection("archives").doc("closed"));
+      return snapshot.exists ? clone(snapshot.data() as OperationalFinanceArchive) : null;
+    },
     async getAllObligations(requestedSeason) {
       return requestedSeason === season
         ? readAll<OperationalFinanceObligation>(SUBCOLLECTIONS.obligations)
@@ -133,6 +144,10 @@ function transactionAdapter(
       if (pendingSeason) throw new Error(`Season ${value.season} is already queued.`);
       pendingSeason = clone(value);
     },
+    async updateSeason(value) {
+      if (pendingSeason || pendingSeasonUpdate) throw new Error(`Season ${value.season} has already been queued.`);
+      pendingSeasonUpdate = clone(value);
+    },
     async putObligation(value) {
       await create(SUBCOLLECTIONS.obligations, value.obligationId, value);
     },
@@ -151,16 +166,23 @@ function transactionAdapter(
     async putIdempotency(value) {
       await create(SUBCOLLECTIONS.idempotency, value.idempotencyKey, value);
     },
+    async putArchive(value) {
+      await create("archive", "closed", value);
+    },
   };
 
   return {
     adapter,
     flush() {
       if (pendingSeason) transaction.create(seasonRef, clone(pendingSeason));
+      if (pendingSeasonUpdate) transaction.update(seasonRef, clone(pendingSeasonUpdate) as never);
       pending.forEach((values, name) =>
-        values.forEach((value, id) =>
-          transaction.create(collection(name).doc(id), clone(value))
-        )
+        values.forEach((value, id) => {
+          const ref = name === "archive"
+            ? seasonRef.collection("archives").doc(id)
+            : collection(name).doc(id);
+          transaction.create(ref, clone(value));
+        })
       );
     },
   };
@@ -208,6 +230,17 @@ export class FirestoreOperationalFinanceLedgerRepository
       migrationRecords: migrationRecords.docs.map((entry) => entry.data() as OperationalFinanceMigrationRecord),
       idempotencyRecords: idempotencyRecords.docs.map((entry) => entry.data() as OperationalFinanceIdempotencyRecord),
     });
+  }
+
+  async getArchive(season: number) {
+    if (season !== this.season) return null;
+    const snapshot = await this.database
+      .collection(OPERATIONAL_FINANCE_COLLECTION)
+      .doc(String(season))
+      .collection("archives")
+      .doc("closed")
+      .get();
+    return snapshot.exists ? clone(snapshot.data() as OperationalFinanceArchive) : null;
   }
 }
 

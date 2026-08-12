@@ -81,6 +81,7 @@ const EVENT_LABELS: Record<OperationalFinanceAuditEvent["eventType"], string> = 
   "expense-obligation-created": "Expense approved",
   "expense-settlement-recorded": "Expense payment recorded",
   "separate-contribution-recorded": "Separate contribution recorded",
+  "season-closed": "Season closed and archived",
   "obligation-reversed": "Obligation reversed",
   "obligation-replaced": "Obligation replaced",
   "settlement-reversed": "Payment reversed",
@@ -108,6 +109,7 @@ const EVENT_SORT_PRIORITY: Record<OperationalFinanceAuditEvent["eventType"], num
   "obligation-created": 2,
   "expense-obligation-created": 2,
   "season-metadata-created": 1,
+  "season-closed": 8,
 };
 
 function formatRecordedDate(value: string | null) {
