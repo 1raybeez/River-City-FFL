@@ -19,6 +19,7 @@ import type {
 import OperationalFinanceAwardReviewSection from "./OperationalFinanceAwardReviewSection";
 import OperationalFinanceExpenseReconciliationSection from "./OperationalFinanceExpenseReconciliationSection";
 import OperationalFinanceSeasonCloseSection from "./OperationalFinanceSeasonCloseSection";
+import OperationalFinanceExportSection from "./OperationalFinanceExportSection";
 
 function formatCurrency(cents: number) {
   return new Intl.NumberFormat("en-US", {
@@ -350,6 +351,8 @@ export default function OperationalFinanceDashboardClient({
           onDashboard={setDashboard}
           onConfirmation={setConfirmation}
         />
+
+        <OperationalFinanceExportSection />
 
         <section aria-labelledby="activity-heading" className="mt-10 rounded-3xl border border-black/10 bg-white p-5 shadow-xl dark:border-white/10 dark:bg-[#121212] sm:p-6">
           <div className="mb-5 flex items-center gap-3">

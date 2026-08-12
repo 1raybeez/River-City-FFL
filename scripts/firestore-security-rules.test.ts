@@ -145,6 +145,11 @@ assert.match(publicFinanceLoader, /import\s+["']server-only["']/);
 assert.match(publicFinanceLoader, /getOperationalFinanceLedgerRepository/);
 assert.doesNotMatch(publicFinanceLoader, /paymentContact|PaymentContact|firebase\/firestore|@\/lib\/firebase/);
 assert.doesNotMatch(publicFinancePresentation, /commissionerNote|actualPaidAt|externalReference|idempotencyKey|auditEvents|paymentContact|handle/);
+const exportRoute = read("app/api/commish/finance/[season]/exports/route.ts");
+assert.match(exportRoute, /requireOperationalFinanceCommissioner/);
+assert.match(exportRoute, /Cross-origin request denied/);
+assert.match(exportRoute, /getOperationalFinanceLedgerRepository/);
+assert.doesNotMatch(exportRoute, /firebase\/firestore|@\/lib\/firebase/);
 
 for (const collectionName of [
   "siteContent",
