@@ -111,7 +111,6 @@ export function buildPublicOperationalFinancePresentation(
     funding: entry.fundingSource === "dues-funded" ? "Dues funded" as const : "Separately funded" as const,
   })).sort((a, b) => a.expenseId.localeCompare(b.expenseId));
   const ring = expenses.find((entry) => entry.label === "Championship Ring");
-  const champion = awards.find((entry) => entry.label === "Champion");
   const ringObligation = obligations.find((entry) => entry.category === "championship-ring");
   const duesAssessedCents = dues.reduce((total, entry) => total + entry.amountCents, 0);
   const duesCollectedCents = dues.reduce((total, entry) => total + Math.min(entry.amountCents, paidCents(snapshot, entry.obligationId, "incoming-dues")), 0);
@@ -140,7 +139,7 @@ export function buildPublicOperationalFinancePresentation(
     approvedExpenses: Object.freeze(expenses),
     championshipAllocationCents: 23_500,
     approvedRingExpenseCents: ring?.amountCents ?? null,
-    projectedChampionCashCents: champion && ring && ringObligation
+    projectedChampionCashCents: ring && ringObligation
       ? calculateChampionPayout(
           ring.amountCents,
           ringObligation.expenseEvidence?.overrideApproved

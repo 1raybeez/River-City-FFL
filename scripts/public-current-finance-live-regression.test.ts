@@ -9,7 +9,7 @@ import { HISTORICAL_FINANCIAL_SOURCE, HISTORICAL_FINANCIAL_TRANSACTIONS } from "
 import { buildFinancialHistory } from "../lib/history/financialHistory";
 import { buildFinancialHistoryPresentation } from "../lib/managers/financialHistoryPresentation";
 import { franchises, ownerProfiles, ownershipTenures } from "../lib/managers/identityData";
-import type { OperationalFinanceActor, OperationalFinanceObligation } from "../lib/finance/operationalFinanceLedgerTypes";
+import type { OperationalFinanceActor } from "../lib/finance/operationalFinanceLedgerTypes";
 
 const actor: OperationalFinanceActor = { actorId: "commissioner:public-live-regression", role: "commissioner" };
 const system: OperationalFinanceActor = { actorId: "system:public-live-regression", role: "system" };
@@ -38,31 +38,7 @@ async function main() {
     idempotencyKey: "public-live:ring:1377",
   }, actor, recordedAt);
 
-  const current = await repository.getSnapshot();
-  const template = current.obligations[0];
-  const champion: OperationalFinanceObligation = {
-    ...template,
-    obligationId: "public-live-champion",
-    category: "champion",
-    amountCents: 23_500,
-    proposalKey: "public-live-approved-champion",
-    financialOwnerId: "ray-long",
-    franchiseId: "prestigio-mundial",
-    proposalEvidence: {
-      proposalVersion: "fixture",
-      sourceType: "fixture",
-      sourceRef: "fixture",
-      sourceSnapshotAt: null,
-      leagueId: "fixture",
-      eventKey: "fixture",
-      finalityState: "sleeper-final",
-      facts: {},
-    },
-  };
-  const publicPresentation = buildPublicOperationalFinancePresentation({
-    ...current,
-    obligations: [...current.obligations, champion],
-  });
+  const publicPresentation = buildPublicOperationalFinancePresentation(await repository.getSnapshot());
 
   assert.equal(publicPresentation.duesAssessedCents, 60_000);
   assert.equal(publicPresentation.duesCollectedCents, 30_000);
@@ -73,9 +49,29 @@ async function main() {
   assert.equal(publicStan.status, "PAID");
   assert.equal(publicPresentation.approvedRingExpenseCents, 1_377);
   assert.equal(publicPresentation.projectedChampionCashCents, 22_123);
+  assert.equal(publicPresentation.approvedAwards.length, 0);
+  assert.equal(publicPresentation.approvedExpenses.length, 1);
+  assert.equal(publicPresentation.approvedExpenses[0].label, "Championship Ring");
+  assert.equal(publicPresentation.approvedExpenses[0].funding, "Dues funded");
 
   const serialized = JSON.stringify(publicPresentation);
   assert.doesNotMatch(serialized, /venmo|actualPaidAt|externalReference|commissionerNote|idempotency|audit|contact/i);
+
+  const client = readFileSync("components/league-info/FinancialHistoryClient.tsx", "utf8");
+  const formatPublicMoney = (cents: number) => new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(cents / 100);
+  assert.equal(formatPublicMoney(publicPresentation.approvedRingExpenseCents), "$13.77");
+  assert.equal(formatPublicMoney(publicPresentation.projectedChampionCashCents), "$221.23");
+  assert.equal(formatPublicMoney(publicPresentation.championshipAllocationCents), "$235");
+  assert.match(client, /maximumFractionDigits: 2/);
+  assert.match(client, /Championship allocation:/);
+  assert.match(client, /Ring cost:/);
+  assert.match(client, /Projected champion cash/);
+  assert.doesNotMatch(client, /<strong>Champion cash:<\/strong>/);
 
   const aggregate = buildFinancialHistory({
     source: HISTORICAL_FINANCIAL_SOURCE,
