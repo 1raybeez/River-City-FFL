@@ -139,6 +139,12 @@ assert.doesNotMatch(seasonCloseRoute, /firebase\/firestore|@\/lib\/firebase(?::|
 const archiveServer = read("lib/finance/operationalFinanceArchive.ts");
 assert.match(seasonCloseRoute, /export const runtime = ["']nodejs["']/);
 assert.doesNotMatch(archiveServer, /payment|venmo/i);
+const publicFinanceLoader = read("lib/finance/publicOperationalFinanceLoader.ts");
+const publicFinancePresentation = read("lib/finance/publicOperationalFinancePresentation.ts");
+assert.match(publicFinanceLoader, /import\s+["']server-only["']/);
+assert.match(publicFinanceLoader, /getOperationalFinanceLedgerRepository/);
+assert.doesNotMatch(publicFinanceLoader, /paymentContact|PaymentContact|firebase\/firestore|@\/lib\/firebase/);
+assert.doesNotMatch(publicFinancePresentation, /commissionerNote|actualPaidAt|externalReference|idempotencyKey|auditEvents|paymentContact|handle/);
 
 for (const collectionName of [
   "siteContent",

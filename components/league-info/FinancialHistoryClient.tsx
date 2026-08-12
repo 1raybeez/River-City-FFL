@@ -17,6 +17,7 @@ import type {
   FinancialHistoryPresentation,
   FinancialSummaryItem,
 } from "@/lib/managers/financialHistoryPresentation";
+import type { PublicOperationalFinancePresentation } from "@/lib/finance/publicOperationalFinancePresentation";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -46,8 +47,10 @@ function SummaryCard({ item }: { item: FinancialSummaryItem }) {
 
 export default function FinancialHistoryClient({
   presentation,
+  currentSeason,
 }: {
   presentation: FinancialHistoryPresentation;
+  currentSeason: PublicOperationalFinancePresentation;
 }) {
   const [selectedSeason, setSelectedSeason] = useState<number>(
     presentation.defaultSeason
@@ -91,6 +94,7 @@ export default function FinancialHistoryClient({
       </header>
 
       <div className="mx-auto w-full max-w-6xl space-y-8 px-4 py-10 sm:px-6 sm:py-14">
+        <PublicCurrentSeasonSection currentSeason={currentSeason} />
         <section aria-labelledby="overall-heading">
           <div className="mb-5 flex items-center gap-3">
             <Landmark className="text-emerald-600" size={22} aria-hidden="true" />
@@ -369,4 +373,15 @@ export default function FinancialHistoryClient({
       </div>
     </main>
   );
+}
+
+function PublicCurrentSeasonSection({ currentSeason }: { currentSeason: PublicOperationalFinancePresentation }) {
+  const money = (cents: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(cents / 100);
+  return <section aria-labelledby="current-season-heading" className="rounded-[2rem] border border-orange-600/20 bg-orange-600/5 p-4 shadow-xl dark:border-white/10 dark:bg-orange-500/10 sm:p-7">
+    <div className="mb-5 flex items-start gap-3"><Landmark className="mt-1 text-orange-600" size={22} aria-hidden="true" /><div><p className="text-[9px] font-black uppercase tracking-[0.25em] text-orange-600">Current operational ledger</p><h2 id="current-season-heading" className="text-3xl font-black uppercase italic tracking-tighter">2026 Current Season</h2><p className="mt-2 text-sm font-bold opacity-65">{currentSeason.statusLabel} · {currentSeason.reconciliationStatus}</p></div></div>
+    <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">{[["Dues assessed", currentSeason.duesAssessedCents], ["Dues collected", currentSeason.duesCollectedCents], ["Dues outstanding", currentSeason.duesOutstandingCents], ["Dues pool", currentSeason.duesPoolCents]].map(([label, value]) => <div key={label} className="min-w-0 rounded-3xl border border-black/5 bg-white/70 p-4 dark:border-white/10 dark:bg-black/20"><p className="text-[9px] font-black uppercase tracking-widest opacity-55">{label}</p><p className="mt-2 break-words text-2xl font-black text-orange-600">{money(value as number)}</p></div>)}</div>
+    <div className="mt-5 rounded-3xl border border-black/5 bg-white/60 p-4 dark:border-white/10 dark:bg-black/20"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-lg font-black uppercase italic">Dues status</h3><p className="text-xs font-black uppercase tracking-widest">{currentSeason.paidCount} paid · {currentSeason.notPaidCount} not paid</p></div><div className="mt-3 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">{currentSeason.duesRows.map((row) => <div key={row.franchiseId} className="min-w-0 rounded-2xl border border-black/5 bg-white/70 p-3 dark:border-white/10 dark:bg-black/20"><p className="break-words text-sm font-black">{row.franchiseName}</p><p className="mt-1 break-words text-xs font-semibold opacity-65">{row.financialOwnerName}{row.coOwnerContext.length ? ` · Sporting co-owner: ${row.coOwnerContext.join(", ")}` : ""}</p><p className="mt-2 text-[10px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">{row.status}</p></div>)}</div></div>
+    <div className="mt-5 grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-2"><div className="min-w-0 rounded-3xl border border-black/5 bg-white/60 p-4 dark:border-white/10 dark:bg-black/20"><h3 className="text-lg font-black uppercase italic">Expected prize structure</h3><p className="mt-1 text-xs font-semibold opacity-65">Rules and allocation, not money already awarded.</p><dl className="mt-3 space-y-2">{currentSeason.expectedPrizeStructure.map((item) => <div key={item.label} className="flex flex-wrap justify-between gap-2 text-sm"><dt>{item.label}</dt><dd className="font-black">{money(item.amountCents)}</dd></div>)}</dl><p className="mt-3 border-t border-black/10 pt-3 text-sm font-black">Total: {money(currentSeason.expectedPrizeStructure.reduce((sum, item) => sum + item.amountCents, 0))}</p></div><div className="min-w-0 rounded-3xl border border-black/5 bg-white/60 p-4 dark:border-white/10 dark:bg-black/20"><h3 className="text-lg font-black uppercase italic">Approved awards & expenses</h3><div className="mt-3 space-y-2">{currentSeason.approvedAwards.length ? currentSeason.approvedAwards.map((award) => <div key={award.awardId} className="flex min-w-0 flex-wrap items-start justify-between gap-2 rounded-2xl bg-black/5 p-3 dark:bg-white/5"><div className="min-w-0"><p className="break-words text-sm font-black">{award.label}</p><p className="break-words text-xs font-semibold opacity-65">{award.recipient} · {award.franchiseName}</p><p className="mt-1 text-[10px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">APPROVED · {award.paymentStatus}</p></div><p className="shrink-0 font-black text-orange-600">{money(award.amountCents)}</p></div>) : <p className="text-sm font-semibold opacity-65">No awards have been approved yet.</p>}{currentSeason.approvedExpenses.map((expense) => <div key={expense.expenseId} className="flex flex-wrap justify-between gap-2 border-t border-black/10 pt-2 text-sm"><span>{expense.label} · {expense.funding}</span><strong>{money(expense.amountCents)}</strong></div>)}<div className="border-t border-black/10 pt-3 text-sm"><p><strong>Championship allocation:</strong> {money(currentSeason.championshipAllocationCents)}</p><p className="mt-1"><strong>Ring cost:</strong> {currentSeason.approvedRingExpenseCents === null ? "Pending" : money(currentSeason.approvedRingExpenseCents)}</p><p className="mt-1"><strong>Champion cash:</strong> {currentSeason.projectedChampionCashCents === null ? "Pending" : money(currentSeason.projectedChampionCashCents)}</p></div></div></div></div>
+    <p className="mt-5 rounded-2xl border border-orange-600/15 bg-orange-600/10 px-4 py-3 text-sm font-bold">{currentSeason.operationalStatus}. This current season is separate from Historical Finance (2016–2025 reconciled).</p>
+  </section>;
 }
