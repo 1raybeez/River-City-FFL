@@ -119,6 +119,18 @@ assert.doesNotMatch(
   /firebase\/firestore|@\/lib\/firebase(?:"|')/
 );
 
+for (const expenseRoutePath of [
+  "app/api/commish/finance/[season]/expenses/route.ts",
+  "app/api/commish/finance/[season]/expenses/[obligationId]/settlements/route.ts",
+  "app/api/commish/finance/[season]/contributions/route.ts",
+]) {
+  const source = read(expenseRoutePath);
+  assert.match(source, /requireOperationalFinanceCommissioner/);
+  assert.match(source, /Cross-origin request denied/);
+  assert.match(source, /getOperationalFinanceLedgerRepository/);
+  assert.doesNotMatch(source, /firebase\/firestore|@\/lib\/firebase(?:"|')/);
+}
+
 for (const collectionName of [
   "siteContent",
   "rsvps",

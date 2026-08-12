@@ -26,6 +26,10 @@ import {
 } from "@/lib/finance/operationalFinanceSleeperAdapter";
 import { getFranchiseById, getOwnerProfileById } from "@/lib/managers/identityData";
 import type { OperationalFinancePaymentContact } from "@/lib/finance/operationalFinancePaymentContacts";
+import {
+  reconcileOperationalFinance,
+  type OperationalFinanceReconciliation,
+} from "@/lib/finance/operationalFinanceReconciliation";
 
 const APPROVABLE_CATEGORIES = new Set<OperationalFinanceProposalCategory>([
   "weekly-high-score",
@@ -112,7 +116,10 @@ export type OperationalFinanceAwardReviewPresentation = Readonly<{
 
 export type OperationalFinanceCommissionerDashboardPresentation =
   OperationalFinanceDashboardPresentation &
-    Readonly<{ awardReview: OperationalFinanceAwardReviewPresentation }>;
+    Readonly<{
+      awardReview: OperationalFinanceAwardReviewPresentation;
+      reconciliation: OperationalFinanceReconciliation;
+    }>;
 
 export type OperationalFinanceAwardProposalSource = Readonly<{
   proposalSet: OperationalFinanceProposalSet;
@@ -506,20 +513,36 @@ export function buildOperationalFinanceCommissionerDashboardPresentation(
   source: OperationalFinanceAwardProposalSource,
   paymentContacts: readonly OperationalFinancePaymentContact[] = []
 ): OperationalFinanceCommissionerDashboardPresentation {
+  const awardReview = buildOperationalFinanceAwardReviewPresentation(
+    snapshot,
+    source,
+    paymentContacts
+  );
   return {
     ...buildOperationalFinanceDashboardPresentation(snapshot, season),
-    awardReview: buildOperationalFinanceAwardReviewPresentation(
-      snapshot,
-      source,
-      paymentContacts
-    ),
+    awardReview,
+    reconciliation: reconcileOperationalFinance(snapshot, {
+      seasonState: source.acquisition?.leagueState ?? "preseason",
+      proposalSet: source.proposalSet,
+      unresolvedAwardCorrection: awardReview.approvedAwards.some(
+        (entry) => entry.discrepancy !== null
+      ),
+    }),
   };
 }
 
-export async function acquireOperationalFinanceAwardProposalSource(): Promise<OperationalFinanceAwardProposalSource> {
+export async function acquireOperationalFinanceAwardProposalSource(
+  ringInput: Readonly<{
+    approvedRingCostCents: number;
+    approvedRingCapOverrideCents?: number;
+  }> | null = null
+): Promise<OperationalFinanceAwardProposalSource> {
   const snapshot = await acquireOperationalFinanceSleeperSnapshot();
   return {
-    proposalSet: buildOperationalFinanceProposals(snapshot.proposalInput),
+    proposalSet: buildOperationalFinanceProposals({
+      ...snapshot.proposalInput,
+      ...(ringInput ?? {}),
+    }),
     acquisition: snapshot.acquisition,
     sourceError: null,
   };

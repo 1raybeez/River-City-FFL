@@ -17,6 +17,7 @@ import type {
   OperationalFinanceDashboardDuesRow,
 } from "@/lib/finance/operationalFinanceDashboardPresentation";
 import OperationalFinanceAwardReviewSection from "./OperationalFinanceAwardReviewSection";
+import OperationalFinanceExpenseReconciliationSection from "./OperationalFinanceExpenseReconciliationSection";
 
 function formatCurrency(cents: number) {
   return new Intl.NumberFormat("en-US", {
@@ -332,6 +333,12 @@ export default function OperationalFinanceDashboardClient({
         </section>
 
         <OperationalFinanceAwardReviewSection
+          dashboard={dashboard}
+          onDashboard={setDashboard}
+          onConfirmation={setConfirmation}
+        />
+
+        <OperationalFinanceExpenseReconciliationSection
           dashboard={dashboard}
           onDashboard={setDashboard}
           onConfirmation={setConfirmation}

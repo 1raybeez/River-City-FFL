@@ -7,6 +7,7 @@ import {
 } from "@/lib/finance/operationalFinanceAwardReview";
 import { requireOperationalFinanceCommissioner } from "@/lib/finance/operationalFinanceDashboardAuth";
 import { getOperationalFinanceLedgerRepository } from "@/lib/finance/operationalFinanceLedgerFirestore";
+import { getApprovedOperationalRingInput } from "@/lib/finance/operationalFinanceExpenses";
 
 export const runtime = "nodejs";
 
@@ -55,13 +56,17 @@ export async function POST(
   }
 
   try {
+    const repository = getOperationalFinanceLedgerRepository(season);
     const result = await approveOperationalFinanceAward(
-      getOperationalFinanceLedgerRepository(season),
+      repository,
       season,
       await readJsonBody(req),
       authorization.actor,
       new Date().toISOString(),
-      acquireOperationalFinanceAwardProposalSource
+      async () =>
+        acquireOperationalFinanceAwardProposalSource(
+          getApprovedOperationalRingInput(await repository.getSnapshot())
+        )
     );
     return NextResponse.json(result, { status: result.created ? 201 : 200 });
   } catch (error) {

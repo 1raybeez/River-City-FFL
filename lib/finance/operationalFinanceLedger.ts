@@ -16,6 +16,7 @@ import type {
   OperationalFinanceMigrationRecord,
   OperationalFinanceObligation,
   OperationalFinanceObligationCategory,
+  OperationalFinanceExpenseEvidence,
   OperationalFinanceProposalEvidence,
   OperationalFinanceReversal,
   OperationalFinanceSeasonLedger,
@@ -43,6 +44,7 @@ export interface RecordObligationInput {
   readonly financialOwnerId: string | null;
   readonly proposalKey?: string | null;
   readonly proposalEvidence?: OperationalFinanceProposalEvidence | null;
+  readonly expenseEvidence?: OperationalFinanceExpenseEvidence | null;
   readonly duePolicy?: "before-draft" | null;
   readonly dueAt?: string | null;
   readonly ruleRef: string;
@@ -57,10 +59,12 @@ export interface RecordSettlementInput {
   readonly obligationId: string;
   readonly direction: OperationalFinanceSettlementDirection;
   readonly amountCents: number;
-  readonly paymentMethod: "venmo";
+  readonly paymentMethod: "venmo" | "card" | "cash" | "other";
   readonly actualPaidAt: string | null;
   readonly externalReference?: string | null;
   readonly commissionerNote?: string | null;
+  readonly contributorOwnerId?: string | null;
+  readonly contributorFranchiseId?: string | null;
   readonly sourceRef: string;
 }
 
@@ -69,6 +73,7 @@ export interface RecordExpenseInput {
   readonly category: "championship-ring" | "auctioneer-food";
   readonly amountCents: number;
   readonly approvedRingCapOverrideCents?: number;
+  readonly commissionerNote?: string | null;
   readonly sourceRef: string;
 }
 
@@ -246,7 +251,10 @@ async function putObligation(
   actor: OperationalFinanceActor,
   idempotencyKey: string,
   recordedAt: string,
-  eventType: "obligation-created" | "obligation-replaced" = "obligation-created"
+  eventType:
+    | "obligation-created"
+    | "expense-obligation-created"
+    | "obligation-replaced" = "obligation-created"
 ) {
   validateActor(actor);
   validateIdempotencyKey(idempotencyKey);
@@ -261,6 +269,7 @@ async function putObligation(
     ...input,
     proposalKey: input.proposalKey ?? null,
     proposalEvidence: input.proposalEvidence ?? null,
+    expenseEvidence: input.expenseEvidence ?? null,
     duePolicy: input.duePolicy ?? null,
     dueAt: input.dueAt ?? null,
     replacesObligationId: input.replacesObligationId ?? null,
@@ -281,7 +290,9 @@ async function putObligation(
       recordedAt,
       eventType === "obligation-replaced"
         ? "Approved replacement obligation recorded without editing the original."
-        : "Approved financial obligation recorded.",
+        : eventType === "expense-obligation-created"
+          ? "Approved operational expense obligation recorded without recording payment."
+          : "Approved financial obligation recorded.",
       idempotencyKey,
       input.replacesObligationId ?? null,
       value.obligationId,
@@ -290,6 +301,8 @@ async function putObligation(
         amountCents: value.amountCents,
         proposalKey: value.proposalKey,
         sourceRef: value.sourceRef,
+        ringCapOverrideApproved: value.expenseEvidence?.overrideApproved ?? null,
+        approvedFundingCapCents: value.expenseEvidence?.approvedFundingCapCents ?? null,
       }
     )
   );
@@ -308,10 +321,13 @@ export async function recordObligation(
 ): Promise<OperationalFinanceMutationResult<OperationalFinanceObligation>> {
   requireCommissioner(actor);
   return repository.runTransaction(async (transaction) => {
+    const operation = EXPENSE_CATEGORIES.has(input.category)
+      ? "expense-obligation-created"
+      : "obligation-created";
     const duplicate = await existingTarget(
       transaction,
       idempotencyKey,
-      "obligation-created",
+      operation,
       (id) => transaction.getObligation(id)
     );
     if (duplicate) {
@@ -327,6 +343,8 @@ export async function recordObligation(
         existing.proposalKey === (input.proposalKey ?? null) &&
         JSON.stringify(existing.proposalEvidence) ===
           JSON.stringify(input.proposalEvidence ?? null) &&
+        JSON.stringify(existing.expenseEvidence ?? null) ===
+          JSON.stringify(input.expenseEvidence ?? null) &&
         existing.duePolicy === (input.duePolicy ?? null) &&
         existing.dueAt === (input.dueAt ?? null) &&
         existing.ruleRef === input.ruleRef &&
@@ -343,7 +361,14 @@ export async function recordObligation(
     }
     return deepFreeze({
       created: true,
-      value: await putObligation(transaction, input, actor, idempotencyKey, recordedAt),
+      value: await putObligation(
+        transaction,
+        input,
+        actor,
+        idempotencyKey,
+        recordedAt,
+        operation
+      ),
     });
   });
 }
@@ -471,6 +496,12 @@ export async function recordApprovedExpense(
     if (!validation.resolved) throw new Error(validation.errors.map((entry) => entry.message).join(" "));
   }
   const isRing = input.category === "championship-ring";
+  const ringValidation = isRing
+    ? validateRingExpense(
+        input.amountCents,
+        input.approvedRingCapOverrideCents
+      )
+    : null;
   return recordObligation(
     repository,
     {
@@ -481,6 +512,20 @@ export async function recordApprovedExpense(
       fundingSource: isRing ? "dues-funded" : "separately-funded",
       franchiseId: null,
       financialOwnerId: null,
+      expenseEvidence: {
+        actualCostCents: input.amountCents,
+        defaultFundingCapCents: isRing
+          ? OPERATIONAL_FINANCE_SEASON_2026.ringPolicy.defaultCapCents
+          : null,
+        approvedFundingCapCents: isRing
+          ? input.approvedRingCapOverrideCents ??
+            OPERATIONAL_FINANCE_SEASON_2026.ringPolicy.defaultCapCents
+          : null,
+        overCapCents: ringValidation?.overCapCents ?? 0,
+        overrideApproved:
+          isRing && input.approvedRingCapOverrideCents !== undefined,
+        commissionerNote: input.commissionerNote?.trim() || null,
+      },
       ruleRef: isRing
         ? OPERATIONAL_FINANCE_SEASON_2026.ringPolicy.id
         : OPERATIONAL_FINANCE_SEASON_2026.expensePolicies[0].id,
@@ -511,7 +556,11 @@ async function putSettlement(
   validateActor(actor);
   validateIdempotencyKey(idempotencyKey);
   requireCents(input.amountCents, "Settlement amount");
-  if (input.paymentMethod !== "venmo") throw new Error("Venmo is the only approved 2026 payment method.");
+  const ownerPayment =
+    input.direction === "incoming-dues" || input.direction === "outgoing-award";
+  if (ownerPayment && input.paymentMethod !== "venmo") {
+    throw new Error("Venmo is the only approved 2026 owner payment method.");
+  }
   const obligation = await transaction.getObligation(input.obligationId);
   if (!obligation || obligation.season !== input.season) throw new Error("Settlement obligation was not found.");
   const reversals = await transaction.getAllReversals(input.season);
@@ -545,6 +594,8 @@ async function putSettlement(
     ...input,
     externalReference: input.externalReference ?? null,
     commissionerNote: input.commissionerNote ?? null,
+    contributorOwnerId: input.contributorOwnerId ?? null,
+    contributorFranchiseId: input.contributorFranchiseId ?? null,
     recordedAt,
     createdBy: { ...actor },
     idempotencyKey,
@@ -552,7 +603,11 @@ async function putSettlement(
   const auditOperation =
     input.direction === "outgoing-award"
       ? "award-settlement-recorded"
-      : "settlement-created";
+      : input.direction === "outgoing-expense"
+        ? "expense-settlement-recorded"
+        : input.direction === "incoming-separate-contribution"
+          ? "separate-contribution-recorded"
+          : "settlement-created";
   await transaction.putSettlement(value);
   await transaction.putAuditEvent(
     auditEvent(input.season, auditOperation, actor, "settlement", value.settlementId, recordedAt, "Actual money movement recorded separately from its obligation.", idempotencyKey, input.obligationId, value.settlementId, { amountCents: value.amountCents, direction: value.direction })
@@ -575,7 +630,11 @@ export async function recordSettlement(
     const auditOperation =
       input.direction === "outgoing-award"
         ? "award-settlement-recorded"
-        : "settlement-created";
+        : input.direction === "outgoing-expense"
+          ? "expense-settlement-recorded"
+          : input.direction === "incoming-separate-contribution"
+            ? "separate-contribution-recorded"
+            : "settlement-created";
     const duplicate = await existingTarget(transaction, idempotencyKey, auditOperation, (id) => transaction.getSettlement(id));
     if (duplicate) {
       const existing = duplicate.value;
@@ -588,6 +647,10 @@ export async function recordSettlement(
         existing.actualPaidAt === input.actualPaidAt &&
         existing.externalReference === (input.externalReference ?? null) &&
         existing.commissionerNote === (input.commissionerNote ?? null) &&
+        (existing.contributorOwnerId ?? null) ===
+          (input.contributorOwnerId ?? null) &&
+        (existing.contributorFranchiseId ?? null) ===
+          (input.contributorFranchiseId ?? null) &&
         existing.sourceRef === input.sourceRef;
       if (!matchesRequest) {
         throw new Error("Idempotency key was already used for a different settlement request.");

@@ -21,7 +21,7 @@ export type OperationalFinanceSettlementDirection =
   | "outgoing-expense"
   | "incoming-separate-contribution";
 
-export type OperationalFinancePaymentMethod = "venmo";
+export type OperationalFinancePaymentMethod = "venmo" | "card" | "cash" | "other";
 export type OperationalFinanceFundingSource =
   | "dues-funded"
   | "separately-funded";
@@ -51,6 +51,15 @@ export type OperationalFinanceProposalEvidence = Readonly<{
   facts: Readonly<Record<string, string | number | boolean | null>>;
 }>;
 
+export type OperationalFinanceExpenseEvidence = Readonly<{
+  actualCostCents: number;
+  defaultFundingCapCents: number | null;
+  approvedFundingCapCents: number | null;
+  overCapCents: number;
+  overrideApproved: boolean;
+  commissionerNote: string | null;
+}>;
+
 export interface OperationalFinanceObligation {
   readonly obligationId: string;
   readonly season: number;
@@ -61,6 +70,7 @@ export interface OperationalFinanceObligation {
   readonly financialOwnerId: string | null;
   readonly proposalKey: string | null;
   readonly proposalEvidence: OperationalFinanceProposalEvidence | null;
+  readonly expenseEvidence?: OperationalFinanceExpenseEvidence | null;
   readonly duePolicy: "before-draft" | null;
   readonly dueAt: string | null;
   readonly ruleRef: string;
@@ -84,6 +94,8 @@ export interface OperationalFinanceSettlement {
   readonly recordedAt: string;
   readonly externalReference: string | null;
   readonly commissionerNote: string | null;
+  readonly contributorOwnerId?: string | null;
+  readonly contributorFranchiseId?: string | null;
   readonly sourceRef: string;
   readonly createdBy: OperationalFinanceActor;
   readonly idempotencyKey: string;
@@ -106,6 +118,9 @@ export type OperationalFinanceAuditEventType =
   | "obligation-created"
   | "settlement-created"
   | "award-settlement-recorded"
+  | "expense-obligation-created"
+  | "expense-settlement-recorded"
+  | "separate-contribution-recorded"
   | "obligation-reversed"
   | "obligation-replaced"
   | "settlement-reversed"

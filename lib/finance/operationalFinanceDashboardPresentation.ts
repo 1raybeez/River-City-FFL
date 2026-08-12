@@ -78,6 +78,9 @@ const EVENT_LABELS: Record<OperationalFinanceAuditEvent["eventType"], string> = 
   "obligation-created": "Dues assessment created",
   "settlement-created": "Dues payment recorded",
   "award-settlement-recorded": "Award payment recorded",
+  "expense-obligation-created": "Expense approved",
+  "expense-settlement-recorded": "Expense payment recorded",
+  "separate-contribution-recorded": "Separate contribution recorded",
   "obligation-reversed": "Obligation reversed",
   "obligation-replaced": "Obligation replaced",
   "settlement-reversed": "Payment reversed",
@@ -96,11 +99,14 @@ function awardCategoryLabel(category: string) {
 const EVENT_SORT_PRIORITY: Record<OperationalFinanceAuditEvent["eventType"], number> = {
   "migration-recorded": 7,
   "award-settlement-recorded": 6,
+  "expense-settlement-recorded": 6,
+  "separate-contribution-recorded": 6,
   "settlement-created": 6,
   "settlement-reversed": 5,
   "obligation-replaced": 4,
   "obligation-reversed": 3,
   "obligation-created": 2,
+  "expense-obligation-created": 2,
   "season-metadata-created": 1,
 };
 
@@ -120,7 +126,7 @@ function settlementPresentation(
   return {
     settlementId: settlement.settlementId,
     amountCents: settlement.amountCents,
-    paymentMethod: settlement.paymentMethod,
+    paymentMethod: "venmo",
     paymentMethodLabel: "Venmo",
     actualPaidAt: settlement.actualPaidAt,
     actualPaidAtLabel: formatRecordedDate(settlement.actualPaidAt),
