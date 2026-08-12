@@ -33,6 +33,7 @@ async function main() {
   const client = readFileSync("components/league-info/FinancialHistoryClient.tsx", "utf8");
   const page = readFileSync("app/league-info/payouts/page.tsx", "utf8");
   const loader = readFileSync("lib/finance/publicOperationalFinanceLoader.ts", "utf8");
+  assert.match(page, /export const dynamic = ["']force-dynamic["']/);
   assert.match(page, /loadPublicOperationalFinancePresentation/);
   assert.match(loader, /import\s+["']server-only["']/);
   assert.doesNotMatch(client, /firebase\/firestore|@\/lib\/firebase/);
