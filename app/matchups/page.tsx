@@ -447,6 +447,43 @@ function TeamPanel({
   );
 }
 
+function getStarterIds(matchup?: Matchup): readonly string[] {
+  return matchup?.starters?.filter(
+    (starterId): starterId is string =>
+      typeof starterId === "string" && starterId.trim().length > 0
+  ) ?? [];
+}
+
+function StarterList({
+  label,
+  matchup,
+}: {
+  label: string;
+  matchup?: Matchup;
+}) {
+  const starterIds = getStarterIds(matchup);
+
+  return (
+    <section className="min-w-0 rounded-2xl border border-black/10 bg-black/[0.03] p-3 dark:border-white/10 dark:bg-white/[0.04]" aria-label={`${label} starting lineup`}>
+      <h3 className="text-xs font-black uppercase italic tracking-tight">{label}</h3>
+      {starterIds.length === 0 ? (
+        <p className="mt-3 text-sm font-semibold text-black/50 dark:text-white/50">
+          Starting lineup not available yet.
+        </p>
+      ) : (
+        <ol className="mt-3 min-w-0 space-y-2">
+          {starterIds.map((starterId, index) => (
+            <li key={`${starterId}-${index}`} className="min-w-0 rounded-xl bg-white px-3 py-2 text-sm font-semibold dark:bg-black/20">
+              <span className="mr-2 text-black/40 dark:text-white/40">{index + 1}.</span>
+              <span className="break-all">Player ID: {starterId}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
 function MatchupCard({
   group,
   rosters,
@@ -456,8 +493,11 @@ function MatchupCard({
   rosters: SleeperRoster[];
   users: SleeperUser[];
 }) {
+  const [expanded, setExpanded] = useState(false);
   const team1 = resolveTeam(group.teams[0], rosters, users, "Team 1");
   const team2 = resolveTeam(group.teams[1], rosters, users, "Team 2");
+  const lineupId = `${group.id}-starting-lineups`;
+  const matchupLabel = `${team1.name} versus ${team2.name}`;
 
   return (
     <article className="rounded-3xl border border-black/10 bg-white p-4 shadow-xl dark:border-white/10 dark:bg-white/5 sm:p-6">
@@ -470,6 +510,24 @@ function MatchupCard({
         </div>
         <TeamPanel team={team2} side="right" />
       </div>
+
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={lineupId}
+        aria-label={`${expanded ? "Collapse" : "Expand"} starters for ${matchupLabel}`}
+        onClick={() => setExpanded((current) => !current)}
+        className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-black/10 px-4 py-2 text-xs font-black uppercase tracking-widest transition hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 dark:border-white/10 dark:hover:bg-white/[0.06]"
+      >
+        {expanded ? "Hide starters" : "Show starters"}
+      </button>
+
+      {expanded && (
+        <div id={lineupId} className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2">
+          <StarterList label={team1.name} matchup={group.teams[0]} />
+          <StarterList label={team2.name} matchup={group.teams[1]} />
+        </div>
+      )}
 
       {group.note && (
         <div className="mt-4 flex items-start gap-2 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-xs font-bold text-yellow-700 dark:text-yellow-300">
