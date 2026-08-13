@@ -30,6 +30,13 @@ import {
   type SleeperPlayerIdentity,
 } from "@/lib/sleeper";
 import { ownerProfiles } from "@/lib/managers/identityData";
+import {
+  aggregateStarterProjections,
+  resolveStarterProjections,
+  type MatchupsProjectionRecord,
+  type MatchupsProjectionSource,
+  type StarterProjectionAggregation,
+} from "@/lib/projectionAdapter";
 
 const MIN_WEEK = 1;
 const MAX_WEEK = 18;
@@ -76,6 +83,11 @@ type MatchupHistory = {
   } | null;
   href?: string;
 };
+
+type MatchupProjectionState = Readonly<{
+  source: MatchupsProjectionSource;
+  projections: readonly MatchupsProjectionRecord[];
+}>;
 
 type TeamDisplay = {
   name: string;
@@ -476,6 +488,52 @@ function getOwnerId(user?: SleeperUser) {
   return ownerProfiles.find((profile) => profile.sleeperIds?.includes(user.user_id))?.id ?? null;
 }
 
+function normalizeProjectionRecords(value: unknown): MatchupsProjectionRecord[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((entry) => {
+    const record = entry as Record<string, unknown>;
+    const playerName = typeof record.playerName === "string"
+      ? record.playerName
+      : typeof record.player_name === "string"
+        ? record.player_name
+        : typeof record.full_name === "string"
+          ? record.full_name
+          : undefined;
+    const pointsValue = record.points ?? record.fantasy_points ?? record.fpts;
+    return {
+      playerId: typeof record.playerId === "string" ? record.playerId : typeof record.player_id === "string" || typeof record.player_id === "number" ? String(record.player_id) : null,
+      playerName,
+      position: typeof record.position === "string" ? record.position : undefined,
+      team: typeof record.team === "string" ? record.team : undefined,
+      week: typeof record.week === "number" ? record.week : 0,
+      points: typeof pointsValue === "number" && Number.isFinite(pointsValue) ? pointsValue : 0,
+      passYds: 0,
+      rushYds: 0,
+      recYds: 0,
+      passTd: 0,
+      rushTd: 0,
+      recTd: 0,
+      receptions: 0,
+    };
+  });
+}
+
+function projectionSourceLabel(source: MatchupsProjectionSource) {
+  return source === "weekly-live" ? "Weekly live" : source === "weekly-derived" ? "Weekly derived" : "Season fallback";
+}
+
+function projectTeam(
+  matchup: Matchup | undefined,
+  identities: Readonly<Record<string, SleeperPlayerIdentity>>,
+  projectionState: MatchupProjectionState | null
+): StarterProjectionAggregation | null {
+  if (!projectionState) return null;
+  const starterIds = getStarterIds(matchup);
+  return aggregateStarterProjections(
+    resolveStarterProjections(starterIds, identities, projectionState.projections, projectionState.source)
+  );
+}
+
 function ownerSlug(ownerId: string | null) {
   return ownerProfiles.find((profile) => profile.id === ownerId)?.slug ?? null;
 }
@@ -551,18 +609,63 @@ function HistoryContext({ history }: { history: MatchupHistory | null }) {
   );
 }
 
+function ProjectionContext({
+  group,
+  team1,
+  team2,
+  identities,
+  projectionState,
+}: {
+  group: MatchupGroup;
+  team1: TeamDisplay;
+  team2: TeamDisplay;
+  identities: Readonly<Record<string, SleeperPlayerIdentity>>;
+  projectionState: MatchupProjectionState | null;
+}) {
+  const first = projectTeam(group.teams[0], identities, projectionState);
+  const second = projectTeam(group.teams[1], identities, projectionState);
+  const source = projectionState ? `Projection source: ${projectionSourceLabel(projectionState.source)}` : "Projection source unavailable";
+
+  if (!first || !second) {
+    return <section className="mt-4 rounded-2xl border border-black/10 p-3 text-sm font-semibold text-black/50 dark:border-white/10 dark:text-white/50" aria-label="Projected scores">Projected score unavailable — projections are not available yet. <span className="block mt-1 text-xs">{source}</span></section>;
+  }
+
+  const scoreLine = (team: TeamDisplay, aggregate: StarterProjectionAggregation) => aggregate.coverageComplete
+    ? `${team.name}: ${aggregate.projectedTotalPoints?.toFixed(1)}`
+    : `${team.name}: Projected score unavailable — ${aggregate.projectedStarterCount} of ${aggregate.totalStarterCount} starters have projections.`;
+  const edge = first.coverageComplete && second.coverageComplete
+    ? first.projectedTotalPoints === second.projectedTotalPoints
+      ? "Projected Edge: Even"
+      : `Projected Edge: ${(first.projectedTotalPoints ?? 0) > (second.projectedTotalPoints ?? 0) ? team1.name : team2.name} by ${Math.abs((first.projectedTotalPoints ?? 0) - (second.projectedTotalPoints ?? 0)).toFixed(1)}`
+    : "Projected Edge unavailable — complete projection coverage required.";
+
+  return (
+    <section className="mt-4 min-w-0 rounded-2xl border border-black/10 bg-black/[0.03] p-3 dark:border-white/10 dark:bg-white/[0.04]" aria-label="Projected scores">
+      <h3 className="text-xs font-black uppercase italic tracking-tight">Projected Scores <span className="font-semibold normal-case opacity-60">(estimates)</span></h3>
+      <div className="mt-3 grid min-w-0 gap-2 sm:grid-cols-2">
+        <p className="min-w-0 break-words rounded-xl bg-white px-3 py-2 text-sm font-black dark:bg-black/20">Projected Score · {scoreLine(team1, first)}</p>
+        <p className="min-w-0 break-words rounded-xl bg-white px-3 py-2 text-sm font-black dark:bg-black/20">Projected Score · {scoreLine(team2, second)}</p>
+      </div>
+      <p className="mt-3 break-words text-sm font-black">{edge}</p>
+      <p className="mt-1 break-words text-xs font-semibold text-black/55 dark:text-white/55">{source}</p>
+    </section>
+  );
+}
+
 function MatchupCard({
   group,
   rosters,
   users,
   playerDirectory,
   history,
+  projectionState,
 }: {
   group: MatchupGroup;
   rosters: SleeperRoster[];
   users: SleeperUser[];
   playerDirectory: Readonly<Record<string, SleeperPlayerIdentity>>;
   history: MatchupHistory | null;
+  projectionState: MatchupProjectionState | null;
 }) {
   const [expanded, setExpanded] = useState(false);
   const team1 = resolveTeam(group.teams[0], rosters, users, "Team 1");
@@ -599,6 +702,8 @@ function MatchupCard({
           <StarterList label={team2.name} matchup={group.teams[1]} playerDirectory={playerDirectory} />
         </div>
       )}
+
+      {expanded && <ProjectionContext group={group} team1={team1} team2={team2} identities={playerDirectory} projectionState={projectionState} />}
 
       {expanded && <HistoryContext history={history} />}
 
@@ -1084,6 +1189,7 @@ export default function MatchupsPage() {
   const [rosters, setRosters] = useState<SleeperRoster[]>([]);
   const [playerDirectory, setPlayerDirectory] = useState<Record<string, SleeperPlayerIdentity>>({});
   const [matchupHistory, setMatchupHistory] = useState<Record<string, MatchupHistory>>({});
+  const [projectionState, setProjectionState] = useState<MatchupProjectionState | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [leagueInfo, setLeagueInfo] = useState<LeagueInfo | null>(null);
@@ -1131,11 +1237,12 @@ export default function MatchupsPage() {
       setLoadError(null);
 
       try {
-        const [userData, rosterData, matchupData, playerData] = await Promise.all([
+        const [userData, rosterData, matchupData, playerData, projectionResponse] = await Promise.all([
           getLeagueUsers(),
           getLeagueRosters(),
           getMatchups(activeWeek),
           getSleeperPlayerIdentityDirectory(),
+          fetch(`/api/projections/active?week=${activeWeek}`),
         ]);
 
         if (cancelled) return;
@@ -1144,6 +1251,12 @@ export default function MatchupsPage() {
         setRosters(rosterData);
         setMatchups(Array.isArray(matchupData) ? matchupData : []);
         setPlayerDirectory(playerData);
+        const projectionPayload = projectionResponse.ok ? await projectionResponse.json() as { source?: MatchupsProjectionSource; projections?: unknown } : null;
+        setProjectionState(
+          projectionPayload?.source && projectionPayload.projections
+            ? { source: projectionPayload.source, projections: normalizeProjectionRecords(projectionPayload.projections) }
+            : null
+        );
         const historyPairs = [...new Set(
           buildMatchupGroups(Array.isArray(matchupData) ? matchupData : [])
             .map((group) => {
@@ -1356,6 +1469,7 @@ export default function MatchupsPage() {
                     users={users}
                     playerDirectory={playerDirectory}
                     history={matchupHistory[pair] ?? null}
+                    projectionState={projectionState}
                   />
                     );
                   })()

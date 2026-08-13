@@ -30,7 +30,7 @@ export async function GET(request: Request) {
 
     if (weeklyData.length > 0) {
       return NextResponse.json({
-        source: "weekly",
+        source: "weekly-live",
         week,
         projections: weeklyData,
       });
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     try {
       const projections = await getDerivedWeeklyProjections(week);
       return NextResponse.json({
-        source: "derived",
+        source: "weekly-derived",
         week,
         projections,
       });
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
     try {
       const projections = await getSeasonProjections();
       return NextResponse.json({
-        source: "season",
+        source: "season-fallback",
         week,
         projections,
       });
