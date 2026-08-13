@@ -29,6 +29,7 @@ import {
   type Matchup,
   type SleeperPlayerIdentity,
 } from "@/lib/sleeper";
+import { ownerProfiles } from "@/lib/managers/identityData";
 
 const MIN_WEEK = 1;
 const MAX_WEEK = 18;
@@ -60,6 +61,20 @@ type MatchupGroup = {
   id: string;
   teams: Matchup[];
   note?: string;
+};
+
+type MatchupHistory = {
+  supported: boolean;
+  owner?: string;
+  opponent?: string;
+  competitiveRecord?: string | null;
+  completedMeetings?: string | null;
+  latestMeeting?: {
+    season: number;
+    scoreLabel: string;
+    contextLabel: string;
+  } | null;
+  href?: string;
 };
 
 type TeamDisplay = {
@@ -456,6 +471,28 @@ function getStarterIds(matchup?: Matchup): readonly string[] {
   ) ?? [];
 }
 
+function getOwnerId(user?: SleeperUser) {
+  if (!user) return null;
+  return ownerProfiles.find((profile) => profile.sleeperIds?.includes(user.user_id))?.id ?? null;
+}
+
+function ownerSlug(ownerId: string | null) {
+  return ownerProfiles.find((profile) => profile.id === ownerId)?.slug ?? null;
+}
+
+async function loadMatchupHistory(ownerId: string | null, opponentId: string | null) {
+  const owner = ownerSlug(ownerId);
+  const opponent = ownerSlug(opponentId);
+  if (!owner || !opponent || owner === opponent) return { supported: false } as MatchupHistory;
+  try {
+    const response = await fetch(`/api/matchups/history?owner=${encodeURIComponent(owner)}&opponent=${encodeURIComponent(opponent)}`);
+    if (!response.ok) return { supported: false };
+    return await response.json() as MatchupHistory;
+  } catch {
+    return { supported: false };
+  }
+}
+
 function StarterList({
   label,
   matchup,
@@ -499,16 +536,33 @@ function StarterList({
   );
 }
 
+function HistoryContext({ history }: { history: MatchupHistory | null }) {
+  if (!history || !history.supported) {
+    return <p className="mt-4 rounded-2xl border border-black/10 px-3 py-3 text-sm font-semibold text-black/50 dark:border-white/10 dark:text-white/50">Historical Head-to-Head not available.</p>;
+  }
+  return (
+    <section className="mt-4 min-w-0 rounded-2xl border border-black/10 bg-black/[0.03] p-3 dark:border-white/10 dark:bg-white/[0.04]" aria-label="Series history">
+      <h3 className="text-xs font-black uppercase italic tracking-tight">Series History</h3>
+      <p className="mt-2 break-words text-sm font-black">{history.owner} leads {history.opponent} {history.competitiveRecord}</p>
+      <p className="mt-1 text-xs font-semibold text-black/55 dark:text-white/55">{history.completedMeetings} completed meetings · competitive record excludes secondary classifications.</p>
+      {history.latestMeeting && <p className="mt-2 break-words text-xs font-semibold">Last meeting: {history.latestMeeting.season} · {history.latestMeeting.scoreLabel}</p>}
+      {history.href && <Link href={history.href} className="mt-3 inline-flex min-h-10 max-w-full items-center gap-2 rounded-xl border border-red-600/30 px-3 py-2 text-xs font-black uppercase text-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 dark:text-red-300">View Full Head-to-Head <ArrowRight size={14} aria-hidden="true" /></Link>}
+    </section>
+  );
+}
+
 function MatchupCard({
   group,
   rosters,
   users,
   playerDirectory,
+  history,
 }: {
   group: MatchupGroup;
   rosters: SleeperRoster[];
   users: SleeperUser[];
   playerDirectory: Readonly<Record<string, SleeperPlayerIdentity>>;
+  history: MatchupHistory | null;
 }) {
   const [expanded, setExpanded] = useState(false);
   const team1 = resolveTeam(group.teams[0], rosters, users, "Team 1");
@@ -545,6 +599,8 @@ function MatchupCard({
           <StarterList label={team2.name} matchup={group.teams[1]} playerDirectory={playerDirectory} />
         </div>
       )}
+
+      {expanded && <HistoryContext history={history} />}
 
       {group.note && (
         <div className="mt-4 flex items-start gap-2 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-xs font-bold text-yellow-700 dark:text-yellow-300">
@@ -1027,6 +1083,7 @@ export default function MatchupsPage() {
   const [users, setUsers] = useState<SleeperUser[]>([]);
   const [rosters, setRosters] = useState<SleeperRoster[]>([]);
   const [playerDirectory, setPlayerDirectory] = useState<Record<string, SleeperPlayerIdentity>>({});
+  const [matchupHistory, setMatchupHistory] = useState<Record<string, MatchupHistory>>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [leagueInfo, setLeagueInfo] = useState<LeagueInfo | null>(null);
@@ -1087,6 +1144,22 @@ export default function MatchupsPage() {
         setRosters(rosterData);
         setMatchups(Array.isArray(matchupData) ? matchupData : []);
         setPlayerDirectory(playerData);
+        const historyPairs = [...new Set(
+          buildMatchupGroups(Array.isArray(matchupData) ? matchupData : [])
+            .map((group) => {
+              const firstUser = userData.find((user) => user.user_id === rosterData.find((roster) => roster.roster_id === group.teams[0]?.roster_id)?.owner_id);
+              const secondUser = userData.find((user) => user.user_id === rosterData.find((roster) => roster.roster_id === group.teams[1]?.roster_id)?.owner_id);
+              const first = getOwnerId(firstUser);
+              const second = getOwnerId(secondUser);
+              return first && second && first !== second ? `${first}:${second}` : null;
+            })
+            .filter((pair): pair is string => pair !== null)
+        )];
+        const loadedHistory = await Promise.all(historyPairs.map(async (pair) => {
+          const [first, second] = pair.split(":");
+          return [pair, await loadMatchupHistory(first, second)] as const;
+        }));
+        setMatchupHistory(Object.fromEntries(loadedHistory));
       } catch (error) {
         console.error("Error loading matchups:", error);
         if (!cancelled) {
@@ -1271,13 +1344,21 @@ export default function MatchupsPage() {
             ) : (
               <div className="grid gap-5 sm:gap-6">
                 {matchupGroups.map((group) => (
+                  (() => {
+                    const firstUser = users.find((user) => user.user_id === rosters.find((roster) => roster.roster_id === group.teams[0]?.roster_id)?.owner_id);
+                    const secondUser = users.find((user) => user.user_id === rosters.find((roster) => roster.roster_id === group.teams[1]?.roster_id)?.owner_id);
+                    const pair = `${getOwnerId(firstUser) ?? ""}:${getOwnerId(secondUser) ?? ""}`;
+                    return (
                   <MatchupCard
                     key={group.id}
                     group={group}
                     rosters={rosters}
                     users={users}
                     playerDirectory={playerDirectory}
+                    history={matchupHistory[pair] ?? null}
                   />
+                    );
+                  })()
                 ))}
               </div>
             )}
