@@ -670,7 +670,7 @@ function MatchupCard({
   const [expanded, setExpanded] = useState(false);
   const team1 = resolveTeam(group.teams[0], rosters, users, "Team 1");
   const team2 = resolveTeam(group.teams[1], rosters, users, "Team 2");
-  const lineupId = `${group.id}-starting-lineups`;
+  const expandedRegionId = `${group.id}-expanded-content`;
   const matchupLabel = `${team1.name} versus ${team2.name}`;
 
   return (
@@ -688,7 +688,7 @@ function MatchupCard({
       <button
         type="button"
         aria-expanded={expanded}
-        aria-controls={lineupId}
+        aria-controls={expandedRegionId}
         aria-label={`${expanded ? "Collapse" : "Expand"} starters for ${matchupLabel}`}
         onClick={() => setExpanded((current) => !current)}
         className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-black/10 px-4 py-2 text-xs font-black uppercase tracking-widest transition hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 dark:border-white/10 dark:hover:bg-white/[0.06]"
@@ -697,15 +697,17 @@ function MatchupCard({
       </button>
 
       {expanded && (
-        <div id={lineupId} className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2">
-          <StarterList label={team1.name} matchup={group.teams[0]} playerDirectory={playerDirectory} />
-          <StarterList label={team2.name} matchup={group.teams[1]} playerDirectory={playerDirectory} />
+        <div id={expandedRegionId} className="min-w-0">
+          <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2">
+            <StarterList label={team1.name} matchup={group.teams[0]} playerDirectory={playerDirectory} />
+            <StarterList label={team2.name} matchup={group.teams[1]} playerDirectory={playerDirectory} />
+          </div>
+
+          <ProjectionContext group={group} team1={team1} team2={team2} identities={playerDirectory} projectionState={projectionState} />
+
+          <HistoryContext history={history} />
         </div>
       )}
-
-      {expanded && <ProjectionContext group={group} team1={team1} team2={team2} identities={playerDirectory} projectionState={projectionState} />}
-
-      {expanded && <HistoryContext history={history} />}
 
       {group.note && (
         <div className="mt-4 flex items-start gap-2 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-xs font-bold text-yellow-700 dark:text-yellow-300">
