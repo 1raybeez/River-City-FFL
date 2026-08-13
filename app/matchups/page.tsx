@@ -23,9 +23,11 @@ import {
   getMatchups,
   getNFLState,
   getPlayoffBrackets,
+  getSleeperPlayerIdentityDirectory,
   type BracketMatch,
   type LeagueInfo,
   type Matchup,
+  type SleeperPlayerIdentity,
 } from "@/lib/sleeper";
 
 const MIN_WEEK = 1;
@@ -457,9 +459,11 @@ function getStarterIds(matchup?: Matchup): readonly string[] {
 function StarterList({
   label,
   matchup,
+  playerDirectory,
 }: {
   label: string;
   matchup?: Matchup;
+  playerDirectory: Readonly<Record<string, SleeperPlayerIdentity>>;
 }) {
   const starterIds = getStarterIds(matchup);
 
@@ -475,7 +479,18 @@ function StarterList({
           {starterIds.map((starterId, index) => (
             <li key={`${starterId}-${index}`} className="min-w-0 rounded-xl bg-white px-3 py-2 text-sm font-semibold dark:bg-black/20">
               <span className="mr-2 text-black/40 dark:text-white/40">{index + 1}.</span>
-              <span className="break-all">Player ID: {starterId}</span>
+              {playerDirectory[starterId] ? (
+                <div className="min-w-0">
+                  <p className="break-words">{playerDirectory[starterId].displayName ?? `Player ID: ${starterId}`}</p>
+                  {(playerDirectory[starterId].position || playerDirectory[starterId].nflTeam) && (
+                    <p className="mt-1 break-words text-xs font-medium text-black/55 dark:text-white/55">
+                      {[playerDirectory[starterId].position, playerDirectory[starterId].nflTeam].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <span className="break-all">Player ID: {starterId}</span>
+              )}
             </li>
           ))}
         </ol>
@@ -488,10 +503,12 @@ function MatchupCard({
   group,
   rosters,
   users,
+  playerDirectory,
 }: {
   group: MatchupGroup;
   rosters: SleeperRoster[];
   users: SleeperUser[];
+  playerDirectory: Readonly<Record<string, SleeperPlayerIdentity>>;
 }) {
   const [expanded, setExpanded] = useState(false);
   const team1 = resolveTeam(group.teams[0], rosters, users, "Team 1");
@@ -524,8 +541,8 @@ function MatchupCard({
 
       {expanded && (
         <div id={lineupId} className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2">
-          <StarterList label={team1.name} matchup={group.teams[0]} />
-          <StarterList label={team2.name} matchup={group.teams[1]} />
+          <StarterList label={team1.name} matchup={group.teams[0]} playerDirectory={playerDirectory} />
+          <StarterList label={team2.name} matchup={group.teams[1]} playerDirectory={playerDirectory} />
         </div>
       )}
 
@@ -1009,6 +1026,7 @@ export default function MatchupsPage() {
   const [matchups, setMatchups] = useState<Matchup[]>([]);
   const [users, setUsers] = useState<SleeperUser[]>([]);
   const [rosters, setRosters] = useState<SleeperRoster[]>([]);
+  const [playerDirectory, setPlayerDirectory] = useState<Record<string, SleeperPlayerIdentity>>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [leagueInfo, setLeagueInfo] = useState<LeagueInfo | null>(null);
@@ -1056,10 +1074,11 @@ export default function MatchupsPage() {
       setLoadError(null);
 
       try {
-        const [userData, rosterData, matchupData] = await Promise.all([
+        const [userData, rosterData, matchupData, playerData] = await Promise.all([
           getLeagueUsers(),
           getLeagueRosters(),
           getMatchups(activeWeek),
+          getSleeperPlayerIdentityDirectory(),
         ]);
 
         if (cancelled) return;
@@ -1067,6 +1086,7 @@ export default function MatchupsPage() {
         setUsers(userData);
         setRosters(rosterData);
         setMatchups(Array.isArray(matchupData) ? matchupData : []);
+        setPlayerDirectory(playerData);
       } catch (error) {
         console.error("Error loading matchups:", error);
         if (!cancelled) {
@@ -1256,6 +1276,7 @@ export default function MatchupsPage() {
                     group={group}
                     rosters={rosters}
                     users={users}
+                    playerDirectory={playerDirectory}
                   />
                 ))}
               </div>

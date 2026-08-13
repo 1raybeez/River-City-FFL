@@ -40,6 +40,22 @@ export interface Matchup {
   [key: string]: unknown;
 }
 
+export interface SleeperPlayerIdentity {
+  playerId: string;
+  displayName: string | null;
+  position: string | null;
+  nflTeam: string | null;
+}
+
+type SleeperPlayerDirectoryEntry = {
+  player_id?: string | number | null;
+  full_name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  position?: string | null;
+  team?: string | null;
+};
+
 export interface BracketSource {
   w?: number | null;
   l?: number | null;
@@ -277,6 +293,30 @@ export async function getAllPlayers() {
     console.error("Error fetching/merging players:", error);
     return {};
   }
+}
+
+export async function getSleeperPlayerIdentityDirectory(): Promise<Record<string, SleeperPlayerIdentity>> {
+  const players = await sleeperFetch<Record<string, SleeperPlayerDirectoryEntry>>(
+    "https://api.sleeper.app/v1/players/nfl"
+  );
+  if (!players) return {};
+
+  return Object.fromEntries(
+    Object.entries(players).map(([key, player]) => {
+      const playerId = String(player.player_id ?? key);
+      const composedName = [player.first_name, player.last_name]
+        .filter((part): part is string => typeof part === "string" && part.trim().length > 0)
+        .join(" ");
+      return [playerId, {
+        playerId,
+        displayName: typeof player.full_name === "string" && player.full_name.trim()
+          ? player.full_name.trim()
+          : composedName || null,
+        position: typeof player.position === "string" && player.position.trim() ? player.position.trim() : null,
+        nflTeam: typeof player.team === "string" && player.team.trim() ? player.team.trim() : null,
+      } satisfies SleeperPlayerIdentity];
+    })
+  );
 }
 
 // --- LEAGUE COMPONENT FETCHERS ---
