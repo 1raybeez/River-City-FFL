@@ -1,20 +1,13 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { 
-  ArrowRight, 
-  MessageCircle, TrendingUp, X, Calendar, Book, Menu,
-  CalendarDays, MapPin, Video, UserCheck, BrainCircuit
-} from 'lucide-react';
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState, type ReactNode } from "react";
+import { ArrowRight, Calendar, CalendarDays, Menu, MessageCircle, TrendingUp, X } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { collection, doc, getDoc, onSnapshot } from "firebase/firestore";
+import { getAllPlayers } from "@/lib/sleeper";
 
-// --- FIREBASE IMPORTS ---
-import { db } from "@/lib/firebase"; 
-import { doc, getDoc, collection, onSnapshot } from "firebase/firestore";
-import { getAllPlayers } from '@/lib/sleeper'; 
-
-// --- CONFIGURATION ---
 const LEAGUE_ID_2026 = "1312149033254416384";
 const RECAP_LOADING_TEXT = "Loading latest league note...";
 const RECAP_FALLBACK_TEXT = "Commish recap could not be loaded. Check back soon for the latest league update.";
@@ -26,474 +19,153 @@ const PUBLIC_ADP_STATUS = "ADP ready";
 function getDraftCountdownLabel(now: Date) {
   const millisecondsUntilDraft = DRAFT_START_AT.getTime() - now.getTime();
   if (millisecondsUntilDraft <= 0) return "Draft window open";
-
   const days = Math.ceil(millisecondsUntilDraft / (1000 * 60 * 60 * 24));
-  if (days === 1) return "1 day to draft";
-  return `${days} days to draft`;
+  return `${days} day${days === 1 ? "" : "s"} to draft`;
 }
 
-// UPDATED: Removed Jeffrey Hudgins and Landon Elliott (Co-owners)
 const managers = [
-  { name: "Aaron Dogg", id: "583513420586848256" },
-  { name: "Brian Stevens", id: "343129212162523136" },
-  { name: "David Besedich", id: "466663208728391680" },
-  { name: "Doug Fordham", id: "73400761740312576" },
-  { name: "JD Dowling", id: "342850391018356736" },
-  { name: "Jordan Maslyn", id: "341412060426436608" },
-  { name: "Rashad Gresham", id: "864186418971418624" },
-  { name: "Ray Long", id: "342828350391230464" },
-  { name: "Stan Schoppe", id: "1260048448384667648" },
-  { name: "Tommy Moore", id: "342849293037608960" },
-  { name: "Travis Miller", id: "342831451382841344" },
-  { name: "Wade Cameron", id: "342838548870762496" }
+  ["Aaron Dogg", "583513420586848256"], ["Brian Stevens", "343129212162523136"], ["David Besedich", "466663208728391680"],
+  ["Doug Fordham", "73400761740312576"], ["JD Dowling", "342850391018356736"], ["Jordan Maslyn", "341412060426436608"],
+  ["Rashad Gresham", "864186418971418624"], ["Ray Long", "342828350391230464"], ["Stan Schoppe", "1260048448384667648"],
+  ["Tommy Moore", "342849293037608960"], ["Travis Miller", "342831451382841344"], ["Wade Cameron", "342838548870762496"],
 ];
 
 const mobileNavLinks = [
-  { label: "Home", href: "/", group: "Core" },
-  { label: "Managers", href: "/managers", group: "Core" },
-  { label: "League Info", href: "/league-info", group: "Core" },
-  { label: "Commish", href: "/commish", group: "Core" },
-  { label: "Matchups", href: "/matchups", group: "Core" },
-  { label: "AI Predictor", href: "/predictor", group: "War Room" },
-  { label: "Draft Board", href: "/league-info/draft", group: "League Info" },
-  { label: "Legislative Hub", href: "/commish/proposals", group: "League Info" },
-  { label: "Payouts", href: "/league-info/payouts", group: "League Info" },
+  ["Home", "/"], ["Managers", "/managers"], ["League Info", "/league-info"], ["Commish", "/commish"], ["Matchups", "/matchups"],
+  ["Power Rankings", "/predictor"], ["History", "/history"], ["Rivalries", "/league-info/rivalries"],
 ];
 
-export default function Home() {
-  const [mounted, setMounted] = useState(false);
-  const [showRecap, setShowRecap] = useState(false);
-  const [showHistoryModal, setShowHistoryModal] = useState(false); 
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [liveRecap, setLiveRecap] = useState(RECAP_LOADING_TEXT); 
+type DashboardCardProps = { label: string; icon?: ReactNode; children: ReactNode; accent?: boolean };
 
-  // --- AI PREDICTOR STATE ---
+function DashboardCard({ label, icon, children, accent = false }: DashboardCardProps) {
+  return <section className={`min-w-0 rounded-2xl border bg-white p-5 shadow-sm dark:bg-[#121212] sm:p-6 ${accent ? "border-blue-600/60 ring-1 ring-blue-600/20" : "border-slate-900/10 dark:border-white/10"}`}>
+    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-white/60">{icon}<span>{label}</span></div>
+    {children}
+  </section>;
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return <div className="min-w-0 rounded-lg bg-slate-100 p-3 dark:bg-white/5"><p className="break-words text-[9px] font-black uppercase leading-4 tracking-widest text-slate-400">{label}</p><p className="mt-1 break-words text-sm font-black">{value}</p></div>;
+}
+
+export default function Home() {
+  const [showRecap, setShowRecap] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [liveRecap, setLiveRecap] = useState(RECAP_LOADING_TEXT);
   const [predictorTeams, setPredictorTeams] = useState<any[]>([]);
   const [loadingPredictor, setLoadingPredictor] = useState(true);
   const [predictorError, setPredictorError] = useState<string | null>(null);
-
-  // --- RSVP STATE ---
   const [selectedManagerId, setSelectedManagerId] = useState("");
   const [rsvpList, setRsvpList] = useState<any[]>([]);
   const [isSubmittingRsvp, setIsSubmittingRsvp] = useState(false);
-
-  // --- ICAL GENERATOR ---
-  const downloadICS = (title: string, desc: string, start: string, end: string) => {
-    const calendarData = [
-      'BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT',
-      `SUMMARY:${title}`, `DESCRIPTION:${desc}`, `DTSTART:${start}`, `DTEND:${end}`,
-      'END:VEVENT', 'END:VCALENDAR'
-    ].join('\n');
-    const blob = new Blob([calendarData], { type: 'text/calendar;charset=utf-8' });
-    const link = document.createElement('a');
-    link.href = window.URL.createObjectURL(blob);
-    link.setAttribute('download', `${title.replace(/\s+/g, '_')}.ics`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const [publicFinance, setPublicFinance] = useState<{
+    duesPool: string | null;
+    duesCollected: string | null;
+    duesOutstanding: string | null;
+    paidCount: number;
+    notPaidCount: number;
+    championshipAllocation: string | null;
+    projectedChampionCash: string | null;
+  } | null>(null);
 
   useEffect(() => {
-    setMounted(true);
+    const closeModalsOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setShowHistoryModal(false);
+      setShowRecap(false);
+    };
+    window.addEventListener("keydown", closeModalsOnEscape);
 
-    // TODO: Future Commish Corner = Generate Draft -> Review/Edit -> Publish -> Home displays latest published article.
     async function fetchRecap() {
       try {
-        const docSnap = await getDoc(doc(db, "siteContent", "recap")); 
-        if (!docSnap.exists()) {
-          setLiveRecap(RECAP_FALLBACK_TEXT);
-          return;
-        }
-
-        const recapText = docSnap.data().text;
-        setLiveRecap(typeof recapText === "string" && recapText.trim() ? recapText : RECAP_FALLBACK_TEXT);
-      } catch (err) {
-        console.error(err);
+        const snapshot = await getDoc(doc(db, "siteContent", "recap"));
+        const text = snapshot.exists() ? snapshot.data().text : null;
+        setLiveRecap(typeof text === "string" && text.trim() ? text : RECAP_FALLBACK_TEXT);
+      } catch {
         setLiveRecap(RECAP_FALLBACK_TEXT);
       }
     }
     fetchRecap();
-    
-    const unsubRsvp = onSnapshot(collection(db, "rsvps"), (snap) => {
-      setRsvpList(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
+    fetch("/api/public-finance/summary")
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("Public finance unavailable")))
+      .then(setPublicFinance)
+      .catch(() => setPublicFinance(null));
+    const unsubscribe = onSnapshot(collection(db, "rsvps"), (snapshot) => setRsvpList(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }))));
 
     async function loadPredictorData() {
-        try {
-            setPredictorError(null);
-            const [uRes, rRes, players] = await Promise.all([
-                fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID_2026}/users`),
-                fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID_2026}/rosters`),
-                getAllPlayers()
-            ]);
-
-            if (!uRes.ok || !rRes.ok) {
-                throw new Error("Sleeper predictor request failed.");
-            }
-
-            const users = await uRes.json();
-            const rosters = await rRes.json();
-            if (!Array.isArray(users) || !Array.isArray(rosters) || rosters.length === 0) {
-                throw new Error("Predictor roster data is unavailable.");
-            }
-
-            let total = 0;
-            const scores = rosters.map((r: any) => {
-                const val = r.players?.reduce((acc: number, pId: string) => acc + (players[pId]?.totalValueScore || 0), 0) || 0;
-                const wins = r.settings.wins || 0;
-                const losses = r.settings.losses || 0;
-                const winPct = (wins + losses) > 0 ? wins / (wins + losses) : 0.5;
-                const score = (val * 0.5) + (r.settings.fpts * 0.3) + (winPct * 1000);
-                total += score;
-                const user = users.find((u: any) => u.user_id === r.owner_id);
-                return { name: user?.metadata?.team_name || user?.display_name || 'Team', score, rosterValue: val };
-            });
-            setPredictorTeams(scores.map((s: any) => ({ ...s, winProb: total > 0 ? (s.score / total) * 100 : 0 })).sort((a: any, b: any) => b.winProb - a.winProb));
-        } catch (e) {
-            console.error(e);
-            setPredictorError("Predictor data could not be loaded.");
-            setPredictorTeams([]);
-        } finally {
-            setLoadingPredictor(false);
-        }
+      try {
+        const [usersResponse, rostersResponse, players] = await Promise.all([
+          fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID_2026}/users`),
+          fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID_2026}/rosters`),
+          getAllPlayers(),
+        ]);
+        if (!usersResponse.ok || !rostersResponse.ok) throw new Error("Power rankings data could not be loaded.");
+        const users = await usersResponse.json();
+        const rosters = await rostersResponse.json();
+        if (!Array.isArray(users) || !Array.isArray(rosters) || rosters.length === 0) throw new Error("Power rankings data could not be loaded.");
+        const scores = rosters.map((roster: any) => {
+          const rosterValue = roster.players?.reduce((total: number, playerId: string) => total + (players[playerId]?.totalValueScore || 0), 0) || 0;
+          const wins = roster.settings?.wins || 0;
+          const losses = roster.settings?.losses || 0;
+          const winPct = wins + losses > 0 ? wins / (wins + losses) : 0.5;
+          const score = rosterValue * 0.5 + (roster.settings?.fpts || 0) * 0.3 + winPct * 1000;
+          const user = users.find((entry: any) => entry.user_id === roster.owner_id);
+          return { name: user?.metadata?.team_name || user?.display_name || "Team", score };
+        });
+        setPredictorTeams(scores.sort((a: any, b: any) => b.score - a.score));
+      } catch (error) {
+        console.error(error);
+        setPredictorError("Power rankings data could not be loaded.");
+      } finally {
+        setLoadingPredictor(false);
+      }
     }
     loadPredictorData();
-
-    return () => unsubRsvp();
+    return () => {
+      window.removeEventListener("keydown", closeModalsOnEscape);
+      unsubscribe();
+    };
   }, []);
 
   const handleRsvp = async () => {
     if (!selectedManagerId) return;
     setIsSubmittingRsvp(true);
     try {
-      const response = await fetch("/api/rsvps", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ managerId: selectedManagerId }),
-      });
+      const response = await fetch("/api/rsvps", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ managerId: selectedManagerId }) });
       if (!response.ok) throw new Error("RSVP request failed.");
-    } catch (err) { console.error(err); } finally { setIsSubmittingRsvp(false); }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSubmittingRsvp(false);
+    }
   };
 
-  const events = [
-    { 
-      date: "August 29, 2026", event: "2026 Draft Day", desc: "10:00 AM - 3:00 PM. Location: TBD. The Legislative Hub is preparing for the 2027 Winter Owners Meeting.", 
-      icon: MapPin, start: "20260829T100000", end: "20260829T150000",
-      link: "",
-      gCalLink: "https://calendar.app.google/QYqFqoGATsB9rkxb8"
-    }
-  ];
-
-  if (!mounted) return null;
-
-  const hasSelectedRsvp = rsvpList.some(r => r.id === selectedManagerId);
-  const predictorOddsAreEqual = predictorTeams.length > 1 && predictorTeams.every(
-    (team) => Math.abs((team.winProb ?? 0) - (predictorTeams[0].winProb ?? 0)) < 0.05
-  );
-  const predictorValuesAreZero = predictorTeams.length > 0 && predictorTeams.every(
-    (team) => (team.rosterValue ?? 0) === 0
-  );
-  const isPredictorPlaceholder = predictorTeams.length > 0 && (predictorOddsAreEqual || predictorValuesAreZero);
-  const nextLeagueEvent = events[0];
-  const nextLeagueEventTime = "10:00 AM ET";
+  const event = { date: "August 29, 2026", event: "2026 Draft Day", desc: "10:00 AM - 3:00 PM. Location: TBD.", gCalLink: "https://calendar.app.google/QYqFqoGATsB9rkxb8" };
+  const hasSelectedRsvp = rsvpList.some((entry) => entry.id === selectedManagerId);
   const draftCountdownLabel = getDraftCountdownLabel(new Date());
-  const draftRsvpLabel = `${rsvpList.length} confirmed`;
 
-  return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-20 selection:bg-orange-500">
-      
-      <nav className="relative border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-end sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
-        <div className="hidden sm:flex bg-black/5 dark:bg-white/5 p-1 rounded-xl border border-black/10 dark:border-white/10">
-          <Link href="/" aria-current="page" className="px-4 py-1.5 bg-orange-600 text-white rounded-lg text-[10px] font-black uppercase italic shadow-lg shadow-orange-900/20">Home</Link>
-          <Link href="/managers" className="px-4 py-1.5 text-[10px] font-black uppercase italic opacity-40 hover:opacity-100 transition-all">Managers</Link>
-          <Link href="/league-info" className="px-4 py-1.5 text-[10px] font-black uppercase italic opacity-40 hover:opacity-100 transition-all">League Info</Link>
-          <Link href="/commish" className="px-4 py-1.5 text-[10px] font-black uppercase italic opacity-40 hover:opacity-100 transition-all">Commish</Link>
-          <Link href="/matchups" className="px-4 py-1.5 text-[10px] font-black uppercase italic opacity-40 hover:opacity-100 transition-all">Matchups</Link>
-        </div>
+  return <div className="min-h-screen bg-[#f7f8fa] text-slate-950 dark:bg-[#0a0a0a] dark:text-white">
+    <nav className="sticky top-0 z-50 border-b border-white/10 bg-[#071a33]/95 px-4 py-3 text-white backdrop-blur-md sm:px-6"><div className="mx-auto flex max-w-7xl items-center justify-between gap-4"><Link href="/" className="flex min-w-0 items-center gap-3" aria-label="River City FFL home"><span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full border border-white/20 bg-white"><Image src="/River City FFL Logo.JPG" alt="" fill className="object-cover" unoptimized /></span><span className="hidden min-w-0 sm:block"><span className="block text-lg font-black uppercase italic leading-none">River City FFL</span><span className="mt-1 block text-[8px] font-bold uppercase tracking-[0.18em] text-white/55">A tradition of competition</span></span></Link><div className="hidden items-center gap-1 lg:flex">{[["Home", "/"], ["Matchups", "/matchups"], ["Managers", "/managers"], ["Rivalries", "/league-info/rivalries"], ["History", "/history"], ["League Info", "/league-info"]].map(([label, href]) => <Link key={href} href={href} aria-current={href === "/" ? "page" : undefined} className={`rounded-md px-3 py-2 text-[10px] font-black uppercase transition ${href === "/" ? "border-b-2 border-amber-400 text-white" : "text-white/65 hover:bg-white/10 hover:text-white"}`}>{label}</Link>)}<Link href="/commish" className="ml-3 rounded-md border border-white/35 px-4 py-2 text-[10px] font-black uppercase text-white transition hover:bg-white/10">Commissioner Hub</Link></div><button type="button" aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"} aria-expanded={isMobileMenuOpen} aria-controls="home-mobile-navigation" onClick={() => setIsMobileMenuOpen((open) => !open)} className="rounded-lg border border-white/25 p-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 lg:hidden">{isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}</button></div>{isMobileMenuOpen && <div id="home-mobile-navigation" className="mx-auto mt-3 grid max-w-7xl grid-cols-2 gap-2 rounded-xl border border-white/15 bg-[#0b2444] p-3 lg:hidden">{mobileNavLinks.map(([label, href]) => <Link key={href} href={href} onClick={() => setIsMobileMenuOpen(false)} className="rounded-lg border border-white/10 px-3 py-3 text-[9px] font-black uppercase tracking-widest text-white/75 hover:bg-white/10">{label}</Link>)}</div>}</nav>
+    <header className="mx-auto max-w-7xl px-4 pb-6 pt-8 sm:px-6 lg:px-8"><div className="flex items-center gap-4"><div className="relative h-16 w-16 overflow-hidden rounded-full border-2 border-white bg-white shadow-lg"><Image src="/River City FFL Logo.JPG" alt="River City FFL logo" fill className="object-cover" priority unoptimized /></div><div><p className="text-[10px] font-black uppercase tracking-[0.3em] text-orange-600">River City FFL</p><h1 className="mt-1 text-4xl font-black uppercase italic tracking-tighter sm:text-5xl">2026 League Dashboard</h1><p className="mt-1 text-xs font-medium text-slate-500 dark:text-white/50">Est. 2011 · Richmond, Virginia</p></div></div></header>
+    <main className="mx-auto max-w-7xl space-y-5 px-4 pb-12 sm:px-6 lg:px-8">
+      <section className="grid gap-5 lg:grid-cols-3" aria-label="League overview">
+        <DashboardCard label="2026 League Event" icon={<CalendarDays size={17} className="text-orange-600" />}><h2 className="mt-5 text-2xl font-black uppercase italic leading-none">2026 Draft Day</h2><p className="mt-4 text-sm font-semibold">{event.date}</p><p className="mt-1 text-sm text-slate-500 dark:text-white/55">10:00 AM ET · Location TBD</p><div className="mt-6 flex flex-col gap-3"><select aria-label="Verify manager identity for RSVP" className="min-h-11 w-full rounded-lg border border-slate-900/10 bg-white px-3 text-xs font-bold dark:border-white/10 dark:bg-black/20" value={selectedManagerId} onChange={(e) => setSelectedManagerId(e.target.value)}><option value="">Verify Manager Identity</option>{managers.map(([name, id]) => <option key={id} value={id}>{name}</option>)}</select><button type="button" onClick={handleRsvp} disabled={!selectedManagerId || hasSelectedRsvp || isSubmittingRsvp} className="min-h-11 rounded-lg bg-emerald-600 px-4 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-emerald-500 disabled:opacity-50">{hasSelectedRsvp ? "Attendance Confirmed" : `${rsvpList.length} confirmed · Confirm attendance`}</button>{event.gCalLink && <a href={event.gCalLink} target="_blank" rel="noopener noreferrer" className="text-center text-[10px] font-black uppercase tracking-widest text-orange-600 hover:underline">View calendar invite</a>}</div></DashboardCard>
+        <DashboardCard label="Commissioner Corner" icon={<MessageCircle size={17} className="text-blue-600" />}><p className="mt-5 text-[10px] font-black uppercase tracking-widest text-blue-600">2026 public draft status</p><h2 className="mt-2 text-2xl font-black uppercase italic leading-none">Auction Draft HQ</h2><div className="mt-5 grid grid-cols-2 gap-2 text-xs"><MiniStat label="Countdown" value={draftCountdownLabel} /><MiniStat label="RSVP" value={`${rsvpList.length} confirmed`} /><MiniStat label="Values" value={PUBLIC_AUCTION_VALUE_STATUS} /><MiniStat label="ADP" value={PUBLIC_ADP_STATUS} /></div><p className="mt-5 text-xs leading-5 text-slate-500 dark:text-white/55">Draft day is August 29, 2026 at 10:00 AM ET. Keepers lock by {KEEPER_DEADLINE_LABEL}. Private War Room tools remain authorized-only.</p><div className="mt-5 flex flex-wrap gap-2"><Link href="/commish" className="min-h-10 rounded-lg bg-blue-700 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white">Commissioner Hub</Link><button type="button" onClick={() => setShowRecap(true)} className="min-h-10 rounded-lg border border-slate-900/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest dark:border-white/10">Recent Recap</button></div></DashboardCard>
+        <DashboardCard label="Reigning Champion" icon={<span className="text-xl text-amber-500">🏆</span>}><div className="mt-5 flex items-center gap-4"><div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full border-4 border-amber-500/20"><Image src="/managers/Aaron.png" alt="Aaron Hawkins" fill className="object-cover" unoptimized /></div><div><h2 className="text-xl font-black uppercase italic">Aaron Hawkins</h2><p className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/50">Official 2025 winner</p></div></div><div className="mt-6 grid grid-cols-2 gap-2"><MiniStat label="Record" value="9-5" /><MiniStat label="Year" value="2025" /></div></DashboardCard>
+      </section>
+      <section className="grid gap-5 lg:grid-cols-3" aria-label="Current season dashboard">
+        <DashboardCard label="2026 Power Rankings" icon={<TrendingUp size={17} className="text-fuchsia-600" />}><p className="mt-4 text-xs text-slate-500 dark:text-white/55">Preseason roster-strength outlook.</p><div className="mt-5 space-y-2">{loadingPredictor ? <p className="text-xs font-bold text-slate-500">Loading rankings...</p> : predictorError ? <p className="text-xs font-bold text-red-600">{predictorError}</p> : predictorTeams.length === 0 ? <p className="text-xs font-bold text-slate-500">Power rankings unavailable.</p> : predictorTeams.slice(0, 5).map((team: any, index: number) => <Link key={team.name} href="/predictor" className="flex min-w-0 items-center justify-between border-b border-slate-900/10 py-2 text-sm dark:border-white/10"><span className="min-w-0 truncate font-bold"><span className="mr-3 text-xs text-slate-400">{index + 1}</span>{team.name}</span><span className="ml-3 shrink-0 font-black text-fuchsia-600">{team.score.toFixed(1)}</span></Link>)}</div><p className="mt-4 rounded-lg bg-slate-100 p-3 text-[10px] leading-4 text-slate-500 dark:bg-white/5 dark:text-white/55">Power rankings reflect roster strength and schedule factors. They are not weekly matchup predictions.</p><Link href="/predictor" className="mt-5 inline-flex min-h-10 items-center gap-2 text-[10px] font-black uppercase tracking-widest text-fuchsia-600">View Full Power Rankings <ArrowRight size={14} /></Link></DashboardCard>
+        <DashboardCard label="2026 Matchups" accent><h2 className="mt-8 text-3xl font-black uppercase italic leading-none">Follow Every Matchup</h2><p className="mt-5 text-sm leading-6 text-slate-600 dark:text-white/60">See weekly head-to-heads, starting lineups, projected scores, Series History, and the playoff bracket.</p><Link href="/matchups" className="mt-7 inline-flex min-h-11 items-center gap-2 rounded-lg bg-blue-700 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition hover:bg-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700">Open 2026 Matchups <ArrowRight size={14} /></Link><div className="mt-8 text-center text-5xl font-black italic text-blue-700/15" aria-hidden="true">VS</div></DashboardCard>
+        <DashboardCard label="2026 Payouts" icon={<span className="text-lg text-emerald-600">$</span>}><div className="mt-4"><p className="text-3xl font-black italic">{publicFinance?.duesPool ?? "—"}</p><p className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Total prize pool</p></div><div className="mt-5 grid grid-cols-2 gap-2 text-xs"><MiniStat label="Dues Collected" value={publicFinance?.duesCollected ?? "—"} /><MiniStat label="Outstanding" value={publicFinance?.duesOutstanding ?? "—"} /><MiniStat label="Paid" value={publicFinance ? String(publicFinance.paidCount) : "—"} /><MiniStat label="Not Paid" value={publicFinance ? String(publicFinance.notPaidCount) : "—"} /><MiniStat label="Championship Allocation" value={publicFinance?.championshipAllocation ?? "—"} /><MiniStat label="Projected Champion Cash" value={publicFinance?.projectedChampionCash ?? "—"} /></div><Link href="/league-info/payouts" className="mt-5 inline-flex min-h-10 items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-700 hover:underline">View 2026 Payouts <ArrowRight size={14} /></Link></DashboardCard>
+      </section>
+      <section className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]" aria-label="League history and recent recap">
+        <DashboardCard label="League History" icon={<Calendar size={17} className="text-slate-700" />}><p className="mt-5 max-w-2xl text-sm leading-6 text-slate-600 dark:text-white/60">River City FFL was founded on competition, friendship, and a commitment to keeping records that matter.</p><p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600 dark:text-white/60">For 2026, the championship allocation is $235. After the approved $13.77 ring expense, the projected champion cash portion is $221.23. No champion award has been approved.</p><button type="button" onClick={() => setShowHistoryModal(true)} className="mt-6 min-h-11 rounded-lg border border-orange-600/40 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-orange-700 hover:bg-orange-600/10">View Full League History</button></DashboardCard>
+        <DashboardCard label="Recent Recap" icon={<MessageCircle size={17} className="text-blue-600" />}><h2 className="mt-5 text-2xl font-black uppercase italic">Latest Commissioner Briefing</h2><p className="mt-4 line-clamp-4 text-sm leading-6 text-slate-600 dark:text-white/60">{liveRecap}</p><button type="button" onClick={() => setShowRecap(true)} className="mt-6 min-h-11 text-[10px] font-black uppercase tracking-widest text-blue-700 hover:underline">Read Full Recap <ArrowRight className="ml-1 inline" size={14} /></button></DashboardCard>
+      </section>
+    </main>
 
-        <button
-          type="button"
-          aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
-          aria-expanded={isMobileMenuOpen}
-          aria-controls="home-mobile-navigation"
-          onClick={() => setIsMobileMenuOpen((open) => !open)}
-          className="sm:hidden rounded-lg border border-black/10 bg-black/5 p-2 transition-all hover:scale-105 dark:border-white/10 dark:bg-white/5"
-        >
-          {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
-        </button>
-
-        {isMobileMenuOpen && (
-          <div
-            id="home-mobile-navigation"
-            className="absolute left-4 right-4 top-full mt-3 rounded-[2rem] border border-black/10 bg-white p-4 shadow-2xl dark:border-white/10 dark:bg-[#111] sm:hidden"
-          >
-            <div className="grid grid-cols-2 gap-3">
-              {mobileNavLinks.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-widest transition-all ${
-                    item.href === "/"
-                      ? "border-orange-600 bg-orange-600 text-white shadow-lg shadow-orange-900/20"
-                      : "border-black/5 bg-black/5 hover:border-orange-600/30 hover:text-orange-600 dark:border-white/10 dark:bg-white/5"
-                  }`}
-                >
-                  <span className="mb-1 block text-[8px] opacity-40">{item.group}</span>
-                  {item.label}
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-      </nav>
-
-      <header className="px-4 pt-8 pb-5 text-center">
-        <div className="mx-auto mb-5 flex h-20 w-20 md:h-24 md:w-24 items-center justify-center rounded-full bg-white dark:bg-black shadow-xl border-2 border-black/5 dark:border-white/10 overflow-hidden relative">
-            <Image src="/River City FFL Logo.JPG" alt="Logo" fill className="object-cover" priority unoptimized />
-        </div>
-        <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic leading-none">
-            River City <span className="text-orange-600">FFL</span>
-        </h1>
-        <p className="mt-2 text-[10px] font-bold opacity-30 uppercase tracking-[0.4em]">Est. 2011 • Richmond, VA</p>
-      </header>
-
-      <main className="container mx-auto px-6 pt-2 pb-8 md:pt-4 md:pb-10 max-w-7xl">
-        <section aria-label={nextLeagueEvent ? "Next league event" : "League status"} className="mb-10 md:mb-12">
-          <div className="mx-auto flex max-w-3xl flex-col gap-4 rounded-[2rem] border border-black/5 bg-black/5 px-5 py-4 shadow-xl dark:border-white/10 dark:bg-white/5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4 text-left">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-600 text-white shadow-lg shadow-orange-900/20">
-                <CalendarDays size={20} />
-              </div>
-              <div>
-                <p className="text-[9px] font-black uppercase tracking-[0.35em] text-orange-600">
-                  {nextLeagueEvent ? "Next League Event" : "League Status"}
-                </p>
-                <p className="mt-1 text-sm font-black uppercase italic tracking-tight text-black dark:text-white md:text-base">
-                  {nextLeagueEvent
-                    ? `2026 Draft • ${nextLeagueEvent.date} • ${nextLeagueEventTime}`
-                    : "Offseason • Preparing for 2026 Draft"}
-                </p>
-                <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-black/35 dark:text-white/35">
-                  RSVP through the Google Calendar invite.
-                </p>
-              </div>
-            </div>
-            {nextLeagueEvent?.gCalLink && (
-              <a
-                href={nextLeagueEvent.gCalLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center rounded-full border border-black/5 bg-white px-4 py-2 text-[9px] font-black uppercase tracking-widest text-black/45 transition-all hover:border-orange-600/30 hover:text-orange-600 dark:border-white/10 dark:bg-black/30 dark:text-white/45 dark:hover:text-orange-400"
-              >
-                View Calendar Invite
-              </a>
-            )}
-          </div>
-        </section>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start mb-12 md:mb-16">
-          
-          <div className="lg:col-span-2 space-y-6">
-            {/* MAIN HERO CARD */}
-            <button onClick={() => setShowHistoryModal(true)} className="w-full group relative bg-black/5 dark:bg-white/5 rounded-[2.5rem] border border-black/5 dark:border-white/10 shadow-2xl transition-all p-10 md:p-14 text-left overflow-hidden">
-                <div className="absolute top-0 right-0 p-8 opacity-5"><Book size={180} /></div>
-                <div className="relative z-10">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-600/10 text-orange-600 text-[10px] font-black uppercase mb-6 italic tracking-widest"><Calendar size={12} /> Since 2011</div>
-                    <h2 className="text-4xl md:text-7xl font-black text-black dark:text-white mb-6 leading-none uppercase italic tracking-tighter">The History of <br/><span className="text-orange-600">River City FFL</span></h2>
-                    <p className="text-sm md:text-xl opacity-60 font-medium mb-10 max-w-lg leading-relaxed italic">Legacy, rivalries, and the roots of RVA's institution.</p>
-                    <div className="flex items-center gap-2 text-orange-600 font-black uppercase italic tracking-widest group-hover:translate-x-2 transition-transform">Enter the Vault <ArrowRight size={24} /></div>
-                </div>
-            </button>
-
-            {/* COMMISH CORNER UNDER HISTORY */}
-            <div className="bg-[#0b1527] text-white p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden border border-white/10 group">
-                <MessageCircle size={100} className="absolute -top-4 -right-4 opacity-5 group-hover:scale-110 transition-transform" />
-                <h3 className="text-xs font-black uppercase italic tracking-widest text-blue-400 mb-4">Commish Corner</h3>
-                <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-white/35">2026 public draft status</p>
-                <h4 className="text-3xl font-black uppercase italic mb-4 leading-none">Auction Draft HQ</h4>
-                <div className="mb-6 grid grid-cols-2 gap-3 text-[10px] font-black uppercase tracking-widest">
-                  <div className="rounded-2xl bg-white/5 p-3">
-                    <p className="text-white/35">Countdown</p>
-                    <p className="mt-1 text-blue-300">{draftCountdownLabel}</p>
-                  </div>
-                  <div className="rounded-2xl bg-white/5 p-3">
-                    <p className="text-white/35">RSVP</p>
-                    <p className="mt-1 text-emerald-300">{draftRsvpLabel}</p>
-                  </div>
-                  <div className="rounded-2xl bg-white/5 p-3">
-                    <p className="text-white/35">Values</p>
-                    <p className="mt-1 text-blue-300">{PUBLIC_AUCTION_VALUE_STATUS}</p>
-                  </div>
-                  <div className="rounded-2xl bg-white/5 p-3">
-                    <p className="text-white/35">ADP</p>
-                    <p className="mt-1 text-blue-300">{PUBLIC_ADP_STATUS}</p>
-                  </div>
-                </div>
-                <p className="text-sm text-white/50 italic mb-6 leading-relaxed">
-                  Draft day is August 29, 2026 at 10:00 AM ET. Keepers lock by {KEEPER_DEADLINE_LABEL}. Private War Room tools remain behind authorized access.
-                </p>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  <Link href="/league-info" className="flex items-center justify-center rounded-2xl bg-white/10 px-3 py-3 text-[9px] font-black uppercase tracking-widest text-white/70 transition-all hover:bg-white/15 hover:text-white">
-                    League Info
-                  </Link>
-                  <Link href="/commish" className="flex items-center justify-center rounded-2xl bg-blue-600 px-3 py-3 text-[9px] font-black uppercase tracking-widest text-white transition-all hover:bg-blue-500">
-                    Commish
-                  </Link>
-                  <button onClick={() => setShowRecap(true)} className="rounded-2xl bg-white/10 px-3 py-3 text-[9px] font-black uppercase tracking-widest text-white/70 transition-all hover:bg-white/15 hover:text-white">Full Note</button>
-                </div>
-            </div>
-          </div>
-
-          <div className="lg:col-span-1 space-y-6">
-            <div className="bg-black/5 dark:bg-white/5 rounded-[2.5rem] shadow-2xl border border-black/5 dark:border-white/10 overflow-hidden text-center">
-                <div className="bg-orange-600 p-3"><h3 className="text-[10px] font-black text-white uppercase tracking-widest italic">Reigning Champion</h3></div>
-                <div className="p-8">
-                    <div className="relative w-32 h-32 mx-auto mb-4 border-4 border-white dark:border-white/10 rounded-full shadow-xl overflow-hidden bg-black/20">
-                        <Image src="/managers/Aaron.png" alt="Champ" fill className="object-cover" unoptimized />
-                    </div>
-                    <h2 className="text-2xl font-black dark:text-white uppercase italic tracking-tighter">Aaron Hawkins</h2>
-                    <p className="text-[10px] opacity-40 font-black uppercase tracking-widest mt-1">Official 2025 Winner</p>
-                    <div className="flex border-t border-black/5 dark:border-white/10 mt-6 pt-4">
-                        <div className="w-1/2 border-r border-black/5 dark:border-white/10"><span className="text-[10px] opacity-30 font-black uppercase block mb-1">Record</span><span className="text-xl font-black italic">9-5</span></div>
-                        <div className="w-1/2"><span className="text-[10px] opacity-30 font-black uppercase block mb-1">Year</span><span className="text-xl font-black italic">2025</span></div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="bg-[#1e0a2e] text-white p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden border border-white/10 group">
-                <BrainCircuit size={100} className="absolute -top-4 -right-4 opacity-5 group-hover:scale-110 transition-transform duration-500" />
-                
-                <div className="flex justify-between items-start mb-6">
-	                    <div>
-	                        <h3 className="text-xs font-black uppercase italic tracking-widest text-fuchsia-400">AI Predictor</h3>
-	                        <p className="text-[10px] font-black uppercase opacity-40 italic">
-	                          {isPredictorPlaceholder ? "Preseason outlook" : "Championship Odds"}
-	                        </p>
-	                    </div>
-                    <TrendingUp size={16} className="text-fuchsia-500" />
-                </div>
-
-	                <div className="space-y-4 mb-8">
-	                    {loadingPredictor ? (
-	                        <div className="animate-pulse flex items-center gap-2 opacity-20 font-black uppercase text-[10px]">Crunching Odds...</div>
-	                    ) : predictorError ? (
-	                        <div className="rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/10 p-4 text-[10px] font-black uppercase tracking-widest text-fuchsia-200">
-	                            {predictorError}
-	                        </div>
-	                    ) : predictorTeams.length === 0 ? (
-	                        <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[10px] font-black uppercase tracking-widest text-white/40">
-	                            Predictor data unavailable.
-	                        </div>
-	                    ) : (
-	                        <>
-	                            {isPredictorPlaceholder && (
-	                                <div className="rounded-2xl border border-fuchsia-400/25 bg-fuchsia-400/10 p-4">
-	                                    <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-300">Preseason Placeholder</p>
-	                                    <p className="mt-2 text-[10px] font-bold uppercase leading-relaxed tracking-widest text-white/35">
-	                                        Odds are equalized until roster values, projections, and schedule strength are wired in.
-	                                    </p>
-	                                </div>
-	                            )}
-	                            {predictorTeams.slice(0, 5).map((team: any, idx: number) => (
-	                                <Link key={idx} href="/predictor" className="flex items-center justify-between border-b border-white/5 pb-2 hover:bg-white/5 transition-colors group/row">
-	                                    <div className="flex items-center gap-3">
-	                                        <span className="text-[10px] font-black opacity-30 italic">#{idx + 1}</span>
-	                                        <span className="text-xs font-black uppercase italic truncate max-w-[140px] group-hover/row:text-fuchsia-400 transition-colors">{team.name}</span>
-	                                    </div>
-	                                    <span className="text-xs font-black text-fuchsia-400">{team.winProb.toFixed(1)}%</span>
-	                                </Link>
-	                            ))}
-	                        </>
-	                    )}
-	                </div>
-
-	                <Link href="/predictor" className="flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-fuchsia-400 transition-colors">
-	                    {isPredictorPlaceholder ? "View Placeholder Odds" : "See Full League Odds"} <ArrowRight size={14} />
-	                </Link>
-            </div>
-          </div>
-        </div>
-
-        <section className="mt-12 md:mt-16 border-t border-black/5 dark:border-white/10 pt-12 md:pt-16">
-          <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-12 px-2">
-            <div>
-                <div className="flex items-center gap-3 mb-2">
-                    <CalendarDays className="text-orange-600" size={40} />
-                    <h2 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter leading-none">2026 Schedule</h2>
-                </div>
-                <p className="text-[10px] font-black opacity-30 uppercase tracking-[0.4em] ml-1">Draft Day & 2027 Winter Meeting Prep</p>
-            </div>
-
-            <div className="bg-black/5 dark:bg-white/5 p-5 rounded-[2.5rem] border border-black/5 dark:border-white/10 flex flex-col lg:flex-row items-center gap-5 w-full md:w-auto shadow-xl">
-                <div className="flex items-center gap-2 px-2 text-emerald-600">
-                    <UserCheck size={20} />
-                    <span className="text-[11px] font-black uppercase italic">{rsvpList.length} Confirmed for Draft</span>
-                </div>
-                <select className="bg-white dark:bg-black/40 text-[10px] font-black uppercase italic px-5 py-3 rounded-2xl outline-none border border-black/5 dark:border-white/10 w-full lg:w-60" value={selectedManagerId} onChange={(e) => setSelectedManagerId(e.target.value)}>
-                    <option value="">Verify Manager Identity</option>
-                    {managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                </select>
-                <button onClick={handleRsvp} disabled={!selectedManagerId || hasSelectedRsvp || isSubmittingRsvp} className={`w-full lg:w-auto px-8 py-3 rounded-2xl text-[10px] font-black uppercase italic tracking-widest transition-all ${hasSelectedRsvp ? 'bg-emerald-600/10 text-emerald-600 border border-emerald-600/20' : 'bg-emerald-600 text-white shadow-xl hover:scale-105 active:scale-95'} disabled:opacity-50`}>
-                    {hasSelectedRsvp ? "Attendance Confirmed" : "Confirm Attendance"}
-                </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {events.map((item, idx) => (
-              <div key={idx} className="bg-black/5 dark:bg-white/5 p-10 rounded-[3rem] border border-black/5 dark:border-white/10 shadow-xl flex flex-col h-full group hover:border-orange-600/30 transition-all">
-                <div className="w-16 h-16 bg-white dark:bg-white/5 rounded-[1.5rem] flex items-center justify-center text-orange-600 mb-8 shadow-md group-hover:scale-110 transition-all duration-500"><item.icon size={32} /></div>
-                <p className="text-[11px] font-black uppercase opacity-30 tracking-[0.3em] mb-2">{item.date}</p>
-                <h3 className="text-2xl font-black uppercase italic mb-4 tracking-tighter">{item.event}</h3>
-                <p className="text-sm opacity-50 font-medium leading-relaxed mb-12 flex-grow italic">{item.desc}</p>
-                <div className="flex flex-col gap-3">
-                  {item.link && (
-                    <a href={item.link} target="_blank" rel="noopener noreferrer" className="w-full bg-orange-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 italic shadow-lg shadow-orange-900/20 hover:bg-orange-500 transition-colors"><Video size={16} /> Enter Zoom Chamber</a>
-                  )}
-                  <a href={item.gCalLink} target="_blank" rel="noopener noreferrer" className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 italic shadow-lg shadow-blue-900/20 hover:bg-blue-500 transition-colors">Add to Google</a>
-                  <button onClick={() => downloadICS(item.event, item.desc, item.start, item.end)} className="w-full bg-black/10 dark:bg-white/5 text-black dark:text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 italic hover:bg-black/20 transition-all opacity-40 hover:opacity-100">Export .ics</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      </main>
-
-      {showHistoryModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in" onClick={() => setShowHistoryModal(false)}>
-            <div className="bg-white dark:bg-[#0a0a0a] w-full max-w-2xl rounded-[3rem] p-10 md:p-14 relative shadow-2xl border border-white/10" onClick={e => e.stopPropagation()}>
-                <button onClick={() => setShowHistoryModal(false)} className="absolute top-8 right-8 text-gray-400 hover:text-orange-600 transition-colors"><X size={32} /></button>
-                <div className="max-h-[75vh] overflow-y-auto space-y-8 pr-4 custom-scrollbar">
-                    <h3 className="text-4xl font-black italic tracking-tighter underline decoration-orange-600 decoration-8 underline-offset-4 mb-10">Our History: From Roots to RVA</h3>
-                    <div className="space-y-6 text-lg leading-relaxed opacity-70 italic font-medium">
-                        <p>Area 10 FFL was born in 2011, founded by a small group from Area 10 church with a simple goal: to create a community beyond Sunday services and small groups. It was a space for new members and longtime attendees to connect over a shared passion for fantasy football.</p>
-                        <p>As time passed, life happened. Core members moved away, but the bond forged over draft picks and weekly matchups held firm. In 2019, to keep our league together and honor our enduring friendships, we decided to rebrand. We shed the church affiliation and became River City FFL, a name that proudly ties us to the heart of Richmond, Virginia—the RVA.</p>
-                        <h4 className="text-2xl font-black uppercase tracking-tighter text-orange-600">The Stakes</h4>
-                        <p>Every season, our managers compete for a place in the record books. The ultimate champion walks away with a $219 payout, a custom championship ring, and all the bragging rights they can handle. So far, Tommy Moore is the one to beat, holding an impressive five league titles.</p>
-                        <p>But not every story has a happy ending. Our league has its own unique form of punishment: the Toilet Bowl. The loser is tasked with writing a cringe-worthy apology letter to the league, a tradition that started in 2022. No one knows this struggle better than Landon Elliott, who has endured this particular brand of humiliation a record three times.</p>
-                        <p>While the competition gets more intense each year, our core values of community and friendly rivalry remain the same. The trophy, the payout, and the shame are all just bonuses to the friendships we've built along the way.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-      )}
-
-      {showRecap && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm animate-in fade-in" onClick={() => setShowRecap(false)}>
-            <div className="bg-[#0b1527] w-full max-w-lg rounded-[2.5rem] p-10 border border-blue-500/30 text-white relative" onClick={e => e.stopPropagation()}>
-                <button onClick={() => setShowRecap(false)} className="absolute top-6 right-6 opacity-40 hover:opacity-100"><X size={24} /></button>
-                <div className="flex items-center gap-3 mb-3"><MessageCircle className="text-blue-400" size={32} /><h3 className="text-2xl font-black uppercase italic tracking-tighter">Latest Commissioner Briefing</h3></div>
-                <p className="mb-8 text-[10px] font-black uppercase tracking-[0.2em] text-white/35">Manual recap from siteContent/recap.text</p>
-                <div className="text-sm italic text-white/70 whitespace-pre-wrap leading-loose max-h-[50vh] overflow-y-auto pr-4 custom-scrollbar">{liveRecap}</div>
-            </div>
-        </div>
-      )}
-
-      <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-      `}</style>
-    </div>
-  );
+    {showHistoryModal && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md" onClick={() => setShowHistoryModal(false)}><div role="dialog" aria-modal="true" aria-labelledby="history-dialog-title" className="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-8 text-slate-950 shadow-2xl dark:bg-[#0a0a0a] dark:text-white sm:p-12" onClick={(event) => event.stopPropagation()}><button type="button" aria-label="Close league history" onClick={() => setShowHistoryModal(false)} className="absolute right-5 top-5 rounded-lg p-2 text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600"><X size={24} aria-hidden="true" /></button><h2 id="history-dialog-title" className="pr-10 text-3xl font-black uppercase italic">Our History: From Roots to RVA</h2><div className="mt-8 space-y-5 text-sm leading-7 text-slate-600 dark:text-white/65"><p>Area 10 FFL was born in 2011, founded by a small group from Area 10 church with a simple goal: to create a community beyond Sunday services and small groups.</p><p>In 2019, we became River City FFL, a name tied to the heart of Richmond, Virginia.</p><h3 className="text-xl font-black uppercase italic text-orange-600">The Stakes</h3><p>For 2026, the championship allocation is $235. After the approved $13.77 ring expense, the projected champion cash portion is $221.23. No champion award has been approved.</p><p>The Toilet Bowl tradition began in 2022, and the league's records preserve both the triumphs and the shame.</p></div></div></div>}
+    {showRecap && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onClick={() => setShowRecap(false)}><div role="dialog" aria-modal="true" aria-labelledby="recap-dialog-title" className="relative w-full max-w-lg rounded-3xl bg-[#0b1527] p-8 text-white shadow-2xl" onClick={(event) => event.stopPropagation()}><button type="button" aria-label="Close commissioner briefing" onClick={() => setShowRecap(false)} className="absolute right-5 top-5 rounded-lg p-2 opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"><X size={22} aria-hidden="true" /></button><div className="flex items-center gap-3"><MessageCircle className="text-blue-400" size={25} aria-hidden="true" /><h2 id="recap-dialog-title" className="pr-8 text-xl font-black uppercase italic">Latest Commissioner Briefing</h2></div><p className="mt-6 max-h-[55vh] overflow-y-auto whitespace-pre-wrap text-sm leading-7 text-white/70">{liveRecap}</p></div></div>}
+  </div>;
 }
