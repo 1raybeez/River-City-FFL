@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
-  ArrowLeft, BookOpen, Music, Mic2, Globe, BarChart3, 
+  ArrowLeft, Music, Mic2, Globe, BarChart3,
   ChevronRight
 } from 'lucide-react';
+import SiteShell from '@/components/SiteShell';
 
 const BROADCAST_FEED = [
   {
@@ -119,7 +120,7 @@ export default function ResourcesPage() {
       href={url} 
       target="_blank" 
       rel="noopener noreferrer"
-      className="group bg-black/5 dark:bg-white/5 p-6 rounded-[2.5rem] border border-black/5 dark:border-white/10 shadow-lg hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300 flex flex-col h-full relative overflow-hidden"
+      className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md focus-within:ring-2 focus-within:ring-purple-600 sm:p-6"
     >
       <div className="flex justify-between items-start mb-4">
         <h3 className="text-xl font-black uppercase italic tracking-tighter leading-none pr-12">
@@ -143,7 +144,7 @@ export default function ResourcesPage() {
   );
 
   const BroadcastCard = ({ name, desc, applePodcastUrl, spotifyUrl, type }: any) => (
-    <div className="group bg-black/5 dark:bg-white/5 p-6 rounded-[2.5rem] border border-black/5 dark:border-white/10 shadow-lg hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300 flex flex-col h-full relative overflow-hidden">
+    <div className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md sm:p-6">
       <div className="flex justify-between items-start mb-4">
         <h3 className="text-xl font-black uppercase italic tracking-tighter leading-none pr-12">
           {name}
@@ -181,38 +182,21 @@ export default function ResourcesPage() {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-20 selection:bg-purple-600">
-      
-      {/* NAVIGATION BAR */}
-      <nav className="border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
-        <div className="flex items-center gap-4">
-          <Link href="/league-info" className="inline-flex items-center gap-2 rounded-lg bg-black/5 px-3 py-2 text-[10px] font-black uppercase italic tracking-tight transition-all hover:text-purple-600 dark:bg-white/5 border border-black/10 dark:border-white/10">
-            <ArrowLeft size={16} />
-            Back to League Info Hub
+    <SiteShell activePath="/league-info">
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="resources-title">
+          <Link href="/league-info" className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 transition hover:text-purple-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2">
+            <ArrowLeft size={14} aria-hidden="true" /> Back to League Info
           </Link>
-        </div>
-        <div className="flex items-center gap-2">
-           <BookOpen className="text-purple-600 hidden sm:block" size={20} />
-           <span className="text-xs font-black uppercase italic tracking-tighter">Resources</span>
-        </div>
-      </nav>
-
-      <header className="px-6 py-12 text-center">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-lg text-purple-600">
-             <BookOpen size={28} />
-        </div>
-        <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic leading-none">
-            League <span className="text-purple-600">Resources</span>
-        </h1>
-        <p className="mt-4 text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Broadcasts & War Room Intelligence</p>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-6 py-10">
+          <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-purple-700">League Info</p>
+          <h1 id="resources-title" className="mt-2 font-sans text-4xl font-black italic uppercase tracking-tight text-slate-950 sm:text-5xl">River City Resources</h1>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">Broadcasts, reference sites, podcasts, and existing tools for the league.</p>
+        </section>
         
         {/* TAB NAV */}
         <div className="mb-16">
           <div className="flex justify-center">
-          <div className="flex max-w-full overflow-x-auto no-scrollbar gap-2 bg-black/5 dark:bg-white/5 p-1.5 rounded-full border border-black/5 dark:border-white/10 shadow-md">
+          <div role="tablist" aria-label="Resource categories" className="flex max-w-full flex-wrap justify-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
             {[
               { id: 'playlists', icon: Music, label: 'Playlists', color: 'bg-red-600' },
               { id: 'podcasts', icon: Mic2, label: 'Broadcasts', color: 'bg-orange-600' },
@@ -221,9 +205,13 @@ export default function ResourcesPage() {
             ].map((tab) => (
               <button 
                 key={tab.id}
+                type="button"
+                role="tab"
+                id={`resources-tab-${tab.id}`}
+                aria-selected={activeTab === tab.id}
                 onClick={() => setActiveTab(tab.id)} 
-                className={`whitespace-nowrap px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
-                  activeTab === tab.id ? `${tab.color} text-white shadow-lg` : 'opacity-40 hover:opacity-100'
+                className={`whitespace-nowrap rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 ${
+                  activeTab === tab.id ? `${tab.color} text-white shadow-sm` : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
                 <tab.icon size={14} /> {tab.label}
@@ -238,7 +226,7 @@ export default function ResourcesPage() {
 
         {/* Playlists */}
         {activeTab === 'playlists' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div role="tabpanel" aria-labelledby={`resources-tab-${activeTab}`} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="mb-10 border-l-4 border-red-600 pl-6">
                 <h2 className="text-4xl font-black tracking-tighter uppercase italic">Draft Day <span className="text-red-600">Feed</span></h2>
                 <p className="text-[10px] font-black opacity-30 uppercase tracking-widest mt-1">Official War Room Audio</p>
@@ -281,7 +269,7 @@ export default function ResourcesPage() {
 
         {/* Broadcasts/Podcasts */}
         {activeTab === 'podcasts' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div role="tabpanel" aria-labelledby={`resources-tab-${activeTab}`} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="mb-10 border-l-4 border-orange-600 pl-6">
                 <h2 className="text-4xl font-black tracking-tighter uppercase italic">Weekly <span className="text-orange-600">Broadcasts</span></h2>
                 <p className="text-[10px] font-black opacity-30 uppercase tracking-widest mt-1">In-Season Analysis</p>
@@ -294,7 +282,7 @@ export default function ResourcesPage() {
 
         {/* Intelligence Centers */}
         {activeTab === 'websites' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div role="tabpanel" aria-labelledby={`resources-tab-${activeTab}`} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="mb-10 border-l-4 border-blue-600 pl-6">
                 <h2 className="text-4xl font-black tracking-tighter uppercase italic">Intelligence <span className="text-blue-600">Centers</span></h2>
                 <p className="text-[10px] font-black opacity-30 uppercase tracking-widest mt-1">Expert Consensus & Data</p>
@@ -307,7 +295,7 @@ export default function ResourcesPage() {
 
         {/* Simulators */}
         {activeTab === 'analyzers' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div role="tabpanel" aria-labelledby={`resources-tab-${activeTab}`} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="mb-10 border-l-4 border-emerald-600 pl-6">
                 <h2 className="text-4xl font-black tracking-tighter uppercase italic">Scenario <span className="text-emerald-600">Analytics</span></h2>
                 <p className="text-[10px] font-black opacity-30 uppercase tracking-widest mt-1">Trade Simulators & Calculators</p>
@@ -324,6 +312,6 @@ export default function ResourcesPage() {
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
-    </div>
+    </SiteShell>
   );
 }
