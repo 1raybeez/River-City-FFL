@@ -4,9 +4,10 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { 
-  ArrowLeft, Gavel, Check, X, Lock, Unlock, PlusCircle, Clock, 
+  Gavel, Check, X, Lock, Unlock, PlusCircle, Clock,
   ShieldCheck, Archive
 } from 'lucide-react';
+import SiteShell from '@/components/SiteShell';
 import {
   ArchivedProposal,
   getArchiveSession,
@@ -214,7 +215,7 @@ export default function ProposalsPage() {
       key={proposal.id}
       type="button"
       onClick={() => setSelectedArchivedProposal(proposal)}
-      className="w-full rounded-[2rem] border border-black/5 bg-black/[0.03] p-6 text-left shadow-lg transition hover:-translate-y-0.5 hover:border-orange-600/30 hover:bg-orange-600/5 dark:border-white/10 dark:bg-white/[0.03]"
+      className="w-full rounded-3xl border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-orange-600/30 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 dark:border-white/10 dark:bg-[#121212]"
     >
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -255,8 +256,8 @@ export default function ProposalsPage() {
     const status = getProposalStatus(prop);
 
     return (
-      <div key={prop.id} className="bg-black/5 dark:bg-white/5 rounded-[2.5rem] border border-black/5 dark:border-white/10 overflow-hidden shadow-xl">
-        <div className="p-8">
+      <div key={prop.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#121212]">
+        <div className="p-6 sm:p-8">
           <div className="flex items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-4 min-w-0">
               <div className="h-14 w-14 rounded-full border-2 border-orange-600 overflow-hidden shrink-0 relative bg-black/20">
@@ -299,8 +300,8 @@ export default function ProposalsPage() {
             </div>
           ) : (
             <>
-              <button onClick={() => handleVote(prop.id, 'yes')} className="py-6 font-black uppercase text-xs text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all border-r border-black/5 dark:border-white/10 italic flex items-center justify-center gap-2"><Check size={18} /> Yes</button>
-              <button onClick={() => handleVote(prop.id, 'no')} className="py-6 font-black uppercase text-xs text-red-600 hover:bg-red-600 hover:text-white transition-all italic flex items-center justify-center gap-2"><X size={18} /> No</button>
+              <button onClick={() => handleVote(prop.id, 'yes')} className="py-6 font-black uppercase text-xs text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all border-r border-black/5 dark:border-white/10 italic flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"><Check size={18} /> Yes</button>
+              <button onClick={() => handleVote(prop.id, 'no')} className="py-6 font-black uppercase text-xs text-red-600 hover:bg-red-600 hover:text-white transition-all italic flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"><X size={18} /> No</button>
             </>
           )}
         </div>
@@ -311,37 +312,22 @@ export default function ProposalsPage() {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-20 selection:bg-orange-600">
-      
-      {/* NAVIGATION BAR */}
-      <nav className="border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
-        <div className="flex items-center gap-4">
-          <Link href="/league-info" className="inline-flex items-center gap-2 rounded-lg bg-black/5 px-3 py-2 text-[10px] font-black uppercase italic tracking-tight transition-all hover:text-orange-600 dark:bg-white/5 border border-black/10 dark:border-white/10">
-            <ArrowLeft size={16} />
-            Back to League Info Hub
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-2">
-           <Gavel className="text-orange-600 hidden sm:block" size={20} />
-           <span className="text-xs font-black uppercase italic tracking-tighter">Legislative Hub</span>
-        </div>
-      </nav>
-
-      <header className="px-6 py-12 text-center">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-lg text-orange-600">
-          <Gavel size={28} />
-        </div>
-        <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic leading-none">
-          Legislative <span className="text-orange-600">Hub</span>
-        </h1>
-        <p className="mt-4 text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Proposals, Voting & Amendments</p>
-        <p className="mt-3 text-[10px] font-black uppercase tracking-[0.35em] text-orange-600">
-          {CURRENT_LEGISLATIVE_SESSION_YEAR} Winter Owners Meeting
-        </p>
-      </header>
-
-      <main className="max-w-4xl mx-auto px-6 py-10">
+    <SiteShell activePath="/commish">
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        <header className="mb-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 dark:border-white/10 dark:bg-[#121212]">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-orange-600 text-white shadow-lg">
+              <Gavel size={28} aria-hidden="true" />
+            </div>
+            <div>
+              <p className="mb-3 text-[10px] font-black uppercase tracking-[0.3em] text-orange-600">Commissioner Hub</p>
+              <h1 className="text-4xl font-black uppercase italic leading-none tracking-tighter text-[#071a33] sm:text-5xl dark:text-white">Legislative Hub</h1>
+              <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-600 dark:text-gray-400">Proposals, voting and amendments for the league rule-change workflow.</p>
+              <p className="mt-2 text-[10px] font-black uppercase tracking-[0.25em] text-orange-600">{CURRENT_LEGISLATIVE_SESSION_YEAR} Winter Owners Meeting</p>
+              <Link href="/commish" className="mt-4 inline-flex min-h-10 items-center rounded-xl border border-slate-300 px-4 py-2 text-xs font-black uppercase tracking-wider text-[#071a33] transition hover:border-orange-600 hover:text-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 dark:border-white/20 dark:text-white">Return to Commissioner Hub</Link>
+            </div>
+          </div>
+        </header>
         {/* IDENTIFICATION BAR */}
         <div className="mb-12 p-1 bg-orange-600 rounded-2xl flex flex-col md:flex-row justify-between items-center shadow-lg">
           <div className="flex items-center gap-3 px-6 py-3 text-white">
@@ -368,7 +354,7 @@ export default function ProposalsPage() {
             <div className="flex flex-col gap-3 sm:flex-row">
               <button
                 onClick={toggleFloor}
-                className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-[10px] font-black uppercase tracking-widest transition-all ${isOverrideOpen ? 'border-red-500 bg-red-600 text-white shadow-lg' : 'border-black/10 bg-black/5 opacity-60 dark:border-white/10 dark:bg-white/5'}`}
+                className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-[10px] font-black uppercase tracking-widest transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${isOverrideOpen ? 'border-red-500 bg-red-600 text-white shadow-lg' : 'border-black/10 bg-black/5 opacity-60 dark:border-white/10 dark:bg-white/5'}`}
               >
                 {isOverrideOpen ? <Unlock size={16} /> : <Lock size={16} />}
                 {isOverrideOpen ? "Voting Open" : "Open Floor"}
@@ -376,7 +362,7 @@ export default function ProposalsPage() {
               <button
                 onClick={finalizeVoting}
                 disabled={isFinalizing || activeProposals.length === 0}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-orange-600 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-orange-600 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition hover:bg-orange-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Gavel size={16} />
                 {isFinalizing ? "Finalizing..." : "Finalize Voting"}
@@ -404,7 +390,7 @@ export default function ProposalsPage() {
         <div className="space-y-10">
           <div className="flex justify-between items-center border-b-2 border-orange-600 pb-2">
                <h2 className="text-2xl font-black uppercase italic tracking-tighter">Active Floor</h2>
-               <Link href="/commish/proposals/new" className="p-2 bg-orange-600 text-white rounded-full hover:scale-110 transition shadow-lg"><PlusCircle size={24} /></Link>
+               <Link href="/commish/proposals/new" aria-label="Create new proposal" className="rounded-xl bg-orange-600 p-2 text-white shadow-lg transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"><PlusCircle size={24} aria-hidden="true" /></Link>
           </div>
 
           {activeProposals.length > 0 ? (
@@ -586,6 +572,6 @@ export default function ProposalsPage() {
           </div>
         </div>
       )}
-    </div>
+    </SiteShell>
   );
 }
