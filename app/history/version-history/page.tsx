@@ -5,10 +5,10 @@ import versionHistory from "@/lib/versionHistory";
 import type { VersionEntry as StaticVersionEntry } from "@/lib/versionHistory";
 import VersionEntry from "@/components/VersionEntry";
 import Link from "next/link";
-import { History, Home, Monitor, Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
+import { ArrowLeft, History } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
+import SiteShell from "@/components/SiteShell";
 
 type FirebaseVersionEntry = StaticVersionEntry & {
   id: string;
@@ -37,14 +37,8 @@ function isFirebaseVersionEntry(
 }
 
 export default function VersionHistoryPage() {
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
   const [firebaseEntries, setFirebaseEntries] = useState<FirebaseVersionEntry[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -79,51 +73,31 @@ export default function VersionHistoryPage() {
       (a, b) => getEntryTime(b) - getEntryTime(a)
     );
   }, [firebaseEntries]);
-  const activeTheme = mounted ? theme : undefined;
-
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-20 selection:bg-orange-600">
-      <nav className="border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/league-info/constitution"
-            className="p-2 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:scale-105 transition-all"
-            title="Back to Info Hub"
-          >
-            <Home size={18} />
-          </Link>
-
-          <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
-            <button onClick={() => setTheme("light")} className={`p-1.5 rounded-md transition-all ${activeTheme === "light" ? "bg-white text-black shadow-sm" : "opacity-40"}`}><Sun size={14} /></button>
-            <button onClick={() => setTheme("dark")} className={`p-1.5 rounded-md transition-all ${activeTheme === "dark" ? "bg-white/10 text-white shadow-sm" : "opacity-40"}`}><Moon size={14} /></button>
-            <button onClick={() => setTheme("system")} className={`p-1.5 rounded-md transition-all ${activeTheme === "system" ? "bg-white/10 text-white shadow-sm" : "opacity-40"}`}><Monitor size={14} /></button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <History className="text-orange-600 hidden sm:block" size={20} />
-          <span className="text-xs font-black uppercase italic tracking-tighter">Version History</span>
-        </div>
-      </nav>
-
-      <header className="px-6 py-12 text-center">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-lg text-orange-600">
-          <History size={28} />
-        </div>
-        <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic leading-none">
-          Version <span className="text-orange-600">History</span>
-        </h1>
-        <p className="mt-4 text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Rules, Amendments & League Changes</p>
-      </header>
-
-      <main className="max-w-3xl mx-auto px-6 py-10">
+    <SiteShell activePath="/league-info">
+      <main className="min-h-screen bg-[#f7f8fa] px-4 py-8 text-slate-950 dark:bg-[#0a0a0a] dark:text-white sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-5xl space-y-6">
+          <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <Link href="/league-info/constitution" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-black uppercase tracking-widest text-slate-600 transition hover:border-orange-600 hover:text-orange-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600">
+              <ArrowLeft size={14} aria-hidden="true" /> Back to Constitution
+            </Link>
+            <div className="mt-6 flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-600/10 text-orange-600"><History size={24} aria-hidden="true" /></div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-600">League Info</p>
+                <h1 className="mt-2 text-4xl font-black uppercase italic leading-none tracking-tight sm:text-5xl">Constitution Version History</h1>
+                <p className="mt-4 max-w-2xl text-sm font-medium leading-7 text-slate-600">Historical Constitution versions, amendments, and legislative revisions represented in the River City record.</p>
+              </div>
+            </div>
+          </header>
         {historyError && (
-          <div className="mb-8 rounded-2xl border border-red-600/20 bg-red-600/10 px-5 py-4 text-sm font-bold text-red-700 dark:text-red-300">
+          <div role="alert" className="rounded-2xl border border-red-600/20 bg-red-600/10 px-5 py-4 text-sm font-bold text-red-700 dark:text-red-300">
             {historyError}
           </div>
         )}
 
-        <div className="space-y-6">
+        <section aria-labelledby="version-history-entries" className="space-y-4">
+          <h2 id="version-history-entries" className="flex items-center gap-3 text-2xl font-black uppercase italic tracking-tight"><History size={20} className="text-orange-600" aria-hidden="true" /> Version history</h2>
           {combinedHistory.map((entry) => (
             <div key={`${entry.version}-${entry.date}-${"id" in entry ? entry.id : "static"}`}>
               {isFirebaseVersionEntry(entry) && (
@@ -134,8 +108,9 @@ export default function VersionHistoryPage() {
               <VersionEntry entry={entry} />
             </div>
           ))}
+        </section>
         </div>
       </main>
-    </div>
+    </SiteShell>
   );
 }
