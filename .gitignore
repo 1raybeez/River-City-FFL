@@ -43,3 +43,4 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 data/trade-analyzer/*.candidate.json
+/auction-authorized-owner-emails*.json
