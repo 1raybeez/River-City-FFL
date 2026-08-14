@@ -5,94 +5,41 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft, Loader2, Scale, TrendingUp } from 'lucide-react';
 import SiteShell from '@/components/SiteShell';
-import { getAllPlayers } from '@/lib/sleeper';
-
-const LEAGUE_ID = "1312149033254416384"; 
-
 interface TeamData {
   rosterId: number;
+  franchiseId: string;
   name: string;
   avatar: string | null;
-  fpts: number;
-  wins: number;
-  losses: number;
-  status: 'Contender' | 'Neutral';
-  winProb: number;
+  rank: number;
+  status: 'Preseason Outlook';
   rosterValue: number;
   sos: number;
+  powerScore: number;
+  normalizedIndex: number;
 }
 
 export default function PredictorPage() {
   const [teams, setTeams] = useState<TeamData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [coverageMessage, setCoverageMessage] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchPredictionData() {
       try {
         setError(null);
-        // FIX: Ensuring all response variables are correctly named and captured
-        const [usersRes, rostersRes, players] = await Promise.all([
-          fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID}/users`),
-          fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID}/rosters`),
-          getAllPlayers()
-        ]);
-
-        if (!usersRes.ok || !rostersRes.ok) {
-          throw new Error("Sleeper predictor request failed.");
-        }
-
-        const users = await usersRes.json();
-        const rosters = await rostersRes.json();
-        if (!Array.isArray(users) || !Array.isArray(rosters) || rosters.length === 0) {
+        const response = await fetch('/api/power-rankings');
+        if (!response.ok) throw new Error("Power rankings data is unavailable.");
+        const payload = await response.json();
+        if (!Array.isArray(payload.teams) || payload.teams.length === 0) {
           throw new Error("Predictor roster data is unavailable.");
         }
-
-        const userMap: Record<string, any> = {};
-        users.forEach((u: any) => {
-          userMap[u.user_id] = {
-            name: u.metadata?.team_name || u.display_name,
-            avatar: u.avatar
-          };
-        });
-
-        let totalPowerScore = 0;
-        const processedTeams: TeamData[] = rosters.map((r: any) => {
-          const owner = userMap[r.owner_id] || { name: 'Unknown', avatar: null };
-          let totalValue = 0;
-          let totalSOS = 0;
-          const rosterPlayers = r.players || [];
-          
-          rosterPlayers.forEach((pId: string) => {
-            const p = players[pId];
-            totalValue += p?.totalValueScore || 0;
-            totalSOS += p?.sosScore || 50; 
-          });
-
-          const avgSOS = rosterPlayers.length > 0 ? totalSOS / rosterPlayers.length : 50;
-          const powerScore = (totalValue * 0.8) + (avgSOS * 2); 
-          totalPowerScore += powerScore;
-
-          return {
-            rosterId: r.roster_id,
-            name: owner.name,
-            avatar: owner.avatar,
-            fpts: r.settings.fpts,
-            wins: r.settings.wins,
-            losses: r.settings.losses,
-            status: totalValue > 100 ? 'Contender' : 'Neutral',
-            winProb: powerScore,
-            rosterValue: totalValue,
-            sos: avgSOS
-          };
-        });
-
-        const finalTeams = processedTeams.map((t: any) => ({
-          ...t,
-          winProb: totalPowerScore > 0 ? (t.winProb / totalPowerScore) * 100 : 0.0
-        })).sort((a: any, b: any) => b.winProb - a.winProb);
-
-        setTeams(finalTeams);
+        setTeams(payload.teams.map((team: any) => ({
+          ...team,
+          name: team.teamName,
+          sos: team.averageSOS,
+        })));
+        setCoverageMessage(payload.coverage?.message ?? null);
         setLoading(false);
       } catch (error) {
         console.error("Predictor Error:", error);
@@ -113,11 +60,7 @@ export default function PredictorPage() {
     </SiteShell>
   );
 
-  const oddsAreEqual = teams.length > 1 && teams.every(
-    (team) => Math.abs(team.winProb - teams[0].winProb) < 0.05
-  );
-  const valuesAreZero = teams.length > 0 && teams.every((team) => team.rosterValue === 0);
-  const isPredictorPlaceholder = teams.length > 0 && (oddsAreEqual || valuesAreZero);
+  const isPredictorPlaceholder = teams.length > 0 && Boolean(coverageMessage);
 
 	  return (
 	    <SiteShell activePath="/predictor">
@@ -140,7 +83,7 @@ export default function PredictorPage() {
 	        {isPredictorPlaceholder && (
 	          <div className="rounded-2xl border border-orange-600/20 bg-orange-600/10 p-5">
 	            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-700 dark:text-orange-300">Preseason Placeholder</p>
-	            <p className="mt-3 text-sm font-bold leading-relaxed text-slate-700 dark:text-white/70">Normalized outlook values are currently equalized until roster values, projections, and schedule strength are fully wired in. This is not a calibrated matchup win-probability model.</p>
+            <p className="mt-3 text-sm font-bold leading-relaxed text-slate-700 dark:text-white/70">{coverageMessage} This is not a calibrated matchup win-probability model.</p>
 	          </div>
 	        )}
 
@@ -167,13 +110,13 @@ export default function PredictorPage() {
 	                   <tr>
 	                      <th className="px-8 py-6">Rank</th>
 	                      <th className="px-8 py-6">Manager</th>
-	                      <th className="px-8 py-6 text-center">{isPredictorPlaceholder ? "Placeholder Power" : "Power / SOS"}</th>
+	                      <th className="px-8 py-6 text-center">Power / SOS</th>
 	                      <th className="px-8 py-6 text-right">Normalized Outlook</th>
 	                   </tr>
 	                </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                    {teams.map((team, idx) => (
-                      <tr key={team.rosterId} className="group transition-colors hover:bg-slate-50 dark:hover:bg-white/5">
+                      <tr key={team.franchiseId} className="group transition-colors hover:bg-slate-50 dark:hover:bg-white/5">
                          <td className="px-5 py-6 text-lg font-black italic text-slate-300 sm:px-8 sm:py-8">#{idx + 1}</td>
                          <td className="px-5 py-6 sm:px-8 sm:py-8">
                             <div className="flex items-center gap-4">
@@ -195,23 +138,23 @@ export default function PredictorPage() {
 	                               <div className="flex items-center gap-2">
                                   <Scale size={12} className="text-slate-400" aria-hidden="true" />
 	                                  <span className="text-xs font-black uppercase">
-	                                    Val: {team.rosterValue.toFixed(0)}{isPredictorPlaceholder ? " placeholder" : ""}
+	                                    Val: {team.rosterValue.toFixed(0)}
 	                                  </span>
 	                               </div>
 	                               <div className="flex items-center gap-2">
                                      <span className={`text-[10px] font-black uppercase ${team.sos > 60 ? 'text-emerald-600' : 'text-orange-600'}`}>
-	                                     SOS: {team.sos.toFixed(0)}{isPredictorPlaceholder ? " placeholder" : ""}
+	                                     SOS: {team.sos.toFixed(0)}
 	                                  </span>
 	                               </div>
 	                            </div>
                          </td>
                          <td className="px-5 py-6 text-right sm:px-8 sm:py-8">
                             <div className="flex flex-col items-end gap-2">
-                               <span className="text-xl font-black italic text-orange-600 dark:text-orange-400">{team.winProb.toFixed(1)}%</span>
+                               <span className="text-xl font-black italic text-orange-600 dark:text-orange-400">{team.normalizedIndex.toFixed(1)}%</span>
                                <div className="h-1 w-24 overflow-hidden rounded-full bg-slate-100 dark:bg-white/5" aria-hidden="true">
                                   <div 
                                     className="h-full bg-orange-600 transition-all duration-1000"
-                                    style={{ width: `${team.winProb * 3}%` }}
+                                    style={{ width: `${Math.min(team.normalizedIndex * 3, 100)}%` }}
                                   />
                                </div>
                             </div>

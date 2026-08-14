@@ -6,9 +6,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ArrowRight, Calendar, CalendarDays, Gavel, Menu, MessageCircle, TrendingUp, X } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, onSnapshot } from "firebase/firestore";
-import { getAllPlayers } from "@/lib/sleeper";
 
-const LEAGUE_ID_2026 = "1312149033254416384";
 const RECAP_LOADING_TEXT = "Loading latest league note...";
 const RECAP_FALLBACK_TEXT = "Commish recap could not be loaded. Check back soon for the latest league update.";
 const DRAFT_START_AT = new Date("2026-08-29T10:00:00-04:00");
@@ -94,25 +92,11 @@ export default function Home() {
 
     async function loadPredictorData() {
       try {
-        const [usersResponse, rostersResponse, players] = await Promise.all([
-          fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID_2026}/users`),
-          fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID_2026}/rosters`),
-          getAllPlayers(),
-        ]);
-        if (!usersResponse.ok || !rostersResponse.ok) throw new Error("Power rankings data could not be loaded.");
-        const users = await usersResponse.json();
-        const rosters = await rostersResponse.json();
-        if (!Array.isArray(users) || !Array.isArray(rosters) || rosters.length === 0) throw new Error("Power rankings data could not be loaded.");
-        const scores = rosters.map((roster: any) => {
-          const rosterValue = roster.players?.reduce((total: number, playerId: string) => total + (players[playerId]?.totalValueScore || 0), 0) || 0;
-          const wins = roster.settings?.wins || 0;
-          const losses = roster.settings?.losses || 0;
-          const winPct = wins + losses > 0 ? wins / (wins + losses) : 0.5;
-          const score = rosterValue * 0.5 + (roster.settings?.fpts || 0) * 0.3 + winPct * 1000;
-          const user = users.find((entry: any) => entry.user_id === roster.owner_id);
-          return { name: user?.metadata?.team_name || user?.display_name || "Team", score };
-        });
-        setPredictorTeams(scores.sort((a: any, b: any) => b.score - a.score));
+        const response = await fetch("/api/power-rankings");
+        if (!response.ok) throw new Error("Power rankings data could not be loaded.");
+        const payload = await response.json();
+        if (!Array.isArray(payload.teams) || payload.teams.length === 0) throw new Error("Power rankings data could not be loaded.");
+        setPredictorTeams(payload.teams);
       } catch (error) {
         console.error(error);
         setPredictorError("Power rankings data could not be loaded.");
@@ -154,7 +138,7 @@ export default function Home() {
         <DashboardCard label="Reigning Champion" icon={<span className="text-xl text-amber-500">🏆</span>}><div className="mt-5 flex items-center gap-4"><div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full border-4 border-amber-500/20"><Image src="/managers/Aaron.png" alt="Aaron Hawkins" fill className="object-cover" unoptimized /></div><div><h2 className="text-xl font-black uppercase italic">Aaron Hawkins</h2><p className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/50">Official 2025 winner</p></div></div><div className="mt-6 grid grid-cols-2 gap-2"><MiniStat label="Record" value="9-5" /><MiniStat label="Year" value="2025" /></div></DashboardCard>
       </section>
       <section className="contents" aria-label="League activity and finance">
-        <DashboardCard label="2026 Power Rankings" icon={<TrendingUp size={17} className="text-fuchsia-600" />}><p className="mt-4 text-xs text-slate-500 dark:text-white/55">Preseason roster-strength outlook.</p><div className="mt-5 space-y-2">{loadingPredictor ? <p className="text-xs font-bold text-slate-500">Loading rankings...</p> : predictorError ? <p className="text-xs font-bold text-red-600">{predictorError}</p> : predictorTeams.length === 0 ? <p className="text-xs font-bold text-slate-500">Power rankings unavailable.</p> : predictorTeams.slice(0, 5).map((team: any, index: number) => <Link key={team.name} href="/predictor" className="flex min-w-0 items-center justify-between border-b border-slate-900/10 py-2 text-sm dark:border-white/10"><span className="min-w-0 truncate font-bold"><span className="mr-3 text-xs text-slate-400">{index + 1}</span>{team.name}</span><span className="ml-3 shrink-0 font-black text-fuchsia-600">{team.score.toFixed(1)}</span></Link>)}</div><p className="mt-4 rounded-lg bg-slate-100 p-3 text-[10px] leading-4 text-slate-500 dark:bg-white/5 dark:text-white/55">Power rankings reflect roster strength and schedule factors. They are not weekly matchup predictions.</p><Link href="/predictor" className="mt-5 inline-flex min-h-10 items-center gap-2 text-[10px] font-black uppercase tracking-widest text-fuchsia-600">View Full Power Rankings <ArrowRight size={14} /></Link></DashboardCard>
+        <DashboardCard label="2026 Power Rankings" icon={<TrendingUp size={17} className="text-fuchsia-600" />}><p className="mt-4 text-xs text-slate-500 dark:text-white/55">Preseason roster-strength outlook.</p><div className="mt-5 space-y-2">{loadingPredictor ? <p className="text-xs font-bold text-slate-500">Loading rankings...</p> : predictorError ? <p className="text-xs font-bold text-red-600">{predictorError}</p> : predictorTeams.length === 0 ? <p className="text-xs font-bold text-slate-500">Power rankings unavailable.</p> : predictorTeams.slice(0, 5).map((team: any) => <Link key={team.franchiseId} href="/predictor" className="flex min-w-0 items-center justify-between border-b border-slate-900/10 py-2 text-sm dark:border-white/10"><span className="min-w-0 truncate font-bold"><span className="mr-3 text-xs text-slate-400">{team.rank}</span>{team.teamName}</span><span className="ml-3 shrink-0 font-black text-fuchsia-600">{team.normalizedIndex.toFixed(1)}</span></Link>)}</div><p className="mt-4 rounded-lg bg-slate-100 p-3 text-[10px] leading-4 text-slate-500 dark:bg-white/5 dark:text-white/55">Power rankings reflect roster strength and schedule factors. They are not weekly matchup predictions.</p><Link href="/predictor" className="mt-5 inline-flex min-h-10 items-center gap-2 text-[10px] font-black uppercase tracking-widest text-fuchsia-600">View Full Power Rankings <ArrowRight size={14} /></Link></DashboardCard>
         <DashboardCard label="2026 Matchups" accent><h2 className="mt-8 text-3xl font-black uppercase italic leading-none">Follow Every Matchup</h2><p className="mt-5 text-sm leading-6 text-slate-600 dark:text-white/60">See weekly head-to-heads, starting lineups, projected scores, Series History, and the playoff bracket.</p><Link href="/matchups" className="mt-7 inline-flex min-h-11 items-center gap-2 rounded-lg bg-blue-700 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition hover:bg-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700">Open 2026 Matchups <ArrowRight size={14} /></Link><div className="mt-8 text-center text-5xl font-black italic text-blue-700/15" aria-hidden="true">VS</div></DashboardCard>
         <DashboardCard label="Legislative Hub" icon={<Gavel size={17} className="text-orange-600" />}><h2 className="mt-5 text-2xl font-black uppercase italic leading-none">Shape League Rules</h2><p className="mt-4 text-sm leading-6 text-slate-600 dark:text-white/60">Submit league proposals, follow meeting business, and vote when the chamber is open.</p><Link href="/league-info/legislative" className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-lg bg-orange-600 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition hover:bg-orange-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600">Open Legislative Hub <ArrowRight size={14} /></Link></DashboardCard>
         <DashboardCard label="2026 Payouts" icon={<span className="text-lg text-emerald-600">$</span>}><div className="mt-4"><p className="text-3xl font-black italic">{publicFinance?.duesPool ?? "—"}</p><p className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Total prize pool</p></div><div className="mt-5 grid grid-cols-2 gap-2 text-xs"><MiniStat label="Dues Collected" value={publicFinance?.duesCollected ?? "—"} /><MiniStat label="Outstanding" value={publicFinance?.duesOutstanding ?? "—"} /><MiniStat label="Paid" value={publicFinance ? String(publicFinance.paidCount) : "—"} /><MiniStat label="Not Paid" value={publicFinance ? String(publicFinance.notPaidCount) : "—"} /><MiniStat label="Championship Allocation" value={publicFinance?.championshipAllocation ?? "—"} /><MiniStat label="Projected Champion Cash" value={publicFinance?.projectedChampionCash ?? "—"} /></div><Link href="/league-info/payouts" className="mt-5 inline-flex min-h-10 items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-700 hover:underline">View 2026 Payouts <ArrowRight size={14} /></Link></DashboardCard>
