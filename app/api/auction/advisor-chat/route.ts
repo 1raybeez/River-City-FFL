@@ -487,9 +487,10 @@ export async function POST(req: Request) {
     try {
       const ownerProfileId = actor.access.ownerProfileId;
       const ownerSettings = ownerProfileId
-        ? await readAuctionOwnerProfileSettings({ ownerProfileId }).catch(
-            () => null
-          )
+        ? await readAuctionOwnerProfileSettings({
+            ownerProfileId,
+            warRoomId: actor.access.warRoomId ?? undefined,
+          }).catch(() => null)
         : null;
       const coachContextWithOwnerSettings: DraftCoachInput = {
         ...draftCoachContext,

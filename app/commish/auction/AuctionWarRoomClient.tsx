@@ -43,6 +43,10 @@ import { activeManagers } from '@/lib/managers/activeManagers';
 import {
   mockAuctionTeams,
 } from '@/lib/auction/mockAuctionData';
+import type {
+  DerivedWarRoomBudgetState,
+  WarRoomLiveAuctionState,
+} from '@/lib/auction/warRoomLiveState';
 import { riverCityAuctionLeagueSettings } from '@/lib/auction/leagueSettings';
 import {
   calculateAverageDollarsPerOpenRosterSpot,
@@ -379,6 +383,8 @@ export type AuctionWarRoomInitialOwnerSettings =
   AuctionOwnerProfileSettings;
 export type AuctionWarRoomInitialPurchaseDecision =
   AuctionPurchaseDecisionSnapshot;
+export type AuctionWarRoomInitialLiveState = WarRoomLiveAuctionState;
+export type AuctionWarRoomInitialBudget = DerivedWarRoomBudgetState;
 
 type PlayerPoolSortKey =
   | 'averageValue'
@@ -3864,6 +3870,8 @@ export default function AuctionWarRoomClient({
   initialPreferenceFallbacks,
   initialOwnerSettings,
   initialPurchaseDecisions,
+  initialWarRoomLiveState,
+  initialWarRoomBudget,
 }: {
   access: AuctionAccessResult;
   initialValueSource?: AuctionWarRoomInitialValueSource;
@@ -3872,6 +3880,8 @@ export default function AuctionWarRoomClient({
   initialPreferenceFallbacks: AuctionPreferenceFallbacks;
   initialOwnerSettings?: AuctionWarRoomInitialOwnerSettings | null;
   initialPurchaseDecisions?: AuctionWarRoomInitialPurchaseDecision[];
+  initialWarRoomLiveState?: AuctionWarRoomInitialLiveState | null;
+  initialWarRoomBudget?: AuctionWarRoomInitialBudget | null;
 }) {
   applyRuntimeAuctionValueSource(initialValueSource);
   applyRuntimeAdpSource(initialAdpSource);
@@ -4045,11 +4055,61 @@ export default function AuctionWarRoomClient({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isDraftCoachOpen]);
 
-  const sleeperKeepers = sleeperSnapshot?.keepers ?? emptySleeperKeepers;
+  const isManagerWarRoom = Boolean(!access.canRecordSales && access.warRoomId);
+  const persistentKeeperRows = useMemo<SleeperSnapshotKeeper[]>(
+    () =>
+      (initialWarRoomLiveState?.keepers ?? []).map((keeper) => ({
+        playerId: keeper.playerId,
+        playerName: keeper.playerName,
+        position: null,
+        nflTeam: null,
+        rosterId: access.sleeperRosterId,
+        ownerUserId: null,
+        ownerName: access.ownerDisplayName ?? null,
+        teamName: access.sleeperTeamName ?? null,
+        keeperPrice: keeper.keeperCost,
+        keeperRound: null,
+        source: 'sleeper-keeper' as const,
+        priceStatus: keeper.keeperCost === null ? 'missing' as const : 'confirmed' as const,
+      })),
+    [access.ownerDisplayName, access.sleeperRosterId, access.sleeperTeamName, initialWarRoomLiveState]
+  );
+  const authorizedPurchaseRows = useMemo<AuctionWarRoomPurchaseRow[]>(
+    () =>
+      (initialPurchaseDecisions ?? []).flatMap((purchase) => {
+        const team = getTeamByRosterId(purchase.buyerRosterId);
+        if (!team) return [];
+        return [{
+          id: purchase.purchaseId,
+          teamId: team.id,
+          rosterId: purchase.buyerRosterId,
+          playerId: purchase.sleeperPlayerId,
+          playerName: purchase.playerName,
+          position: purchase.position,
+          nflTeam: purchase.nflTeam,
+          purchasePrice: purchase.salePrice,
+          priceStatus: 'confirmed' as const,
+          isKeeper: false,
+          pickNumber: purchase.purchaseOrder,
+          keeperRound: null,
+          recordedAt: purchase.purchasedAt,
+          projectedValue: null,
+          rayMaxBid: null,
+          status: purchase.status === 'active' ? 'active' as const : 'voided' as const,
+          source: purchase.source,
+        }];
+      }),
+    [initialPurchaseDecisions]
+  );
+  const sleeperKeepers = isManagerWarRoom
+    ? persistentKeeperRows
+    : sleeperSnapshot?.keepers ?? emptySleeperKeepers;
   const sleeperPurchases =
-    sleeperSnapshot?.completedPurchases ??
-    sleeperSnapshot?.purchases ??
-    emptySleeperPurchases;
+    isManagerWarRoom
+      ? emptySleeperPurchases
+      : sleeperSnapshot?.completedPurchases ??
+        sleeperSnapshot?.purchases ??
+        emptySleeperPurchases;
   const liveSleeperTeamName =
     access.sleeperRosterId == null
       ? null
@@ -4092,7 +4152,7 @@ export default function AuctionWarRoomClient({
     });
   }, [initialOwnerSettings, liveSleeperTeamName]);
 
-  const isUsingSleeperPurchases = Boolean(sleeperSnapshot);
+  const isUsingSleeperPurchases = isManagerWarRoom || Boolean(sleeperSnapshot);
   const manualPurchaseRows = useMemo(
     () => buildManualPurchaseRows(manualAuctionSales),
     [manualAuctionSales]
@@ -4107,7 +4167,16 @@ export default function AuctionWarRoomClient({
   );
   const mergedActivePurchaseRows = useMemo(
     () =>
-      isUsingSleeperPurchases
+      isManagerWarRoom
+        ? {
+            rows: [
+              ...sleeperKeeperRows,
+              ...authorizedPurchaseRows,
+            ],
+            warnings: [],
+            suppressedManualRowIds: [],
+          }
+        : isUsingSleeperPurchases
         ? mergeActivePurchaseRows({
             sleeperKeeperRows,
             sleeperDraftRows,
@@ -4120,6 +4189,8 @@ export default function AuctionWarRoomClient({
           },
     [
       isUsingSleeperPurchases,
+      isManagerWarRoom,
+      authorizedPurchaseRows,
       manualPurchaseRows,
       sleeperDraftRows,
       sleeperKeeperRows,
@@ -4219,7 +4290,9 @@ export default function AuctionWarRoomClient({
     ? isUsingSleeperPurchases
       ? 'Live War Room State'
       : 'Manual Fallback'
-    : isUsingSleeperPurchases
+    : isManagerWarRoom
+      ? 'Persistent War Room State'
+      : isUsingSleeperPurchases
       ? sleeperSnapshot?.syncStatus === 'partial'
         ? 'Sleeper Partial'
         : 'Sleeper Snapshot'
@@ -4228,12 +4301,35 @@ export default function AuctionWarRoomClient({
     ? isUsingSleeperPurchases
       ? `${manualAuctionSales.length - suppressedManualSaleIds.length} unsynced Manual Local sale${manualAuctionSales.length - suppressedManualSaleIds.length === 1 ? '' : 's'} + ${sleeperKeepers.length} Sleeper keeper${sleeperKeepers.length === 1 ? '' : 's'} + ${sleeperPurchases.length} Sleeper completed purchase${sleeperPurchases.length === 1 ? '' : 's'}${suppressedManualSaleIds.length > 0 ? `, ${suppressedManualSaleIds.length} confirmed by Sleeper` : ''}${unmappedSleeperPurchaseCount > 0 ? `, ${unmappedSleeperPurchaseCount} unmapped` : ''}`
       : `${manualAuctionSales.length} Manual Local sale${manualAuctionSales.length === 1 ? '' : 's'}; Sleeper snapshot not loaded`
-    : isUsingSleeperPurchases
+    : isManagerWarRoom
+      ? `${sleeperKeepers.length} persisted keeper${sleeperKeepers.length === 1 ? '' : 's'} + ${authorizedPurchaseRows.length} authorized purchase${authorizedPurchaseRows.length === 1 ? '' : 's'}`
+      : isUsingSleeperPurchases
       ? `${sleeperKeepers.length} Sleeper keeper${sleeperKeepers.length === 1 ? '' : 's'} + ${sleeperPurchases.length} Sleeper completed purchase${sleeperPurchases.length === 1 ? '' : 's'}${unmappedSleeperPurchaseCount > 0 ? `, ${unmappedSleeperPurchaseCount} unmapped` : ''}`
       : 'No live Sleeper snapshot or manual sales loaded';
   const budgetRows = useMemo(
-    () => buildBudgetRows(activePurchaseRows),
-    [activePurchaseRows]
+    () => {
+      const rows = buildBudgetRows(activePurchaseRows);
+      if (!isManagerWarRoom || !initialWarRoomBudget || !guidanceTeam) return rows;
+      return rows
+        .filter((row) => row.team.id === guidanceTeam.id)
+        .map((row) => ({
+          ...row,
+          keeperCost: initialWarRoomBudget.keeperCostTotal,
+          purchaseSpend: initialWarRoomBudget.spentBudget,
+          totalSpent: initialWarRoomBudget.totalSpent,
+          remainingBudget: initialWarRoomBudget.remainingBudget,
+          rosterSpotsRemaining: initialWarRoomBudget.rosterSpotsRemaining,
+          maxBid: initialWarRoomBudget.maxBid,
+          averageDollarsPerOpenSlot: initialWarRoomBudget.averageDollarsPerOpenSlot,
+          missingKeeperPriceCount: initialWarRoomLiveState?.keepers.filter(
+            (keeper) => keeper.keeperCost === null
+          ).length ?? 0,
+          budgetIsIncomplete: initialWarRoomLiveState?.keepers.some(
+            (keeper) => keeper.keeperCost === null
+          ) ?? false,
+        }));
+    },
+    [activePurchaseRows, guidanceTeam, initialWarRoomBudget, initialWarRoomLiveState, isManagerWarRoom]
   );
   const guidanceBudgetRow =
     guidanceTeam === null
@@ -5991,6 +6087,7 @@ export default function AuctionWarRoomClient({
   }, []);
 
   useEffect(() => {
+    if (isManagerWarRoom) return;
     let isMounted = true;
     sleeperComponentMountedRef.current = true;
     const refreshIfMounted = () => {
@@ -6009,7 +6106,7 @@ export default function AuctionWarRoomClient({
       sleeperComponentMountedRef.current = false;
       window.clearInterval(intervalId);
     };
-  }, [refreshSleeperSnapshot]);
+  }, [isManagerWarRoom, refreshSleeperSnapshot]);
 
   const sleeperKeeperCount =
     sleeperSnapshot?.counts?.keepers ?? sleeperKeepers.length;
@@ -11453,7 +11550,9 @@ export default function AuctionWarRoomClient({
                 </div>
               ) : (
                 <p className="rounded-xl border border-black/10 bg-black/[0.03] p-3 text-xs font-bold uppercase tracking-widest text-gray-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-400">
-                  No Sleeper keepers detected.
+                  {isManagerWarRoom
+                    ? 'No keepers selected in this franchise War Room.'
+                    : 'No Sleeper keepers detected.'}
                 </p>
               )}
             </SectionShell>

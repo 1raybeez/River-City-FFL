@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   AuctionAccessError,
+  requireAuctionWarRoomAccess,
   requireAuctionSalesAccess,
 } from "@/lib/auth/auctionAccess";
 import { riverCityAuctionLeagueSettings } from "@/lib/auction/leagueSettings";
@@ -11,6 +12,7 @@ import {
   upsertAuctionPurchaseDecisionSnapshot,
 } from "@/lib/auction/purchaseDecisions";
 import type { AuctionPurchaseDecisionSnapshot } from "@/lib/auction/purchaseDecisionTypes";
+import { readAuthorizedWarRoomPurchaseSnapshots } from "@/lib/auction/warRoomPurchaseView";
 
 export const runtime = "nodejs";
 
@@ -22,6 +24,15 @@ async function getAuctionActor() {
       return null;
     }
 
+    throw error;
+  }
+}
+
+async function getAuctionReadActor() {
+  try {
+    return await requireAuctionWarRoomAccess();
+  } catch (error) {
+    if (error instanceof AuctionAccessError) return null;
     throw error;
   }
 }
@@ -124,7 +135,7 @@ function readSnapshotBody(
 }
 
 export async function GET(req: Request) {
-  const actor = await getAuctionActor();
+  const actor = await getAuctionReadActor();
   if (!actor) {
     return NextResponse.json(
       { error: "Auction War Room sales access required." },
@@ -133,9 +144,20 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
-  const snapshots = await readAuctionPurchaseDecisionSnapshots({
-    season: readSeason(searchParams.get("season")),
-  });
+  const season = readSeason(searchParams.get("season"));
+  const snapshots = actor.access.canRecordSales
+    ? await readAuctionPurchaseDecisionSnapshots({ season })
+    : await readAuthorizedWarRoomPurchaseSnapshots({
+        access: actor.access,
+        season,
+        requestedScope: {
+          ownerId: searchParams.get("ownerId"),
+          ownerProfileId: searchParams.get("ownerProfileId"),
+          franchiseId: searchParams.get("franchiseId"),
+          warRoomId: searchParams.get("warRoomId"),
+          rosterId: searchParams.get("rosterId"),
+        },
+      });
 
   return NextResponse.json({ snapshots });
 }

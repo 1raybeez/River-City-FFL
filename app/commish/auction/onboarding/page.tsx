@@ -4,7 +4,10 @@ import {
   AuctionAccessError,
   requireAuctionWarRoomAccess,
 } from "@/lib/auth/auctionAccess";
-import { getAuctionOwnerProfile } from "@/lib/auction/ownerProfiles";
+import {
+  buildAuctionOwnerProfileFromCanonicalAccess,
+  getAuctionOwnerProfile,
+} from "@/lib/auction/ownerProfiles";
 import { readAuctionOwnerProfileSettings } from "@/lib/auction/ownerProfileSettings";
 import OnboardingClient from "./OnboardingClient";
 
@@ -28,14 +31,19 @@ export default async function AuctionOnboardingPage({
   const ownerProfileId = actor.access.ownerProfileId;
   if (!ownerProfileId) redirect("/commish/auction/login?returnTo=%2Fcommish%2Fauction%2Fonboarding");
 
-  const profile = getAuctionOwnerProfile(ownerProfileId);
+  const profile =
+    getAuctionOwnerProfile(ownerProfileId) ??
+    buildAuctionOwnerProfileFromCanonicalAccess(actor.access);
   if (!profile) redirect("/commish/auction/login?returnTo=%2Fcommish%2Fauction%2Fonboarding");
 
   if (profile.role !== "pilot-owner" || !profile.pilotEnabled) {
     redirect("/commish/auction");
   }
 
-  const settings = await readAuctionOwnerProfileSettings({ ownerProfileId });
+  const settings = await readAuctionOwnerProfileSettings({
+    ownerProfileId,
+    warRoomId: actor.access.warRoomId ?? undefined,
+  });
   const resolvedSearchParams = await searchParams;
   const isEditing = resolvedSearchParams?.edit === "1";
 

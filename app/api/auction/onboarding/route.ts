@@ -7,6 +7,7 @@ import {
 import { riverCityAuctionLeagueSettings } from "@/lib/auction/leagueSettings";
 import {
   getAuctionOwnerProfile,
+  buildAuctionOwnerProfileFromCanonicalAccess,
   type AuctionOwnerProfile,
 } from "@/lib/auction/ownerProfiles";
 import {
@@ -24,6 +25,7 @@ import {
   type AuctionRookiePreference,
   type AuctionRosterConstruction,
 } from "@/lib/auction/ownerProfileSettingsTypes";
+import { assertAuthorizedWarRoomRequest } from "@/lib/auction/warRoomScope";
 
 export const runtime = "nodejs";
 
@@ -136,7 +138,9 @@ function getActorProfile(
     throw new Error("Authenticated War Room profile is missing ownerProfileId.");
   }
 
-  const profile = getAuctionOwnerProfile(ownerProfileId);
+  const profile =
+    getAuctionOwnerProfile(ownerProfileId) ??
+    buildAuctionOwnerProfileFromCanonicalAccess(actor.access);
   if (!profile) {
     throw new Error("Authenticated War Room profile is not configured.");
   }
@@ -167,8 +171,10 @@ export async function GET() {
   }
 
   const profile = getActorProfile(actor);
+  if (actor.access.warRoomId) assertAuthorizedWarRoomRequest(actor.access);
   const settings = await readAuctionOwnerProfileSettings({
     ownerProfileId: profile.ownerProfileId,
+    warRoomId: actor.access.warRoomId ?? undefined,
   });
 
   return NextResponse.json({
@@ -196,6 +202,13 @@ export async function PUT(req: Request) {
 
   try {
     const body = await readJsonBody(req);
+    if (actor.access.warRoomId) assertAuthorizedWarRoomRequest(actor.access, {
+      ownerId: readString(body.ownerId),
+      ownerProfileId: readString(body.ownerProfileId),
+      franchiseId: readString(body.franchiseId),
+      warRoomId: readString(body.warRoomId),
+      rosterId: body.rosterId as string | number | null | undefined,
+    });
     const positionPriorities = readPositionPriorities(body.positionPriorities);
 
     const settings = await upsertAuctionOwnerProfileSettings({
@@ -240,6 +253,7 @@ export async function PUT(req: Request) {
         onboardingCompletedAt: new Date().toISOString(),
       },
       updatedBy: actor.email,
+      warRoomId: actor.access.warRoomId ?? undefined,
     });
 
     return NextResponse.json({ settings });
@@ -267,6 +281,13 @@ export async function PATCH(req: Request) {
 
   const profile = getActorProfile(actor);
   const body = await readJsonBody(req);
+  if (actor.access.warRoomId) assertAuthorizedWarRoomRequest(actor.access, {
+    ownerId: readString(body.ownerId),
+    ownerProfileId: readString(body.ownerProfileId),
+    franchiseId: readString(body.franchiseId),
+    warRoomId: readString(body.warRoomId),
+    rosterId: body.rosterId as string | number | null | undefined,
+  });
   const sleeperTeamName = readString(body.sleeperTeamName);
 
   if (!sleeperTeamName) {
@@ -280,6 +301,7 @@ export async function PATCH(req: Request) {
     ownerProfileId: profile.ownerProfileId,
     sleeperTeamName,
     updatedBy: actor.email,
+    warRoomId: actor.access.warRoomId ?? undefined,
   });
 
   return NextResponse.json({ ok: true });

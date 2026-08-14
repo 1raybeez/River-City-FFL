@@ -35,6 +35,7 @@ export type AuctionDraftGoal =
 export type AuctionOwnerProfileSettings = {
   season: number;
   ownerProfileId: string;
+  warRoomId?: string;
   sleeperTeamName: string | null;
   rosterConstruction: AuctionRosterConstruction;
   riskTolerance: AuctionRiskTolerance;

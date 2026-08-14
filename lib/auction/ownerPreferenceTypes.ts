@@ -10,6 +10,7 @@ export type AuctionOwnerPreferenceTag = "open" | "target" | "watch" | "fade";
 export type AuctionOwnerPlayerPreference = {
   season: number;
   ownerProfileId: string;
+  warRoomId?: string;
   sleeperPlayerId: string;
   tag: AuctionOwnerPreferenceTag;
   preferredEntry: number | null;

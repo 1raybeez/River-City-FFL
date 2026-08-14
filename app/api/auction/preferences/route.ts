@@ -13,6 +13,7 @@ import {
   type AuctionOwnerPreferenceTag,
 } from "@/lib/auction/ownerPreferenceTypes";
 import { riverCityAuctionLeagueSettings } from "@/lib/auction/leagueSettings";
+import { assertAuthorizedWarRoomRequest } from "@/lib/auction/warRoomScope";
 
 export const runtime = "nodejs";
 
@@ -87,6 +88,37 @@ function getActorOwnerProfileId(
   return ownerProfileId;
 }
 
+function assertRequestScope(
+  actor: Awaited<ReturnType<typeof requireAuctionWarRoomAccess>>,
+  searchParams: URLSearchParams,
+  body: Record<string, unknown> = {}
+) {
+  if (!actor.access.warRoomId) {
+    const hasRequestedScope = Object.values(body).some(Boolean) ||
+      searchParams.has("warRoomId") ||
+      searchParams.has("ownerProfileId") ||
+      searchParams.has("ownerId") ||
+      searchParams.has("franchiseId") ||
+      searchParams.has("rosterId");
+    if (hasRequestedScope) {
+      throw new Error("Requested War Room scope is not authorized.");
+    }
+    return;
+  }
+  assertAuthorizedWarRoomRequest(actor.access, {
+    ownerId: readString(body.ownerId ?? searchParams.get("ownerId")),
+    ownerProfileId: readString(
+      body.ownerProfileId ?? searchParams.get("ownerProfileId")
+    ),
+    franchiseId: readString(body.franchiseId ?? searchParams.get("franchiseId")),
+    warRoomId: readString(body.warRoomId ?? searchParams.get("warRoomId")),
+    rosterId:
+      typeof body.rosterId === "string" || typeof body.rosterId === "number"
+        ? body.rosterId
+        : searchParams.get("rosterId"),
+  });
+}
+
 export async function GET(req: Request) {
   const actor = await getAuctionActor();
   if (!actor) {
@@ -97,10 +129,12 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
+  assertRequestScope(actor, searchParams);
   const ownerProfileId = getActorOwnerProfileId(actor);
   const preferences = await readAuctionOwnerPreferences({
     season: readSeason(searchParams.get("season")),
     ownerProfileId,
+    warRoomId: actor.access.warRoomId ?? undefined,
   });
 
   return NextResponse.json({ preferences, ownerProfileId });
@@ -117,6 +151,7 @@ export async function PUT(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const body = await readJsonBody(req);
+  assertRequestScope(actor, searchParams, body);
   const ownerProfileId = getActorOwnerProfileId(actor);
   const { season } = readPreferenceScope(searchParams, body, ownerProfileId);
   const sleeperPlayerId = readString(body.sleeperPlayerId);
@@ -176,6 +211,7 @@ export async function PUT(req: Request) {
       note: readNote(body.note),
     },
     updatedBy: actor.email,
+    warRoomId: actor.access.warRoomId ?? undefined,
   });
 
   return NextResponse.json({ preference });
@@ -192,6 +228,7 @@ export async function DELETE(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const body = await readJsonBody(req);
+  assertRequestScope(actor, searchParams, body);
   const ownerProfileId = getActorOwnerProfileId(actor);
   const { season } = readPreferenceScope(searchParams, body, ownerProfileId);
   const sleeperPlayerId =
@@ -210,6 +247,7 @@ export async function DELETE(req: Request) {
     ownerProfileId,
     sleeperPlayerId,
     updatedBy: actor.email,
+    warRoomId: actor.access.warRoomId ?? undefined,
   });
 
   return NextResponse.json({ ok: true });

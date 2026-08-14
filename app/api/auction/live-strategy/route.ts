@@ -9,7 +9,11 @@ import {
   readAuctionOwnerProfileSettings,
   updateAuctionOwnerLiveDraftStrategy,
 } from "@/lib/auction/ownerProfileSettings";
-import { getAuctionOwnerProfile } from "@/lib/auction/ownerProfiles";
+import {
+  buildAuctionOwnerProfileFromCanonicalAccess,
+  getAuctionOwnerProfile,
+} from "@/lib/auction/ownerProfiles";
+import { assertAuthorizedWarRoomRequest } from "@/lib/auction/warRoomScope";
 
 export const runtime = "nodejs";
 
@@ -34,7 +38,9 @@ function getEditableOwnerProfile(
   actor: Awaited<ReturnType<typeof requireAuctionWarRoomAccess>>
 ) {
   const ownerProfileId = actor.access.ownerProfileId;
-  const profile = getAuctionOwnerProfile(ownerProfileId);
+  const profile =
+    getAuctionOwnerProfile(ownerProfileId) ??
+    buildAuctionOwnerProfileFromCanonicalAccess(actor.access);
   const canEditOwnStrategy =
     profile?.active &&
     (profile.role === "commissioner" ||
@@ -61,8 +67,11 @@ export async function GET() {
     );
   }
 
+  if (actor.access.warRoomId) assertAuthorizedWarRoomRequest(actor.access);
+
   const settings = await readAuctionOwnerProfileSettings({
     ownerProfileId: profile.ownerProfileId,
+    warRoomId: actor.access.warRoomId ?? undefined,
   });
   return NextResponse.json({
     liveDraftStrategy: settings?.liveDraftStrategy ?? null,
@@ -88,6 +97,17 @@ export async function PUT(req: Request) {
 
   try {
     const body = await readBody(req);
+    if (actor.access.warRoomId) assertAuthorizedWarRoomRequest(actor.access, {
+      ownerId: typeof body.ownerId === "string" ? body.ownerId : null,
+      ownerProfileId:
+        typeof body.ownerProfileId === "string" ? body.ownerProfileId : null,
+      franchiseId: typeof body.franchiseId === "string" ? body.franchiseId : null,
+      warRoomId: typeof body.warRoomId === "string" ? body.warRoomId : null,
+      rosterId:
+        typeof body.rosterId === "string" || typeof body.rosterId === "number"
+          ? body.rosterId
+          : null,
+    });
     const currentRemainingBudget =
       typeof body.currentRemainingBudget === "number" &&
       Number.isFinite(body.currentRemainingBudget) &&
@@ -102,6 +122,7 @@ export async function PUT(req: Request) {
       ownerProfileId: profile.ownerProfileId,
       strategy,
       updatedBy: actor.email,
+      warRoomId: actor.access.warRoomId ?? undefined,
     });
 
     return NextResponse.json({ liveDraftStrategy });
@@ -135,10 +156,13 @@ export async function DELETE() {
     );
   }
 
+  if (actor.access.warRoomId) assertAuthorizedWarRoomRequest(actor.access);
+
   await updateAuctionOwnerLiveDraftStrategy({
     ownerProfileId: profile.ownerProfileId,
     strategy: null,
     updatedBy: actor.email,
+    warRoomId: actor.access.warRoomId ?? undefined,
   });
 
   return NextResponse.json({ liveDraftStrategy: null });

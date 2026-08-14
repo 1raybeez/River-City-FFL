@@ -53,6 +53,38 @@ export type AuctionAccessResult = {
   canViewCommissionerPreferences: boolean;
 };
 
+export function buildAuctionOwnerProfileFromCanonicalAccess(
+  access: AuctionAccessResult
+): AuctionOwnerProfile | null {
+  if (
+    access.role !== "pilot-owner" ||
+    !access.canonicalOwnerId ||
+    !access.email ||
+    !access.sleeperTeamName
+  ) {
+    return null;
+  }
+
+  return {
+    ownerProfileId: access.canonicalOwnerId,
+    season,
+    displayName: access.ownerDisplayName ?? access.canonicalOwnerId,
+    email: access.email,
+    normalizedEmail: normalizeEmail(access.email),
+    sleeperUserId: access.sleeperUserId,
+    sleeperRosterId: access.sleeperRosterId,
+    teamId: access.warRoomId,
+    teamName: access.sleeperTeamName,
+    avatarUrl: null,
+    role: "pilot-owner",
+    pilotEnabled: true,
+    onboardingStatus: "invited",
+    active: true,
+    createdAt,
+    updatedAt,
+  };
+}
+
 const season = riverCityAuctionLeagueSettings.season;
 const createdAt = "2026-07-14T00:00:00.000Z";
 const updatedAt = "2026-07-14T00:00:00.000Z";

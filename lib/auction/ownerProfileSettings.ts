@@ -17,6 +17,7 @@ import {
   type AuctionRookiePreference,
   type AuctionRosterConstruction,
 } from "@/lib/auction/ownerProfileSettingsTypes";
+import { AUCTION_WAR_ROOM_COLLECTION } from "@/lib/auction/warRoomScope";
 
 export const AUCTION_OWNER_PROFILES_COLLECTION = "auction_owner_profiles";
 export const AUCTION_OWNER_PROFILE_SETTINGS_COLLECTION = "settings";
@@ -77,6 +78,14 @@ function getSettingsRef(season: number, ownerProfileId: string) {
     .doc(String(season));
 }
 
+function getWarRoomSettingsRef(season: number, warRoomId: string) {
+  return firestore
+    .collection(AUCTION_WAR_ROOM_COLLECTION)
+    .doc(warRoomId)
+    .collection("settings")
+    .doc(String(season));
+}
+
 function readString(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
@@ -134,6 +143,7 @@ function readSettingsDocument(
   return {
     season,
     ownerProfileId,
+    warRoomId: readString(data.warRoomId) ?? undefined,
     sleeperTeamName: readString(data.sleeperTeamName),
     rosterConstruction: readEnum(
       data.rosterConstruction,
@@ -174,11 +184,19 @@ function readSettingsDocument(
 export async function readAuctionOwnerProfileSettings({
   season = riverCityAuctionLeagueSettings.season,
   ownerProfileId,
+  warRoomId,
 }: {
   season?: number;
   ownerProfileId: string;
+  warRoomId?: string;
 }) {
-  const snapshot = await getSettingsRef(season, ownerProfileId).get();
+  const snapshot = await (warRoomId
+    ? getWarRoomSettingsRef(season, warRoomId).get()
+    : getSettingsRef(season, ownerProfileId).get());
+  if (!snapshot.exists && warRoomId) {
+    const legacySnapshot = await getSettingsRef(season, ownerProfileId).get();
+    if (legacySnapshot.exists) return readSettingsDocument(legacySnapshot.data() ?? {});
+  }
   if (!snapshot.exists) return null;
 
   return readSettingsDocument(snapshot.data() ?? {});
@@ -187,17 +205,21 @@ export async function readAuctionOwnerProfileSettings({
 export async function upsertAuctionOwnerProfileSettings({
   settings,
   updatedBy,
+  warRoomId,
 }: {
   settings: Omit<
     AuctionOwnerProfileSettings,
     "updatedAt" | "updatedBy" | "schemaVersion" | "liveDraftStrategy"
   >;
   updatedBy: string;
+  warRoomId?: string;
 }) {
   const updatedAt = new Date().toISOString();
   const existingSettings = await readAuctionOwnerProfileSettings({
     season: settings.season,
     ownerProfileId: settings.ownerProfileId,
+    ...(warRoomId ? { warRoomId } : {}),
+    warRoomId,
   });
   const serializedSettings: Omit<
     AuctionOwnerProfileSettings,
@@ -222,10 +244,10 @@ export async function upsertAuctionOwnerProfileSettings({
     schemaVersion: AUCTION_OWNER_PROFILE_SETTINGS_SCHEMA_VERSION,
   };
 
-  await getSettingsRef(
-    serializedSettings.season,
-    serializedSettings.ownerProfileId
-  ).set(serializedSettings, { merge: true });
+  const settingsRef = warRoomId
+    ? getWarRoomSettingsRef(serializedSettings.season, warRoomId)
+    : getSettingsRef(serializedSettings.season, serializedSettings.ownerProfileId);
+  await settingsRef.set(serializedSettings, { merge: true });
 
   return {
     ...serializedSettings,
@@ -238,11 +260,13 @@ export async function updateAuctionOwnerLiveDraftStrategy({
   ownerProfileId,
   strategy,
   updatedBy,
+  warRoomId,
 }: {
   season?: number;
   ownerProfileId: string;
   strategy: AuctionLiveDraftStrategyInput | null;
   updatedBy: string;
+  warRoomId?: string;
 }) {
   const updatedAt = new Date().toISOString();
   const liveDraftStrategy = strategy
@@ -253,10 +277,14 @@ export async function updateAuctionOwnerLiveDraftStrategy({
       }
     : null;
 
-  await getSettingsRef(season, ownerProfileId).set(
+  const settingsRef = warRoomId
+    ? getWarRoomSettingsRef(season, warRoomId)
+    : getSettingsRef(season, ownerProfileId);
+  await settingsRef.set(
     {
       season,
       ownerProfileId,
+      ...(warRoomId ? { warRoomId } : {}),
       liveDraftStrategy,
       updatedAt,
       updatedBy,
@@ -273,18 +301,24 @@ export async function updateAuctionOwnerProfileSettingsTeamName({
   ownerProfileId,
   sleeperTeamName,
   updatedBy,
+  warRoomId,
 }: {
   season?: number;
   ownerProfileId: string;
   sleeperTeamName: string;
   updatedBy: string;
+  warRoomId?: string;
 }) {
   const updatedAt = new Date().toISOString();
 
-  await getSettingsRef(season, ownerProfileId).set(
+  const settingsRef = warRoomId
+    ? getWarRoomSettingsRef(season, warRoomId)
+    : getSettingsRef(season, ownerProfileId);
+  await settingsRef.set(
     {
       season,
       ownerProfileId,
+      ...(warRoomId ? { warRoomId } : {}),
       sleeperTeamName,
       updatedAt,
       updatedBy,

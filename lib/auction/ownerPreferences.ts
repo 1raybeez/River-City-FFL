@@ -9,6 +9,7 @@ import {
   type AuctionOwnerPreferenceTag,
 } from "@/lib/auction/ownerPreferenceTypes";
 import { riverCityAuctionLeagueSettings } from "@/lib/auction/leagueSettings";
+import { AUCTION_WAR_ROOM_COLLECTION } from "@/lib/auction/warRoomScope";
 
 const validOwnerPreferenceTags = new Set<AuctionOwnerPreferenceTag>([
   "open",
@@ -25,6 +26,15 @@ function getPreferenceScopeRef(season: number, ownerProfileId: string) {
 
 function getPreferencePlayersCollection(season: number, ownerProfileId: string) {
   return getPreferenceScopeRef(season, ownerProfileId).collection("players");
+}
+
+function getWarRoomPreferencePlayersCollection(season: number, warRoomId: string) {
+  return firestore
+    .collection(AUCTION_WAR_ROOM_COLLECTION)
+    .doc(warRoomId)
+    .collection("preferences")
+    .doc(String(season))
+    .collection("players");
 }
 
 function readNullableNumber(value: unknown) {
@@ -59,6 +69,7 @@ function readOwnerPreferenceDocument(
   return {
     season,
     ownerProfileId,
+    warRoomId: readNullableString(data.warRoomId) ?? undefined,
     sleeperPlayerId,
     tag,
     preferredEntry: readNullableNumber(
@@ -75,14 +86,30 @@ function readOwnerPreferenceDocument(
 export async function readAuctionOwnerPreferences({
   season = riverCityAuctionLeagueSettings.season,
   ownerProfileId = AUCTION_OWNER_PROFILE_ID,
+  warRoomId,
 }: {
   season?: number;
   ownerProfileId?: string;
+  warRoomId?: string;
 } = {}) {
-  const snapshot = await getPreferencePlayersCollection(
-    season,
-    ownerProfileId
-  ).get();
+  const snapshot = await (warRoomId
+    ? getWarRoomPreferencePlayersCollection(season, warRoomId).get()
+    : getPreferencePlayersCollection(season, ownerProfileId).get());
+
+  if (snapshot.docs.length === 0 && warRoomId && ownerProfileId) {
+    const legacySnapshot = await getPreferencePlayersCollection(
+      season,
+      ownerProfileId
+    ).get();
+    if (legacySnapshot.docs.length > 0) {
+      return legacySnapshot.docs
+        .map((doc) => readOwnerPreferenceDocument(doc.id, doc.data()))
+        .filter(
+          (preference): preference is AuctionOwnerPlayerPreference =>
+            preference !== null
+        );
+    }
+  }
 
   return snapshot.docs
     .map((doc) => readOwnerPreferenceDocument(doc.id, doc.data()))
@@ -95,17 +122,20 @@ export async function readAuctionOwnerPreferences({
 export async function upsertAuctionOwnerPreference({
   preference,
   updatedBy,
+  warRoomId,
 }: {
   preference: Omit<
     AuctionOwnerPlayerPreference,
     "updatedAt" | "updatedBy" | "schemaVersion"
   >;
   updatedBy: string;
+  warRoomId?: string;
 }) {
   const updatedAt = new Date().toISOString();
   const serializedPreference: AuctionOwnerPlayerPreference = {
     season: preference.season,
     ownerProfileId: preference.ownerProfileId,
+    warRoomId,
     sleeperPlayerId: preference.sleeperPlayerId,
     tag: preference.tag,
     preferredEntry: preference.preferredEntry,
@@ -115,17 +145,24 @@ export async function upsertAuctionOwnerPreference({
     updatedBy,
     schemaVersion: 2,
   };
-  const scopeRef = getPreferenceScopeRef(
-    serializedPreference.season,
-    serializedPreference.ownerProfileId
-  );
+  const scopeRef = warRoomId
+    ? firestore
+        .collection(AUCTION_WAR_ROOM_COLLECTION)
+        .doc(warRoomId)
+        .collection("preferences")
+        .doc(String(serializedPreference.season))
+    : getPreferenceScopeRef(
+        serializedPreference.season,
+        serializedPreference.ownerProfileId
+      );
 
   await firestore.runTransaction(async (transaction) => {
     transaction.set(
       scopeRef,
       {
         season: serializedPreference.season,
-        ownerProfileId: serializedPreference.ownerProfileId,
+      ownerProfileId: serializedPreference.ownerProfileId,
+        ...(warRoomId ? { warRoomId } : {}),
         updatedAt,
         updatedBy,
       },
@@ -145,14 +182,22 @@ export async function clearAuctionOwnerPreference({
   ownerProfileId,
   sleeperPlayerId,
   updatedBy,
+  warRoomId,
 }: {
   season: number;
   ownerProfileId: string;
   sleeperPlayerId: string;
   updatedBy: string;
+  warRoomId?: string;
 }) {
   const updatedAt = new Date().toISOString();
-  const scopeRef = getPreferenceScopeRef(season, ownerProfileId);
+  const scopeRef = warRoomId
+    ? firestore
+        .collection(AUCTION_WAR_ROOM_COLLECTION)
+        .doc(warRoomId)
+        .collection("preferences")
+        .doc(String(season))
+    : getPreferenceScopeRef(season, ownerProfileId);
 
   await firestore.runTransaction(async (transaction) => {
     transaction.set(

@@ -9,6 +9,10 @@ import { readAuctionOwnerPreferences } from "@/lib/auction/ownerPreferences";
 import { getAuctionPreferenceFallbacksForProfile } from "@/lib/auction/preferenceFallbackData";
 import { readAuctionOwnerProfileSettings } from "@/lib/auction/ownerProfileSettings";
 import { readAuctionPurchaseDecisionSnapshots } from "@/lib/auction/purchaseDecisions";
+import { readAuthorizedWarRoomPurchaseSnapshots } from "@/lib/auction/warRoomPurchaseView";
+import { readWarRoomLiveAuctionState } from "@/lib/auction/warRoomLiveStateFirestore";
+import { deriveWarRoomBudgetState } from "@/lib/auction/warRoomLiveState";
+import { riverCityAuctionLeagueSettings } from "@/lib/auction/leagueSettings";
 import { readPublishedMasterviewFromFirestore } from "@/lib/auction/valueRefreshService";
 import AuctionWarRoomClient from "./AuctionWarRoomClient";
 import type {
@@ -107,10 +111,11 @@ async function readInitialAuctionAdpSource(): Promise<
 }
 
 async function readInitialOwnerPreferences(
-  ownerProfileId: string
+  ownerProfileId: string,
+  warRoomId?: string
 ): Promise<AuctionWarRoomInitialOwnerPreference[]> {
   try {
-    return await readAuctionOwnerPreferences({ ownerProfileId });
+    return await readAuctionOwnerPreferences({ ownerProfileId, warRoomId });
   } catch (error) {
     console.warn("[auction-owner-preferences] Initial read failed", {
       error:
@@ -123,10 +128,11 @@ async function readInitialOwnerPreferences(
 }
 
 async function readInitialOwnerSettings(
-  ownerProfileId: string
+  ownerProfileId: string,
+  warRoomId?: string
 ): Promise<AuctionWarRoomInitialOwnerSettings | null> {
   try {
-    return await readAuctionOwnerProfileSettings({ ownerProfileId });
+    return await readAuctionOwnerProfileSettings({ ownerProfileId, warRoomId });
   } catch (error) {
     console.warn("[auction-owner-settings] Initial read failed", {
       error:
@@ -139,9 +145,21 @@ async function readInitialOwnerSettings(
 }
 
 async function readInitialPurchaseDecisions(
-  canRecordSales: boolean
+  actor: Awaited<ReturnType<typeof requireAuctionWarRoomAccess>>
 ): Promise<AuctionWarRoomInitialPurchaseDecision[]> {
-  if (!canRecordSales) return [];
+  if (!actor.access.canRecordSales) {
+    if (!actor.access.warRoomId) return [];
+    try {
+      return await readAuthorizedWarRoomPurchaseSnapshots({
+        access: actor.access,
+      });
+    } catch (error) {
+      console.warn("[auction-purchase-decisions] Manager read failed", {
+        error: error instanceof Error ? error.message : "Unknown purchase view error.",
+      });
+      return [];
+    }
+  }
 
   try {
     return await readAuctionPurchaseDecisionSnapshots();
@@ -169,11 +187,15 @@ export default async function AuctionWarRoomPage() {
   }
 
   const ownerProfileId = actor.access.ownerProfileId;
+  const warRoomId = actor.access.warRoomId;
   if (!ownerProfileId) {
     redirect("/commish/auction/login?returnTo=%2Fcommish%2Fauction");
   }
 
-  const initialOwnerSettings = await readInitialOwnerSettings(ownerProfileId);
+  const initialOwnerSettings = await readInitialOwnerSettings(
+    ownerProfileId,
+    warRoomId ?? undefined
+  );
   const initialPreferenceFallbacks =
     getAuctionPreferenceFallbacksForProfile(ownerProfileId);
 
@@ -189,11 +211,36 @@ export default async function AuctionWarRoomPage() {
     initialAdpSource,
     initialOwnerPreferences,
     initialPurchaseDecisions,
+    initialWarRoomLiveState,
+    initialWarRoomBudget,
   ] = await Promise.all([
     readInitialAuctionValueSource(),
     readInitialAuctionAdpSource(),
-    readInitialOwnerPreferences(ownerProfileId),
-    readInitialPurchaseDecisions(actor.access.canRecordSales),
+    readInitialOwnerPreferences(ownerProfileId, warRoomId ?? undefined),
+    readInitialPurchaseDecisions(actor),
+    actor.access.canRecordSales || !warRoomId
+      ? Promise.resolve(null)
+      : readWarRoomLiveAuctionState(warRoomId),
+    actor.access.canRecordSales || !warRoomId
+      ? Promise.resolve(null)
+      : (async () => {
+          const [state, purchases] = await Promise.all([
+            readWarRoomLiveAuctionState(warRoomId),
+            readAuthorizedWarRoomPurchaseSnapshots({ access: actor.access }),
+          ]);
+          return deriveWarRoomBudgetState({
+            teamBudget: riverCityAuctionLeagueSettings.auctionBudgetPerTeam,
+            rosterSlots: 16,
+            keepers: state?.keepers ?? [],
+            purchases: purchases.map((purchase) => ({
+              purchaseId: purchase.purchaseId,
+              playerId: purchase.sleeperPlayerId,
+              playerName: purchase.playerName,
+              salePrice: purchase.salePrice,
+              status: purchase.status,
+            })),
+          });
+        })(),
   ]);
 
   return (
@@ -205,6 +252,8 @@ export default async function AuctionWarRoomPage() {
       initialPreferenceFallbacks={initialPreferenceFallbacks}
       initialOwnerSettings={initialOwnerSettings}
       initialPurchaseDecisions={initialPurchaseDecisions}
+      initialWarRoomLiveState={initialWarRoomLiveState}
+      initialWarRoomBudget={initialWarRoomBudget}
     />
   );
 }
