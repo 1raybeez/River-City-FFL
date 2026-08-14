@@ -16,6 +16,7 @@ import {
   Swords,
   Trophy,
 } from "lucide-react";
+import SiteShell from "@/components/SiteShell";
 import {
   getLeagueInfo,
   getLeagueRosters,
@@ -674,7 +675,7 @@ function MatchupCard({
   const matchupLabel = `${team1.name} versus ${team2.name}`;
 
   return (
-    <article className="rounded-3xl border border-black/10 bg-white p-4 shadow-xl dark:border-white/10 dark:bg-white/5 sm:p-6">
+    <article className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#121212] sm:p-6">
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
         <TeamPanel team={team1} side="left" />
         <div className="flex items-center justify-center">
@@ -729,8 +730,8 @@ function PageState({
   copy: string;
 }) {
   return (
-    <div className="rounded-3xl border border-dashed border-black/10 bg-black/[0.03] px-6 py-16 text-center dark:border-white/10 dark:bg-white/[0.04]">
-      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-red-600 shadow-sm dark:bg-black/20">
+    <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center shadow-sm dark:border-white/10 dark:bg-[#121212]">
+      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-600/10 text-orange-600 shadow-sm dark:bg-orange-600/15">
         {icon}
       </div>
       <p className="font-black uppercase italic">{title}</p>
@@ -758,7 +759,7 @@ function ExplainerCard({
       : "border-red-600/20 bg-red-600/10 text-red-700 dark:text-red-300";
 
   return (
-    <section className="rounded-2xl border border-black/10 bg-white p-5 shadow-lg dark:border-white/10 dark:bg-white/[0.05]">
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#121212]">
       <div className="mb-4 flex items-center gap-3">
         <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${toneClass}`}>
           {icon}
@@ -796,7 +797,7 @@ function PlayoffStateBanner({
     : "Sleeper has generated the current-season bracket. Commissioner seeding is treated as canonical once finalized before Week 15.";
 
   return (
-    <section className="rounded-2xl border border-black/10 bg-black/[0.03] p-5 dark:border-white/10 dark:bg-white/[0.04]">
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#121212]">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-yellow-500/15 text-yellow-600">
@@ -1155,10 +1156,10 @@ function PlayoffsPanel({
 
 function RivalryHubCard() {
   return (
-    <section className="mt-8 rounded-2xl border border-black/10 bg-black/[0.03] p-5 dark:border-white/10 dark:bg-white/[0.04]">
+    <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#121212]">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-600/10 text-red-600">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-600/10 text-orange-600">
             <Swords size={19} />
           </div>
           <div>
@@ -1173,7 +1174,7 @@ function RivalryHubCard() {
 
         <Link
           href="/league-info/rivalries"
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-xs font-black uppercase text-white shadow-lg shadow-red-900/25 transition-all hover:scale-[1.02]"
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 text-xs font-black uppercase text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
         >
           Rivalry Hub
           <ArrowRight size={15} />
@@ -1344,51 +1345,37 @@ export default function MatchupsPage() {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-white text-black transition-colors duration-300 dark:bg-[#0a0a0a] dark:text-white">
-      <nav className="sticky top-0 z-50 flex flex-col gap-3 border-b border-black/5 bg-white/80 px-4 py-3 backdrop-blur-md dark:border-white/10 dark:bg-[#0a0a0a]/80 sm:flex-row sm:items-center sm:justify-end sm:px-6 sm:py-4">
-        <div className="grid w-full grid-cols-4 rounded-lg border border-black/10 bg-black/5 p-1 dark:border-white/10 dark:bg-white/5 sm:flex sm:w-auto">
-          <Link
-            href="/"
-            className="min-w-0 rounded-md px-2 py-2 text-center text-[9px] font-black uppercase opacity-40 transition-all hover:opacity-100 sm:px-4 sm:py-1.5 sm:text-[10px]"
-          >
-            Home
-          </Link>
-          <Link
-            href="/managers"
-            className="min-w-0 rounded-md px-2 py-2 text-center text-[9px] font-black uppercase opacity-40 transition-all hover:opacity-100 sm:px-4 sm:py-1.5 sm:text-[10px]"
-          >
-            Managers
-          </Link>
-          <Link
-            href="/league-info"
-            className="min-w-0 rounded-md px-2 py-2 text-center text-[9px] font-black uppercase opacity-40 transition-all hover:opacity-100 sm:px-4 sm:py-1.5 sm:text-[10px]"
-          >
-            League Info
-          </Link>
-          <Link
-            href="/matchups"
-            aria-current="page"
-            className="min-w-0 rounded-md bg-red-600 px-2 py-2 text-center text-[9px] font-black uppercase text-white shadow-lg shadow-red-900/30 sm:px-4 sm:py-1.5 sm:text-[10px]"
-          >
-            Matchups
-          </Link>
-        </div>
-      </nav>
+    <SiteShell activePath="/matchups">
+      <main className="mx-auto w-full max-w-7xl overflow-x-hidden px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        <header className="mb-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#121212] sm:p-8">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="mb-2 text-[10px] font-black uppercase tracking-[0.3em] text-orange-600">Matchups</p>
+              <h1 className="text-4xl font-black uppercase italic leading-none tracking-tighter text-[#071a33] dark:text-white sm:text-5xl">
+                2026 Matchup Center
+              </h1>
+              <p className="mt-3 max-w-3xl text-sm font-semibold leading-6 text-slate-600 dark:text-gray-400">
+                Weekly head-to-heads with starters, projected scores, Series History, and playoff context.
+              </p>
+            </div>
+            <Link
+              href="/league-info"
+              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-300 px-4 py-2 text-xs font-black uppercase tracking-wider text-[#071a33] transition hover:border-orange-600 hover:text-orange-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 dark:border-white/20 dark:text-white"
+            >
+              Back to League Info
+            </Link>
+          </div>
+        </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
-        <h1 className="mb-8 text-center text-4xl font-black uppercase italic tracking-tighter sm:mb-10 sm:text-5xl">
-          Matchup Center
-        </h1>
-
-        <div className="mb-6 grid w-full grid-cols-2 rounded-lg border border-black/10 bg-black/5 p-1 dark:border-white/10 dark:bg-white/5 sm:mx-auto sm:max-w-sm">
+        <div className="mb-6 grid w-full grid-cols-2 rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-white/10 dark:bg-white/5 sm:mx-auto sm:max-w-sm" role="group" aria-label="Matchup view">
           <button
             type="button"
             aria-pressed={activeTab === "regular"}
             onClick={() => setActiveTab("regular")}
             className={`rounded-md px-4 py-2 text-[10px] font-black uppercase transition-all ${
               activeTab === "regular"
-                ? "bg-red-600 text-white shadow-lg shadow-red-900/30"
-                : "opacity-40"
+                ? "bg-[#071a33] text-white shadow-sm"
+                : "text-slate-500 hover:bg-white dark:text-white/60 dark:hover:bg-white/10"
             }`}
           >
             Regular
@@ -1399,8 +1386,8 @@ export default function MatchupsPage() {
             onClick={() => setActiveTab("playoffs")}
             className={`rounded-md px-4 py-2 text-[10px] font-black uppercase transition-all ${
               activeTab === "playoffs"
-                ? "bg-yellow-500 text-black shadow-lg shadow-yellow-900/30"
-                : "opacity-40"
+                ? "bg-orange-600 text-white shadow-sm"
+                : "text-slate-500 hover:bg-white dark:text-white/60 dark:hover:bg-white/10"
             }`}
           >
             Playoffs
@@ -1409,13 +1396,13 @@ export default function MatchupsPage() {
 
         {activeTab === "regular" ? (
           <>
-            <div className="mb-8 flex items-center justify-between rounded-2xl border border-black/10 bg-black/5 p-4 dark:border-white/10 dark:bg-white/5 sm:mb-10">
+            <div className="mb-8 flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-white/10 dark:bg-[#121212] sm:mb-10 sm:p-4">
               <button
                 type="button"
                 aria-label="Go to previous week"
                 onClick={() => setWeek((current) => normalizeWeek((current ?? displayWeek) - 1))}
                 disabled={displayWeek <= MIN_WEEK}
-                className="rounded-full p-2 transition-all hover:bg-black/10 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-white/10"
+                className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-full p-2 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-white/10"
               >
                 <ChevronLeft />
               </button>
@@ -1432,7 +1419,7 @@ export default function MatchupsPage() {
                 aria-label="Go to next week"
                 onClick={() => setWeek((current) => normalizeWeek((current ?? displayWeek) + 1))}
                 disabled={displayWeek >= MAX_WEEK}
-                className="rounded-full p-2 transition-all hover:bg-black/10 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-white/10"
+                className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-full p-2 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-white/10"
               >
                 <ChevronRight />
               </button>
@@ -1492,6 +1479,6 @@ export default function MatchupsPage() {
 
         <RivalryHubCard />
       </main>
-    </div>
+    </SiteShell>
   );
 }
