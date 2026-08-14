@@ -10,6 +10,8 @@ import {
   getAuctionPilotProfileByEmail,
   type AuctionAccessResult,
 } from "@/lib/auction/ownerProfiles";
+import { resolveAuthorizedEmailFromFirestore } from "@/lib/auth/canonicalAuctionEmailMapping";
+import type { CanonicalAuctionOwnerAuthorization } from "@/lib/auth/canonicalAuctionAuthorization";
 
 export { getAuctionPilotAllowedEmails };
 
@@ -32,6 +34,30 @@ export class AuctionAccessError extends Error {
 
 function normalizeEmail(email: string | null | undefined) {
   return email?.trim().toLowerCase() ?? "";
+}
+
+function buildCanonicalManagerAccessResult(
+  email: string,
+  authorization: CanonicalAuctionOwnerAuthorization
+): AuctionAccessResult {
+  return {
+    authenticated: true,
+    email,
+    role: "pilot-owner",
+    ownerProfileId: authorization.canonicalOwnerId,
+    canonicalOwnerId: authorization.canonicalOwnerId,
+    authorizedFranchiseId: authorization.authorizedFranchiseId,
+    warRoomId: authorization.warRoomId,
+    ownerProfileLabel: authorization.teamName,
+    ownerDisplayName: authorization.ownerDisplayName,
+    sleeperTeamName: authorization.teamName,
+    sleeperRosterId: authorization.sleeperRosterId,
+    sleeperUserId: authorization.sleeperUserId,
+    canAccessWarRoom: true,
+    canAccessMaintenance: false,
+    canRecordSales: false,
+    canViewCommissionerPreferences: false,
+  };
 }
 
 function parsePositiveNumber(value: string | undefined) {
@@ -75,6 +101,9 @@ export function getAuctionAccessForEmail(
       email: normalizedEmail || null,
       role: null,
       ownerProfileId: null,
+      canonicalOwnerId: null,
+      authorizedFranchiseId: null,
+      warRoomId: null,
       ownerProfileLabel: null,
       ownerDisplayName: null,
       sleeperTeamName: null,
@@ -101,6 +130,9 @@ export function getAuctionAccessForEmail(
     email: normalizedEmail,
     role: null,
     ownerProfileId: null,
+    canonicalOwnerId: null,
+    authorizedFranchiseId: null,
+    warRoomId: null,
     ownerProfileLabel: null,
     ownerDisplayName: null,
     sleeperTeamName: null,
@@ -111,6 +143,24 @@ export function getAuctionAccessForEmail(
     canRecordSales: false,
     canViewCommissionerPreferences: false,
   };
+}
+
+export async function getAuctionAccessForVerifiedEmail(
+  email: string | null | undefined
+) {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) return getAuctionAccessForEmail(email, false);
+
+  const canonicalAuthorization =
+    await resolveAuthorizedEmailFromFirestore(normalizedEmail);
+  if (canonicalAuthorization) {
+    return buildCanonicalManagerAccessResult(
+      normalizedEmail,
+      canonicalAuthorization
+    );
+  }
+
+  return getAuctionAccessForEmail(normalizedEmail, true);
 }
 
 export function getAuctionSessionCookieName() {
@@ -151,10 +201,9 @@ export async function verifyAuctionSession(): Promise<AuctionAccessSession | nul
       true
     );
     const email = normalizeEmail(decodedToken.email);
-    const access = getAuctionAccessForEmail(
-      email,
-      Boolean(decodedToken.email_verified)
-    );
+    const access = decodedToken.email_verified
+      ? await getAuctionAccessForVerifiedEmail(email)
+      : getAuctionAccessForEmail(email, false);
 
     console.info("[auction-auth] Session cookie verified", {
       email,

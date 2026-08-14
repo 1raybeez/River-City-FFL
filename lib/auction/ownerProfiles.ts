@@ -39,6 +39,9 @@ export type AuctionAccessResult = {
   email: string | null;
   role: AuctionOwnerRole | null;
   ownerProfileId: string | null;
+  canonicalOwnerId: string | null;
+  authorizedFranchiseId: string | null;
+  warRoomId: string | null;
   ownerProfileLabel: string | null;
   ownerDisplayName: string | null;
   sleeperTeamName: string | null;
@@ -181,6 +184,9 @@ export function buildCommissionerAccessResult(
     email,
     role: "commissioner",
     ownerProfileId: AUCTION_OWNER_PROFILE_RAY_JEFFREY,
+    canonicalOwnerId: null,
+    authorizedFranchiseId: null,
+    warRoomId: null,
     ownerProfileLabel: AUCTION_OWNER_PROFILE_LABEL_RAY_JEFFREY,
     ownerDisplayName: "Ray Long / Jeffrey Hudgins",
     sleeperTeamName: AUCTION_OWNER_PROFILE_LABEL_RAY_JEFFREY,
@@ -202,6 +208,9 @@ export function buildPilotAccessResult(
     email,
     role: profile.role,
     ownerProfileId: profile.ownerProfileId,
+    canonicalOwnerId: null,
+    authorizedFranchiseId: null,
+    warRoomId: null,
     ownerProfileLabel: profile.teamName,
     ownerDisplayName: profile.displayName,
     sleeperTeamName: profile.teamName,
@@ -219,6 +228,9 @@ export const unauthenticatedAuctionAccess: AuctionAccessResult = {
   email: null,
   role: null,
   ownerProfileId: null,
+  canonicalOwnerId: null,
+  authorizedFranchiseId: null,
+  warRoomId: null,
   ownerProfileLabel: null,
   ownerDisplayName: null,
   sleeperTeamName: null,

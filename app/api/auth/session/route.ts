@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import {
-  getAuctionAccessForEmail,
+  getAuctionAccessForVerifiedEmail,
   getAuctionAllowedEmails,
   getAuctionPilotAllowedEmails,
   getAuctionSessionCookieName,
@@ -40,10 +40,9 @@ export async function POST(req: Request) {
     const email = normalizeEmail(decodedToken.email);
     const allowedEmails = getAuctionAllowedEmails();
     const pilotEmails = getAuctionPilotAllowedEmails();
-    const access = getAuctionAccessForEmail(
-      email,
-      Boolean(decodedToken.email_verified)
-    );
+    const access = decodedToken.email_verified
+      ? await getAuctionAccessForVerifiedEmail(email)
+      : null;
     const cookieName = getAuctionSessionCookieName();
 
     console.info("[auction-auth] Google sign-in email decoded", {
@@ -51,12 +50,13 @@ export async function POST(req: Request) {
       emailVerified: Boolean(decodedToken.email_verified),
       allowedEmails,
       pilotEmails,
-      role: access.role,
-      ownerProfileId: access.ownerProfileId,
-      emailAllowed: access.canAccessWarRoom || access.canAccessMaintenance,
+      role: access?.role,
+      ownerProfileId: access?.ownerProfileId,
+      emailAllowed:
+        access?.canAccessWarRoom || access?.canAccessMaintenance || false,
     });
 
-    if (!decodedToken.email_verified) {
+    if (!decodedToken.email_verified || !access) {
       return NextResponse.json(
         { error: "Google account email must be verified." },
         { status: 403 }

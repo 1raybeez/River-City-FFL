@@ -266,7 +266,10 @@ async function main() {
   assert.match(auth, /session\.access\.role !== "commissioner"/);
   const layout = read("app/commish/finance/layout.tsx");
   assert.match(layout, /requireOperationalFinanceCommissioner/);
-  assert.match(layout, /redirect\("\/commish\/auction\/login"\)/);
+  assert.match(
+    layout,
+    /redirect\("\/commish\/auction\/login\?returnTo=%2Fcommish%2Ffinance%2F2026"\)/
+  );
 
   const client = read(
     "app/commish/finance/2026/OperationalFinanceDashboardClient.tsx"

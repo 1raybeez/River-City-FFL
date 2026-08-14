@@ -106,7 +106,7 @@ function AuctionLoginContent() {
 
           <div className="mb-6 rounded-2xl border border-orange-600/20 bg-orange-600/10 px-4 py-3 text-orange-700 dark:text-orange-300">
             <p className="text-[10px] font-black uppercase tracking-widest">
-              Google sign-in is limited to Ray and Jeffrey.
+              Sign in with your approved River City league account to access your War Room.
             </p>
           </div>
 
