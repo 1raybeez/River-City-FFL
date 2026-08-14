@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useTheme } from "next-themes";
-import { ArrowLeft, Send, Sun, Moon, Monitor, Gavel } from 'lucide-react';
+import { ArrowLeft, Send, Gavel } from 'lucide-react';
+import SiteShell from '@/components/SiteShell';
 
 const managers = [
   { name: "Aaron Dogg", id: "583513420586848256", img: "Aaron.png" },
@@ -25,12 +25,8 @@ const managers = [
 
 export default function NewProposalPage() {
   const router = useRouter();
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ managerId: '', section: '', title: '', description: '' });
-
-  useEffect(() => { setMounted(true); }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,48 +51,45 @@ export default function NewProposalPage() {
     }
   };
 
-  if (!mounted) return null;
-
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white transition-colors duration-300 font-sans pb-20 selection:bg-orange-600">
-      <nav className="border-b border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-[#0a0a0a]/80 backdrop-blur-md z-50">
-        <div className="flex items-center gap-4">
-          <Link href="/commish/proposals" className="inline-flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-[10px] font-black uppercase italic tracking-tight transition-all hover:text-orange-500 border border-white/10">
-            <ArrowLeft size={16} />
-            Back to Legislative Hub
-          </Link>
-          <div className="flex bg-white/5 p-1 rounded-lg border border-white/10">
-            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-all ${theme === 'light' ? 'bg-white text-black shadow-sm' : 'opacity-40'}`}><Sun size={14} /></button>
-            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-all ${theme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Moon size={14} /></button>
-            <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-all ${theme === 'system' ? 'bg-white/10 text-white shadow-sm' : 'opacity-40'}`}><Monitor size={14} /></button>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 font-black uppercase italic text-xs tracking-tighter">
-           <Gavel className="text-orange-600" size={18} /> New Legislation
-        </div>
-      </nav>
+    <SiteShell activePath="/commish" authenticated>
+      <main className="min-h-screen bg-[#f7f8fa] px-4 py-8 text-slate-950 dark:bg-[#0a0a0a] dark:text-white sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-3xl space-y-6">
+          <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <Link href="/commish/proposals" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-black uppercase tracking-widest text-slate-600 transition hover:border-orange-600 hover:text-orange-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600">
+              <ArrowLeft size={14} aria-hidden="true" /> Back to Legislative Hub
+            </Link>
+            <div className="mt-6 flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-600/10 text-orange-600"><Gavel size={24} aria-hidden="true" /></div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-600">Commissioner Hub</p>
+                <h1 className="mt-2 text-4xl font-black uppercase italic leading-none tracking-tight sm:text-5xl">New Proposal</h1>
+                <p className="mt-4 max-w-2xl text-sm font-medium leading-7 text-slate-600">Create a legislative proposal for the active River City session.</p>
+              </div>
+            </div>
+          </header>
 
-      <main className="max-w-2xl mx-auto px-6 py-12">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="bg-white/5 p-8 rounded-[2.5rem] border border-white/10 shadow-2xl space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
             <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 ml-2 italic">Identify Proposer</label>
-                <select required className="w-full p-5 rounded-2xl bg-black/40 border border-white/5 font-black uppercase italic text-xs outline-none focus:ring-2 focus:ring-orange-600 transition-all appearance-none cursor-pointer" onChange={(e) => setFormData({...formData, managerId: e.target.value})}>
+                <label htmlFor="proposal-proposer" className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-600">Identify Proposer</label>
+                <select id="proposal-proposer" required aria-label="Verify proposer identity" className="min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-black uppercase outline-none transition focus:border-orange-600 focus:ring-2 focus:ring-orange-600/20" onChange={(e) => setFormData({...formData, managerId: e.target.value})}>
                     <option value="">-- Verify Identity --</option>
                     {managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                 </select>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <input required placeholder="Section Ref" className="w-full p-5 rounded-2xl bg-black/40 border border-white/5 font-black uppercase italic text-xs outline-none focus:ring-2 focus:ring-orange-600 transition-all" onChange={(e) => setFormData({...formData, section: e.target.value})} />
-                <input required placeholder="Short Title" className="w-full p-5 rounded-2xl bg-black/40 border border-white/5 font-black uppercase italic text-xs outline-none focus:ring-2 focus:ring-orange-600 transition-all" onChange={(e) => setFormData({...formData, title: e.target.value})} />
+            <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div><label htmlFor="proposal-section" className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-600">Section reference</label><input id="proposal-section" required placeholder="Section Ref" className="min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-black outline-none transition focus:border-orange-600 focus:ring-2 focus:ring-orange-600/20" onChange={(e) => setFormData({...formData, section: e.target.value})} /></div>
+                <div><label htmlFor="proposal-title" className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-600">Short title</label><input id="proposal-title" required placeholder="Short Title" className="min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-black outline-none transition focus:border-orange-600 focus:ring-2 focus:ring-orange-600/20" onChange={(e) => setFormData({...formData, title: e.target.value})} /></div>
             </div>
-            <textarea required rows={6} placeholder="Detailed rule change..." className="w-full p-6 rounded-[2rem] bg-black/40 border border-white/5 font-medium text-sm outline-none focus:ring-2 focus:ring-orange-600 transition-all leading-relaxed italic" onChange={(e) => setFormData({...formData, description: e.target.value})} />
+            <div className="mt-6"><label htmlFor="proposal-description" className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-600">Detailed rule change</label><textarea id="proposal-description" required rows={8} placeholder="Detailed rule change..." className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm leading-7 outline-none transition focus:border-orange-600 focus:ring-2 focus:ring-orange-600/20" onChange={(e) => setFormData({...formData, description: e.target.value})} /></div>
           </div>
-          <button type="submit" disabled={loading} className="w-full bg-orange-600 text-white py-6 rounded-[2rem] font-black uppercase italic tracking-[0.2em] flex items-center justify-center gap-4 shadow-xl shadow-orange-900/20 hover:scale-[1.02] transition-all disabled:opacity-50">
+          <button type="submit" disabled={loading} className="inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-lg bg-orange-600 px-5 py-3 font-black uppercase italic tracking-[0.15em] text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 disabled:cursor-not-allowed disabled:opacity-50">
             {loading ? "Transmitting..." : <><Send size={20} /> Submit to Chamber</>}
           </button>
         </form>
+        </div>
       </main>
-    </div>
+    </SiteShell>
   );
 }
