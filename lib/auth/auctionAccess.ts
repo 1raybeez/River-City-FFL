@@ -1,6 +1,5 @@
 import "server-only";
 
-import { createHash } from "node:crypto";
 import { cookies } from "next/headers";
 import type { DecodedIdToken } from "firebase-admin/auth";
 import { adminAuth } from "@/lib/firebaseAdmin";
@@ -19,51 +18,6 @@ export { getAuctionPilotAllowedEmails };
 const DEFAULT_SESSION_COOKIE_NAME = "__session";
 const DEFAULT_SESSION_MAX_AGE_DAYS = 7;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-type AuctionAuthDiagnosticRoute = "commish" | "proposal-api";
-
-function diagnosticIdentity(email: string | null | undefined) {
-  return email
-    ? createHash("sha256").update(email).digest("hex").slice(0, 12)
-    : null;
-}
-
-function logAuctionAuthDiagnostic({
-  route,
-  cookiePresent,
-  sessionVerified,
-  identityHash,
-  access,
-  finalAuthorized,
-  status,
-}: {
-  route: AuctionAuthDiagnosticRoute;
-  cookiePresent: boolean;
-  sessionVerified: boolean;
-  identityHash: string | null;
-  access: AuctionAccessResult | null;
-  finalAuthorized: boolean;
-  status: number;
-}) {
-  console.info("[temporary-auction-auth-diagnostic]", {
-    revision:
-      process.env.VERCEL_GIT_COMMIT_SHA ??
-      process.env.GIT_COMMIT_SHA ??
-      "unknown",
-    route,
-    cookiePresent,
-    sessionVerified,
-    identityHash,
-    canonicalMappingFound: Boolean(access?.canonicalOwnerId),
-    explicitCommissionerAuthorization: access?.role === "commissioner",
-    role: access?.role ?? null,
-    canAccessWarRoom: access?.canAccessWarRoom ?? false,
-    canAccessMaintenance: access?.canAccessMaintenance ?? false,
-    canRecordSales: access?.canRecordSales ?? false,
-    finalAuthorized,
-    status,
-  });
-}
 
 export type AuctionAccessSession = {
   email: string;
@@ -244,9 +198,7 @@ export function getAuctionSessionMaxAgeMs() {
   return Math.floor(maxAgeDays * MS_PER_DAY);
 }
 
-export async function verifyAuctionSession(
-  diagnosticRoute?: AuctionAuthDiagnosticRoute
-): Promise<AuctionAccessSession | null> {
+export async function verifyAuctionSession(): Promise<AuctionAccessSession | null> {
   const cookieStore = await cookies();
   const cookieName = getAuctionSessionCookieName();
   const sessionCookie = cookieStore.get(cookieName)?.value;
@@ -261,20 +213,7 @@ export async function verifyAuctionSession(
     pilotEmails,
   });
 
-  if (!sessionCookie) {
-    if (diagnosticRoute) {
-      logAuctionAuthDiagnostic({
-        route: diagnosticRoute,
-        cookiePresent: false,
-        sessionVerified: false,
-        identityHash: null,
-        access: null,
-        finalAuthorized: false,
-        status: 401,
-      });
-    }
-    return null;
-  }
+  if (!sessionCookie) return null;
 
   try {
     const decodedToken = await adminAuth.verifySessionCookie(
@@ -297,32 +236,7 @@ export async function verifyAuctionSession(
       canAccessMaintenance: access.canAccessMaintenance,
     });
 
-    if (!access.canAccessWarRoom && !access.canAccessMaintenance) {
-      if (diagnosticRoute) {
-        logAuctionAuthDiagnostic({
-          route: diagnosticRoute,
-          cookiePresent: true,
-          sessionVerified: true,
-          identityHash: diagnosticIdentity(email),
-          access,
-          finalAuthorized: false,
-          status: 401,
-        });
-      }
-      return null;
-    }
-
-    if (diagnosticRoute) {
-      logAuctionAuthDiagnostic({
-        route: diagnosticRoute,
-        cookiePresent: true,
-        sessionVerified: true,
-        identityHash: diagnosticIdentity(email),
-        access,
-        finalAuthorized: true,
-        status: 200,
-      });
-    }
+    if (!access.canAccessWarRoom && !access.canAccessMaintenance) return null;
 
     return {
       email,
@@ -330,17 +244,6 @@ export async function verifyAuctionSession(
       access,
     };
   } catch (error) {
-    if (diagnosticRoute) {
-      logAuctionAuthDiagnostic({
-        route: diagnosticRoute,
-        cookiePresent: true,
-        sessionVerified: false,
-        identityHash: null,
-        access: null,
-        finalAuthorized: false,
-        status: 401,
-      });
-    }
     console.info("[auction-auth] Session cookie verification failed", {
       cookieName,
       error:
@@ -354,10 +257,9 @@ export async function verifyAuctionSession(
 }
 
 export async function requireAuctionAccess(
-  requirement: "maintenance" | "war-room" | "sales" = "maintenance",
-  diagnosticRoute?: AuctionAuthDiagnosticRoute
+  requirement: "maintenance" | "war-room" | "sales" = "maintenance"
 ) {
-  const session = await verifyAuctionSession(diagnosticRoute);
+  const session = await verifyAuctionSession();
 
   const hasRequiredAccess =
     requirement === "war-room"
@@ -365,18 +267,6 @@ export async function requireAuctionAccess(
       : requirement === "sales"
         ? session?.access.canRecordSales
         : session?.access.canAccessMaintenance;
-
-  if (diagnosticRoute && session && !hasRequiredAccess) {
-    logAuctionAuthDiagnostic({
-      route: diagnosticRoute,
-      cookiePresent: true,
-      sessionVerified: true,
-      identityHash: diagnosticIdentity(session.email),
-      access: session.access,
-      finalAuthorized: false,
-      status: 401,
-    });
-  }
 
   if (!session || !hasRequiredAccess) {
     throw new AuctionAccessError();

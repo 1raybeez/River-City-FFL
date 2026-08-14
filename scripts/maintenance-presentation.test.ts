@@ -42,9 +42,8 @@ assert.match(page, /Confirmation required before running/);
 assert.match(layout, /requireAuctionAccess\(\)/);
 assert.match(layout, /returnTo=%2Fcommish%2Fmaintenance/);
 assert.match(auth, /canAccessMaintenance: false/);
-assert.match(commish, /requireAuctionAccess\("maintenance", "commish"\)/);
-assert.match(proposalApi, /requireAuctionAccess\("maintenance", "proposal-api"\)/);
-assert.match(auth, /temporary-auction-auth-diagnostic/);
+assert.match(commish, /requireAuctionAccess\("maintenance"\)/);
+assert.match(proposalApi, /requireAuctionAccess\("maintenance"\)/);
 assert.match(proposalApi, /getCommissionerActor/);
 
 console.log("Maintenance presentation checks passed.");

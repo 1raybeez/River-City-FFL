@@ -18,7 +18,7 @@ assert.match(page, /managerId/);
 assert.match(page, /Verify Identity/);
 assert.match(page, /\/api\/commish\/proposals/);
 assert.match(page, /JSON\.stringify\(formData\)/);
-assert.match(api, /requireAuctionAccess\("maintenance", "proposal-api"\)/);
+assert.match(api, /requireAuctionAccess\("maintenance"\)/);
 assert.match(api, /createLegislativeProposal/);
 assert.match(layout, /requireAuctionAccess/);
 assert.match(ownerForm, /\/api\/league-info\/legislative/);
