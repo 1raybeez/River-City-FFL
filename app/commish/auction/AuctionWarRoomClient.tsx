@@ -38,6 +38,7 @@ import {
   X,
 } from 'lucide-react';
 import { ModeToggle } from '@/components/ModeToggle';
+import { SignOutControl } from '@/components/SiteShell';
 import { PlayerDetailDrawer } from './PlayerDetailDrawer';
 import { activeManagers } from '@/lib/managers/activeManagers';
 import {
@@ -8431,6 +8432,7 @@ export default function AuctionWarRoomClient({
               </button>
             )}
             <ModeToggle />
+            <SignOutControl className="border-black/10 text-gray-600 hover:bg-orange-600/10 hover:text-orange-600 dark:border-white/10 dark:text-gray-300" />
           </div>
         </div>
       </header>

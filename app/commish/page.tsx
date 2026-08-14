@@ -52,7 +52,7 @@ export default async function CommishPage() {
   }
 
   return (
-      <SiteShell activePath="/commish">
+      <SiteShell activePath="/commish" authenticated>
         <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
           <section className="mb-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 dark:border-white/10 dark:bg-[#121212]">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
