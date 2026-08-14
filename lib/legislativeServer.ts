@@ -2,8 +2,16 @@ import "server-only";
 
 import { FieldValue } from "firebase-admin/firestore";
 import { firestore } from "@/lib/firebaseAdmin";
+import { activeManagers } from "@/lib/managers/activeManagers";
+import { ownerProfilesById } from "@/lib/managers/identityData";
 
 export const CURRENT_LEGISLATIVE_SESSION_YEAR = 2027;
+export const LEGISLATIVE_MEETING_DATE = new Date(
+  `${CURRENT_LEGISLATIVE_SESSION_YEAR}-03-20T20:30:00`
+);
+export const LEGISLATIVE_VOTING_DEADLINE = new Date(
+  LEGISLATIVE_MEETING_DATE.getTime() + 7 * 24 * 60 * 60 * 1000
+);
 
 const legislativeManagers: Record<
   string,
@@ -71,6 +79,69 @@ function readVotes(value: unknown) {
   };
 }
 
+export function getLegislativeManagerIdForCanonicalOwner(
+  canonicalOwnerId: string
+) {
+  const owner = ownerProfilesById[canonicalOwnerId];
+  if (!owner) return null;
+  return (
+    activeManagers.find((manager) => manager.fullName === owner.fullName)?.sleeperId ??
+    null
+  );
+}
+
+function isOwnerVotingOpen(now: Date, isOverrideOpen: boolean) {
+  return (
+    (now >= LEGISLATIVE_MEETING_DATE && now <= LEGISLATIVE_VOTING_DEADLINE) ||
+    isOverrideOpen
+  );
+}
+
+export async function readOwnerLegislativeState(canonicalOwnerId: string | null) {
+  const state = await readLegislativeState();
+  const now = new Date();
+  const isVotingOpen = isOwnerVotingOpen(now, state.isOverrideOpen);
+  const viewerManagerId = canonicalOwnerId
+    ? getLegislativeManagerIdForCanonicalOwner(canonicalOwnerId)
+    : null;
+  const proposals = (state.proposals as Array<Record<string, unknown>>)
+    .filter((proposal) => proposal.sessionYear === CURRENT_LEGISLATIVE_SESSION_YEAR)
+    .map((proposal) => {
+      const votes = readVotes(proposal.votes);
+      const viewerVote = viewerManagerId
+        ? votes.yes.includes(viewerManagerId)
+          ? "yes"
+          : votes.no.includes(viewerManagerId)
+            ? "no"
+            : null
+        : null;
+      return {
+        id: proposal.id,
+        managerId: proposal.managerId,
+        submittedBy: proposal.submittedBy,
+        managerImage: proposal.managerImage,
+        sessionYear: proposal.sessionYear,
+        section: proposal.section,
+        title: proposal.title,
+        description: proposal.description,
+        status: proposal.status,
+        voteTotals: { yes: votes.yes.length, no: votes.no.length },
+        viewerVote,
+      };
+    });
+
+  return {
+    sessionYear: CURRENT_LEGISLATIVE_SESSION_YEAR,
+    meetingDate: LEGISLATIVE_MEETING_DATE.toISOString(),
+    votingDeadline: LEGISLATIVE_VOTING_DEADLINE.toISOString(),
+    isVotingOpen,
+    isVotingFinished: now > LEGISLATIVE_VOTING_DEADLINE && !state.isOverrideOpen,
+    isPreMeeting: now < LEGISLATIVE_MEETING_DATE && !state.isOverrideOpen,
+    authenticatedOwner: Boolean(canonicalOwnerId),
+    proposals,
+  };
+}
+
 export async function readLegislativeState() {
   const [proposalSnapshot, votingSnapshot] = await Promise.all([
     firestore.collection("proposals").get(),
@@ -120,6 +191,16 @@ export async function createLegislativeProposal(
   return proposalRef.id;
 }
 
+export async function createOwnerLegislativeProposal(
+  input: Record<string, unknown>,
+  canonicalOwnerId: string,
+  actorEmail: string
+) {
+  const managerId = getLegislativeManagerIdForCanonicalOwner(canonicalOwnerId);
+  if (!managerId) throw new Error("A valid authenticated owner is required.");
+  return createLegislativeProposal({ ...input, managerId }, actorEmail);
+}
+
 export async function setLegislativeVotingOverride(isOverrideOpen: boolean) {
   await firestore.doc("league_settings/voting_state").set(
     {
@@ -159,6 +240,47 @@ export async function recordLegislativeVote(
       (item) => !selectedIds.includes(item)
     );
 
+    transaction.update(proposalRef, {
+      [`votes.${voteType}`]: nextSelected,
+      [`votes.${oppositeType}`]: nextOpposite,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+}
+
+export async function recordOwnerLegislativeVote(
+  proposalIdValue: unknown,
+  voteTypeValue: unknown,
+  canonicalOwnerId: string
+) {
+  const proposalId = readText(proposalIdValue, 128);
+  const managerId = getLegislativeManagerIdForCanonicalOwner(canonicalOwnerId);
+  const voteType = voteTypeValue === "yes" || voteTypeValue === "no" ? voteTypeValue : null;
+  if (!proposalId || !managerId || !voteType) {
+    throw new Error("A valid proposal and vote are required.");
+  }
+
+  const votingSnapshot = await firestore.doc("league_settings/voting_state").get();
+  const isOverrideOpen = votingSnapshot.exists && votingSnapshot.get("isOverrideOpen") === true;
+  if (!isOwnerVotingOpen(new Date(), isOverrideOpen)) {
+    throw new Error("Voting is not open.");
+  }
+
+  const proposalRef = firestore.collection("proposals").doc(proposalId);
+  await firestore.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(proposalRef);
+    if (!snapshot.exists) throw new Error("Proposal was not found.");
+    const data = snapshot.data() ?? {};
+    if (
+      data.sessionYear !== CURRENT_LEGISLATIVE_SESSION_YEAR ||
+      String(data.status ?? "").toLowerCase() !== "active"
+    ) {
+      throw new Error("This proposal is no longer eligible for owner voting.");
+    }
+    const votes = readVotes(data.votes);
+    const oppositeType = voteType === "yes" ? "no" : "yes";
+    const nextSelected = Array.from(new Set([...votes[voteType], managerId]));
+    const nextOpposite = votes[oppositeType].filter((item) => item !== managerId);
     transaction.update(proposalRef, {
       [`votes.${voteType}`]: nextSelected,
       [`votes.${oppositeType}`]: nextOpposite,

@@ -7,7 +7,7 @@ const layout = readFileSync("app/commish/proposals/layout.tsx", "utf8");
 const constitution = readFileSync("app/league-info/constitution/page.tsx", "utf8");
 
 assert.match(page, /import SiteShell from ['"]@\/components\/SiteShell['"]/);
-assert.match(page, /<SiteShell activePath="\/commish">/);
+assert.match(page, /<SiteShell activePath=['"]\/commish['"]/);
 assert.doesNotMatch(page, /<nav/);
 assert.match(page, /Commissioner Hub/);
 assert.match(page, /Legislative Hub/);

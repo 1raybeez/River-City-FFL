@@ -5,6 +5,7 @@ import {
   ArrowRightLeft,
   DollarSign,
   FileText,
+  Gavel,
   Grid3X3,
   Scale,
   Swords,
@@ -21,6 +22,8 @@ const cards = [
   { title: 'Rivalries', description: 'Calculated and recognized rivalry history.', href: '/league-info/rivalries', icon: Swords, accent: 'text-red-700', tint: 'bg-red-50' },
   { title: 'Trophy Room', description: 'Champions, podium finishes, and league honors.', href: '/league-info/trophy-room', icon: Trophy, accent: 'text-amber-700', tint: 'bg-amber-50' },
   { title: 'Trade Analyzer', description: 'The existing trade-evaluation tool.', href: '/league-info/analyzer', icon: ArrowRightLeft, accent: 'text-orange-700', tint: 'bg-orange-50' },
+  { title: 'Legislative Hub', description: 'Submit proposals, follow league meeting business, vote when eligible, and review session history.', href: '/league-info/legislative', icon: Gavel, accent: 'text-orange-700', tint: 'bg-orange-50' },
+  { title: 'Matchups', description: 'Weekly head-to-heads, starters, projected scores, Series History, and playoffs.', href: '/matchups', icon: Swords, accent: 'text-blue-700', tint: 'bg-blue-50' },
 ] as const;
 
 export default function LeagueInfoPage() {
