@@ -12,7 +12,7 @@ export default async function CommissionerFinanceLayout({
     await requireOperationalFinanceCommissioner();
   } catch (error) {
     if (error instanceof AuctionAccessError) {
-      redirect("/commish/auction/login?returnTo=%2Fcommish%2Ffinance%2F2026");
+      redirect("/commish/login?returnTo=%2Fcommish%2Ffinance%2F2026");
     }
     throw error;
   }

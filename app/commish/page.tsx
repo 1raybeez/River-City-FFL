@@ -47,7 +47,7 @@ export default async function CommishPage() {
     await requireAuctionAccess();
   } catch (error) {
     if (error instanceof AuctionAccessError) {
-      redirect('/commish/auction/login?returnTo=%2Fcommish');
+      redirect('/commish/login?returnTo=%2Fcommish');
     }
 
     throw error;

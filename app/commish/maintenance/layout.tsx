@@ -14,7 +14,7 @@ export default async function CommishMaintenanceLayout({
     await requireAuctionAccess();
   } catch (error) {
     if (error instanceof AuctionAccessError) {
-      redirect("/commish/auction/login?returnTo=%2Fcommish%2Fmaintenance");
+      redirect("/commish/login?returnTo=%2Fcommish%2Fmaintenance");
     }
 
     throw error;

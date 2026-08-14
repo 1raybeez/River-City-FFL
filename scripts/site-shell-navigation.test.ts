@@ -14,7 +14,7 @@ for (const href of ["/", "/matchups", "/managers", "/league-info/rivalries", "/h
   assert.match(shell, new RegExp(href.replaceAll("/", "\\/")));
 }
 assert.match(history, /href="\/"/);
-assert.match(commish, /redirect\('\/commish\/auction\/login\?returnTo=%2Fcommish'\)/);
+assert.match(commish, /redirect\('\/commish\/login\?returnTo=%2Fcommish'\)/);
 assert.match(login, /useSearchParams/);
 assert.match(login, /const returnTo = requestedReturnTo\?\.startsWith\('\/commish'\)/);
 assert.match(login, /router\.replace\(returnTo\)/);
