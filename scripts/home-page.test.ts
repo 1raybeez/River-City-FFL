@@ -40,4 +40,15 @@ assert.match(page, /Reigning Champion/);
 assert.match(page, /Latest Commissioner Briefing/);
 assert.doesNotMatch(page, /Quick Links/);
 
+assert.match(page, /aria-label="Home dashboard"/);
+assert.match(page, /lg:grid-cols-12/);
+assert.match(page, /md:col-span-1 lg:col-span-4/);
+assert.match(page, /md:grid-cols-2/);
+assert.match(page, /className="contents" aria-label="Primary season status"/);
+assert.match(page, /className="contents" aria-label="League activity and finance"/);
+assert.match(page, /className="contents" aria-label="League history and recent recap"/);
+assert.doesNotMatch(page, /lg:grid-cols-4|lg:grid-cols-3|lg:grid-cols-\[minmax\(0,2fr\)/);
+assert.doesNotMatch(page, /(?:min-|max-)?h-\[\d+px\]/);
+assert.doesNotMatch(page, /overflow-x-(?:auto|scroll)/);
+
 console.log("Home-page fixture checks passed.");
