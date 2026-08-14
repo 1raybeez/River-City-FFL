@@ -32,6 +32,9 @@ assert.doesNotMatch(page, /Aug 22|Keepers lock by|authorized-only|available to a
 assert.match(page, /Keepers remain editable until the draft begins/);
 assert.match(page, /Join Google Meet/);
 assert.match(page, /href="https:\/\/meet\.google\.com\/hqg-cafx-mcs"/);
+assert.match(page, /OPEN YOUR WAR ROOM|Open Your War Room/);
+assert.match(page, /href="\/commish\/auction"/);
+assert.doesNotMatch(page, /warRoomId|canonicalOwnerId|authorized_owner_emails/);
 assert.match(page, /fetch\("\/api\/rsvps"/);
 assert.match(page, /Reigning Champion/);
 assert.match(page, /Latest Commissioner Briefing/);
