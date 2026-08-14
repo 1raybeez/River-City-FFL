@@ -19,6 +19,7 @@ assert.match(commissionerLogin, /router\.replace\(returnTo\)/);
 assert.match(commissionerLogin, /returnTo = requestedReturnTo\?\.startsWith\('\/commish'\)/);
 assert.match(warRoomLogin, /River City Auction War Room/);
 assert.match(warRoomLogin, /Back to Home/);
+assert.match(warRoomLogin, /href="\/"[\s\S]*Back to Home/);
 assert.match(warRoomLogin, /router\.replace\(returnTo\)/);
 assert.match(auctionPage, /returnTo=%2Fcommish%2Fauction/);
 assert.match(access, /canAccessMaintenance: false/);
