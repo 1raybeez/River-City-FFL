@@ -15,6 +15,7 @@ import {
   Loader2,
   Search,
 } from 'lucide-react';
+import SiteShell from '@/components/SiteShell';
 
 const COMMISH_ID = '342828350391230464';
 const START_YEAR = 2018;
@@ -553,56 +554,31 @@ export default function DraftBoardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-12 font-sans text-black selection:bg-orange-500 transition-colors duration-300 dark:bg-[#0a0a0a] dark:text-white">
-      <nav className="sticky top-0 z-50 flex items-center justify-between border-b border-black/5 bg-white/80 px-6 py-4 backdrop-blur-md dark:border-white/10 dark:bg-[#0a0a0a]/80">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/league-info"
-            className="inline-flex items-center gap-2 rounded-lg border border-black/10 bg-black/5 px-3 py-2 text-[10px] font-black uppercase italic tracking-tight transition-all hover:text-orange-600 dark:border-white/10 dark:bg-white/5"
-            title="Back to League Info Hub"
-          >
-            <ArrowLeft size={16} />
-            Back to League Info Hub
+    <SiteShell activePath="/league-info">
+      <main className="w-full overflow-x-hidden pb-12">
+      <section className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="draft-title">
+          <Link href="/league-info" className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 transition hover:text-orange-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2">
+            <ArrowLeft size={14} aria-hidden="true" /> Back to League Info
           </Link>
+          <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-orange-600">League Info</p>
+          <h1 id="draft-title" className="mt-2 font-sans text-4xl font-black italic uppercase tracking-tight text-slate-950 sm:text-5xl">River City Draft Board</h1>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">Draft history and pick archives powered by the league&apos;s Sleeper draft data.</p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Grid3X3
-            className="hidden text-orange-600 sm:block"
-            size={20}
-          />
-
-          <span className="text-xs font-black uppercase italic tracking-tighter">
-            Draft Board
-          </span>
-        </div>
-      </nav>
-
-      <header className="px-6 pb-0 pt-12 text-center">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-black/5 bg-black/5 text-orange-600 shadow-lg dark:border-white/10 dark:bg-white/5">
-          <Grid3X3 size={28} />
-        </div>
-
-        <h1 className="text-4xl font-black uppercase italic leading-none tracking-tighter md:text-6xl">
-          Draft{' '}
-          <span className="text-orange-600">
-            Board
-          </span>
-        </h1>
-
-        <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.3em] opacity-40">
-          Draft History &amp; Pick Archives
-        </p>
-
-        <div className="relative mt-8 inline-block rounded-full border border-black/5 bg-black/5 px-6 py-2 dark:border-white/10 dark:bg-white/5">
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <label htmlFor="draft-season" className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Draft season</label>
+          <div className="relative w-full sm:w-auto">
           <select
+            id="draft-season"
             value={selectedYear}
             onChange={(event) =>
               setSelectedYear(
                 Number(event.target.value)
               )
             }
-            className="cursor-pointer appearance-none bg-transparent pr-6 text-xs font-black uppercase italic focus:outline-none"
+            aria-label="Draft season"
+            className="h-11 w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white px-4 pr-10 text-xs font-black uppercase italic text-slate-800 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-600/20 sm:w-auto"
           >
             {draftYears.map((year) => (
               <option
@@ -615,11 +591,12 @@ export default function DraftBoardPage() {
             ))}
           </select>
 
-          <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-3 w-3 -translate-y-1/2 opacity-40" />
+          <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-500" aria-hidden="true" />
         </div>
-      </header>
+        </div>
+      </section>
 
-      <div className="mx-auto max-w-xl px-6 pt-6">
+      <div className="mx-auto max-w-2xl px-4 pt-5 sm:px-6 lg:px-8">
         <label className="relative block">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-orange-600" />
           <input
@@ -632,12 +609,12 @@ export default function DraftBoardPage() {
             }
             placeholder="Search player or owner..."
             aria-label="Search player or owner"
-            className="h-11 w-full rounded-2xl border border-black/10 bg-black/5 pl-11 pr-4 text-sm font-bold outline-none transition focus:border-orange-600 dark:border-white/10 dark:bg-white/5"
+            className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm font-bold text-slate-900 shadow-sm outline-none transition focus:border-orange-600 focus:ring-2 focus:ring-orange-600/20"
           />
         </label>
       </div>
 
-      <main className="custom-scrollbar w-full overflow-x-auto overflow-y-clip">
+      <section className="w-full px-4 pt-6 sm:px-6 lg:px-8" aria-label="Draft board">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-32 opacity-50">
             <Loader2 className="mb-4 h-10 w-10 animate-spin text-orange-600" />
@@ -669,6 +646,7 @@ export default function DraftBoardPage() {
             </div>
           </div>
         ) : (
+          <div className="custom-scrollbar max-w-full overflow-x-auto overflow-y-clip rounded-2xl border border-slate-200 bg-white shadow-sm" role="region" aria-label="Scrollable draft board">
           <div className="inline-block min-w-full p-6">
             <div
               ref={ownerHeaderSentinelRef}
@@ -936,7 +914,9 @@ export default function DraftBoardPage() {
               )}
             </div>
           </div>
+          </div>
         )}
+      </section>
       </main>
 
       <style jsx global>{`
@@ -953,6 +933,6 @@ export default function DraftBoardPage() {
           background: transparent;
         }
       `}</style>
-    </div>
+    </SiteShell>
   );
 }
