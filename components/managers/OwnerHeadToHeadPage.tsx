@@ -17,6 +17,7 @@ import type {
   OwnerHeadToHeadOwnerPresentation,
   OwnerHeadToHeadPresentation,
 } from "@/lib/managers/ownerHeadToHeadLoader";
+import SiteShell from "@/components/SiteShell";
 
 function OwnerIdentity({
   owner,
@@ -63,7 +64,7 @@ function MetricGrid({
       {metrics.map((metric) => (
         <div
           key={metric.label}
-          className="min-w-0 rounded-lg border border-black/10 bg-black/[0.02] p-3 dark:border-white/10 dark:bg-white/[0.04]"
+          className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-white/[0.04]"
         >
           <p
             className="break-words text-lg font-black tabular-nums sm:text-xl"
@@ -71,7 +72,7 @@ function MetricGrid({
           >
             {metric.value}
           </p>
-          <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-black/40 dark:text-white/40">
+          <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-white/40">
             {metric.label}
           </p>
         </div>
@@ -92,15 +93,15 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="min-w-0 overflow-hidden rounded-lg border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#121212] sm:p-6">
+    <section className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#121212] sm:p-6">
       <div className="mb-5 flex items-start gap-3">
-        <div className="mt-0.5 text-red-600">{icon}</div>
+        <div className="mt-0.5 text-orange-600">{icon}</div>
         <div>
           <h2 className="text-sm font-black uppercase italic tracking-wide">
             {title}
           </h2>
           {description && (
-            <p className="mt-1 text-xs font-medium leading-5 text-black/50 dark:text-white/50">
+            <p className="mt-1 text-xs font-medium leading-5 text-slate-600 dark:text-white/50">
               {description}
             </p>
           )}
@@ -132,7 +133,7 @@ function MeetingCard({
 }) {
   return (
     <article
-      className={`rounded-lg border border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.04] ${
+      className={`rounded-xl border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.04] ${
         compact ? "p-4" : "p-4 sm:p-5"
       }`}
     >
@@ -246,13 +247,14 @@ export default function OwnerHeadToHeadPage({
   );
 
   return (
-    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-white px-4 py-6 text-black dark:bg-[#0a0a0a] dark:text-white sm:px-6 lg:px-8">
+    <SiteShell activePath="/managers">
+      <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-[#f7f8fa] px-4 py-8 text-slate-950 dark:bg-[#0a0a0a] dark:text-white sm:px-6 lg:px-8">
       <div className="mx-auto min-w-0 max-w-7xl space-y-6">
-        <section className="min-w-0 max-w-full overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/10 dark:bg-[#121212]">
-          <div className="border-t-[6px] border-red-600 p-5 sm:p-8">
+        <section className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#121212]">
+          <div className="border-t-[5px] border-orange-600 p-5 sm:p-8">
             <Link
               href={presentation.backHref}
-              className="inline-flex max-w-full items-center gap-2 whitespace-normal rounded-md border border-black/10 bg-black/[0.03] px-3 py-2 text-left text-[10px] font-black uppercase tracking-widest text-black/55 transition hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/55 dark:hover:text-white"
+              className="inline-flex min-h-10 max-w-full items-center gap-2 whitespace-normal rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-left text-[10px] font-black uppercase tracking-widest text-slate-600 transition hover:border-orange-600 hover:text-orange-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/55 dark:hover:text-white"
             >
               <ArrowLeft size={13} />
               {presentation.backLabel}
@@ -260,14 +262,14 @@ export default function OwnerHeadToHeadPage({
 
             <div className="mt-8 flex flex-col items-center gap-6 sm:flex-row sm:items-start sm:justify-center sm:gap-8 lg:gap-14">
               <OwnerIdentity owner={presentation.owner} priority />
-              <div className="flex shrink-0 items-center self-center rounded-full border border-red-600/20 bg-red-600/10 px-5 py-3 text-xl font-black italic text-red-700 dark:text-red-300">
+              <div className="flex shrink-0 items-center self-center rounded-full border border-orange-600/20 bg-orange-600/10 px-5 py-3 text-xl font-black italic text-orange-700 dark:text-orange-300">
                 VS
               </div>
               <OwnerIdentity owner={presentation.opponent} priority />
             </div>
             <div className="mt-8 text-center">
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-black/40 dark:text-white/40">
-                Directional Head-to-Head
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-600">
+                Head-to-Head
               </p>
               <h1 className="mx-auto mt-2 max-w-full break-words px-1 text-xl font-black uppercase italic [overflow-wrap:anywhere] sm:text-4xl">
                 {presentation.perspectiveLabel}
@@ -277,11 +279,11 @@ export default function OwnerHeadToHeadPage({
         </section>
 
         <section
-          className="min-w-0 overflow-hidden rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04] sm:p-5"
+          className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.04] sm:p-5"
           aria-labelledby="head-to-head-coverage"
         >
           <div className="flex items-start gap-3">
-            <ShieldCheck className="mt-0.5 shrink-0 text-red-600" size={18} />
+            <ShieldCheck className="mt-0.5 shrink-0 text-orange-600" size={18} />
             <div>
               <h2
                 id="head-to-head-coverage"
@@ -289,7 +291,7 @@ export default function OwnerHeadToHeadPage({
               >
                 {presentation.coverage.title}
               </h2>
-              <p className="mt-1 break-words text-sm font-medium leading-6 text-black/55 dark:text-white/55">
+              <p className="mt-1 break-words text-sm font-medium leading-6 text-slate-600 dark:text-white/55">
                 {presentation.coverage.detail}
               </p>
             </div>
@@ -318,7 +320,7 @@ export default function OwnerHeadToHeadPage({
               <div className="grid gap-3 lg:grid-cols-2">
                 {presentation.seriesContext.firstMeeting && (
                   <div>
-                    <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-black/40 dark:text-white/40">
+                    <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-white/40">
                       First Meeting · {presentation.seriesContext.firstSeason}
                     </p>
                     <MeetingCard
@@ -329,7 +331,7 @@ export default function OwnerHeadToHeadPage({
                 )}
                 {presentation.seriesContext.latestMeeting && (
                   <div>
-                    <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-black/40 dark:text-white/40">
+                    <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-white/40">
                       Latest Meeting · {presentation.seriesContext.latestSeason}
                     </p>
                     <MeetingCard
@@ -341,7 +343,7 @@ export default function OwnerHeadToHeadPage({
               </div>
               <div className="mt-4 grid gap-3 text-xs sm:grid-cols-2">
                 <div className="rounded-md border border-black/10 p-3 dark:border-white/10">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-white/35">
                     Owner franchise context
                   </p>
                   <p className="mt-1 font-bold">
@@ -349,7 +351,7 @@ export default function OwnerHeadToHeadPage({
                   </p>
                 </div>
                 <div className="rounded-md border border-black/10 p-3 dark:border-white/10">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-white/35">
                     Opponent franchise context
                   </p>
                   <p className="mt-1 font-bold">
@@ -368,7 +370,7 @@ export default function OwnerHeadToHeadPage({
                 <div className="grid gap-3 xl:grid-cols-3">
                   {presentation.notableMeetings.map((notable) => (
                     <div key={notable.title}>
-                      <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-black/40 dark:text-white/40">
+                      <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-white/40">
                         {notable.title}
                       </p>
                       <MeetingCard meeting={notable.meeting} compact />
@@ -384,14 +386,14 @@ export default function OwnerHeadToHeadPage({
               description="All completed classifications are shown newest-first by default."
             >
               <label className="mb-5 block max-w-sm" htmlFor="meeting-filter">
-                <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-black/40 dark:text-white/40">
+                  <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/40">
                   Filter meetings
                 </span>
                 <select
                   id="meeting-filter"
                   value={selectedFilter}
                   onChange={(event) => setSelectedFilter(event.target.value as typeof selectedFilter)}
-                  className="w-full rounded-md border border-black/10 bg-white px-3 py-2.5 text-sm font-black text-black outline-none transition focus:border-red-600 focus:ring-2 focus:ring-red-600/20 dark:border-white/10 dark:bg-[#0a0a0a] dark:text-white"
+                  className="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-black text-slate-950 outline-none transition focus:border-orange-600 focus:ring-2 focus:ring-orange-600/20 dark:border-white/10 dark:bg-[#0a0a0a] dark:text-white"
                 >
                   {presentation.filters.map((filter) => (
                     <option key={filter.value} value={filter.value}>
@@ -409,17 +411,18 @@ export default function OwnerHeadToHeadPage({
             </Section>
           </>
         ) : (
-          <section className="rounded-lg border border-dashed border-black/10 bg-black/[0.02] px-5 py-12 text-center dark:border-white/10 dark:bg-white/[0.04]">
-            <Swords className="mx-auto text-black/25 dark:text-white/25" size={30} />
+          <section className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
+            <Swords className="mx-auto text-slate-300 dark:text-white/25" size={30} />
             <h2 className="mt-3 text-sm font-black uppercase italic">
               No supported completed meeting detail
             </h2>
-            <p className="mx-auto mt-2 max-w-lg text-sm font-medium leading-6 text-black/50 dark:text-white/50">
+            <p className="mx-auto mt-2 max-w-lg text-sm font-medium leading-6 text-slate-600 dark:text-white/50">
               The coverage statement above describes what the approved source can establish. No record or matchup statistics have been inferred.
             </p>
           </section>
         )}
       </div>
     </main>
+    </SiteShell>
   );
 }
