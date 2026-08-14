@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { 
   Trophy, ArrowLeft
 } from 'lucide-react';
+import SiteShell from '@/components/SiteShell';
 
 /**
  * DATA: Verified Historical Champions (2011-2025)
@@ -75,58 +76,48 @@ export default function TrophyRoomPage() {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-20 selection:bg-orange-500">
-      
-      {/* NAVIGATION BAR - Consistent with Hub Style */}
-      <nav className="border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
-        <div className="flex items-center gap-4">
-          <Link 
-            href="/league-info" 
-            className="inline-flex items-center gap-2 rounded-lg bg-black/5 px-3 py-2 text-[10px] font-black uppercase italic tracking-tight transition-all hover:text-orange-600 dark:bg-white/5 border border-black/10 dark:border-white/10"
-            title="Back to League Info Hub"
-          >
-            <ArrowLeft size={16} />
-            Back to League Info Hub
+    <SiteShell activePath="/league-info">
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="trophy-room-title">
+          <Link href="/league-info" className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 transition hover:text-amber-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2">
+            <ArrowLeft size={14} aria-hidden="true" /> Back to League Info
           </Link>
-        </div>
+          <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-amber-700">League Info</p>
+          <h1 id="trophy-room-title" className="mt-2 font-sans text-4xl font-black italic uppercase tracking-tight text-slate-950 sm:text-5xl">River City Trophy Room</h1>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">Champions, podium finishes, and existing league honors from River City FFL history.</p>
+        </section>
 
-        <div className="flex items-center gap-2">
-          <Trophy className="text-orange-600 hidden sm:block" size={20} />
-          <span className="text-xs font-black uppercase italic tracking-tighter">Trophy Room</span>
-        </div>
-      </nav>
-
-      {/* HEADER SECTION */}
-      <header className="px-6 py-12 text-center">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-lg text-orange-600">
-          <Trophy size={28} />
-        </div>
-        
-        <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic leading-none">
-            Trophy <span className="text-orange-600">Room</span>
-        </h1>
-        <p className="mt-4 text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Hall of Legends & Walls of Shame</p>
-      </header>
-
-      {/* MAIN CONTENT AREA */}
-      <main className="max-w-7xl mx-auto px-6 py-10">
+        <section className="mt-6" aria-labelledby="trophy-categories-title">
+          <h2 id="trophy-categories-title" className="sr-only">Trophy Room categories</h2>
         <div className="mb-10 flex justify-center">
-          <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-black/10 dark:border-white/10">
+          <div role="tablist" aria-label="Trophy Room categories" className="flex max-w-full flex-wrap justify-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
               <button 
+                  type="button"
+                  role="tab"
+                  id="trophy-tab-champions"
+                  aria-selected={activeTab === 'champions'}
                   onClick={() => setActiveTab('champions')} 
-                  className={`px-3 sm:px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${activeTab === 'champions' ? 'bg-yellow-500 text-black shadow-lg' : 'opacity-40'}`}
+                  className={`rounded-xl px-4 py-2.5 text-[10px] font-black uppercase transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 ${activeTab === 'champions' ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
               >
                   Champions
               </button>
               <button 
+                  type="button"
+                  role="tab"
+                  id="trophy-tab-leaderboard"
+                  aria-selected={activeTab === 'leaderboard'}
                   onClick={() => setActiveTab('leaderboard')} 
-                  className={`px-3 sm:px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${activeTab === 'leaderboard' ? 'bg-orange-600 text-white shadow-lg' : 'opacity-40'}`}
+                  className={`rounded-xl px-4 py-2.5 text-[10px] font-black uppercase transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 ${activeTab === 'leaderboard' ? 'bg-orange-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
               >
                   Podiums
               </button>
               <button 
+                  type="button"
+                  role="tab"
+                  id="trophy-tab-shame"
+                  aria-selected={activeTab === 'shame'}
                   onClick={() => setActiveTab('shame')} 
-                  className={`px-3 sm:px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${activeTab === 'shame' ? 'bg-gray-800 text-white shadow-lg' : 'opacity-40'}`}
+                  className={`rounded-xl px-4 py-2.5 text-[10px] font-black uppercase transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-700 focus-visible:ring-offset-2 ${activeTab === 'shame' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
               >
                   Shame
               </button>
@@ -134,7 +125,7 @@ export default function TrophyRoomPage() {
         </div>
         
         {activeTab === 'champions' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div role="tabpanel" aria-labelledby="trophy-tab-champions" className="grid grid-cols-1 gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500 sm:grid-cols-2 lg:grid-cols-3">
                 {CHAMPIONS.map((champ) => (
                     <div key={`${champ.year}-${champ.name}`} className="bg-black/5 dark:bg-white/5 rounded-[2.5rem] border border-black/5 dark:border-white/10 overflow-hidden group transition-all duration-300 relative shadow-xl">
                         {/* Hero Header for Card */}
@@ -168,7 +159,7 @@ export default function TrophyRoomPage() {
         )}
 
         {activeTab === 'leaderboard' && (
-            <div className="bg-black/5 dark:bg-white/5 rounded-[2.5rem] border border-black/5 dark:border-white/10 overflow-hidden shadow-2xl animate-in fade-in duration-500">
+            <div role="tabpanel" aria-labelledby="trophy-tab-leaderboard" className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm animate-in fade-in duration-500">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead className="bg-black/5 dark:bg-white/5 border-b border-black/5 dark:border-white/10">
@@ -210,7 +201,7 @@ export default function TrophyRoomPage() {
         )}
 
         {activeTab === 'shame' && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-8 animate-in fade-in duration-500 text-center">
+            <div role="tabpanel" aria-labelledby="trophy-tab-shame" className="grid grid-cols-1 gap-5 text-center animate-in fade-in duration-500 min-[420px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
                 {LOSERS.map((loser) => (
                     <div key={loser.year} className="group bg-black/5 dark:bg-white/5 rounded-[2.5rem] border border-black/5 dark:border-white/10 p-8 flex flex-col items-center hover:border-red-600 transition-all shadow-xl">
                         <div className="w-20 h-20 rounded-full bg-black/20 mb-6 relative overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-700 border-2 border-black/5 dark:border-white/10">
@@ -228,7 +219,8 @@ export default function TrophyRoomPage() {
             </div>
         )}
 
+        </section>
       </main>
-    </div>
+    </SiteShell>
   );
 }
