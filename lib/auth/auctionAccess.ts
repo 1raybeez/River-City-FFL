@@ -151,8 +151,28 @@ export async function getAuctionAccessForVerifiedEmail(
   const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) return getAuctionAccessForEmail(email, false);
 
+  const isExplicitCommissioner = isAuctionCommissionerEmail(normalizedEmail);
   const canonicalAuthorization =
     await resolveAuthorizedEmailFromFirestore(normalizedEmail);
+
+  if (isExplicitCommissioner) {
+    const commissionerAccess = buildCommissionerAccessResult(normalizedEmail);
+    if (!canonicalAuthorization) return commissionerAccess;
+
+    const managerAccess = buildCanonicalManagerAccessResult(
+      normalizedEmail,
+      canonicalAuthorization
+    );
+    return {
+      ...managerAccess,
+      role: "commissioner",
+      canAccessMaintenance: commissionerAccess.canAccessMaintenance,
+      canRecordSales: commissionerAccess.canRecordSales,
+      canViewCommissionerPreferences:
+        commissionerAccess.canViewCommissionerPreferences,
+    } satisfies AuctionAccessResult;
+  }
+
   if (canonicalAuthorization) {
     return buildCanonicalManagerAccessResult(
       normalizedEmail,

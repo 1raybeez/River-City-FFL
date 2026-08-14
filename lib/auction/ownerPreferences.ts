@@ -9,7 +9,10 @@ import {
   type AuctionOwnerPreferenceTag,
 } from "@/lib/auction/ownerPreferenceTypes";
 import { riverCityAuctionLeagueSettings } from "@/lib/auction/leagueSettings";
-import { AUCTION_WAR_ROOM_COLLECTION } from "@/lib/auction/warRoomScope";
+import {
+  AUCTION_WAR_ROOM_COLLECTION,
+  getLegacyWarRoomProfileIds,
+} from "@/lib/auction/warRoomScope";
 
 const validOwnerPreferenceTags = new Set<AuctionOwnerPreferenceTag>([
   "open",
@@ -97,17 +100,22 @@ export async function readAuctionOwnerPreferences({
     : getPreferencePlayersCollection(season, ownerProfileId).get());
 
   if (snapshot.docs.length === 0 && warRoomId && ownerProfileId) {
-    const legacySnapshot = await getPreferencePlayersCollection(
-      season,
-      ownerProfileId
-    ).get();
-    if (legacySnapshot.docs.length > 0) {
-      return legacySnapshot.docs
-        .map((doc) => readOwnerPreferenceDocument(doc.id, doc.data()))
-        .filter(
-          (preference): preference is AuctionOwnerPlayerPreference =>
-            preference !== null
-        );
+    const legacyOwnerProfileIds = Array.from(
+      new Set([ownerProfileId, ...getLegacyWarRoomProfileIds(warRoomId)])
+    );
+    for (const legacyOwnerProfileId of legacyOwnerProfileIds) {
+      const legacySnapshot = await getPreferencePlayersCollection(
+        season,
+        legacyOwnerProfileId
+      ).get();
+      if (legacySnapshot.docs.length > 0) {
+        return legacySnapshot.docs
+          .map((doc) => readOwnerPreferenceDocument(doc.id, doc.data()))
+          .filter(
+            (preference): preference is AuctionOwnerPlayerPreference =>
+              preference !== null
+          );
+      }
     }
   }
 

@@ -126,6 +126,12 @@ export function classifyLegacyWarRoomScope(ownerProfileId: string) {
   return legacyWarRoomMappings[ownerProfileId] ?? null;
 }
 
+export function getLegacyWarRoomProfileIds(warRoomId: string) {
+  return Object.values(legacyWarRoomMappings)
+    .filter((mapping) => mapping.targetWarRoomId === warRoomId)
+    .map((mapping) => mapping.legacyOwnerProfileId);
+}
+
 export type WarRoomStateRecord = {
   warRoomId: string;
   actorOwnerId: string;

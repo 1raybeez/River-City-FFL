@@ -17,7 +17,10 @@ import {
   type AuctionRookiePreference,
   type AuctionRosterConstruction,
 } from "@/lib/auction/ownerProfileSettingsTypes";
-import { AUCTION_WAR_ROOM_COLLECTION } from "@/lib/auction/warRoomScope";
+import {
+  AUCTION_WAR_ROOM_COLLECTION,
+  getLegacyWarRoomProfileIds,
+} from "@/lib/auction/warRoomScope";
 
 export const AUCTION_OWNER_PROFILES_COLLECTION = "auction_owner_profiles";
 export const AUCTION_OWNER_PROFILE_SETTINGS_COLLECTION = "settings";
@@ -194,8 +197,18 @@ export async function readAuctionOwnerProfileSettings({
     ? getWarRoomSettingsRef(season, warRoomId).get()
     : getSettingsRef(season, ownerProfileId).get());
   if (!snapshot.exists && warRoomId) {
-    const legacySnapshot = await getSettingsRef(season, ownerProfileId).get();
-    if (legacySnapshot.exists) return readSettingsDocument(legacySnapshot.data() ?? {});
+    const legacyOwnerProfileIds = Array.from(
+      new Set([ownerProfileId, ...getLegacyWarRoomProfileIds(warRoomId)])
+    );
+    for (const legacyOwnerProfileId of legacyOwnerProfileIds) {
+      const legacySnapshot = await getSettingsRef(
+        season,
+        legacyOwnerProfileId
+      ).get();
+      if (legacySnapshot.exists) {
+        return readSettingsDocument(legacySnapshot.data() ?? {});
+      }
+    }
   }
   if (!snapshot.exists) return null;
 
