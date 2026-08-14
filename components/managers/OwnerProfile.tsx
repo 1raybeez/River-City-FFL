@@ -40,6 +40,7 @@ import type {
   OwnerProfileViewModel,
   ProfileRelationship,
 } from "@/lib/managers/identitySelectors";
+import SiteShell from "@/components/SiteShell";
 
 const NFL_TEAM_NAMES: Record<string, string> = {
   ATL: "Atlanta Falcons",
@@ -342,7 +343,7 @@ function SectionShell({
   return (
     <section
       id={id}
-      className="scroll-mt-6 rounded-lg border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#121212]"
+      className="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#121212]"
     >
       <div className="mb-5 flex items-center gap-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-md bg-black text-white dark:bg-white dark:text-black">
@@ -405,7 +406,7 @@ function HeroSection({ profile }: { profile: OwnerProfileViewModel }) {
 
   return (
     <section
-      className="overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/10 dark:bg-[#121212]"
+      className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#121212]"
       style={{ borderTopColor: accentColor, borderTopWidth: 6 }}
     >
       <div className="grid gap-0 lg:grid-cols-[minmax(280px,320px)_1fr]">
@@ -460,6 +461,9 @@ function HeroSection({ profile }: { profile: OwnerProfileViewModel }) {
             )}
           </div>
 
+          <p className="mb-3 text-[10px] font-black uppercase tracking-[0.3em] text-orange-600">
+            Managers
+          </p>
           <h1 className="text-4xl font-black uppercase italic leading-none sm:text-5xl">
             {owner.fullName}
           </h1>
@@ -665,7 +669,7 @@ function OverviewPanel({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.04]">
+    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-white/[0.04]">
       <div className="mb-4 flex items-center gap-2">
         <span className="text-black/40 dark:text-white/40">{icon}</span>
         <h3 className="text-[10px] font-black uppercase tracking-widest text-black/45 dark:text-white/45">
@@ -2211,9 +2215,9 @@ function ProfileSectionNavigation({
   return (
     <nav
       aria-label="Manager profile sections"
-      className="overflow-x-auto rounded-lg border border-black/10 bg-white p-2 dark:border-white/10 dark:bg-[#121212]"
+      className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm dark:border-white/10 dark:bg-[#121212]"
     >
-      <div className="flex min-w-max gap-1">
+      <div className="flex flex-wrap gap-1">
         {links.map((link) => (
           <a
             key={link.href}
@@ -2278,7 +2282,8 @@ export default function OwnerProfile({
   );
 
   return (
-    <main className="min-h-screen bg-white px-4 py-6 text-black dark:bg-[#0a0a0a] dark:text-white sm:px-6 lg:px-8">
+    <SiteShell activePath="/managers">
+      <main className="min-h-screen bg-[#f7f8fa] px-4 py-8 text-black dark:bg-[#0a0a0a] dark:text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
         <div>
           <HeroSection profile={profile} />
@@ -2322,6 +2327,7 @@ export default function OwnerProfile({
           </div>
         )}
       </div>
-    </main>
+      </main>
+    </SiteShell>
   );
 }
