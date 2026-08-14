@@ -15,7 +15,7 @@ export const runtime = "nodejs";
 
 async function getCommissionerActor() {
   try {
-    return await requireAuctionAccess();
+    return await requireAuctionAccess("maintenance", "proposal-api");
   } catch (error) {
     if (error instanceof AuctionAccessError) return null;
     throw error;

@@ -42,7 +42,7 @@ const hubLinks = [
 
 export default async function CommishPage() {
   try {
-    await requireAuctionAccess();
+    await requireAuctionAccess("maintenance", "commish");
   } catch (error) {
     if (error instanceof AuctionAccessError) {
       redirect('/commish/login?returnTo=%2Fcommish');
