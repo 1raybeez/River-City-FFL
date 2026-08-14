@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
-  ArrowLeft,
   BarChart3,
   CheckCircle2,
   Database,
@@ -14,7 +13,7 @@ import {
   Shield,
   Upload,
 } from "lucide-react";
-import { ModeToggle } from "@/components/ModeToggle";
+import SiteShell from "@/components/SiteShell";
 import {
   adpSourceNeedsValidation,
   getAdpMaintenanceStatusLabel,
@@ -902,43 +901,43 @@ export default function MaintenancePage() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-20 selection:bg-orange-600">
-      <nav className="border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
-        <Link
-          href="/commish"
-          className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-orange-600 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Commish
-        </Link>
-        <ModeToggle />
-      </nav>
-
-      <main className="max-w-5xl mx-auto px-6 py-10">
-        <div className="mb-10 flex flex-col gap-4 border-b-2 border-orange-600 pb-6">
-          <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-2xl bg-orange-600 text-white flex items-center justify-center shadow-lg">
-              <Shield className="h-6 w-6" />
+    <SiteShell activePath="/commish" authenticated>
+      <main className="mx-auto w-full max-w-7xl overflow-x-hidden px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        <header className="mb-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#121212] sm:p-8">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-orange-600 text-white shadow-lg">
+                <Shield className="h-7 w-7" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.3em] text-orange-600">
+                  Commissioner Hub
+                </p>
+                <h1 className="text-4xl font-black uppercase italic leading-none tracking-tighter text-[#071a33] dark:text-white sm:text-5xl">
+                  Maintenance
+                </h1>
+                <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-slate-600 dark:text-gray-400">
+                  Protected checks, publishing, and data maintenance for River City operations.
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl sm:text-5xl font-black uppercase italic tracking-tighter">
-                Maintenance
-              </h1>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">
-                Commissioner Operations
-              </p>
-            </div>
+            <Link
+              href="/commish"
+              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-300 px-4 py-2 text-xs font-black uppercase tracking-wider text-[#071a33] transition hover:border-orange-600 hover:text-orange-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 dark:border-white/20 dark:text-white"
+            >
+              Return to Commissioner Hub
+            </Link>
           </div>
-        </div>
+        </header>
 
-        <section className="mb-8 rounded-3xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#121212] shadow-xl overflow-hidden">
+        <section aria-labelledby="maintenance-runtime-heading" className="mb-8 overflow-hidden rounded-3xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-[#121212]">
           <div className="border-b border-black/10 dark:border-white/10 p-5 sm:p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-600">
                   Deployment Status
                 </p>
-                <h2 className="mt-1 text-2xl font-black uppercase italic tracking-tight">
+                <h2 id="maintenance-runtime-heading" className="mt-1 text-2xl font-black uppercase italic tracking-tight">
                   Production Runtime
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
@@ -1064,14 +1063,14 @@ export default function MaintenancePage() {
           </div>
         </section>
 
-        <section className="mb-8 rounded-3xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#121212] shadow-xl overflow-hidden">
+        <section aria-labelledby="maintenance-values-heading" className="mb-8 overflow-hidden rounded-3xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-[#121212]">
           <div className="border-b border-black/10 dark:border-white/10 p-5 sm:p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-600">
                   Auction Value Refresh
                 </p>
-                <h2 className="mt-1 text-2xl font-black uppercase italic tracking-tight">
+                <h2 id="maintenance-values-heading" className="mt-1 text-2xl font-black uppercase italic tracking-tight">
                   2026 Value Maintenance
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
@@ -1239,6 +1238,9 @@ export default function MaintenancePage() {
             ) : null}
 
             <div className="flex flex-wrap gap-3">
+              <p className="basis-full rounded-2xl border border-orange-600/20 bg-orange-600/10 p-3 text-xs font-bold text-orange-700 dark:text-orange-300">
+                Publishing and rollback are protected actions and require confirmation before changing the active War Room values.
+              </p>
               <button
                 type="button"
                 onClick={validateValueRun}
@@ -1277,7 +1279,7 @@ export default function MaintenancePage() {
             )}
 
             {valueActionState.output && (
-              <div className="mt-5 rounded-2xl border border-black/10 bg-black/[0.03] p-4 dark:border-white/10 dark:bg-black/30">
+              <div role="status" aria-live="polite" className="mt-5 rounded-2xl border border-black/10 bg-black/[0.03] p-4 dark:border-white/10 dark:bg-black/30">
                 <div
                   className={`mb-3 text-[10px] font-black uppercase tracking-[0.2em] ${
                     valueActionState.status === "success"
@@ -1295,14 +1297,14 @@ export default function MaintenancePage() {
           </div>
         </section>
 
-        <section className="mb-8 rounded-3xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#121212] shadow-xl overflow-hidden">
+        <section aria-labelledby="maintenance-adp-heading" className="mb-8 overflow-hidden rounded-3xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-[#121212]">
           <div className="border-b border-black/10 dark:border-white/10 p-5 sm:p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-600">
                   ADP Refresh
                 </p>
-                <h2 className="mt-1 text-2xl font-black uppercase italic tracking-tight">
+                <h2 id="maintenance-adp-heading" className="mt-1 text-2xl font-black uppercase italic tracking-tight">
                   2026 Market Demand
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
@@ -1494,6 +1496,9 @@ export default function MaintenancePage() {
             ) : null}
 
             <div className="flex flex-wrap gap-3">
+              <p className="basis-full rounded-2xl border border-orange-600/20 bg-orange-600/10 p-3 text-xs font-bold text-orange-700 dark:text-orange-300">
+                Publishing and rollback are protected actions and require confirmation before changing the active War Room ADP context.
+              </p>
               <button
                 type="button"
                 onClick={validateAdpRun}
@@ -1538,7 +1543,7 @@ export default function MaintenancePage() {
             )}
 
             {adpActionState.output && (
-              <div className="mt-5 rounded-2xl border border-black/10 bg-black/[0.03] p-4 dark:border-white/10 dark:bg-black/30">
+              <div role="status" aria-live="polite" className="mt-5 rounded-2xl border border-black/10 bg-black/[0.03] p-4 dark:border-white/10 dark:bg-black/30">
                 <div
                   className={`mb-3 text-[10px] font-black uppercase tracking-[0.2em] ${
                     adpActionState.status === "success"
@@ -1556,7 +1561,10 @@ export default function MaintenancePage() {
           </div>
         </section>
 
-        <section className="mb-8 rounded-3xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 p-5 sm:p-6">
+        <section aria-labelledby="maintenance-key-heading" className="mb-8 rounded-3xl border border-black/10 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/5 sm:p-6">
+          <h2 id="maintenance-key-heading" className="mb-1 text-lg font-black uppercase italic tracking-tight">
+            Protected maintenance access
+          </h2>
           <label
             htmlFor="scraper-key"
             className="mb-2 block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400"
@@ -1574,7 +1582,8 @@ export default function MaintenancePage() {
           />
         </section>
 
-        <section className="grid gap-5">
+        <section aria-labelledby="maintenance-operations-heading" className="grid gap-5">
+          <h2 id="maintenance-operations-heading" className="sr-only">Maintenance operations</h2>
           {operations.map((operation) => {
             const state = operationState[operation.id];
             const Icon = operation.icon;
@@ -1585,7 +1594,7 @@ export default function MaintenancePage() {
             return (
               <article
                 key={operation.id}
-                className="rounded-3xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#121212] shadow-xl overflow-hidden"
+                className="overflow-hidden rounded-3xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-[#121212]"
               >
                 <div className="p-5 sm:p-6 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                   <div className="flex items-start gap-4">
@@ -1599,6 +1608,11 @@ export default function MaintenancePage() {
                       <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                         {operation.description}
                       </p>
+                      {operation.requiresConfirmation ? (
+                        <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">
+                          Confirmation required before running
+                        </p>
+                      ) : null}
                     </div>
                   </div>
 
@@ -1618,7 +1632,7 @@ export default function MaintenancePage() {
                 </div>
 
                 {state.output && (
-                  <div className="border-t border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-black/30 p-5 sm:p-6">
+                  <div role="status" aria-live="polite" className="border-t border-black/10 bg-black/[0.03] p-5 dark:border-white/10 dark:bg-black/30 sm:p-6">
                     <div
                       className={`mb-3 text-[10px] font-black uppercase tracking-[0.2em] ${
                         state.status === "success"
@@ -1638,6 +1652,6 @@ export default function MaintenancePage() {
           })}
         </section>
       </main>
-    </div>
+    </SiteShell>
   );
 }
