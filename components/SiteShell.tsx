@@ -28,7 +28,7 @@ export default function SiteShell({ children, activePath }: { children: React.Re
           </Link>
           <div className="hidden items-center gap-1 lg:flex">
             {links.map(([label, href]) => <Link key={href} href={href} aria-current={activePath === href ? "page" : undefined} className={`rounded-md px-3 py-2 text-[10px] font-black uppercase transition ${activePath === href ? "border-b-2 border-amber-400 text-white" : "text-white/65 hover:bg-white/10 hover:text-white"}`}>{label}</Link>)}
-            <Link href="/commish" className="ml-3 rounded-md border border-white/35 px-4 py-2 text-[10px] font-black uppercase text-white transition hover:bg-white/10">Commissioner Hub</Link>
+            <Link href="/commish" aria-current={activePath === "/commish" ? "page" : undefined} className={`ml-3 rounded-md border px-4 py-2 text-[10px] font-black uppercase transition hover:bg-white/10 ${activePath === "/commish" ? "border-amber-400 text-white" : "border-white/35 text-white"}`}>Commissioner Hub</Link>
           </div>
           <button type="button" aria-label={open ? "Close navigation menu" : "Open navigation menu"} aria-expanded={open} aria-controls="site-mobile-navigation" onClick={() => setOpen((value) => !value)} className="rounded-lg border border-white/25 p-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 lg:hidden">{open ? <X size={18} /> : <Menu size={18} />}</button>
         </div>

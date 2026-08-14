@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
-  ArrowLeft,
   CheckCircle2,
   Clock3,
   ReceiptText,
@@ -11,7 +10,7 @@ import {
   WalletCards,
 } from "lucide-react";
 
-import { ModeToggle } from "@/components/ModeToggle";
+import SiteShell from "@/components/SiteShell";
 import type { OperationalFinanceCommissionerDashboardPresentation } from "@/lib/finance/operationalFinanceAwardReview";
 import type {
   OperationalFinanceDashboardDuesRow,
@@ -163,20 +162,9 @@ export default function OperationalFinanceDashboardClient({
   ] as const;
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-white pb-20 font-sans text-black transition-colors dark:bg-[#0a0a0a] dark:text-white">
-      <nav className="sticky top-0 z-50 flex items-center justify-between border-b border-black/5 bg-white/80 px-4 py-4 backdrop-blur-md dark:border-white/10 dark:bg-[#0a0a0a]/80 sm:px-6">
-        <Link
-          href="/commish"
-          className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 transition-colors hover:text-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Commissioner Hub
-        </Link>
-        <ModeToggle />
-      </nav>
-
-      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
-        <header className="rounded-3xl border border-black/10 bg-black/[0.03] p-6 dark:border-white/10 dark:bg-white/[0.04] sm:p-8">
+    <SiteShell activePath="/commish">
+      <main className="mx-auto w-full max-w-7xl overflow-x-hidden px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        <header className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#121212] sm:p-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-orange-600 text-white shadow-lg">
               <WalletCards className="h-7 w-7" aria-hidden="true" />
@@ -184,18 +172,21 @@ export default function OperationalFinanceDashboardClient({
             <div>
               <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
                 <p className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-600">
-                  Commissioner Finance
+                  Commissioner Hub
                 </p>
                 <span className="max-w-full rounded-full border border-amber-600/20 bg-amber-600/10 px-2.5 py-1 text-center text-[9px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-300">
                   {dashboard.operationalStatusLabel}
                 </span>
               </div>
-              <h1 className="text-4xl font-black uppercase italic leading-none tracking-tighter sm:text-6xl">
+              <h1 className="text-4xl font-black uppercase italic leading-none tracking-tighter text-[#071a33] sm:text-5xl dark:text-white">
                 {dashboard.heading}
               </h1>
-              <p className="mt-3 text-sm font-semibold text-gray-500 dark:text-gray-400">
+              <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-slate-600 dark:text-gray-400">
                 {dashboard.deadlineLabel}. Server-derived ledger values; the season is not yet reconciled.
               </p>
+              <Link href="/commish" className="mt-4 inline-flex min-h-10 items-center rounded-xl border border-slate-300 px-4 py-2 text-xs font-black uppercase tracking-wider text-[#071a33] transition hover:border-orange-600 hover:text-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 dark:border-white/20 dark:text-white">
+                Return to Commissioner Hub
+              </Link>
             </div>
           </div>
         </header>
@@ -222,7 +213,7 @@ export default function OperationalFinanceDashboardClient({
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             {summaryCards.map(([label, cents]) => (
-              <div key={label} className="rounded-2xl border border-black/10 bg-white p-5 shadow-lg dark:border-white/10 dark:bg-[#121212]">
+              <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#121212]">
                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">{label}</p>
                 <p className="mt-2 text-3xl font-black tracking-tight" aria-label={`${label}: ${formatCurrency(cents)}`}>{formatCurrency(cents)}</p>
               </div>
@@ -254,7 +245,7 @@ export default function OperationalFinanceDashboardClient({
               const formOpen = activeObligationId === row.obligationId && draft;
               const errorId = `payment-error-${row.franchiseId}`;
               return (
-                <article key={row.obligationId} className="min-w-0 rounded-3xl border border-black/10 bg-white p-5 shadow-lg dark:border-white/10 dark:bg-[#121212] sm:p-6">
+              <article key={row.obligationId} className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#121212] sm:p-6">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="text-xl font-black uppercase italic tracking-tight">{row.financialOwnerName}</h3>
@@ -354,7 +345,7 @@ export default function OperationalFinanceDashboardClient({
 
         <OperationalFinanceExportSection />
 
-        <section aria-labelledby="activity-heading" className="mt-10 rounded-3xl border border-black/10 bg-white p-5 shadow-xl dark:border-white/10 dark:bg-[#121212] sm:p-6">
+        <section aria-labelledby="activity-heading" className="mt-10 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#121212] sm:p-6">
           <div className="mb-5 flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-600/10 text-orange-600"><ReceiptText className="h-5 w-5" aria-hidden="true" /></div>
             <div><p className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-600">Ledger Events</p><h2 id="activity-heading" className="text-2xl font-black uppercase italic tracking-tight">Recent Activity</h2></div>
@@ -377,6 +368,6 @@ export default function OperationalFinanceDashboardClient({
           Protected commissioner view. Finance data and mutations remain server-only.
         </footer>
       </main>
-    </div>
+    </SiteShell>
   );
 }
