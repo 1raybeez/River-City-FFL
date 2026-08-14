@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Gavel, Grid3X3, Home, Shield, Users, WalletCards, Wrench } from 'lucide-react';
-import { ModeToggle } from '@/components/ModeToggle';
+import { Gavel, Grid3X3, Home, Shield, Users, WalletCards, Wrench } from 'lucide-react';
+import SiteShell from '@/components/SiteShell';
 import {
   AuctionAccessError,
   requireAuctionAccess,
@@ -30,7 +30,7 @@ const hubLinks = [
   },
   {
     title: 'Auction War Room',
-    description: 'Prepare draft-day auction boards and commissioner-only views.',
+    description: 'Open the 2026 Auction War Room and draft-day tools.',
     href: '/commish/auction',
     icon: Grid3X3,
   },
@@ -69,65 +69,72 @@ export default async function CommishPage() {
   );
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-20 selection:bg-orange-600">
-      <nav className="border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
-        <Link href="/" className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-orange-600 transition-colors">
-          <ArrowLeft className="w-4 h-4" />
-          Back to Home
-        </Link>
-        <ModeToggle />
-      </nav>
-
-      <main className="max-w-5xl mx-auto px-6 py-10">
-        <section className="mb-8 rounded-3xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 p-6 sm:p-8">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-            <div className="h-14 w-14 rounded-2xl bg-orange-600 text-white flex items-center justify-center shadow-lg">
-              <Shield className="h-7 w-7" />
+      <SiteShell activePath="/commish">
+        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+          <section className="mb-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 dark:border-white/10 dark:bg-[#121212]">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-orange-600 text-white shadow-lg">
+                <Shield className="h-7 w-7" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="mb-3 text-[10px] font-black uppercase tracking-[0.3em] text-orange-600">
+                  Commissioner Hub
+                </p>
+                <h1 className="text-4xl font-black uppercase italic tracking-tighter text-[#071a33] sm:text-5xl dark:text-white">
+                  River City Commissioner Hub
+                </h1>
+                <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-600 dark:text-gray-400">
+                  League administration, finance, governance, maintenance, and draft operations.
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="mb-2 text-[10px] font-black uppercase tracking-[0.25em] text-orange-600">
-                Commissioner Hub
-              </p>
-              <h1 className="text-4xl sm:text-6xl font-black uppercase italic tracking-tighter leading-none">
-                Commish Tools
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm font-medium text-gray-500 dark:text-gray-400">
-                Operational links for league administration. The public Commish Corner briefing is currently a manually maintained recap on the Home page.
-              </p>
-            </div>
-          </div>
-        </section>
+          </section>
 
-        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          <section aria-labelledby="commissioner-destinations-heading">
+            <div className="mb-4 flex items-end justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-orange-600">
+                  Commissioner Tools
+                </p>
+                <h2 id="commissioner-destinations-heading" className="mt-1 text-2xl font-black uppercase italic tracking-tight text-[#071a33] dark:text-white">
+                  League Operations
+                </h2>
+              </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {hubLinks.map((item) => {
             const Icon = item.icon;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className="group rounded-3xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#121212] p-6 shadow-xl transition-all hover:border-orange-600/40 hover:-translate-y-1"
+                className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-orange-600/40 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 dark:border-white/10 dark:bg-[#121212]"
               >
-                <div className="mb-6 h-12 w-12 rounded-2xl bg-orange-600/10 text-orange-600 flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition-colors">
-                  <Icon className="h-6 w-6" />
+                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-600/10 text-orange-600 transition-colors group-hover:bg-orange-600 group-hover:text-white">
+                  <Icon className="h-5 w-5" aria-hidden="true" />
                 </div>
-                <h2 className="text-xl font-black uppercase italic tracking-tight">
+                <h3 className="text-xl font-black uppercase italic tracking-tight text-[#071a33] dark:text-white">
                   {item.title}
-                </h2>
-                <p className="mt-2 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-gray-400">
                   {item.description}
                 </p>
+                <span className="mt-5 inline-flex text-[10px] font-black uppercase tracking-[0.2em] text-orange-600">
+                  Open destination <span aria-hidden="true" className="ml-2">→</span>
+                </span>
               </Link>
             );
           })}
-        </section>
+            </div>
+          </section>
 
-        <section className="mt-8 rounded-3xl border border-black/10 bg-white p-6 shadow-xl dark:border-white/10 dark:bg-[#121212]">
+        <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#121212]">
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-600">
                 Pilot Foundation
               </p>
-              <h2 className="mt-1 text-2xl font-black uppercase italic tracking-tight">
+                <h2 className="mt-1 text-2xl font-black uppercase italic tracking-tight text-[#071a33] dark:text-white">
                 Owner Access Profiles
               </h2>
               <p className="mt-2 max-w-2xl text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -147,7 +154,7 @@ export default async function CommishPage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="truncate text-lg font-black uppercase italic tracking-tight">
+                    <h3 className="truncate text-lg font-black uppercase italic tracking-tight text-[#071a33] dark:text-white">
                       {profile.displayName}
                     </h3>
                     <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
@@ -190,7 +197,7 @@ export default async function CommishPage() {
             ))}
           </div>
         </section>
-      </main>
-    </div>
+        </main>
+      </SiteShell>
   );
 }
