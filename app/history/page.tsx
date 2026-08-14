@@ -1,10 +1,13 @@
 import { calculateAllTimeStats } from '../../lib/stats'; // Adjust path if necessary
+import Link from 'next/link';
+import SiteShell from '@/components/SiteShell';
 
 export default function HistoryPage() {
   const rankings = calculateAllTimeStats();
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <SiteShell activePath="/history">
+    <main className="p-8 max-w-4xl mx-auto">
       <h1 className="text-3xl font-bold mb-6 text-center">🏆 River City FFL Hall of Fame</h1>
       
       <div className="overflow-x-auto">
@@ -41,6 +44,8 @@ export default function HistoryPage() {
           </tbody>
         </table>
       </div>
-    </div>
+      <p className="mt-6"><Link href="/" className="font-bold text-orange-600 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600">Return to Home</Link></p>
+    </main>
+    </SiteShell>
   );
 }

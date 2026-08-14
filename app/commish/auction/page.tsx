@@ -162,7 +162,7 @@ export default async function AuctionWarRoomPage() {
     actor = await requireAuctionWarRoomAccess();
   } catch (error) {
     if (error instanceof AuctionAccessError) {
-      redirect("/commish/auction/login");
+      redirect("/commish/auction/login?returnTo=%2Fcommish%2Fauction");
     }
 
     throw error;
@@ -170,7 +170,7 @@ export default async function AuctionWarRoomPage() {
 
   const ownerProfileId = actor.access.ownerProfileId;
   if (!ownerProfileId) {
-    redirect("/commish/auction/login");
+    redirect("/commish/auction/login?returnTo=%2Fcommish%2Fauction");
   }
 
   const initialOwnerSettings = await readInitialOwnerSettings(ownerProfileId);

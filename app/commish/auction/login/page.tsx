@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { FirebaseError } from 'firebase/app';
 import { signInWithPopup } from 'firebase/auth';
 import { ArrowLeft, Lock, Shield } from 'lucide-react';
@@ -33,8 +33,9 @@ function getFriendlyAuthError(error: unknown) {
   return 'Unable to sign in. Try again in a moment.';
 }
 
-export default function AuctionLoginPage() {
+function AuctionLoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -61,7 +62,11 @@ export default function AuctionLoginPage() {
         );
       }
 
-      router.replace('/commish/auction');
+      const requestedReturnTo = searchParams.get('returnTo');
+      const returnTo = requestedReturnTo?.startsWith('/commish') && !requestedReturnTo.startsWith('//')
+        ? requestedReturnTo
+        : '/commish';
+      router.replace(returnTo);
       router.refresh();
     } catch (error) {
       setErrorMessage(getFriendlyAuthError(error));
@@ -125,5 +130,13 @@ export default function AuctionLoginPage() {
         </section>
       </main>
     </div>
+  );
+}
+
+export default function AuctionLoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <AuctionLoginContent />
+    </Suspense>
   );
 }

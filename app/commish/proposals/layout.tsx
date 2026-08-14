@@ -14,7 +14,7 @@ export default async function CommishProposalsLayout({
     await requireAuctionAccess();
   } catch (error) {
     if (error instanceof AuctionAccessError) {
-      redirect("/commish/auction/login");
+      redirect("/commish/auction/login?returnTo=%2Fcommish%2Fproposals");
     }
 
     throw error;

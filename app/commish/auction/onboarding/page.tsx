@@ -19,17 +19,17 @@ export default async function AuctionOnboardingPage({
     actor = await requireAuctionWarRoomAccess();
   } catch (error) {
     if (error instanceof AuctionAccessError) {
-      redirect("/commish/auction/login");
+      redirect("/commish/auction/login?returnTo=%2Fcommish%2Fauction%2Fonboarding");
     }
 
     throw error;
   }
 
   const ownerProfileId = actor.access.ownerProfileId;
-  if (!ownerProfileId) redirect("/commish/auction/login");
+  if (!ownerProfileId) redirect("/commish/auction/login?returnTo=%2Fcommish%2Fauction%2Fonboarding");
 
   const profile = getAuctionOwnerProfile(ownerProfileId);
-  if (!profile) redirect("/commish/auction/login");
+  if (!profile) redirect("/commish/auction/login?returnTo=%2Fcommish%2Fauction%2Fonboarding");
 
   if (profile.role !== "pilot-owner" || !profile.pilotEnabled) {
     redirect("/commish/auction");
