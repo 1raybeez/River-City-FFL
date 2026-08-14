@@ -4,13 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   ArrowRight,
   ChevronDown,
   ChevronUp,
   Info,
   ShieldCheck,
-  Swords,
   Trophy,
 } from "lucide-react";
 import {
@@ -24,6 +22,7 @@ import type {
   RivalryExplorerCategoryId,
   RivalryHubPresentation,
 } from "@/lib/managers/rivalryHubPresentation";
+import SiteShell from "@/components/SiteShell";
 import {
   filterOrderedRivalryCards,
   limitRivalryCards,
@@ -339,46 +338,32 @@ export default function RivalryHubClient({
   };
 
   return (
-    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-white pb-24 text-black dark:bg-[#0a0a0a] dark:text-white">
-      <nav className="sticky top-0 z-50 border-b border-black/5 bg-white/90 px-4 py-3 backdrop-blur-md dark:border-white/10 dark:bg-[#0a0a0a]/90 sm:px-6">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
-          <Link
-            href="/league-info"
-            className="inline-flex items-center gap-2 rounded-md border border-black/10 bg-black/[0.03] px-3 py-2 text-[9px] font-black uppercase tracking-wider transition hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 dark:border-white/10 dark:bg-white/[0.05]"
-          >
-            <ArrowLeft size={14} />
-            <span className="hidden sm:inline">Back to League Info</span>
-            <span className="sm:hidden">League Info</span>
-          </Link>
-          <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase italic tracking-widest">
-            <Swords className="text-red-600" size={17} /> Rivalry Hub
-          </span>
-        </div>
-      </nav>
-
-      <div className="mx-auto max-w-7xl space-y-8 px-4 py-7 sm:px-6 sm:py-10 lg:px-8">
-        <header className="rounded-lg border border-black/10 bg-black/[0.02] p-5 dark:border-white/10 dark:bg-white/[0.04] sm:p-8">
+    <SiteShell activePath="/league-info">
+      <main className="min-h-screen w-full max-w-full overflow-x-hidden pb-24 text-slate-950">
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-red-600">
-              <Swords size={16} /> Supported Matchup History
-            </div>
-            <h1 className="mt-3 text-4xl font-black uppercase italic tracking-tighter sm:text-6xl">
-              Rivalry <span className="text-red-600">Hub</span>
+            <Link href="/league-info" className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 transition hover:text-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2">
+              Back to League Info
+            </Link>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-red-700">League Info</p>
+            <h1 className="mt-2 text-4xl font-black uppercase italic tracking-tight sm:text-5xl">
+              River City Rivalries
             </h1>
-            <p className="mt-4 max-w-2xl text-sm font-medium leading-6 text-black/60 dark:text-white/60">
+            <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-600">
               Explore calculated rivalries built from supported matchup history.
               Head-to-Head pages remain the source for complete meeting detail,
               while future recognized rivalries will be curated separately.
             </p>
           </div>
-          <details className="mt-5 max-w-3xl rounded-md border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-[#121212]">
+          <details className="mt-5 max-w-3xl rounded-xl border border-slate-200 bg-slate-50 p-4">
             <summary className="flex cursor-pointer list-none items-center gap-2 text-[10px] font-black uppercase tracking-widest focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600">
               <Info size={15} className="text-red-600" /> How rankings work
             </summary>
-            <p className="mt-3 text-sm font-medium leading-6 text-black/60 dark:text-white/60">
+            <p className="mt-3 text-sm font-medium leading-6 text-slate-600">
               {presentation.methodology.summary}
             </p>
-            <ul className="mt-3 space-y-2 text-xs font-medium leading-5 text-black/55 dark:text-white/55">
+            <ul className="mt-3 space-y-2 text-xs font-medium leading-5 text-slate-600">
               {presentation.methodology.requirements.map((requirement) => (
                 <li key={requirement} className="flex gap-2">
                   <ShieldCheck size={13} className="mt-0.5 shrink-0 text-red-600" />
@@ -652,6 +637,7 @@ export default function RivalryHubClient({
           </div>
         </section>
       </div>
-    </main>
+      </main>
+    </SiteShell>
   );
 }
