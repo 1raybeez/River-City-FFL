@@ -7,6 +7,7 @@ import {
   ArrowLeft, Trophy, Loader2, Crown, TrendingUp, Zap, ChevronDown, ChevronUp,
   ArrowDown, History, Archive
 } from 'lucide-react';
+import SiteShell from '@/components/SiteShell';
 
 // --- CONFIGURATION ---
 const COMMISH_ID = "342828350391230464"; 
@@ -71,7 +72,7 @@ const LeaderboardCard = ({ id, title, icon: Icon, data, valueKey, label, colorCl
     const displayData = isExpanded ? data : data.slice(0, 5);
 
     return (
-      <div className="bg-black/5 dark:bg-white/5 rounded-[2.5rem] border border-black/5 dark:border-white/10 overflow-hidden shadow-xl flex flex-col h-full transition-all">
+      <div className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:border-slate-300 hover:shadow-md">
         <div className={`p-6 ${colorClass} bg-opacity-10 dark:bg-opacity-20 flex items-center justify-between border-b border-black/5 dark:border-white/10`}>
           <div className="flex items-center gap-3">
             <div className={`p-2 rounded-xl ${colorClass} text-white shadow-lg`}>
@@ -109,9 +110,12 @@ const LeaderboardCard = ({ id, title, icon: Icon, data, valueKey, label, colorCl
           ))}
         </div>
 
-        <button 
+        <button
+            type="button"
+            aria-expanded={isExpanded}
+            aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${title} archive rankings`}
             onClick={() => setExpandedCard(isExpanded ? null : id)}
-            className="w-full py-4 bg-black/5 dark:bg-white/5 text-[10px] font-black opacity-40 hover:opacity-100 uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 border-t border-black/5 dark:border-white/10 italic"
+            className="w-full border-t border-slate-200 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-600 italic"
         >
             {isExpanded ? (
                 <>Collapse <ChevronUp size={14} /></>
@@ -254,58 +258,35 @@ export default function ArchivesPage() {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 font-sans pb-20 selection:bg-orange-600">
-      
-      {/* NAVIGATION BAR - Consistent with Hub Style */}
-      <nav className="border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
-        <div className="flex items-center gap-4">
-          <Link 
-            href="/league-info" 
-            className="inline-flex items-center gap-2 rounded-lg bg-black/5 px-3 py-2 text-[10px] font-black uppercase italic tracking-tight transition-all hover:text-orange-600 dark:bg-white/5 border border-black/10 dark:border-white/10"
-            title="Back to League Info Hub"
-          >
-            <ArrowLeft size={16} />
-            Back to League Info Hub
+    <SiteShell activePath="/league-info">
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="archives-title">
+          <Link href="/league-info" className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 transition hover:text-orange-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2">
+            <ArrowLeft size={14} aria-hidden="true" /> Back to League Info
           </Link>
-        </div>
-        <div className="flex items-center gap-2">
-           <Archive className="text-orange-600 hidden sm:block" size={20} />
-           <span className="text-xs font-black uppercase italic tracking-tighter">Archives</span>
-        </div>
-      </nav>
-
-      {/* HEADER */}
-      <header className="px-6 py-12 text-center">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-lg text-orange-600">
-             <Archive size={28} />
-        </div>
-        <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic leading-none">
-            League <span className="text-orange-600">Archives</span>
-        </h1>
-        <p className="mt-4 text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Sleeper Intelligence Data ({START_YEAR}-{latestArchiveYear})</p>
-      </header>
-
-      {/* MAIN CONTENT AREA */}
-      <main className="max-w-7xl mx-auto px-6 py-10">
+          <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-orange-600">League Info</p>
+          <h1 id="archives-title" className="mt-2 font-sans text-4xl font-black italic uppercase tracking-tight text-slate-950 sm:text-5xl">River City Archives</h1>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">Historical league records and Sleeper archive information across the supported seasons.</p>
+        </section>
         {loading ? (
             <div className="flex flex-col items-center justify-center py-20 animate-pulse">
               <Loader2 className="w-12 h-12 animate-spin text-orange-600 mb-6" />
-              <p className="font-black opacity-40 uppercase tracking-widest text-[10px] italic">{progress}</p>
+              <p className="font-black uppercase tracking-widest text-[10px] text-slate-500 italic" role="status">{progress}</p>
             </div>
         ) : archiveError ? (
-            <div className="mx-auto max-w-xl rounded-[2rem] border border-red-600/20 bg-red-600/10 px-6 py-10 text-center text-red-700 dark:text-red-300">
+            <div className="mx-auto max-w-xl rounded-2xl border border-red-200 bg-red-50 px-6 py-10 text-center text-red-700" role="alert">
               <Archive className="mx-auto mb-4 text-red-600" size={36} />
               <p className="font-black uppercase italic text-xs">{archiveError}</p>
             </div>
         ) : archiveMessage ? (
-            <div className="mx-auto max-w-xl rounded-[2rem] border border-dashed border-black/10 bg-black/5 px-6 py-10 text-center dark:border-white/10 dark:bg-white/5">
+            <div className="mx-auto max-w-xl rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-slate-600" role="status">
               <Archive className="mx-auto mb-4 text-orange-600 opacity-50" size={36} />
               <p className="font-black uppercase italic text-xs opacity-50">{archiveMessage}</p>
             </div>
         ) : (
           <>
             {archiveNotice && (
-              <div className="mb-8 rounded-2xl border border-orange-600/20 bg-orange-600/10 px-5 py-4 text-center text-xs font-black uppercase italic tracking-widest text-orange-700 dark:text-orange-300">
+              <div className="mb-8 rounded-2xl border border-orange-200 bg-orange-50 px-5 py-4 text-center text-xs font-black uppercase italic tracking-widest text-orange-700" role="status">
                 {archiveNotice}
               </div>
             )}
@@ -366,6 +347,6 @@ export default function ArchivesPage() {
           </>
         )}
       </main>
-    </div>
+    </SiteShell>
   );
 }
