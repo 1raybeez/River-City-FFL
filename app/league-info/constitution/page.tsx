@@ -3,13 +3,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { 
-  ArrowLeft, Scale, Search, History, XCircle, 
+  ArrowLeft, Search, History, XCircle,
   ChevronRight, Gavel
 } from 'lucide-react';
 import { db } from "@/lib/firebase"; 
 import { collection, onSnapshot } from "firebase/firestore";
 import constitutionData from '@/lib/constitutionData';
 import ConstitutionSection from '@/components/ConstitutionSection';
+import SiteShell from '@/components/SiteShell';
 
 type RatifiedRule = {
   id: string;
@@ -250,59 +251,38 @@ export default function ConstitutionPage() {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-300 pb-20 selection:bg-orange-500 selection:text-white">
-      
-      {/* NAVIGATION BAR */}
-      <nav className="border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-50">
-        <div className="flex items-center gap-4">
-          <Link 
-            href="/league-info" 
-            className="inline-flex items-center gap-2 rounded-lg bg-black/5 px-3 py-2 text-[10px] font-black uppercase italic tracking-tight transition-all hover:text-orange-600 dark:bg-white/5 border border-black/10 dark:border-white/10"
-          >
-            <ArrowLeft size={16} />
-            Back to League Info Hub
+    <SiteShell activePath="/league-info">
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="constitution-title">
+          <Link href="/league-info" className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 transition hover:text-orange-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2">
+            <ArrowLeft size={14} aria-hidden="true" /> Back to League Info
           </Link>
-        </div>
-
-        <div className="flex items-center gap-2">
-           <Scale className="text-orange-600 hidden sm:block" size={20} />
-           <span className="text-sm font-black uppercase italic tracking-tighter">Constitution</span>
-        </div>
-      </nav>
-
-      <header className="px-6 py-12 text-center">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-lg text-orange-600">
-          <Scale size={28} />
-        </div>
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-orange-600/20 bg-orange-600/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-orange-600">
-          <Gavel size={10} /> Live Legislative Sync Active
-        </div>
-        <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic leading-none">
-          <span className="text-orange-600">Constitution</span>
-        </h1>
-        <p className="mt-4 text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Bylaws, Scoring & League Rules</p>
-      </header>
-
-      <main className="max-w-4xl mx-auto px-6 py-10">
+          <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-orange-600">League Info</p>
+          <h1 id="constitution-title" className="mt-2 font-sans text-4xl font-black italic uppercase tracking-tight text-slate-950 sm:text-5xl">River City Constitution</h1>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">Bylaws, scoring, trade rules, and approved amendments for River City FFL.</p>
+          <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-orange-700"><Gavel size={12} aria-hidden="true" /> Live legislative sync active</p>
+        </section>
         {rulesError && (
-          <div className="mb-8 rounded-2xl border border-red-600/20 bg-red-600/10 px-5 py-4 text-sm font-bold text-red-700 dark:text-red-300">
+          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-bold text-red-700" role="alert">
             {rulesError}
           </div>
         )}
 
         {/* SEARCH BAR */}
-        <div className="relative group">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-black/20 dark:text-white/20 group-focus-within:text-orange-600 transition-colors" size={20} />
+        <div className="relative group mt-6 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+          <label htmlFor="constitution-search" className="sr-only">Search Constitution rules</label>
+          <Search className="absolute left-7 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-orange-600 transition-colors" size={20} aria-hidden="true" />
           <input 
+            id="constitution-search"
             type="text" 
             placeholder="Search regulations (e.g. 'Trade', 'Scoring')..." 
-            className="w-full pl-14 pr-12 py-5 rounded-[2rem] border border-black/5 dark:border-white/10 bg-black/5 dark:bg-white/5 focus:bg-white dark:focus:bg-white/10 focus:ring-4 focus:ring-orange-600/10 outline-none transition-all text-base font-medium shadow-sm"
+            className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 pl-12 pr-12 text-base font-medium text-slate-900 outline-none transition focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-600/20"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           {searchQuery && (
-            <button onClick={clearSearch} className="absolute right-5 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-100 hover:text-orange-600 transition-all">
-              <XCircle size={24} />
+            <button type="button" aria-label="Clear Constitution search" onClick={clearSearch} className="absolute right-6 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 transition hover:text-orange-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600">
+              <XCircle size={22} aria-hidden="true" />
             </button>
           )}
         </div>
@@ -351,7 +331,8 @@ export default function ConstitutionPage() {
         )}
 
         {/* REGULATION SECTIONS */}
-        <div className="space-y-6">
+        <section className="mt-6 space-y-4" aria-labelledby="constitution-sections-title">
+          <h2 id="constitution-sections-title" className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">Constitution sections</h2>
           {filteredData.length > 0 ? (
             filteredData.map((section) => (
               <div key={section.id} id={`constitution-section-${section.id}`} className="scroll-mt-32">
@@ -371,15 +352,15 @@ export default function ConstitutionPage() {
               <p className="font-black uppercase italic">No Regulations Found</p>
             </div>
           )}
-        </div>
+        </section>
 
         {/* FOOTER ACTION */}
-        <div className="mt-20 pt-10 border-t border-black/5 dark:border-white/10 text-center">
-          <Link href="/history/version-history" className="group inline-flex items-center gap-3 px-8 py-4 rounded-full bg-orange-600 text-white font-black uppercase text-xs tracking-widest shadow-lg shadow-orange-900/40 hover:scale-105 transition-all">
+        <div className="mt-12 border-t border-slate-200 pt-8 text-center">
+          <Link href="/history/version-history" className="group inline-flex items-center gap-3 rounded-lg bg-orange-600 px-6 py-3 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2">
             Version History <History size={16} /> <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>
       </main>
-    </div>
+    </SiteShell>
   );
 }

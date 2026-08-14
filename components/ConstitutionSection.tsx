@@ -46,6 +46,7 @@ interface Props {
 }
 
 export default function ConstitutionSection({ title, icon, subsections, isOpen, onToggle, amendmentCount = 0 }: Props) {
+  const sectionContentId = `constitution-content-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
   
   const renderContentWithLinks = (text: string) => {
     const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
@@ -78,8 +79,11 @@ export default function ConstitutionSection({ title, icon, subsections, isOpen, 
   return (
     <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl border border-gray-200 dark:border-white/10 overflow-hidden shadow-sm transition-all hover:border-orange-500/30">
       <button 
+        type="button"
         onClick={onToggle}
-        className="w-full flex items-center justify-between p-4 sm:p-6 text-left hover:bg-gray-50 dark:hover:bg-white/5 transition"
+        aria-expanded={isOpen}
+        aria-controls={sectionContentId}
+        className="w-full flex items-center justify-between p-4 text-left transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-600 sm:p-6"
       >
         <div className="flex items-center gap-3 sm:gap-4">
           <div className="p-1.5 sm:p-2 bg-gray-100 dark:bg-black/20 rounded-lg shrink-0 text-orange-600">
@@ -96,7 +100,7 @@ export default function ConstitutionSection({ title, icon, subsections, isOpen, 
       </button>
 
       {isOpen && (
-        <div className="px-4 sm:px-8 pb-8 pt-2 border-t dark:border-white/10 bg-gray-50/30 dark:bg-black/10 animate-in slide-in-from-top-2 duration-200">
+        <div id={sectionContentId} className="border-t border-slate-200 bg-slate-50/60 px-4 pb-8 pt-2 animate-in slide-in-from-top-2 duration-200 sm:px-8">
           <div className="space-y-8 mt-4">
             {subsections?.map((sub) => (
               <div key={sub.id} id={`constitution-subsection-${sub.id}`} className="scroll-mt-32">
