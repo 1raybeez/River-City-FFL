@@ -18,6 +18,7 @@ import type {
   FinancialSummaryItem,
 } from "@/lib/managers/financialHistoryPresentation";
 import type { PublicOperationalFinancePresentation } from "@/lib/finance/publicOperationalFinancePresentation";
+import SiteShell from "@/components/SiteShell";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -67,33 +68,17 @@ export default function FinancialHistoryClient({
     : presentation.leaderboard.slice(0, 5);
 
   return (
-    <main className="min-h-screen overflow-x-clip bg-white text-black transition-colors dark:bg-[#050505] dark:text-white">
-      <header className="relative overflow-hidden border-b border-black/5 bg-emerald-600 px-4 pb-14 pt-24 text-white dark:border-white/10 sm:px-6 sm:pb-16 sm:pt-28">
-        <div className="absolute inset-0 opacity-10 [background-image:radial-gradient(circle_at_20%_20%,white_0,transparent_32%),radial-gradient(circle_at_80%_70%,black_0,transparent_38%)]" />
-        <div className="relative mx-auto max-w-6xl">
-          <Link
-            href="/league-info"
-            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 bg-black/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest transition hover:bg-black/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-          >
-            <ArrowLeft size={14} aria-hidden="true" /> League Info
+    <SiteShell activePath="/league-info">
+    <main className="min-h-screen overflow-x-clip bg-[#f7f8fa] text-slate-950">
+      <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+        <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <Link href="/league-info" className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 transition hover:text-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2">
+            <ArrowLeft size={14} aria-hidden="true" /> Back to League Info
           </Link>
-          <div className="mt-8 max-w-3xl">
-            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-emerald-100">
-              Reconciled 2016–2025
-            </p>
-            <h1 className="mt-3 text-4xl font-black uppercase italic tracking-tighter sm:text-6xl">
-              Financial History
-            </h1>
-            <p className="mt-5 max-w-2xl text-sm font-bold leading-relaxed text-emerald-50 sm:text-base">
-              A season-by-season record of league dues, prizes, cash payments,
-              rollovers, and expenses from the commissioner&apos;s reconciled
-              records.
-            </p>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto w-full max-w-6xl space-y-8 px-4 py-10 sm:px-6 sm:py-14">
+          <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">League Info</p>
+          <h1 className="mt-2 text-4xl font-black uppercase italic tracking-tight text-slate-950 sm:text-5xl">River City Payouts</h1>
+          <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-600">Current-season operational finance and reconciled historical payouts for River City FFL.</p>
+        </header>
         <PublicCurrentSeasonSection currentSeason={currentSeason} />
         <section aria-labelledby="overall-heading">
           <div className="mb-5 flex items-center gap-3">
@@ -371,7 +356,8 @@ export default function FinancialHistoryClient({
           </details>
         </section>
       </div>
-    </main>
+      </main>
+    </SiteShell>
   );
 }
 
