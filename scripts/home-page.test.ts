@@ -24,8 +24,15 @@ assert.doesNotMatch(page, /amountOwedCents|paymentHandle|paymentTimestamp|venmo|
 assert.match(page, /aria-label="Close league history"/);
 assert.match(page, /aria-label="Close commissioner briefing"/);
 assert.match(page, /role="dialog" aria-modal="true"/);
-assert.match(page, /2026 public draft status/);
 assert.match(page, /Commissioner Corner/);
+assert.doesNotMatch(page, /2026 public draft status/);
+assert.match(page, /2026 virtual draft/);
+assert.match(page, /Virtual Draft HQ/);
+assert.doesNotMatch(page, /Aug 22|Keepers lock by|authorized-only|available to all managers/i);
+assert.match(page, /Keepers remain editable until the draft begins/);
+assert.match(page, /Join Google Meet/);
+assert.match(page, /href="https:\/\/meet\.google\.com\/hqg-cafx-mcs"/);
+assert.match(page, /fetch\("\/api\/rsvps"/);
 assert.match(page, /Reigning Champion/);
 assert.match(page, /Latest Commissioner Briefing/);
 assert.doesNotMatch(page, /Quick Links/);
