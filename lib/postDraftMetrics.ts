@@ -43,6 +43,15 @@ export type PostDraftStrategyInput = {
   settingsAvailable?: boolean;
 };
 
+export type PostDraftRosterRequirements = {
+  rosterPositions: readonly string[];
+  requiredStarterSlots: Record<string, number>;
+  flexSlots: number;
+  flexEligiblePositions: readonly string[];
+  rosterSlotCapacity: number;
+  source: "Sleeper league.roster_positions";
+};
+
 export type PostDraftMetricsInput = {
   season: number;
   draftId: string | null;
@@ -52,6 +61,7 @@ export type PostDraftMetricsInput = {
   acquisitions: readonly PostDraftAcquisitionInput[];
   players: ReadonlyMap<string, PostDraftPlayerInput>;
   powerRankings: CanonicalPowerRankings;
+  rosterRequirements: PostDraftRosterRequirements | null;
   generatedAt?: string;
 };
 
@@ -114,6 +124,20 @@ export type PostDraftPublicMetrics = {
     normalizedIndex: number | null;
     coverage: "complete" | "partial" | null;
     status: "Preseason Outlook" | null;
+  };
+  requiredStarterSlots: Record<string, number>;
+  coveredStarterSlots: number;
+  uncoveredStarterSlots: number;
+  starterCoverageByPosition: Record<string, { required: number; covered: number; uncovered: number }>;
+  depthByPosition: Record<string, number>;
+  totalDepth: number;
+  depthCoverageStatus: "complete" | "partial" | "unavailable";
+  rosterSlotCapacity: number | null;
+  rosterCompleteness: {
+    filledSlots: number;
+    capacity: number | null;
+    ratio: number | null;
+    status: "complete" | "partial" | "unavailable";
   };
 };
 
@@ -216,12 +240,109 @@ function getPowerRanking(
   ) ?? null;
 }
 
+function calculateRosterStructure(
+  roster: PostDraftRosterInput,
+  players: ReadonlyMap<string, PostDraftPlayerInput>,
+  requirements: PostDraftRosterRequirements | null
+) {
+  if (!requirements) {
+    return {
+      requiredStarterSlots: {},
+      coveredStarterSlots: 0,
+      uncoveredStarterSlots: 0,
+      starterCoverageByPosition: {},
+      depthByPosition: {},
+      totalDepth: 0,
+      depthCoverageStatus: "unavailable" as const,
+      rosterSlotCapacity: null,
+      rosterCompleteness: {
+        filledSlots: roster.playerIds.length,
+        capacity: null,
+        ratio: null,
+        status: "unavailable" as const,
+      },
+      warnings: ["Sleeper roster-position configuration is unavailable."],
+    };
+  }
+
+  const playerPositions = new Map<string, string | null>(
+    roster.playerIds.map((playerId) => [
+      playerId,
+      players.get(playerId)?.position ? normalizePosition(players.get(playerId)!.position) : null,
+    ])
+  );
+  const unassigned = new Set(roster.playerIds);
+  const starterCoverageByPosition: Record<string, { required: number; covered: number; uncovered: number }> = {};
+  const requiredStarterSlots = { ...requirements.requiredStarterSlots, FLEX: requirements.flexSlots };
+
+  Object.entries(requirements.requiredStarterSlots).forEach(([position, required]) => {
+    const eligible = [...unassigned].filter((playerId) => playerPositions.get(playerId) === position);
+    const covered = Math.min(eligible.length, required);
+    eligible.slice(0, covered).forEach((playerId) => unassigned.delete(playerId));
+    starterCoverageByPosition[position] = {
+      required,
+      covered,
+      uncovered: required - covered,
+    };
+  });
+
+  const flexEligible = [...unassigned].filter((playerId) => {
+    const position = playerPositions.get(playerId);
+    return position !== null && position !== undefined && requirements.flexEligiblePositions.includes(position);
+  });
+  const flexCovered = Math.min(flexEligible.length, requirements.flexSlots);
+  flexEligible.slice(0, flexCovered).forEach((playerId) => unassigned.delete(playerId));
+  if (requirements.flexSlots > 0) {
+    starterCoverageByPosition.FLEX = {
+      required: requirements.flexSlots,
+      covered: flexCovered,
+      uncovered: requirements.flexSlots - flexCovered,
+    };
+  }
+
+  const depthByPosition: Record<string, number> = {};
+  let unmappedDepthCount = 0;
+  unassigned.forEach((playerId) => {
+    const position = playerPositions.get(playerId);
+    if (!position) {
+      unmappedDepthCount += 1;
+      return;
+    }
+    depthByPosition[position] = (depthByPosition[position] ?? 0) + 1;
+  });
+  const coveredStarterSlots = Object.values(starterCoverageByPosition).reduce((sum, slot) => sum + slot.covered, 0);
+  const requiredSlotCount = Object.values(starterCoverageByPosition).reduce((sum, slot) => sum + slot.required, 0);
+  const rosterSlotCapacity = requirements.rosterSlotCapacity;
+  const filledSlots = Math.min(roster.playerIds.length, rosterSlotCapacity);
+  return {
+    requiredStarterSlots,
+    coveredStarterSlots,
+    uncoveredStarterSlots: requiredSlotCount - coveredStarterSlots,
+    starterCoverageByPosition,
+    depthByPosition,
+    totalDepth: [...unassigned].length,
+    depthCoverageStatus: unmappedDepthCount > 0 ? "partial" as const : "complete" as const,
+    rosterSlotCapacity,
+    rosterCompleteness: {
+      filledSlots,
+      capacity: rosterSlotCapacity,
+      ratio: round(filledSlots / rosterSlotCapacity),
+      status: roster.playerIds.length === rosterSlotCapacity ? "complete" as const : "partial" as const,
+    },
+    warnings: [
+      ...(unmappedDepthCount > 0 ? [`${unmappedDepthCount} unassigned roster players have no position mapping.`] : []),
+      ...(roster.playerIds.length > rosterSlotCapacity ? ["Roster contains more players than the configured slot capacity."] : []),
+    ],
+  };
+}
+
 function buildPublicMetrics(
   roster: PostDraftRosterInput,
   franchiseId: string,
   acquisitions: readonly PostDraftAcquisitionInput[],
   players: ReadonlyMap<string, PostDraftPlayerInput>,
-  powerRankings: CanonicalPowerRankings
+  powerRankings: CanonicalPowerRankings,
+  requirements: PostDraftRosterRequirements | null
 ): { metrics: PostDraftPublicMetrics; coverage: PostDraftCoverage } {
   const rosterAcquisitions = acquisitions.filter(
     (acquisition) => acquisition.rosterId === roster.rosterId
@@ -290,9 +411,11 @@ function buildPublicMetrics(
     return value === null || value === undefined ? [] : [{ value, cost: keeper.purchasePrice ?? keeper.keeperCost ?? 0 }];
   });
   const powerRanking = getPowerRanking(powerRankings, roster.rosterId, franchiseId);
+  const rosterStructure = calculateRosterStructure(roster, players, requirements);
   if (!powerRanking) warnings.push("Canonical Power Rankings record unavailable.");
   if (rosterValueCount !== roster.playerIds.length) warnings.push("Roster value coverage is partial.");
   if (positionCount !== roster.playerIds.length) warnings.push("Roster position coverage is partial.");
+  warnings.push(...rosterStructure.warnings);
   const coverage: PostDraftCoverage = {
     status: warnings.length > 0 ? "partial" : "complete",
     warnings: Array.from(new Set(warnings)),
@@ -348,6 +471,15 @@ function buildPublicMetrics(
         coverage: powerRanking?.coverage ?? null,
         status: powerRanking?.status ?? null,
       },
+      requiredStarterSlots: rosterStructure.requiredStarterSlots,
+      coveredStarterSlots: rosterStructure.coveredStarterSlots,
+      uncoveredStarterSlots: rosterStructure.uncoveredStarterSlots,
+      starterCoverageByPosition: rosterStructure.starterCoverageByPosition,
+      depthByPosition: rosterStructure.depthByPosition,
+      totalDepth: rosterStructure.totalDepth,
+      depthCoverageStatus: rosterStructure.depthCoverageStatus,
+      rosterSlotCapacity: rosterStructure.rosterSlotCapacity,
+      rosterCompleteness: rosterStructure.rosterCompleteness,
     },
     coverage,
   };
@@ -372,6 +504,28 @@ function gateWarnings(input: PostDraftMetricsInput) {
   return Array.from(new Set(warnings));
 }
 
+function readSleeperRosterRequirements(value: unknown): PostDraftRosterRequirements | null {
+  if (!Array.isArray(value)) return null;
+  const rosterPositions = value
+    .filter((position): position is string => typeof position === "string")
+    .map((position) => normalizePosition(position));
+  if (rosterPositions.length === 0) return null;
+  const requiredStarterSlots: Record<string, number> = {};
+  rosterPositions
+    .filter((position) => position !== "BN" && position !== "FLEX")
+    .forEach((position) => {
+      requiredStarterSlots[position] = (requiredStarterSlots[position] ?? 0) + 1;
+    });
+  return {
+    rosterPositions,
+    requiredStarterSlots,
+    flexSlots: rosterPositions.filter((position) => position === "FLEX").length,
+    flexEligiblePositions: ["RB", "WR", "TE"],
+    rosterSlotCapacity: rosterPositions.length,
+    source: "Sleeper league.roster_positions",
+  };
+}
+
 export function calculatePostDraftMetrics(input: PostDraftMetricsInput): PostDraftPublicResult {
   const generatedAt = input.generatedAt ?? new Date(0).toISOString();
   const warnings = gateWarnings(input);
@@ -393,7 +547,7 @@ export function calculatePostDraftMetrics(input: PostDraftMetricsInput): PostDra
     const ranking = input.powerRankings.teams.find((team) => team.rosterId === roster.rosterId);
     if (!ranking || seenFranchises.has(ranking.franchiseId)) return [];
     seenFranchises.add(ranking.franchiseId);
-    const built = buildPublicMetrics(roster, ranking.franchiseId, input.acquisitions, input.players, input.powerRankings);
+    const built = buildPublicMetrics(roster, ranking.franchiseId, input.acquisitions, input.players, input.powerRankings, input.rosterRequirements);
     return [{
       season: input.season,
       franchiseId: ranking.franchiseId,
@@ -499,10 +653,11 @@ async function loadPostDraftMetricsInput(season: number): Promise<PostDraftMetri
     import("@/lib/auction/adpRefreshService").then(({ readPublishedAdpConsensusFromFirestore }) => readPublishedAdpConsensusFromFirestore(season)),
   ]);
   const snapshot = await sleeper.getSleeperAuctionDraftSnapshot(season);
-  const [rosters, users, sleeperPlayers] = await Promise.all([
+  const [rosters, users, sleeperPlayers, leagueInfo] = await Promise.all([
     sleeper.getLeagueRosters(snapshot.leagueId ?? undefined),
     sleeper.getLeagueUsers(snapshot.leagueId ?? undefined),
     fetch("https://api.sleeper.app/v1/players/nfl", { next: { revalidate: 3600 } }).then((response) => response.ok ? response.json() : {}),
+    sleeper.getLeagueInfo(snapshot.leagueId ?? undefined),
   ]);
   const usersById = new Map(users.map((user: any) => [String(user.user_id), user]));
   const playerStats = new Map(playerStatsSnapshot.docs.map((document) => [document.id, document.data()]));
@@ -587,6 +742,7 @@ async function loadPostDraftMetricsInput(season: number): Promise<PostDraftMetri
     acquisitions,
     players,
     powerRankings: await rankings.getCanonicalPowerRankings(),
+    rosterRequirements: readSleeperRosterRequirements((leagueInfo as { roster_positions?: unknown }).roster_positions),
     generatedAt: new Date().toISOString(),
   };
   return input;
