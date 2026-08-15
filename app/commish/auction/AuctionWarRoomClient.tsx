@@ -8431,6 +8431,14 @@ export default function AuctionWarRoomClient({
                 </span>
               </button>
             )}
+            <Link
+              href="/commish/auction/report"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-orange-600/30 px-3 text-[10px] font-black uppercase tracking-widest text-orange-600 transition hover:bg-orange-600/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600"
+            >
+              <BarChart3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Post-Draft Report</span>
+              <span className="sm:hidden">Report</span>
+            </Link>
             <ModeToggle />
             <SignOutControl className="border-black/10 text-gray-600 hover:bg-orange-600/10 hover:text-orange-600 dark:border-white/10 dark:text-gray-300" />
           </div>

@@ -181,6 +181,14 @@ export type PostDraftPrivateMetrics = {
     totalDollarsOverCap: number;
     averageCapVariance: number | null;
     purchaseCapScores: number[];
+    capPurchases: Array<{
+      playerId: string;
+      playerName: string;
+      plannedCap: number;
+      purchasePrice: number;
+      variance: number;
+      purchaseCapScore: number;
+    }>;
     unavailableCount: number;
   };
   preferredEntryDiscipline: {
@@ -626,7 +634,14 @@ export function calculatePrivatePostDraftMetrics(
     const purchaseCapScore = variance <= 0
       ? 100
       : Math.max(0, round(100 * (1 - variance / Math.max(plannedCap, 1))));
-    return [{ variance, purchaseCapScore }];
+    return [{
+      playerId: acquisition.playerId,
+      playerName: acquisition.playerName,
+      plannedCap,
+      purchasePrice: acquisition.purchasePrice,
+      variance,
+      purchaseCapScore,
+    }];
   });
   const entryRows = acquisitions.flatMap((acquisition) => {
     const preferredEntry = preferenceByPlayerId.get(acquisition.playerId)?.preferredEntry;
@@ -648,6 +663,7 @@ export function calculatePrivatePostDraftMetrics(
       totalDollarsOverCap: round(capOverages.reduce((sum, row) => sum + row.variance, 0)),
       averageCapVariance: capRows.length === 0 ? null : round(capRows.reduce((sum, row) => sum + row.variance, 0) / capRows.length),
       purchaseCapScores: capRows.map((row) => row.purchaseCapScore),
+      capPurchases: capRows,
       unavailableCount: acquisitions.length - capRows.length,
     },
     preferredEntryDiscipline: {

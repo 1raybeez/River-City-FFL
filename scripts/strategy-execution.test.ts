@@ -81,6 +81,7 @@ function makeRecord(overrides: Partial<PostDraftPrivateRecord["privateMetrics"]>
         totalDollarsOverCap: 2,
         averageCapVariance: 0.4,
         purchaseCapScores: [100, 100, 100, 100, 90],
+        capPurchases: [],
         unavailableCount: 5,
       },
       preferredEntryDiscipline: {
@@ -141,27 +142,27 @@ assert.equal(noTargets.targetExecution.effectiveWeight, 0);
 assert.equal(noTargets.status, "partial");
 
 const noCaps = calculateStrategyExecution({
-  privateRecord: makeRecord({ capDiscipline: { cappedPurchases: 0, underOrAtCapCount: 0, overCapCount: 0, totalDollarsOverCap: 0, averageCapVariance: null, purchaseCapScores: [], unavailableCount: 10 } }),
+  privateRecord: makeRecord({ capDiscipline: { cappedPurchases: 0, underOrAtCapCount: 0, overCapCount: 0, totalDollarsOverCap: 0, averageCapVariance: null, purchaseCapScores: [], capPurchases: [], unavailableCount: 10 } }),
   settings,
 });
 assert.equal(noCaps.capDiscipline.status, "unavailable");
 
 const allUnder = calculateStrategyExecution({
-  privateRecord: makeRecord({ capDiscipline: { cappedPurchases: 2, underOrAtCapCount: 2, overCapCount: 0, totalDollarsOverCap: 0, averageCapVariance: -2, purchaseCapScores: [100, 100], unavailableCount: 8 } }),
+  privateRecord: makeRecord({ capDiscipline: { cappedPurchases: 2, underOrAtCapCount: 2, overCapCount: 0, totalDollarsOverCap: 0, averageCapVariance: -2, purchaseCapScores: [100, 100], capPurchases: [], unavailableCount: 8 } }),
   settings,
 });
 assert.equal(allUnder.capDiscipline.score, 100);
 
 const oneDollarOver = calculateStrategyExecution({
-  privateRecord: makeRecord({ capDiscipline: { cappedPurchases: 1, underOrAtCapCount: 0, overCapCount: 1, totalDollarsOverCap: 1, averageCapVariance: 1, purchaseCapScores: [97.5], unavailableCount: 9 } }),
+  privateRecord: makeRecord({ capDiscipline: { cappedPurchases: 1, underOrAtCapCount: 0, overCapCount: 1, totalDollarsOverCap: 1, averageCapVariance: 1, purchaseCapScores: [97.5], capPurchases: [], unavailableCount: 9 } }),
   settings,
 });
 const fiveDollarsOver = calculateStrategyExecution({
-  privateRecord: makeRecord({ capDiscipline: { cappedPurchases: 1, underOrAtCapCount: 0, overCapCount: 1, totalDollarsOverCap: 5, averageCapVariance: 5, purchaseCapScores: [75], unavailableCount: 9 } }),
+  privateRecord: makeRecord({ capDiscipline: { cappedPurchases: 1, underOrAtCapCount: 0, overCapCount: 1, totalDollarsOverCap: 5, averageCapVariance: 5, purchaseCapScores: [75], capPurchases: [], unavailableCount: 9 } }),
   settings,
 });
 const twiceCap = calculateStrategyExecution({
-  privateRecord: makeRecord({ capDiscipline: { cappedPurchases: 1, underOrAtCapCount: 0, overCapCount: 1, totalDollarsOverCap: 20, averageCapVariance: 20, purchaseCapScores: [0], unavailableCount: 9 } }),
+  privateRecord: makeRecord({ capDiscipline: { cappedPurchases: 1, underOrAtCapCount: 0, overCapCount: 1, totalDollarsOverCap: 20, averageCapVariance: 20, purchaseCapScores: [0], capPurchases: [], unavailableCount: 9 } }),
   settings,
 });
 assert.equal(oneDollarOver.capDiscipline.score, 97.5);
@@ -171,17 +172,17 @@ assert.ok(oneDollarOver.capDiscipline.score! > fiveDollarsOver.capDiscipline.sco
 assert.ok(fiveDollarsOver.capDiscipline.score! > twiceCap.capDiscipline.score!);
 
 const averagedCaps = calculateStrategyExecution({
-  privateRecord: makeRecord({ capDiscipline: { cappedPurchases: 2, underOrAtCapCount: 1, overCapCount: 1, totalDollarsOverCap: 5, averageCapVariance: 2.5, purchaseCapScores: [100, 75], unavailableCount: 8 } }),
+  privateRecord: makeRecord({ capDiscipline: { cappedPurchases: 2, underOrAtCapCount: 1, overCapCount: 1, totalDollarsOverCap: 5, averageCapVariance: 2.5, purchaseCapScores: [100, 75], capPurchases: [], unavailableCount: 8 } }),
   settings,
 });
 assert.equal(averagedCaps.capDiscipline.score, 87.5);
 
 const smallCapMiss = calculateStrategyExecution({
-  privateRecord: makeRecord({ capDiscipline: { cappedPurchases: 1, underOrAtCapCount: 0, overCapCount: 1, totalDollarsOverCap: 1, averageCapVariance: 1, purchaseCapScores: [97.5], unavailableCount: 9 } }),
+  privateRecord: makeRecord({ capDiscipline: { cappedPurchases: 1, underOrAtCapCount: 0, overCapCount: 1, totalDollarsOverCap: 1, averageCapVariance: 1, purchaseCapScores: [97.5], capPurchases: [], unavailableCount: 9 } }),
   settings,
 });
 const largeCapMiss = calculateStrategyExecution({
-  privateRecord: makeRecord({ capDiscipline: { cappedPurchases: 1, underOrAtCapCount: 0, overCapCount: 1, totalDollarsOverCap: 100, averageCapVariance: 100, purchaseCapScores: [0], unavailableCount: 9 } }),
+  privateRecord: makeRecord({ capDiscipline: { cappedPurchases: 1, underOrAtCapCount: 0, overCapCount: 1, totalDollarsOverCap: 100, averageCapVariance: 100, purchaseCapScores: [0], capPurchases: [], unavailableCount: 9 } }),
   settings,
 });
 assert.ok(smallCapMiss.capDiscipline.score! > largeCapMiss.capDiscipline.score!);
@@ -207,7 +208,7 @@ const insufficient = calculateStrategyExecution({
     targetHitRate: null,
     acquiredTargets: [],
     missedTargets: [],
-    capDiscipline: { cappedPurchases: 0, underOrAtCapCount: 0, overCapCount: 0, totalDollarsOverCap: 0, averageCapVariance: null, purchaseCapScores: [], unavailableCount: 10 },
+    capDiscipline: { cappedPurchases: 0, underOrAtCapCount: 0, overCapCount: 0, totalDollarsOverCap: 0, averageCapVariance: null, purchaseCapScores: [], capPurchases: [], unavailableCount: 10 },
   }),
   settings: null,
 });
@@ -224,7 +225,7 @@ assert.equal(targetAndCap.status, "partial");
 assert.equal(targetAndCap.strategyExecutionScore !== null, true);
 
 const targetAndRoster = calculateStrategyExecution({
-  privateRecord: makeRecord({ capDiscipline: { cappedPurchases: 0, underOrAtCapCount: 0, overCapCount: 0, totalDollarsOverCap: 0, averageCapVariance: null, purchaseCapScores: [], unavailableCount: 10 } }),
+  privateRecord: makeRecord({ capDiscipline: { cappedPurchases: 0, underOrAtCapCount: 0, overCapCount: 0, totalDollarsOverCap: 0, averageCapVariance: null, purchaseCapScores: [], capPurchases: [], unavailableCount: 10 } }),
   settings,
 });
 assert.equal(targetAndRoster.strategyExecutionScore !== null, true);
@@ -236,7 +237,7 @@ const capAndRoster = calculateStrategyExecution({
 assert.equal(capAndRoster.strategyExecutionScore !== null, true);
 
 const targetOnly = calculateStrategyExecution({
-  privateRecord: makeRecord({ capDiscipline: { cappedPurchases: 0, underOrAtCapCount: 0, overCapCount: 0, totalDollarsOverCap: 0, averageCapVariance: null, purchaseCapScores: [], unavailableCount: 10 } }),
+  privateRecord: makeRecord({ capDiscipline: { cappedPurchases: 0, underOrAtCapCount: 0, overCapCount: 0, totalDollarsOverCap: 0, averageCapVariance: null, purchaseCapScores: [], capPurchases: [], unavailableCount: 10 } }),
   settings: null,
 });
 assert.equal(targetOnly.status, "unavailable");
