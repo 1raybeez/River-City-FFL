@@ -6,6 +6,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ArrowRight, Calendar, CalendarDays, Gavel, Menu, MessageCircle, TrendingUp, X } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, onSnapshot } from "firebase/firestore";
+import { RSVP_ATTENDEES, resolveRsvpAttendee } from "@/lib/rsvpAttendees";
 
 const RECAP_LOADING_TEXT = "Loading latest league note...";
 const RECAP_FALLBACK_TEXT = "Commish recap could not be loaded. Check back soon for the latest league update.";
@@ -20,17 +21,12 @@ function getDraftCountdownLabel(now: Date) {
   return `${days} day${days === 1 ? "" : "s"} to draft`;
 }
 
-const managers = [
-  ["Aaron Dogg", "583513420586848256"], ["Brian Stevens", "343129212162523136"], ["David Besedich", "466663208728391680"],
-  ["Doug Fordham", "73400761740312576"], ["JD Dowling", "342850391018356736"], ["Jordan Maslyn", "341412060426436608"],
-  ["Rashad Gresham", "864186418971418624"], ["Ray Long", "342828350391230464"], ["Stan Schoppe", "1260048448384667648"],
-  ["Tommy Moore", "342849293037608960"], ["Travis Miller", "342831451382841344"], ["Wade Cameron", "342838548870762496"],
-];
-
 const mobileNavLinks = [
   ["Home", "/"], ["Managers", "/managers"], ["League Info", "/league-info"], ["Commish", "/commish"], ["Matchups", "/matchups"],
   ["Power Rankings", "/predictor"], ["History", "/history"], ["Rivalries", "/league-info/rivalries"],
 ];
+
+const managers = RSVP_ATTENDEES.map((attendee) => [attendee.name, attendee.id] as const);
 
 type DashboardCardProps = { label: string; icon?: ReactNode; children: ReactNode; accent?: boolean };
 
@@ -88,7 +84,13 @@ export default function Home() {
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("Public finance unavailable")))
       .then(setPublicFinance)
       .catch(() => setPublicFinance(null));
-    const unsubscribe = onSnapshot(collection(db, "rsvps"), (snapshot) => setRsvpList(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }))));
+    const unsubscribe = onSnapshot(collection(db, "rsvps"), (snapshot) => {
+      const normalized = snapshot.docs.flatMap((entry) => {
+        const attendee = resolveRsvpAttendee(entry.id);
+        return attendee ? [{ id: attendee.id, ...entry.data() }] : [];
+      });
+      setRsvpList(Array.from(new Map(normalized.map((entry) => [entry.id, entry])).values()));
+    });
 
     async function loadPredictorData() {
       try {
@@ -125,7 +127,7 @@ export default function Home() {
   };
 
   const event = { date: "August 29, 2026", event: "2026 Draft Day", desc: "10:00 AM - 3:00 PM. Location: TBD.", gCalLink: "https://calendar.app.google/QYqFqoGATsB9rkxb8" };
-  const hasSelectedRsvp = rsvpList.some((entry) => entry.id === selectedManagerId);
+  const hasSelectedRsvp = rsvpList.some((entry) => resolveRsvpAttendee(entry.id)?.id === selectedManagerId);
   const draftCountdownLabel = getDraftCountdownLabel(new Date());
 
   return <div className="min-h-screen bg-[#f7f8fa] text-slate-950 dark:bg-[#0a0a0a] dark:text-white">
@@ -133,7 +135,7 @@ export default function Home() {
     <header className="mx-auto max-w-7xl px-4 pb-6 pt-8 sm:px-6 lg:px-8"><div className="flex items-center gap-4"><div className="relative h-16 w-16 overflow-hidden rounded-full border-2 border-white bg-white shadow-lg"><Image src="/River City FFL Logo.JPG" alt="River City FFL logo" fill className="object-cover" priority unoptimized /></div><div><p className="text-[10px] font-black uppercase tracking-[0.3em] text-orange-600">River City FFL</p><h1 className="mt-1 text-4xl font-black uppercase italic tracking-tighter sm:text-5xl">2026 League Dashboard</h1><p className="mt-1 text-xs font-medium text-slate-500 dark:text-white/50">Est. 2011 · Richmond, Virginia</p></div></div></header>
     <main className="mx-auto grid max-w-7xl gap-5 px-4 pb-12 sm:px-6 md:grid-cols-2 lg:grid-cols-12 lg:px-8" aria-label="Home dashboard">
       <section className="contents" aria-label="Primary season status">
-        <DashboardCard label="2026 League Event" icon={<CalendarDays size={17} className="text-orange-600" />}><h2 className="mt-5 text-2xl font-black uppercase italic leading-none">2026 Draft Day</h2><p className="mt-4 text-sm font-semibold">{event.date}</p><p className="mt-1 text-sm text-slate-500 dark:text-white/55">10:00 AM ET · Location TBD</p><div className="mt-6 flex flex-col gap-3"><select aria-label="Verify manager identity for RSVP" className="min-h-11 w-full rounded-lg border border-slate-900/10 bg-white px-3 text-xs font-bold dark:border-white/10 dark:bg-black/20" value={selectedManagerId} onChange={(e) => setSelectedManagerId(e.target.value)}><option value="">Verify Manager Identity</option>{managers.map(([name, id]) => <option key={id} value={id}>{name}</option>)}</select><button type="button" onClick={handleRsvp} disabled={!selectedManagerId || hasSelectedRsvp || isSubmittingRsvp} className="min-h-11 rounded-lg bg-emerald-600 px-4 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-emerald-500 disabled:opacity-50">{hasSelectedRsvp ? "Attendance Confirmed" : `${rsvpList.length} confirmed · Confirm attendance`}</button>{event.gCalLink && <a href={event.gCalLink} target="_blank" rel="noopener noreferrer" className="text-center text-[10px] font-black uppercase tracking-widest text-orange-600 hover:underline">View calendar invite</a>}</div></DashboardCard>
+        <DashboardCard label="2026 League Event" icon={<CalendarDays size={17} className="text-orange-600" />}><h2 className="mt-5 text-2xl font-black uppercase italic leading-none">2026 Draft Day</h2><p className="mt-4 text-sm font-semibold">{event.date}</p><p className="mt-1 text-sm text-slate-500 dark:text-white/55">10:00 AM ET · Location TBD</p><div className="mt-6 flex flex-col gap-3"><select aria-label="Select your name for RSVP" className="min-h-11 w-full rounded-lg border border-slate-900/10 bg-white px-3 text-xs font-bold dark:border-white/10 dark:bg-black/20" value={selectedManagerId} onChange={(e) => setSelectedManagerId(e.target.value)}><option value="">Select your name</option>{managers.map(([name, id]) => <option key={id} value={id}>{name}</option>)}</select><button type="button" onClick={handleRsvp} disabled={!selectedManagerId || hasSelectedRsvp || isSubmittingRsvp} className="min-h-11 rounded-lg bg-emerald-600 px-4 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-emerald-500 disabled:opacity-50">{hasSelectedRsvp ? "Attendance Confirmed" : `${rsvpList.length} confirmed · Confirm attendance`}</button>{event.gCalLink && <a href={event.gCalLink} target="_blank" rel="noopener noreferrer" className="text-center text-[10px] font-black uppercase tracking-widest text-orange-600 hover:underline">View calendar invite</a>}</div></DashboardCard>
         <DashboardCard label="Commissioner Corner" icon={<MessageCircle size={17} className="text-blue-600" />}><p className="mt-5 text-[10px] font-black uppercase tracking-widest text-blue-600">2026 virtual draft</p><h2 className="mt-2 text-2xl font-black uppercase italic leading-none">Virtual Draft HQ</h2><div className="mt-5 grid grid-cols-2 gap-2 text-xs"><MiniStat label="Countdown" value={draftCountdownLabel} /><MiniStat label="RSVP" value={`${rsvpList.length} confirmed`} /><MiniStat label="Values" value={PUBLIC_AUCTION_VALUE_STATUS} /><MiniStat label="ADP" value={PUBLIC_ADP_STATUS} /></div><p className="mt-5 text-xs leading-5 text-slate-500 dark:text-white/55">Draft day is virtual: August 29, 2026 at 10:00 AM ET. Keepers remain editable until the draft begins.</p><div className="mt-5 flex flex-wrap gap-2"><Link href="/commish/auction" className="min-h-10 rounded-lg bg-orange-600 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white">Open Your War Room</Link><a href="https://meet.google.com/hqg-cafx-mcs" target="_blank" rel="noopener noreferrer" className="min-h-10 rounded-lg bg-blue-700 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white">Join Google Meet</a><Link href="/commish" className="min-h-10 rounded-lg border border-slate-900/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest dark:border-white/10">Commissioner Hub</Link><button type="button" onClick={() => setShowRecap(true)} className="min-h-10 rounded-lg border border-slate-900/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest dark:border-white/10">Recent Recap</button></div></DashboardCard>
         <DashboardCard label="Reigning Champion" icon={<span className="text-xl text-amber-500">🏆</span>}><div className="mt-5 flex items-center gap-4"><div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full border-4 border-amber-500/20"><Image src="/managers/Aaron.png" alt="Aaron Hawkins" fill className="object-cover" unoptimized /></div><div><h2 className="text-xl font-black uppercase italic">Aaron Hawkins</h2><p className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/50">Official 2025 winner</p></div></div><div className="mt-6 grid grid-cols-2 gap-2"><MiniStat label="Record" value="9-5" /><MiniStat label="Year" value="2025" /></div></DashboardCard>
       </section>

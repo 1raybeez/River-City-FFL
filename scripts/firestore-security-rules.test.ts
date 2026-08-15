@@ -190,7 +190,9 @@ for (const proposalClientPath of [
 
 const rsvpRoute = read("app/api/rsvps/route.ts");
 assert.match(rsvpRoute, /@\/lib\/firebaseAdmin/);
-assert.match(rsvpRoute, /PUBLIC_RSVP_MANAGERS/);
+assert.match(rsvpRoute, /@\/lib\/rsvpAttendees/);
+assert.match(rsvpRoute, /resolveRsvpAttendee/);
+assert.match(rsvpRoute, /FieldValue\.serverTimestamp\(\)/);
 assert.match(rsvpRoute, /Cross-origin request denied/);
 assert.match(rsvpRoute, /x-forwarded-host/);
 assert.match(rsvpRoute, /VERCEL_URL/);

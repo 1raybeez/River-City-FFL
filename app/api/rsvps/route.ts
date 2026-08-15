@@ -1,23 +1,9 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { firestore } from "@/lib/firebaseAdmin";
+import { resolveRsvpAttendee } from "@/lib/rsvpAttendees";
 
 export const runtime = "nodejs";
-
-const PUBLIC_RSVP_MANAGERS: Record<string, string> = {
-  "583513420586848256": "Aaron Dogg",
-  "343129212162523136": "Brian Stevens",
-  "466663208728391680": "David Besedich",
-  "73400761740312576": "Doug Fordham",
-  "342850391018356736": "JD Dowling",
-  "341412060426436608": "Jordan Maslyn",
-  "864186418971418624": "Rashad Gresham",
-  "342828350391230464": "Ray Long",
-  "1260048448384667648": "Stan Schoppe",
-  "342849293037608960": "Tommy Moore",
-  "342831451382841344": "Travis Miller",
-  "342838548870762496": "Wade Cameron",
-};
 
 function isSameOrigin(req: Request) {
   const origin = req.headers.get("origin");
@@ -64,17 +50,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "JSON request required." }, { status: 415 });
   }
 
-  const managerId = await readManagerId(req);
-  const managerName = PUBLIC_RSVP_MANAGERS[managerId];
-  if (!managerName) {
+  const requestedAttendeeId = await readManagerId(req);
+  const attendee = resolveRsvpAttendee(requestedAttendeeId);
+  if (!attendee) {
     return NextResponse.json({ error: "Unknown RSVP manager." }, { status: 400 });
   }
 
-  await firestore.collection("rsvps").doc(managerId).set({
-    name: managerName,
+  await firestore.collection("rsvps").doc(attendee.id).set({
+    name: attendee.name,
     timestamp: FieldValue.serverTimestamp(),
     status: "Attending",
   });
 
-  return NextResponse.json({ id: managerId, name: managerName, status: "Attending" });
+  return NextResponse.json({ id: attendee.id, name: attendee.name, status: "Attending" });
 }
