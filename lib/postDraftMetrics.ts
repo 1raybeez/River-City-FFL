@@ -180,6 +180,7 @@ export type PostDraftPrivateMetrics = {
     overCapCount: number;
     totalDollarsOverCap: number;
     averageCapVariance: number | null;
+    purchaseCapScores: number[];
     unavailableCount: number;
   };
   preferredEntryDiscipline: {
@@ -594,7 +595,15 @@ export function calculatePrivatePostDraftMetrics(
   }
   const acquisitions = input.acquisitions.filter((acquisition) => acquisition.rosterId === roster.rosterId);
   const acquiredIds = new Set(acquisitions.map((acquisition) => acquisition.playerId));
-  const targets = strategy.preferences.filter((preference) => preference.tag === "target");
+  const preferenceByPlayerId = new Map<string, (typeof strategy.preferences)[number]>();
+  strategy.preferences.forEach((preference) => {
+    const existing = preferenceByPlayerId.get(preference.sleeperPlayerId);
+    if (!existing || preference.updatedAt >= existing.updatedAt) {
+      preferenceByPlayerId.set(preference.sleeperPlayerId, preference);
+    }
+  });
+  const uniquePreferences = Array.from(preferenceByPlayerId.values());
+  const targets = uniquePreferences.filter((preference) => preference.tag === "target");
   const acquiredTargets = targets.filter((target) => acquiredIds.has(target.sleeperPlayerId)).map((target) => ({
     playerId: target.sleeperPlayerId,
     playerName: input.players.get(target.sleeperPlayerId)?.playerName ?? target.sleeperPlayerId,
@@ -603,11 +612,21 @@ export function calculatePrivatePostDraftMetrics(
     playerId: target.sleeperPlayerId,
     playerName: input.players.get(target.sleeperPlayerId)?.playerName ?? target.sleeperPlayerId,
   }));
-  const preferenceByPlayerId = new Map(strategy.preferences.map((preference) => [preference.sleeperPlayerId, preference]));
   const capRows = acquisitions.flatMap((acquisition) => {
     const plannedCap = preferenceByPlayerId.get(acquisition.playerId)?.plannedCap;
-    if (plannedCap === null || plannedCap === undefined || acquisition.purchasePrice === null) return [];
-    return [{ variance: round(acquisition.purchasePrice - plannedCap) }];
+    if (
+      plannedCap === null ||
+      plannedCap === undefined ||
+      !Number.isFinite(plannedCap) ||
+      plannedCap <= 0 ||
+      acquisition.purchasePrice === null ||
+      !Number.isFinite(acquisition.purchasePrice)
+    ) return [];
+    const variance = round(acquisition.purchasePrice - plannedCap);
+    const purchaseCapScore = variance <= 0
+      ? 100
+      : Math.max(0, round(100 * (1 - variance / Math.max(plannedCap, 1))));
+    return [{ variance, purchaseCapScore }];
   });
   const entryRows = acquisitions.flatMap((acquisition) => {
     const preferredEntry = preferenceByPlayerId.get(acquisition.playerId)?.preferredEntry;
@@ -628,6 +647,7 @@ export function calculatePrivatePostDraftMetrics(
       overCapCount: capOverages.length,
       totalDollarsOverCap: round(capOverages.reduce((sum, row) => sum + row.variance, 0)),
       averageCapVariance: capRows.length === 0 ? null : round(capRows.reduce((sum, row) => sum + row.variance, 0) / capRows.length),
+      purchaseCapScores: capRows.map((row) => row.purchaseCapScore),
       unavailableCount: acquisitions.length - capRows.length,
     },
     preferredEntryDiscipline: {
