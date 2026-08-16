@@ -202,16 +202,6 @@ export async function verifyAuctionSession(): Promise<AuctionAccessSession | nul
   const cookieStore = await cookies();
   const cookieName = getAuctionSessionCookieName();
   const sessionCookie = cookieStore.get(cookieName)?.value;
-  const allowedEmails = getAuctionAllowedEmails();
-  const pilotEmails = getAuctionPilotAllowedEmails();
-
-  console.info("[auction-auth] Session cookie read", {
-    cookieName,
-    cookieExists: Boolean(sessionCookie),
-    cookieLength: sessionCookie?.length ?? 0,
-    allowedEmails,
-    pilotEmails,
-  });
 
   if (!sessionCookie) return null;
 
@@ -225,17 +215,6 @@ export async function verifyAuctionSession(): Promise<AuctionAccessSession | nul
       ? await getAuctionAccessForVerifiedEmail(email)
       : getAuctionAccessForEmail(email, false);
 
-    console.info("[auction-auth] Session cookie verified", {
-      email,
-      emailVerified: Boolean(decodedToken.email_verified),
-      allowedEmails,
-      pilotEmails,
-      role: access.role,
-      ownerProfileId: access.ownerProfileId,
-      canAccessWarRoom: access.canAccessWarRoom,
-      canAccessMaintenance: access.canAccessMaintenance,
-    });
-
     if (!access.canAccessWarRoom && !access.canAccessMaintenance) return null;
 
     return {
@@ -243,15 +222,7 @@ export async function verifyAuctionSession(): Promise<AuctionAccessSession | nul
       decodedToken,
       access,
     };
-  } catch (error) {
-    console.info("[auction-auth] Session cookie verification failed", {
-      cookieName,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Unknown session cookie verification error.",
-    });
-
+  } catch {
     return null;
   }
 }

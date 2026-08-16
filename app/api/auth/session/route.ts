@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import {
   getAuctionAccessForVerifiedEmail,
-  getAuctionAllowedEmails,
-  getAuctionPilotAllowedEmails,
   getAuctionSessionCookieName,
   getAuctionSessionMaxAgeMs,
 } from "@/lib/auth/auctionAccess";
@@ -38,23 +36,10 @@ export async function POST(req: Request) {
   try {
     const decodedToken = await adminAuth.verifyIdToken(idToken, true);
     const email = normalizeEmail(decodedToken.email);
-    const allowedEmails = getAuctionAllowedEmails();
-    const pilotEmails = getAuctionPilotAllowedEmails();
     const access = decodedToken.email_verified
       ? await getAuctionAccessForVerifiedEmail(email)
       : null;
     const cookieName = getAuctionSessionCookieName();
-
-    console.info("[auction-auth] Google sign-in email decoded", {
-      email,
-      emailVerified: Boolean(decodedToken.email_verified),
-      allowedEmails,
-      pilotEmails,
-      role: access?.role,
-      ownerProfileId: access?.ownerProfileId,
-      emailAllowed:
-        access?.canAccessWarRoom || access?.canAccessMaintenance || false,
-    });
 
     if (!decodedToken.email_verified || !access) {
       return NextResponse.json(
@@ -91,19 +76,9 @@ export async function POST(req: Request) {
       expires: new Date(Date.now() + maxAgeMs),
     });
 
-    console.info("[auction-auth] Session cookie created", {
-      email,
-      cookieName,
-      httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      path: "/",
-      maxAgeSeconds: Math.floor(maxAgeMs / 1000),
-    });
-
     return response;
-  } catch (error) {
-    console.error("Auction session creation failed:", error);
+  } catch {
+    console.error("Auction session creation failed.");
     return NextResponse.json(
       { error: "Invalid Firebase ID token." },
       { status: 401 }

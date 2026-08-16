@@ -69,7 +69,8 @@
 ## Draft Actions
 
 - [ ] Select a player from the pool.
-- [ ] Confirm Current Nomination updates.
+- [ ] Confirm selecting a player changes only local browsing/private analysis state.
+- [ ] Confirm Current Nomination remains unchanged until an authorized user explicitly selects `Set Current Nomination`.
 - [ ] Record a manual sale.
 - [ ] Confirm team budgets update.
 - [ ] Undo the sale.
