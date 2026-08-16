@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { Gavel, Grid3X3, Home, Shield, WalletCards, Wrench } from 'lucide-react';
+import { FileText, Gavel, Grid3X3, Home, Shield, WalletCards, Wrench } from 'lucide-react';
 import SiteShell from '@/components/SiteShell';
 import {
   AuctionAccessError,
@@ -31,6 +31,12 @@ const hubLinks = [
     description: 'Open the 2026 Auction War Room and draft-day tools.',
     href: '/commish/auction',
     icon: Grid3X3,
+  },
+  {
+    title: 'Post-Draft Intelligence',
+    description: 'Capture snapshots and prepare commissioner-only narrative drafts.',
+    href: '/commish/post-draft',
+    icon: FileText,
   },
   {
     title: 'Home',

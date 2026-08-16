@@ -681,7 +681,7 @@ export function calculatePrivatePostDraftMetrics(
   };
 }
 
-async function loadPostDraftMetricsInput(season: number): Promise<PostDraftMetricsInput> {
+export async function loadPostDraftMetricsInput(season: number): Promise<PostDraftMetricsInput> {
   const [sleeper, rankings, playerStatsSnapshot, adp] = await Promise.all([
     import("@/lib/sleeper"),
     import("@/lib/powerRankings"),

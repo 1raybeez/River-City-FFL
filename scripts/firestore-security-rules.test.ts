@@ -176,8 +176,10 @@ assert.match(
 );
 
 const homePage = read("app/page.tsx");
+const homeClient = read("app/HomeClient.tsx");
 assert.doesNotMatch(homePage, /\bsetDoc\s*\(/, "Homepage must not write RSVP data with the client SDK.");
-assert.match(homePage, /fetch\("\/api\/rsvps"/);
+assert.doesNotMatch(homeClient, /\bsetDoc\s*\(/, "Home client must not write RSVP data directly with the client SDK.");
+assert.match(homeClient, /fetch\("\/api\/rsvps"/);
 
 for (const proposalClientPath of [
   "app/commish/proposals/page.tsx",
