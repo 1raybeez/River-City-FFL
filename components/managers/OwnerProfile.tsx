@@ -28,6 +28,7 @@ import type { OwnerSeasonHistoryRecord } from "@/lib/history/ownerSeasonHistory"
 import type { OwnerCareerTimelineEvent } from "@/lib/managers/ownerCareerTimeline";
 import type { OwnerFranchiseLegacyPresentation } from "@/lib/managers/franchiseLegacyPresentation";
 import type { OwnerFinancialSnapshotPresentation } from "@/lib/managers/ownerFinancialSnapshotPresentation";
+import type { PublicTeamOutlook } from "@/lib/postDraftNarrativeTypes";
 import { teamColors } from "@/lib/themes/teamColors";
 import {
   OwnerProfileStatus,
@@ -2199,10 +2200,12 @@ function ProfileSectionNavigation({
   showTimeline,
   showSeasons,
   showDivision,
+  showOutlook,
 }: {
   showTimeline: boolean;
   showSeasons: boolean;
   showDivision: boolean;
+  showOutlook: boolean;
 }) {
   const links = [
     { href: "#overview", label: "Overview", show: true },
@@ -2210,6 +2213,7 @@ function ProfileSectionNavigation({
     { href: "#seasons", label: "Seasons", show: showSeasons },
     { href: "#opponents", label: "Opponents", show: true },
     { href: "#division", label: "Division", show: showDivision },
+    { href: "#post-draft-outlook", label: "Draft Outlook", show: showOutlook },
   ].filter((link) => link.show);
 
   return (
@@ -2232,6 +2236,31 @@ function ProfileSectionNavigation({
   );
 }
 
+function PublicTeamOutlookSection({ outlook }: { outlook: PublicTeamOutlook }) {
+  return (
+    <SectionShell id="post-draft-outlook" title={`${outlook.season} Draft Outlook`} icon={<Trophy size={16} />}>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <StatTile label="Draft Grade" value={outlook.draftGrade ?? "N/A"} accentColor="#dc2626" icon={<Trophy size={16} />} />
+        <StatTile label="Draft Score" value={outlook.draftScore ?? "N/A"} accentColor="#ea580c" icon={<Quote size={16} />} />
+        <StatTile label="Power Rank · Roster Strength" value={outlook.powerRank ?? "N/A"} accentColor="#071a33" icon={<Shield size={16} />} />
+      </div>
+      <p className="mt-4 text-xs font-medium leading-5 text-black/55 dark:text-white/55">
+        Power Rank is roster-strength context, not win probability, playoff odds, or championship odds.
+      </p>
+      {outlook.rosterStrengthSummary && <p className="mt-4 rounded-lg border border-black/10 bg-black/[0.02] p-4 text-sm font-semibold leading-6 dark:border-white/10 dark:bg-white/[0.04]">{outlook.rosterStrengthSummary}</p>}
+      {(outlook.strengths.length > 0 || outlook.concerns.length > 0) && (
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          {outlook.strengths.length > 0 && <div><h3 className="text-[10px] font-black uppercase tracking-widest text-black/45 dark:text-white/45">Strengths</h3><ul className="mt-2 list-disc space-y-2 pl-5 text-sm font-medium leading-6">{outlook.strengths.map((item) => <li key={item}>{item}</li>)}</ul></div>}
+          {outlook.concerns.length > 0 && <div><h3 className="text-[10px] font-black uppercase tracking-widest text-black/45 dark:text-white/45">Concerns</h3><ul className="mt-2 list-disc space-y-2 pl-5 text-sm font-medium leading-6">{outlook.concerns.map((item) => <li key={item}>{item}</li>)}</ul></div>}
+        </div>
+      )}
+      {(outlook.bestBuy || outlook.biggestReach) && <div className="mt-5 grid gap-3 sm:grid-cols-2">{outlook.bestBuy && <div className="rounded-lg border border-black/10 p-4 dark:border-white/10"><h3 className="text-[10px] font-black uppercase tracking-widest text-black/45 dark:text-white/45">Best Buy</h3><p className="mt-2 text-sm font-black">{outlook.bestBuy}</p></div>}{outlook.biggestReach && <div className="rounded-lg border border-black/10 p-4 dark:border-white/10"><h3 className="text-[10px] font-black uppercase tracking-widest text-black/45 dark:text-white/45">Biggest Reach</h3><p className="mt-2 text-sm font-black">{outlook.biggestReach}</p></div>}</div>}
+      {(outlook.xFactor || outlook.commissionerTake) && <div className="mt-5 grid gap-4 md:grid-cols-2">{outlook.xFactor && <div><h3 className="text-[10px] font-black uppercase tracking-widest text-black/45 dark:text-white/45">X-Factor</h3><p className="mt-2 text-sm font-medium leading-6">{outlook.xFactor}</p></div>}{outlook.commissionerTake && <div className="rounded-lg border border-orange-600/25 bg-orange-600/5 p-4"><h3 className="text-[10px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">Commissioner Take</h3><p className="mt-2 text-sm font-medium leading-6">{outlook.commissionerTake}</p></div>}</div>}
+      {outlook.coverage.status !== "complete" && <p className="mt-5 text-xs font-semibold text-orange-700 dark:text-orange-300">This outlook reflects partial source coverage.</p>}
+    </SectionShell>
+  );
+}
+
 export default function OwnerProfile({
   profile,
   careerTimeline,
@@ -2243,6 +2272,7 @@ export default function OwnerProfile({
   supportedHeadToHeadOpponentIds,
   franchiseLegacy,
   financialSnapshot,
+  publishedTeamOutlook,
 }: {
   profile: OwnerProfileViewModel;
   careerTimeline: readonly OwnerCareerTimelineEvent[];
@@ -2254,6 +2284,7 @@ export default function OwnerProfile({
   supportedHeadToHeadOpponentIds: readonly string[];
   franchiseLegacy: OwnerFranchiseLegacyPresentation;
   financialSnapshot: OwnerFinancialSnapshotPresentation | null;
+  publishedTeamOutlook: PublicTeamOutlook | null;
 }) {
   const isStaff = profile.owner.status === OwnerProfileStatus.Staff;
   const hasTenures =
@@ -2292,6 +2323,7 @@ export default function OwnerProfile({
           showTimeline={showCareerTimeline}
           showSeasons={showSeasonHistory}
           showDivision={showDivision}
+          showOutlook={publishedTeamOutlook !== null}
         />
         <OwnerOverview
           profile={profile}
@@ -2301,6 +2333,10 @@ export default function OwnerProfile({
           opponentSummaries={opponentMatchupSummaries}
           opponentIdentities={opponentIdentities}
         />
+
+        {publishedTeamOutlook && (
+          <PublicTeamOutlookSection outlook={publishedTeamOutlook} />
+        )}
 
         {showMainColumn ? (
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
