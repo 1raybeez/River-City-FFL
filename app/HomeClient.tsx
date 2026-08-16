@@ -8,6 +8,7 @@ import { SignOutControl } from "@/components/SiteShell";
 import MemberAccountMenu from "@/components/MemberAccountMenu";
 import { db } from "@/lib/firebase";
 import type { CurrentMember } from "@/lib/auth/currentMemberContract";
+import type { PublicLeagueRecap } from "@/lib/postDraftNarrativeTypes";
 import { collection, doc, getDoc, onSnapshot } from "firebase/firestore";
 import { RSVP_ATTENDEES, resolveRsvpAttendee } from "@/lib/rsvpAttendees";
 
@@ -43,11 +44,33 @@ function MiniStat({ label, value }: { label: string; value: string }) {
   return <div className="min-w-0 rounded-lg bg-slate-100 p-3 dark:bg-white/5"><p className="break-words text-[9px] font-black uppercase leading-4 tracking-widest text-slate-400">{label}</p><p className="mt-1 break-words text-sm font-black">{value}</p></div>;
 }
 
-export default function HomeClient({ initialMember }: { initialMember: CurrentMember }) {
+function RecapList({ title, items }: { title: string; items: string[] }) {
+  if (items.length === 0) return null;
+  return <section><h3 className="text-xs font-black uppercase tracking-widest text-blue-300">{title}</h3><ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-white/75">{items.map((item) => <li key={item}>{item}</li>)}</ul></section>;
+}
+
+function PublishedRecapDetail({ recap }: { recap: PublicLeagueRecap }) {
+  return <div className="mt-6 max-h-[65vh] space-y-6 overflow-y-auto pr-2">
+    {recap.openingCommissionerTake && <section><h3 className="text-xs font-black uppercase tracking-widest text-blue-300">Commissioner Take</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-white/75">{recap.openingCommissionerTake}</p></section>}
+    {recap.draftGradeLeaderboard.length > 0 && <section><h3 className="text-xs font-black uppercase tracking-widest text-blue-300">Draft Grade Leaderboard</h3><div className="mt-2 overflow-x-auto rounded-lg border border-white/10"><table className="min-w-full text-left text-sm"><thead className="text-[10px] uppercase tracking-widest text-white/50"><tr><th className="px-3 py-2">Team</th><th className="px-3 py-2">Draft Score</th><th className="px-3 py-2">Grade</th></tr></thead><tbody>{recap.draftGradeLeaderboard.map((row) => <tr key={row.franchiseId} className="border-t border-white/10"><td className="px-3 py-2">{row.teamName}</td><td className="px-3 py-2">{row.draftScore ?? "N/A"}</td><td className="px-3 py-2 font-black">{row.grade ?? "N/A"}</td></tr>)}</tbody></table></div></section>}
+    {recap.biggestBargains.length > 0 && <section><h3 className="text-xs font-black uppercase tracking-widest text-blue-300">Biggest Bargains</h3><div className="mt-2 space-y-2 text-sm text-white/75">{recap.biggestBargains.map((item) => <p key={`${item.franchiseId}-${item.playerName}`}><strong>{item.teamName}</strong> · {item.playerName}</p>)}</div></section>}
+    {recap.biggestReaches.length > 0 && <section><h3 className="text-xs font-black uppercase tracking-widest text-blue-300">Biggest Reaches</h3><div className="mt-2 space-y-2 text-sm text-white/75">{recap.biggestReaches.map((item) => <p key={`${item.franchiseId}-${item.playerName}`}><strong>{item.teamName}</strong> · {item.playerName}</p>)}</div></section>}
+    <RecapList title="Spending Trends" items={recap.spendingTrends} />
+    <RecapList title="Position Trends" items={recap.positionTrends} />
+    {recap.earlyPowerRankings.length > 0 && <section><h3 className="text-xs font-black uppercase tracking-widest text-blue-300">Early Power Rankings</h3><ol className="mt-2 space-y-1 text-sm text-white/75">{recap.earlyPowerRankings.map((item) => <li key={item.franchiseId}><strong>#{item.rank ?? "—"}</strong> {item.teamName} <span className="text-white/50">· roster-strength context, not odds</span></li>)}</ol></section>}
+    {recap.teamOneLiners.length > 0 && <section><h3 className="text-xs font-black uppercase tracking-widest text-blue-300">Team One-Liners</h3><div className="mt-2 space-y-2 text-sm text-white/75">{recap.teamOneLiners.map((item) => <p key={item.franchiseId}><strong>{item.teamName}:</strong> {item.text}</p>)}</div></section>}
+    <RecapList title="Notable Draft Decisions" items={recap.notableDraftDecisions} />
+    {recap.closingTake && <section><h3 className="text-xs font-black uppercase tracking-widest text-blue-300">Closing Commissioner Take</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-white/75">{recap.closingTake}</p></section>}
+    {recap.teamOutlookLinks.length > 0 && <section><h3 className="text-xs font-black uppercase tracking-widest text-blue-300">Team Outlooks</h3><div className="mt-2 flex flex-wrap gap-2">{recap.teamOutlookLinks.map((link) => <Link key={link.href} href={link.href} className="rounded-lg border border-white/20 px-3 py-2 text-xs font-bold text-blue-200 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300">View {link.teamName} outlook</Link>)}</div></section>}
+  </div>;
+}
+
+export default function HomeClient({ initialMember, initialPublishedRecap }: { initialMember: CurrentMember; initialPublishedRecap: PublicLeagueRecap | null }) {
   const [showRecap, setShowRecap] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [liveRecap, setLiveRecap] = useState(RECAP_LOADING_TEXT);
+  const publishedRecap = initialPublishedRecap;
   const [predictorTeams, setPredictorTeams] = useState<any[]>([]);
   const [loadingPredictor, setLoadingPredictor] = useState(true);
   const [predictorError, setPredictorError] = useState<string | null>(null);
@@ -72,7 +95,7 @@ export default function HomeClient({ initialMember }: { initialMember: CurrentMe
     };
     window.addEventListener("keydown", closeModalsOnEscape);
 
-    async function fetchRecap() {
+    async function fetchLegacyRecap() {
       try {
         const snapshot = await getDoc(doc(db, "siteContent", "recap"));
         const text = snapshot.exists() ? snapshot.data().text : null;
@@ -81,7 +104,7 @@ export default function HomeClient({ initialMember }: { initialMember: CurrentMe
         setLiveRecap(RECAP_FALLBACK_TEXT);
       }
     }
-    fetchRecap();
+    if (!initialPublishedRecap) fetchLegacyRecap();
     fetch("/api/public-finance/summary")
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("Public finance unavailable")))
       .then(setPublicFinance)
@@ -113,7 +136,7 @@ export default function HomeClient({ initialMember }: { initialMember: CurrentMe
       window.removeEventListener("keydown", closeModalsOnEscape);
       unsubscribe();
     };
-  }, []);
+  }, [initialPublishedRecap]);
 
   const handleRsvp = async () => {
     if (!selectedManagerId) return;
@@ -158,11 +181,11 @@ export default function HomeClient({ initialMember }: { initialMember: CurrentMe
       </section>
       <section className="contents" aria-label="League history and recent recap">
         <DashboardCard label="League History" icon={<Calendar size={17} className="text-slate-700" />}><p className="mt-5 max-w-2xl text-sm leading-6 text-slate-600 dark:text-white/60">River City FFL was founded on competition, friendship, and a commitment to keeping records that matter.</p><p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600 dark:text-white/60">For 2026, the championship allocation is $235. After the approved $13.77 ring expense, the projected champion cash portion is $221.23. No champion award has been approved.</p><button type="button" onClick={() => setShowHistoryModal(true)} className="mt-6 min-h-11 rounded-lg border border-orange-600/40 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-orange-700 hover:bg-orange-600/10">View Full League History</button></DashboardCard>
-        <DashboardCard label="Recent Recap" icon={<MessageCircle size={17} className="text-blue-600" />}><h2 className="mt-5 text-2xl font-black uppercase italic">Latest Commissioner Briefing</h2><p className="mt-4 line-clamp-4 text-sm leading-6 text-slate-600 dark:text-white/60">{liveRecap}</p><button type="button" onClick={() => setShowRecap(true)} className="mt-6 min-h-11 text-[10px] font-black uppercase tracking-widest text-blue-700 hover:underline">Read Full Recap <ArrowRight className="ml-1 inline" size={14} /></button></DashboardCard>
+        <DashboardCard label="Recent Recap" icon={<MessageCircle size={17} className="text-blue-600" />}><h2 className="mt-5 text-2xl font-black uppercase italic">{publishedRecap?.title ?? "Latest Commissioner Briefing"}</h2><p className="mt-4 line-clamp-4 text-sm leading-6 text-slate-600 dark:text-white/60">{publishedRecap?.dek ?? publishedRecap?.openingCommissionerTake ?? liveRecap}</p>{publishedRecap && <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Published {new Date(publishedRecap.publishedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>}<button type="button" onClick={() => setShowRecap(true)} className="mt-6 min-h-11 text-[10px] font-black uppercase tracking-widest text-blue-700 hover:underline">Read Recap <ArrowRight className="ml-1 inline" size={14} /></button></DashboardCard>
       </section>
     </main>
 
     {showHistoryModal && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md" onClick={() => setShowHistoryModal(false)}><div role="dialog" aria-modal="true" aria-labelledby="history-dialog-title" className="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-8 text-slate-950 shadow-2xl dark:bg-[#0a0a0a] dark:text-white sm:p-12" onClick={(event) => event.stopPropagation()}><button type="button" aria-label="Close league history" onClick={() => setShowHistoryModal(false)} className="absolute right-5 top-5 rounded-lg p-2 text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600"><X size={24} aria-hidden="true" /></button><h2 id="history-dialog-title" className="pr-10 text-3xl font-black uppercase italic">Our History: From Roots to RVA</h2><div className="mt-8 space-y-5 text-sm leading-7 text-slate-600 dark:text-white/65"><p>Area 10 FFL was born in 2011, founded by a small group from Area 10 church with a simple goal: to create a community beyond Sunday services and small groups.</p><p>In 2019, we became River City FFL, a name tied to the heart of Richmond, Virginia.</p><h3 className="text-xl font-black uppercase italic text-orange-600">The Stakes</h3><p>For 2026, the championship allocation is $235. After the approved $13.77 ring expense, the projected champion cash portion is $221.23. No champion award has been approved.</p><p>The Toilet Bowl tradition began in 2022, and the league's records preserve both the triumphs and the shame.</p></div></div></div>}
-    {showRecap && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onClick={() => setShowRecap(false)}><div role="dialog" aria-modal="true" aria-labelledby="recap-dialog-title" className="relative w-full max-w-lg rounded-3xl bg-[#0b1527] p-8 text-white shadow-2xl" onClick={(event) => event.stopPropagation()}><button type="button" aria-label="Close commissioner briefing" onClick={() => setShowRecap(false)} className="absolute right-5 top-5 rounded-lg p-2 opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"><X size={22} aria-hidden="true" /></button><div className="flex items-center gap-3"><MessageCircle className="text-blue-400" size={25} aria-hidden="true" /><h2 id="recap-dialog-title" className="pr-8 text-xl font-black uppercase italic">Latest Commissioner Briefing</h2></div><p className="mt-6 max-h-[55vh] overflow-y-auto whitespace-pre-wrap text-sm leading-7 text-white/70">{liveRecap}</p></div></div>}
+    {showRecap && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onClick={() => setShowRecap(false)}><div role="dialog" aria-modal="true" aria-labelledby="recap-dialog-title" className="relative w-full max-w-3xl rounded-3xl bg-[#0b1527] p-8 text-white shadow-2xl" onClick={(event) => event.stopPropagation()}><button type="button" aria-label="Close commissioner briefing" onClick={() => setShowRecap(false)} className="absolute right-5 top-5 rounded-lg p-2 opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"><X size={22} aria-hidden="true" /></button><div className="flex items-center gap-3"><MessageCircle className="text-blue-400" size={25} aria-hidden="true" /><h2 id="recap-dialog-title" className="pr-8 text-xl font-black uppercase italic">{publishedRecap?.title ?? "Latest Commissioner Briefing"}</h2></div>{publishedRecap ? <><p className="mt-3 text-sm leading-6 text-white/60">{publishedRecap.dek ?? `Published ${new Date(publishedRecap.publishedAt).toLocaleDateString("en-US")}`}</p><PublishedRecapDetail recap={publishedRecap} /></> : <p className="mt-6 max-h-[55vh] overflow-y-auto whitespace-pre-wrap text-sm leading-7 text-white/70">{liveRecap}</p>}</div></div>}
   </div>;
 }

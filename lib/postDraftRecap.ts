@@ -72,9 +72,9 @@ async function getTeamOutlookLinks() {
   const links = await Promise.all(canonicalAuctionTeams.map(async (team) => {
     const active = await getPublishedTeamOutlookPublication(2026, team.franchiseId);
     const href = franchiseLink(team.franchiseId);
-    return active && href ? { franchiseId: team.franchiseId, publicationId: active.publicationId } : null;
+    return active && href ? { franchiseId: team.franchiseId, teamName: team.teamName, publicationId: active.publicationId, href } : null;
   }));
-  return links.filter((link): link is { franchiseId: string; publicationId: string } => Boolean(link));
+  return links.filter((link): link is Exclude<typeof link, null> => link !== null);
 }
 
 function formatMoney(value: number) { return `$${value.toFixed(2)}`; }
@@ -85,7 +85,7 @@ function assembleDeterministic(snapshot: PostDraftSnapshot, teamOutlookLinks: Le
     .filter((record) => record.draftGrade?.draftScore != null)
     .map((record) => ({ franchiseId: record.publicRecord.franchiseId, teamName: record.publicRecord.teamName, grade: record.draftGrade!.letterGrade, draftScore: record.draftGrade!.draftScore }))
     .sort((a, b) => (b.draftScore ?? -Infinity) - (a.draftScore ?? -Infinity) || a.franchiseId.localeCompare(b.franchiseId))
-    .map(({ franchiseId, teamName, grade }) => ({ franchiseId, teamName, grade }));
+    .map(({ franchiseId, teamName, grade, draftScore }) => ({ franchiseId, teamName, grade, draftScore }));
   const bargains = records.filter((record) => record.publicRecord.metrics.bestBuy).map((record) => ({ franchiseId: record.publicRecord.franchiseId, teamName: record.publicRecord.teamName, playerName: record.publicRecord.metrics.bestBuy!.playerName, valueDifferential: record.publicRecord.metrics.bestBuy!.valueDifferential })).sort((a, b) => b.valueDifferential - a.valueDifferential || a.franchiseId.localeCompare(b.franchiseId)).slice(0, 5).map(({ franchiseId, teamName, playerName }) => ({ franchiseId, teamName, playerName }));
   const reaches = records.filter((record) => record.publicRecord.metrics.biggestReach).map((record) => ({ franchiseId: record.publicRecord.franchiseId, teamName: record.publicRecord.teamName, playerName: record.publicRecord.metrics.biggestReach!.playerName, valueDifferential: record.publicRecord.metrics.biggestReach!.valueDifferential })).sort((a, b) => a.valueDifferential - b.valueDifferential || a.franchiseId.localeCompare(b.franchiseId)).slice(0, 5).map(({ franchiseId, teamName, playerName }) => ({ franchiseId, teamName, playerName }));
   const positionTotals = new Map<string, { spend: number; players: number }>();

@@ -55,7 +55,7 @@ export type LeagueRecapDraft = {
   title: string | null;
   dek: string | null;
   openingCommissionerTake: string | null;
-  draftGradeLeaderboard: Array<{ franchiseId: string; teamName: string; grade: string | null }>;
+  draftGradeLeaderboard: Array<{ franchiseId: string; teamName: string; grade: string | null; draftScore: number | null }>;
   biggestBargains: Array<{ franchiseId: string; teamName: string; playerName: string }>;
   biggestReaches: Array<{ franchiseId: string; teamName: string; playerName: string }>;
   spendingTrends: string[];
@@ -64,7 +64,7 @@ export type LeagueRecapDraft = {
   teamOneLiners: Array<{ franchiseId: string; teamName: string; text: string }>;
   notableDraftDecisions: string[];
   closingTake: string | null;
-  teamOutlookLinks: Array<{ franchiseId: string; publicationId: string }>;
+  teamOutlookLinks: Array<{ franchiseId: string; teamName: string; publicationId: string; href: string }>;
   privateStrategyLeaderboard: never[];
   internalNotes: string | null;
 };
@@ -117,7 +117,7 @@ export type PublicLeagueRecap = {
   teamOneLiners: LeagueRecapDraft["teamOneLiners"];
   notableDraftDecisions: string[];
   closingTake: string | null;
-  teamOutlookLinks: LeagueRecapDraft["teamOutlookLinks"];
+  teamOutlookLinks: Array<{ teamName: string; href: string }>;
 };
 
 export function serializePublicTeamOutlook({
@@ -170,7 +170,7 @@ export function serializePublicLeagueRecap(
     title: draft.title,
     dek: draft.dek,
     openingCommissionerTake: draft.openingCommissionerTake,
-    draftGradeLeaderboard: [...draft.draftGradeLeaderboard],
+    draftGradeLeaderboard: draft.draftGradeLeaderboard.map(({ franchiseId, teamName, grade, draftScore }) => ({ franchiseId, teamName, grade, draftScore })),
     biggestBargains: [...draft.biggestBargains],
     biggestReaches: [...draft.biggestReaches],
     spendingTrends: [...draft.spendingTrends],
@@ -179,7 +179,7 @@ export function serializePublicLeagueRecap(
     teamOneLiners: [...draft.teamOneLiners],
     notableDraftDecisions: [...draft.notableDraftDecisions],
     closingTake: draft.closingTake,
-    teamOutlookLinks: [...draft.teamOutlookLinks],
+    teamOutlookLinks: draft.teamOutlookLinks.map(({ teamName, href }) => ({ teamName, href })),
   };
 }
 

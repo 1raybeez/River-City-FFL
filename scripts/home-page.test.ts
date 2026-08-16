@@ -58,6 +58,7 @@ assert.match(page, /className="contents" aria-label="League activity and finance
 assert.match(page, /className="contents" aria-label="League history and recent recap"/);
 assert.doesNotMatch(page, /lg:grid-cols-4|lg:grid-cols-3|lg:grid-cols-\[minmax\(0,2fr\)/);
 assert.doesNotMatch(page, /(?:min-|max-)?h-\[\d+px\]/);
-assert.doesNotMatch(page, /overflow-x-(?:auto|scroll)/);
+assert.match(page, /overflow-x-auto/);
+assert.doesNotMatch(page, /overflow-x-scroll/);
 
 console.log("Home-page fixture checks passed.");
