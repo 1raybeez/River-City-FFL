@@ -6,6 +6,7 @@ import { toSafeCurrentMember } from "../lib/auth/currentMemberContract";
 const page = readFileSync("app/HomeClient.tsx", "utf8");
 const wrapper = readFileSync("app/page.tsx", "utf8");
 const siteShell = readFileSync("components/SiteShell.tsx", "utf8");
+const accountMenu = readFileSync("components/MemberAccountMenu.tsx", "utf8");
 
 const ray = toSafeCurrentMember(buildCommissionerAccessResult("ray@example.invalid"));
 const jeffrey = toSafeCurrentMember({
@@ -23,11 +24,11 @@ assert.match(wrapper, /anonymousCurrentMember/);
 assert.match(page, /initialMember\.authenticated/);
 assert.match(page, /League Member Login/);
 assert.match(page, /href="\/member\/login\?returnTo=%2F"/);
-assert.match(page, /SignOutControl/);
-assert.match(page, /href="\/commish\/auction"/);
-assert.match(page, /href="\/commish"/);
-assert.match(page, /initialMember\.canAccessWarRoom/);
-assert.match(page, /initialMember\.canAccessMaintenance/);
+assert.match(page, /MemberAccountMenu/);
+assert.match(accountMenu, /href="\/commish\/auction"/);
+assert.match(accountMenu, /href="\/commish"/);
+assert.match(accountMenu, /member\.canAccessWarRoom/);
+assert.match(accountMenu, /member\.canAccessMaintenance/);
 assert.match(page, /id="home-mobile-navigation"/);
 assert.match(siteShell, /fetch\("\/api\/auth\/logout", \{ method: "POST" \}\)/);
 

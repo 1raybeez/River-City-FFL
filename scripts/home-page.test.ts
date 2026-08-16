@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const page = readFileSync("app/HomeClient.tsx", "utf8");
+const accountMenu = readFileSync("components/MemberAccountMenu.tsx", "utf8");
 const wrapper = readFileSync("app/page.tsx", "utf8");
 const publicFinanceRoute = readFileSync("app/api/public-finance/summary/route.ts", "utf8");
 
@@ -45,8 +46,8 @@ assert.match(page, /aria-label="Home dashboard"/);
 assert.match(wrapper, /getCurrentMember/);
 assert.match(page, /League Member Login/);
 assert.match(page, /href="\/member\/login\?returnTo=%2F"/);
-assert.match(page, /SignOutControl/);
-assert.match(page, /My War Room/);
+assert.match(page, /MemberAccountMenu/);
+assert.match(accountMenu, /My War Room/);
 assert.match(page, /initialMember\.canAccessMaintenance/);
 assert.doesNotMatch(page, /email|firebaseUid|canonicalOwnerId|warRoomId|rosterId|idToken/i);
 assert.match(page, /lg:grid-cols-12/);

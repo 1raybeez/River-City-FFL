@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const shell = readFileSync("components/SiteShell.tsx", "utf8");
+const accountMenu = readFileSync("components/MemberAccountMenu.tsx", "utf8");
 const history = readFileSync("app/history/page.tsx", "utf8");
 const commish = readFileSync("app/commish/page.tsx", "utf8");
 const login = readFileSync("app/commish/auction/login/page.tsx", "utf8");
@@ -13,7 +14,7 @@ assert.match(shell, /aria-current=\{activePath === href \? "page"/);
 for (const href of ["/", "/matchups", "/managers", "/league-info/rivalries", "/history", "/league-info"]) {
   assert.match(shell, new RegExp(href.replaceAll("/", "\\/")));
 }
-assert.match(shell, /member\.canAccessMaintenance[\s\S]*href="\/commish"/);
+assert.match(accountMenu, /member\.canAccessMaintenance[\s\S]*href="\/commish"/);
 assert.match(history, /href="\/"/);
 assert.match(commish, /redirect\('\/commish\/login\?returnTo=%2Fcommish'\)/);
 assert.match(login, /useSearchParams/);
