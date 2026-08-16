@@ -8,7 +8,7 @@ const commish = readFileSync("app/commish/page.tsx", "utf8");
 const proposalApi = readFileSync("app/api/commish/proposals/route.ts", "utf8");
 
 assert.match(page, /import SiteShell from ["']@\/components\/SiteShell["']/);
-assert.match(page, /<SiteShell activePath="\/commish" authenticated>/);
+assert.match(page, /<SiteShell activePath="\/commish">/);
 assert.match(page, /Commissioner Hub/);
 assert.match(page, /<h1[^>]*>\s*Maintenance\s*<\/h1>/i);
 assert.match(page, /Return to Commissioner Hub/);

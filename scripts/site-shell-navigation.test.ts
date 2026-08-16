@@ -10,9 +10,10 @@ const auctionPage = readFileSync("app/commish/auction/page.tsx", "utf8");
 
 assert.match(history, /<SiteShell activePath="\/history">/);
 assert.match(shell, /aria-current=\{activePath === href \? "page"/);
-for (const href of ["/", "/matchups", "/managers", "/league-info/rivalries", "/history", "/league-info", "/commish"]) {
+for (const href of ["/", "/matchups", "/managers", "/league-info/rivalries", "/history", "/league-info"]) {
   assert.match(shell, new RegExp(href.replaceAll("/", "\\/")));
 }
+assert.match(shell, /member\.canAccessMaintenance[\s\S]*href="\/commish"/);
 assert.match(history, /href="\/"/);
 assert.match(commish, /redirect\('\/commish\/login\?returnTo=%2Fcommish'\)/);
 assert.match(login, /useSearchParams/);

@@ -72,7 +72,7 @@ export default function LegislativeHubPage() {
 
   const authenticated = state?.authenticatedOwner === true;
   return (
-    <SiteShell activePath="/league-info" authenticated={authenticated}>
+    <SiteShell activePath="/league-info">
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <Link href="/league-info" className="inline-flex min-h-10 items-center gap-2 text-xs font-black uppercase tracking-widest text-orange-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600"><ArrowLeft size={15} /> League Info</Link>
         <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="legislative-title">

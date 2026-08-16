@@ -6,7 +6,7 @@ const api = readFileSync("app/api/commish/proposals/route.ts", "utf8");
 const ownerForm = readFileSync("app/league-info/legislative/new/page.tsx", "utf8");
 const layout = readFileSync("app/commish/proposals/layout.tsx", "utf8");
 
-assert.match(page, /<SiteShell activePath="\/commish" authenticated>/);
+assert.match(page, /<SiteShell activePath="\/commish">/);
 assert.match(page, /Commissioner Hub/);
 assert.match(page, /New Proposal/);
 assert.match(page, /href="\/commish\/proposals"/);

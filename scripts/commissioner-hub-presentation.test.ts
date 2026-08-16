@@ -5,7 +5,7 @@ const page = readFileSync("app/commish/page.tsx", "utf8");
 const shell = readFileSync("components/SiteShell.tsx", "utf8");
 
 assert.match(page, /import SiteShell from ['"]@\/components\/SiteShell['"]/);
-assert.match(page, /<SiteShell activePath="\/commish" authenticated>/);
+assert.match(page, /<SiteShell activePath="\/commish">/);
 assert.match(page, /Commissioner Hub/);
 assert.match(page, /River City Commissioner Hub/);
 assert.match(page, /League administration, finance, governance, maintenance, and draft operations\./);

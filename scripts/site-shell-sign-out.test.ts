@@ -14,16 +14,16 @@ const warRoom = readFileSync("app/commish/auction/AuctionWarRoomClient.tsx", "ut
 assert.match(shell, /export function SignOutControl/);
 assert.match(shell, /fetch\("\/api\/auth\/logout", \{ method: "POST" \}\)/);
 assert.match(shell, /router\.replace\("\/"\)/);
-assert.match(shell, /authenticated \? <SignOutControl/);
-assert.match(shell, /id="site-mobile-navigation"[\s\S]*authenticated \? <SignOutControl/);
+assert.match(shell, /member\.authenticated/);
+assert.match(shell, /id="site-mobile-navigation"[\s\S]*member\.authenticated/);
 assert.match(shell, /aria-label="Sign out"/);
-assert.doesNotMatch(shell, /email|identity|role|capabilit/i);
+assert.doesNotMatch(shell, /email|firebaseUid|canonicalOwnerId|warRoomId|rosterId|idToken/i);
 assert.match(logoutRoute, /export async function POST/);
 assert.match(logoutRoute, /maxAge: 0/);
 assert.match(logoutRoute, /expires: new Date\(0\)/);
-assert.match(commish, /<SiteShell activePath="\/commish" authenticated>/);
-assert.match(proposals, /<SiteShell activePath="\/commish" authenticated>/);
-assert.match(finance, /<SiteShell activePath="\/commish" authenticated>/);
+assert.match(commish, /<SiteShell activePath="\/commish">/);
+assert.match(proposals, /<SiteShell activePath="\/commish">/);
+assert.match(finance, /<SiteShell activePath="\/commish">/);
 assert.match(warRoom, /import \{ SignOutControl \} from ['"]@\/components\/SiteShell['"]/);
 assert.match(warRoom, /<SignOutControl/);
 

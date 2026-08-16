@@ -52,7 +52,7 @@ export default function NewProposalPage() {
   };
 
   return (
-    <SiteShell activePath="/commish" authenticated>
+    <SiteShell activePath="/commish">
       <main className="min-h-screen bg-[#f7f8fa] px-4 py-8 text-slate-950 dark:bg-[#0a0a0a] dark:text-white sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl space-y-6">
           <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">

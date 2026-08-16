@@ -162,7 +162,7 @@ export default function OperationalFinanceDashboardClient({
   ] as const;
 
   return (
-    <SiteShell activePath="/commish" authenticated>
+    <SiteShell activePath="/commish">
       <main className="mx-auto w-full max-w-7xl overflow-x-hidden px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         <header className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#121212] sm:p-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
