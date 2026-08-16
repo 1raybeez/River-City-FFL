@@ -133,6 +133,7 @@ export function normalizeAdpPlayerName(value: string | null | undefined) {
   return normalizeText(value)
     .toLowerCase()
     .replace(/\b(jr|sr|ii|iii|iv|v)\.?$/i, "")
+    .replace(/\s+(d\/st|dst|defense)$/i, "")
     .replace(/['’`]/g, "")
     .replace(/[^a-z0-9]+/g, " ")
     .trim()

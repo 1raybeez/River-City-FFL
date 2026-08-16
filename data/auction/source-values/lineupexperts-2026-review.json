@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-07-14T17:55:06.978Z",
+  "generatedAt": "2026-08-16T04:25:20.068Z",
   "sourceKey": "lineupexperts",
   "seasonYear": 2026,
   "sourceValuesFile": "data/auction/source-values/lineupexperts-2026.json",
   "playerAliasesFile": "data/auction/player-aliases.json",
   "sleeperPlayersUrl": "https://api.sleeper.app/v1/players/nfl",
-  "rowCount": 242,
-  "matchedRowCount": 240,
+  "rowCount": 241,
+  "matchedRowCount": 239,
   "probableMatchRowCount": 0,
   "ambiguousRowCount": 0,
   "unmatchedRowCount": 2,
@@ -24,12 +24,6 @@
       "sourcePlayerName": "Kenneth Walker III",
       "suggestedSleeperName": "Kenneth Walker",
       "sleeperPlayerId": "8151",
-      "reason": "safe punctuation/suffix-insensitive alias normalized to a single Sleeper candidate"
-    },
-    {
-      "sourcePlayerName": "D.J. Moore",
-      "suggestedSleeperName": "DJ Moore",
-      "sleeperPlayerId": "4983",
       "reason": "safe punctuation/suffix-insensitive alias normalized to a single Sleeper candidate"
     },
     {
@@ -60,12 +54,6 @@
       "sourcePlayerName": "Michael Pittman Jr.",
       "suggestedSleeperName": "Michael Pittman",
       "sleeperPlayerId": "6819",
-      "reason": "safe punctuation/suffix-insensitive alias normalized to a single Sleeper candidate"
-    },
-    {
-      "sourcePlayerName": "D.K. Metcalf",
-      "suggestedSleeperName": "DK Metcalf",
-      "sleeperPlayerId": "5846",
       "reason": "safe punctuation/suffix-insensitive alias normalized to a single Sleeper candidate"
     },
     {
@@ -1763,16 +1751,19 @@
       "rowNumber": 49,
       "playerNameFromSource": "D.J. Moore",
       "normalizedPlayerName": "d.j. moore",
-      "matchedSearchName": "D.J. Moore",
-      "appliedAlias": null,
+      "matchedSearchName": "DJ Moore",
+      "appliedAlias": {
+        "sourcePlayerName": "D.J. Moore",
+        "sleeperSearchName": "DJ Moore"
+      },
       "position": "WR",
       "nflTeam": "BUF",
       "auctionValue": 9,
       "matchedSleeperId": "4983",
       "matchedSleeperName": "DJ Moore",
       "matchStatus": "matched",
-      "matchMethod": "safe-alias-normalized-name-position-team",
-      "matchConfidence": 94,
+      "matchMethod": "manual-alias-exact-normalized-name-position-team",
+      "matchConfidence": 96,
       "candidates": [
         {
           "sleeperPlayerId": "4961",
@@ -1791,12 +1782,7 @@
           "status": "Active"
         }
       ],
-      "aliasSuggestion": {
-        "sourcePlayerName": "D.J. Moore",
-        "suggestedSleeperName": "DJ Moore",
-        "sleeperPlayerId": "4983",
-        "reason": "safe punctuation/suffix-insensitive alias normalized to a single Sleeper candidate"
-      },
+      "aliasSuggestion": null,
       "reviewStatus": "accepted",
       "warnings": [],
       "errors": []
@@ -3161,16 +3147,19 @@
       "rowNumber": 89,
       "playerNameFromSource": "D.K. Metcalf",
       "normalizedPlayerName": "d.k. metcalf",
-      "matchedSearchName": "D.K. Metcalf",
-      "appliedAlias": null,
+      "matchedSearchName": "DK Metcalf",
+      "appliedAlias": {
+        "sourcePlayerName": "D.K. Metcalf",
+        "sleeperSearchName": "DK Metcalf"
+      },
       "position": "WR",
       "nflTeam": "PIT",
       "auctionValue": 7,
       "matchedSleeperId": "5846",
       "matchedSleeperName": "DK Metcalf",
       "matchStatus": "matched",
-      "matchMethod": "safe-alias-normalized-name-position-team",
-      "matchConfidence": 94,
+      "matchMethod": "manual-alias-exact-normalized-name-position-team",
+      "matchConfidence": 96,
       "candidates": [
         {
           "sleeperPlayerId": "5846",
@@ -3181,12 +3170,7 @@
           "status": "Active"
         }
       ],
-      "aliasSuggestion": {
-        "sourcePlayerName": "D.K. Metcalf",
-        "suggestedSleeperName": "DK Metcalf",
-        "sleeperPlayerId": "5846",
-        "reason": "safe punctuation/suffix-insensitive alias normalized to a single Sleeper candidate"
-      },
+      "aliasSuggestion": null,
       "reviewStatus": "accepted",
       "warnings": [],
       "errors": []
@@ -3454,40 +3438,6 @@
           "sleeperName": "Xavier Worthy",
           "position": "WR",
           "nflTeam": "KC",
-          "active": true,
-          "status": "Active"
-        }
-      ],
-      "aliasSuggestion": null,
-      "reviewStatus": "accepted",
-      "warnings": [],
-      "errors": []
-    },
-    {
-      "id": "lineupexperts:2026:lineupexperts-2026-csv:row-98:review",
-      "seasonYear": 2026,
-      "sourceId": "lineupexperts:2026:lineupexperts-2026-csv",
-      "sourceRowId": "lineupexperts:2026:lineupexperts-2026-csv:row-98",
-      "sourceFilename": "lineupexperts-2026.csv",
-      "rowNumber": 98,
-      "playerNameFromSource": "Ricky Pearsall",
-      "normalizedPlayerName": "ricky pearsall",
-      "matchedSearchName": "Ricky Pearsall",
-      "appliedAlias": null,
-      "position": "WR",
-      "nflTeam": "SF",
-      "auctionValue": 7,
-      "matchedSleeperId": "11638",
-      "matchedSleeperName": "Ricky Pearsall",
-      "matchStatus": "matched",
-      "matchMethod": "exact-normalized-name-position-team",
-      "matchConfidence": 94,
-      "candidates": [
-        {
-          "sleeperPlayerId": "11638",
-          "sleeperName": "Ricky Pearsall",
-          "position": "WR",
-          "nflTeam": "SF",
           "active": true,
           "status": "Active"
         }
@@ -6964,7 +6914,7 @@
           "position": "K",
           "nflTeam": "MIA",
           "active": true,
-          "status": "Active"
+          "status": "Inactive"
         }
       ],
       "aliasSuggestion": null,

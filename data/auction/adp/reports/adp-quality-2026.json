@@ -1,41 +1,68 @@
 {
-  "generatedAt": "2026-07-14T19:43:06.303Z",
+  "generatedAt": "2026-08-16T04:25:24.511Z",
   "season": 2026,
   "sources": [
     {
       "sourceKey": "fantasypros-adp",
       "sourceName": "FantasyPros ADP",
-      "rows": 406,
-      "matched": 404,
-      "unmatched": 2,
-      "warnings": 2,
+      "rows": 346,
+      "matched": 345,
+      "unmatched": 1,
+      "warnings": 1,
       "errors": 0
     },
     {
       "sourceKey": "rotowire-adp",
       "sourceName": "RotoWire ADP",
-      "rows": 546,
-      "matched": 539,
+      "rows": 635,
+      "matched": 628,
       "unmatched": 7,
       "warnings": 7,
+      "errors": 0
+    },
+    {
+      "sourceKey": "lineupexperts-adp",
+      "sourceName": "Lineup Experts ADP",
+      "rows": 279,
+      "matched": 277,
+      "unmatched": 2,
+      "warnings": 2,
+      "errors": 0
+    },
+    {
+      "sourceKey": "draftsharks-adp",
+      "sourceName": "Draft Sharks ADP",
+      "rows": 332,
+      "matched": 297,
+      "unmatched": 35,
+      "warnings": 35,
+      "errors": 0
+    },
+    {
+      "sourceKey": "fantasyfootballers-adp",
+      "sourceName": "Fantasy Footballers ADP",
+      "rows": 306,
+      "matched": 305,
+      "unmatched": 1,
+      "warnings": 1,
       "errors": 0
     }
   ],
   "consensus": {
-    "players": 555,
-    "sourceValues": 952,
-    "skippedSourceValues": 9,
+    "players": 654,
+    "sourceValues": 1898,
+    "skippedSourceValues": 46,
     "demandTiers": {
-      "ELITE": 92,
-      "VERY HIGH": 80,
-      "HIGH": 69,
-      "MEDIUM": 82,
-      "LOW": 128,
-      "VERY LOW": 104
+      "ELITE": 93,
+      "VERY HIGH": 70,
+      "HIGH": 116,
+      "MEDIUM": 112,
+      "LOW": 133,
+      "VERY LOW": 130
     },
     "warnings": {
-      "ADP sources disagree widely.": 129,
-      "Only one ADP source supports this player.": 167
+      "ADP sources disagree widely.": 234,
+      "Only one ADP source supports this player.": 251
     }
   }
 }

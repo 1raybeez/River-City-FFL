@@ -975,7 +975,7 @@ function buildLineupExpertsCsvRecords(
         "raw:lineupexpertsheaderrow": String(headerRowIndex + 1),
       },
     };
-  });
+  }).filter((record) => record.raw.player.length > 0);
 
   return {
     records,

@@ -68,6 +68,16 @@ try {
   assert.equal(auctionFiles[4].rows[0]?.auctionValue, 28, "Footballers uses auction_value.");
   assert.equal(auctionFiles[4].rows[0]?.raw["raw:risk"], "1");
 
+  const lineupexpertsArtifact = await importAuction(
+    "lineupexperts",
+    '"Player","$ Value","Team","Pos"\n"","7","",""\n"Josh Allen","24","BUF","QB"\n'
+  );
+  assert.equal(
+    lineupexpertsArtifact.rows.some((row) => row.playerNameFromSource === ""),
+    false,
+    "LineupExperts empty artifact rows are ignored."
+  );
+
   const fiveSource = generateMasterviewFromSourceValueFiles({
     sourceFiles: auctionFiles,
     generatedAt: "2026-08-15T00:00:00.000Z",

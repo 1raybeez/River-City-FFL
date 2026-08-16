@@ -1,11 +1,13 @@
 {
-  "generatedAt": "2026-07-14T17:55:09.053Z",
+  "generatedAt": "2026-08-16T04:25:21.836Z",
   "sourceDirectory": "data/auction/source-values",
   "outputDirectory": "data/auction/generated",
   "seasonsProcessed": [
     2026
   ],
   "sourceFilesRead": [
+    "data/auction/source-values/draftsharks-2026.json",
+    "data/auction/source-values/fantasyfootballers-2026.json",
     "data/auction/source-values/fantasypros-2026.json",
     "data/auction/source-values/lineupexperts-2026.json",
     "data/auction/source-values/rotowire-2026.json"
@@ -14,17 +16,17 @@
     {
       "season": 2026,
       "outputFile": "data/auction/generated/masterview-2026.json",
-      "rowCount": 345,
-      "sourceValueCount": 709,
+      "rowCount": 403,
+      "sourceValueCount": 1382,
       "skippedSourceValueCount": 0,
-      "warningCount": 156
+      "warningCount": 150
     }
   ],
   "totals": {
     "seasons": 1,
-    "rows": 345,
-    "sourceValues": 709,
+    "rows": 403,
+    "sourceValues": 1382,
     "skippedSourceValues": 0,
-    "warnings": 156
+    "warnings": 150
   }
 }
