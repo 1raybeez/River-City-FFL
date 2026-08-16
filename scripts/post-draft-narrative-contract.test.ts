@@ -74,6 +74,6 @@ assert.equal(next.revision, 2);
 assert.equal(next.previousVersionId, previous.publicationId);
 assert.equal(next.supersedes, previous.publicationId);
 assert.equal(next.status, "approved");
-assert.deepEqual(POST_DRAFT_FIRESTORE_PATHS, { snapshots: "post_draft_snapshots", narratives: "post_draft_narratives", publications: "post_draft_publications", activePublicationPointers: "post_draft_publication_pointers" });
+assert.deepEqual(POST_DRAFT_FIRESTORE_PATHS, { snapshots: "post_draft_snapshots", narratives: "post_draft_narratives", publications: "post_draft_publications", recapDrafts: "post_draft_recap_drafts", activePublicationPointers: "post_draft_publication_pointers" });
 
 console.log("Post-draft narrative contract checks passed.");

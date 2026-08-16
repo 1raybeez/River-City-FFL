@@ -23,6 +23,8 @@ export type PostDraftPublication = {
   publicationId: string;
   schemaVersion: typeof POST_DRAFT_PUBLICATION_SCHEMA_VERSION;
   season: number;
+  publicationKind?: "team" | "league";
+  franchiseId?: string | null;
   snapshotId: string;
   narrativeId: string;
   narrativeRevision: number;
@@ -54,12 +56,14 @@ export type PostDraftPublicationPointer = {
   revision: number;
   updatedAt: string;
   activeByFranchise: Record<string, string>;
+  activeLeagueRecapId?: string | null;
 };
 
 export const POST_DRAFT_FIRESTORE_PATHS = {
   snapshots: "post_draft_snapshots",
   narratives: "post_draft_narratives",
   publications: "post_draft_publications",
+  recapDrafts: "post_draft_recap_drafts",
   activePublicationPointers: "post_draft_publication_pointers",
 } as const;
 

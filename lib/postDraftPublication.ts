@@ -193,3 +193,17 @@ export async function getPublishedTeamOutlook(season: number, franchiseId: strin
   if (publication.status !== "published" || publication.season !== season) return null;
   return publication.publicTeamOutlooks.find((outlook) => outlook.franchiseId === franchiseId) ?? null;
 }
+
+export async function getPublishedTeamOutlookPublication(season: number, franchiseId: string): Promise<{ publicationId: string; outlook: PublicTeamOutlook } | null> {
+  const pointerDoc = await pointerRef(season).get();
+  if (!pointerDoc.exists) return null;
+  const pointer = pointerDoc.data() as PostDraftPublicationPointer;
+  const publicationId = pointer.activeByFranchise?.[franchiseId];
+  if (!publicationId) return null;
+  const publicationDoc = await publicationRef(publicationId).get();
+  if (!publicationDoc.exists) return null;
+  const publication = publicationDoc.data() as PostDraftPublication;
+  if (publication.status !== "published" || publication.publicationKind === "league") return null;
+  const outlook = publication.publicTeamOutlooks.find((item) => item.franchiseId === franchiseId);
+  return outlook ? { publicationId, outlook } : null;
+}
