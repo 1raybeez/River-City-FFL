@@ -33,7 +33,24 @@ const draftStatusResolver = sleeper.slice(
 assert.doesNotMatch(draftStatusResolver, /find\(.*status/);
 
 const home = readFileSync("app/HomeClient.tsx", "utf8");
-assert.match(home, /2026 Draft Day/);
+const page = readFileSync("app/page.tsx", "utf8");
+assert.match(page, /getHomeBoxOneState\(2026\)/);
+assert.match(page, /initialBoxOneState/);
+assert.match(home, /initialBoxOneState/);
+assert.doesNotMatch(home, /DRAFT_START_AT/);
+assert.match(home, /DRAFT_UPCOMING/);
+assert.match(home, /DRAFT_LIVE/);
+assert.match(home, /POST_DRAFT_PRESEASON/);
+assert.match(home, /SEASON_LIVE/);
+assert.match(home, /DATA_UNAVAILABLE/);
+assert.match(home, /state === "DRAFT_UPCOMING" \? state\.draftStartAt : state\.seasonStartAt/);
+assert.match(home, /showRsvp \? onSnapshot/);
+assert.match(home, /event\.gCalLink/);
+assert.match(home, /View Matchups/);
+assert.match(home, /event\.meetLink/);
+assert.match(home, /showRsvp/);
+assert.doesNotMatch(home, /fetch\([^)]*sleeper/i);
+assert.match(home, /draftDateTime/);
 assert.match(home, /RSVP/);
 assert.match(home, /calendar\.app\.google/);
 assert.match(home, /meet\.google\.com/);

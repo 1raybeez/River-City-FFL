@@ -29,7 +29,7 @@ assert.match(recapService, /activeLeagueRecapId/);
 assert.match(recapService, /status === "published"/);
 assert.match(publicContract, /export type PublicLeagueRecap/);
 assert.doesNotMatch(home, /privateStrategyLeaderboard|internalNotes|preferredEntry|plannedCaps|targetIdentities|War Room ID/i);
-assert.match(home, /2026 Draft Day/);
+assert.match(home, /boxOneState\.title/);
 assert.match(home, /Reigning Champion/);
 assert.match(home, /2026 Matchups/);
 assert.match(home, /Legislative Hub/);
