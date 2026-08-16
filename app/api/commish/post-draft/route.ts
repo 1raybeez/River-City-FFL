@@ -10,11 +10,18 @@ import {
   saveNarrativeDraft,
   transitionNarrative,
 } from "@/lib/postDraftWorkflow";
+import {
+  isPostDraftPublicationError,
+  listPostDraftPublications,
+  publishNarrative,
+  rollbackPublication,
+  unpublishNarrativePublication,
+} from "@/lib/postDraftPublication";
 
 export const runtime = "nodejs";
 
 function errorResponse(error: unknown) {
-  const status = isPostDraftWorkflowError(error) && "status" in error ? error.status : 500;
+  const status = (isPostDraftWorkflowError(error) || isPostDraftPublicationError(error)) && "status" in error ? error.status : 500;
   return NextResponse.json({ error: error instanceof Error ? error.message : "Post-draft workflow failed." }, { status });
 }
 
@@ -22,7 +29,7 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const snapshotId = url.searchParams.get("snapshotId") ?? undefined;
-    return NextResponse.json({ snapshots: await listPostDraftSnapshots(), narratives: await listNarratives(snapshotId) }, { headers: { "Cache-Control": "private, no-store" } });
+    return NextResponse.json({ snapshots: await listPostDraftSnapshots(), narratives: await listNarratives(snapshotId), publications: await listPostDraftPublications() }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) { return errorResponse(error); }
 }
 
@@ -35,6 +42,9 @@ export async function POST(request: Request) {
     if (body.action === "save-narrative") return NextResponse.json({ narrative: await saveNarrativeDraft({ narrativeId: String(body.narrativeId), input: (body.input ?? {}) as Record<string, unknown>, expectedRevision: Number(body.expectedRevision) }) });
     if (body.action === "transition-narrative") return NextResponse.json({ narrative: await transitionNarrative({ narrativeId: String(body.narrativeId), to: body.to as "in_review" | "approved", expectedRevision: Number(body.expectedRevision) }) });
     if (body.action === "preview-narrative") return NextResponse.json({ preview: await previewNarrative({ narrativeId: String(body.narrativeId) }) });
+    if (body.action === "publish-narrative") return NextResponse.json({ publication: await publishNarrative({ narrativeId: String(body.narrativeId), expectedRevision: Number(body.expectedRevision) }) }, { status: 201 });
+    if (body.action === "unpublish-publication") return NextResponse.json({ publication: await unpublishNarrativePublication({ publicationId: String(body.publicationId) }) });
+    if (body.action === "rollback-publication") return NextResponse.json({ publication: await rollbackPublication({ publicationId: String(body.publicationId) }) });
     return NextResponse.json({ error: "Unknown post-draft action." }, { status: 400 });
   } catch (error) { return errorResponse(error); }
 }

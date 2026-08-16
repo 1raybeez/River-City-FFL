@@ -24,6 +24,8 @@ export type PostDraftPublication = {
   schemaVersion: typeof POST_DRAFT_PUBLICATION_SCHEMA_VERSION;
   season: number;
   snapshotId: string;
+  narrativeId: string;
+  narrativeRevision: number;
   revision: number;
   status: PostDraftPublicationStatus;
   createdAt: string;
@@ -33,8 +35,25 @@ export type PostDraftPublication = {
   supersedes: string | null;
   previousVersionId: string | null;
   approval: PostDraftApproval | null;
+  createdBy: string;
+  sourceMetadata: {
+    snapshotGeneratedAt: string;
+    metricsModelVersion: string;
+    draftGradeModelVersion: string;
+    strategyExecutionModelVersion: string;
+    powerRankingsVersion: string;
+  };
+  rollbackFrom: string | null;
+  rollbackAt: string | null;
   publicTeamOutlooks: PublicTeamOutlook[];
   publicLeagueRecap: PublicLeagueRecap | null;
+};
+
+export type PostDraftPublicationPointer = {
+  season: number;
+  revision: number;
+  updatedAt: string;
+  activeByFranchise: Record<string, string>;
 };
 
 export const POST_DRAFT_FIRESTORE_PATHS = {
@@ -74,6 +93,8 @@ export function createSupersedingPublication({
     schemaVersion: POST_DRAFT_PUBLICATION_SCHEMA_VERSION,
     season: previous.season,
     snapshotId,
+    narrativeId: previous.narrativeId,
+    narrativeRevision: previous.narrativeRevision,
     revision: previous.revision + 1,
     status: "approved",
     createdAt,
@@ -83,6 +104,10 @@ export function createSupersedingPublication({
     supersedes: previous.publicationId,
     previousVersionId: previous.publicationId,
     approval: null,
+    createdBy: previous.createdBy,
+    sourceMetadata: previous.sourceMetadata,
+    rollbackFrom: null,
+    rollbackAt: null,
     publicTeamOutlooks: content.publicTeamOutlooks,
     publicLeagueRecap: content.publicLeagueRecap,
   };
