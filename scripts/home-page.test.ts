@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const page = readFileSync("app/page.tsx", "utf8");
+const page = readFileSync("app/HomeClient.tsx", "utf8");
+const wrapper = readFileSync("app/page.tsx", "utf8");
 const publicFinanceRoute = readFileSync("app/api/public-finance/summary/route.ts", "utf8");
 
 assert.match(page, /2026 Power Rankings/);
@@ -41,6 +42,13 @@ assert.match(page, /Latest Commissioner Briefing/);
 assert.doesNotMatch(page, /Quick Links/);
 
 assert.match(page, /aria-label="Home dashboard"/);
+assert.match(wrapper, /getCurrentMember/);
+assert.match(page, /League Member Login/);
+assert.match(page, /href="\/member\/login\?returnTo=%2F"/);
+assert.match(page, /SignOutControl/);
+assert.match(page, /My War Room/);
+assert.match(page, /initialMember\.canAccessMaintenance/);
+assert.doesNotMatch(page, /email|firebaseUid|canonicalOwnerId|warRoomId|rosterId|idToken/i);
 assert.match(page, /lg:grid-cols-12/);
 assert.match(page, /md:col-span-1 lg:col-span-4/);
 assert.match(page, /md:grid-cols-2/);

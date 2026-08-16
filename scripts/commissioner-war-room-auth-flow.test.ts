@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolveAuthorizedEmailMapping, assertWarRoomScope } from '../lib/auth/canonicalAuctionAuthorization';
 
-const home = readFileSync('app/page.tsx', 'utf8');
+const home = readFileSync('app/HomeClient.tsx', 'utf8');
 const commish = readFileSync('app/commish/page.tsx', 'utf8');
 const commissionerLogin = readFileSync('app/commish/login/page.tsx', 'utf8');
 const warRoomLogin = readFileSync('app/commish/auction/login/page.tsx', 'utf8');

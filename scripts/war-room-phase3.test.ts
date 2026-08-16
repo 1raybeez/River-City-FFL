@@ -5,7 +5,7 @@ import {
   resolveAuthorizedEmailMapping,
 } from "../lib/auth/canonicalAuctionAuthorization";
 
-const home = readFileSync("app/page.tsx", "utf8");
+const home = readFileSync("app/HomeClient.tsx", "utf8");
 const auctionPage = readFileSync("app/commish/auction/page.tsx", "utf8");
 const login = readFileSync("app/commish/auction/login/page.tsx", "utf8");
 const access = readFileSync("lib/auth/auctionAccess.ts", "utf8");
