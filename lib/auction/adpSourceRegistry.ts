@@ -22,6 +22,33 @@ export const auctionAdpSourceRegistry = [
     parserKey: "rotowire-adp-csv",
     expectedFileName: "rotowire-adp-2026.csv",
   },
+  {
+    sourceKey: "lineupexperts-adp",
+    displayName: "Lineup Experts ADP",
+    season: 2026,
+    enabled: true,
+    required: true,
+    parserKey: "lineupexperts-adp-csv",
+    expectedFileName: "lineupexperts-adp-2026.csv",
+  },
+  {
+    sourceKey: "draftsharks-adp",
+    displayName: "Draft Sharks ADP",
+    season: 2026,
+    enabled: true,
+    required: true,
+    parserKey: "draftsharks-adp-csv",
+    expectedFileName: "draftsharks-adp-2026.csv",
+  },
+  {
+    sourceKey: "fantasyfootballers-adp",
+    displayName: "Fantasy Footballers ADP",
+    season: 2026,
+    enabled: true,
+    required: true,
+    parserKey: "fantasyfootballers-adp-csv",
+    expectedFileName: "fantasyfootballers-adp-2026.csv",
+  },
 ] as const satisfies readonly AuctionAdpRegistryEntry[];
 
 export function getAuctionAdpSourceRegistryEntries(

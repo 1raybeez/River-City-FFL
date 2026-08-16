@@ -104,9 +104,12 @@ export function generateAuctionAdpConsensus({
   generatedAt?: string;
 }): AuctionAdpConsensusFile {
   const groupedRows = new Map<string, AuctionAdpSourceValuesFile["rows"]>();
+  const seenSourceKeys = new Set<string>();
   let skippedSourceValueCount = 0;
 
   for (const sourceFile of sourceFiles) {
+    if (seenSourceKeys.has(sourceFile.sourceKey)) continue;
+    seenSourceKeys.add(sourceFile.sourceKey);
     for (const row of sourceFile.rows) {
       const hasValidAdp = Number.isFinite(row.overallAdp) && row.overallAdp > 0;
       const hasMatch =
@@ -125,7 +128,12 @@ export function generateAuctionAdpConsensus({
       }
 
       const playerId = row.playerId;
-      groupedRows.set(playerId, [...(groupedRows.get(playerId) ?? []), row]);
+      const existingRows = groupedRows.get(playerId) ?? [];
+      if (existingRows.some((existingRow) => existingRow.sourceKey === row.sourceKey)) {
+        skippedSourceValueCount += 1;
+        continue;
+      }
+      groupedRows.set(playerId, [...existingRows, row]);
     }
   }
 

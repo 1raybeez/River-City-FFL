@@ -217,6 +217,11 @@ function groupRows(rows: readonly AuctionSourceValueRow[]) {
       rows: [],
     };
 
+    if (existing.rows.some((existingRow) => existingRow.sourceKey === row.sourceKey)) {
+      skippedSourceValueCount += 1;
+      continue;
+    }
+
     existing.rows.push(row);
     groups.set(groupKey, existing);
   }

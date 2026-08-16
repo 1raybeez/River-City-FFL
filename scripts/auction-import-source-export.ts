@@ -118,6 +118,7 @@ const SOURCE_DISPLAY_NAMES: Record<string, string> = {
   lineupexperts: "Lineup Experts",
   "draft-sharks": "Draft Sharks",
   draftsharks: "Draft Sharks",
+  fantasyfootballers: "Fantasy Footballers",
   rotowire: "RotoWire",
 };
 
@@ -984,6 +985,102 @@ function buildLineupExpertsCsvRecords(
   };
 }
 
+function findColumnIndex(headers: readonly string[], candidates: readonly string[]) {
+  return headers.findIndex((header) => candidates.includes(normalizeHeader(header)));
+}
+
+function buildDraftSharksCsvRecords(
+  sourceFilename: string,
+  text: string
+): ParsedInput {
+  const rows = parseCsv(text);
+  const headerRowIndex = rows.findIndex((row) => {
+    const headers = row.map(normalizeHeader);
+    return (
+      headers.includes("player") &&
+      headers.includes("team") &&
+      headers.includes("auctionmarketvalue") &&
+      (headers.includes("fantsyposition") || headers.includes("fantasyposition"))
+    );
+  });
+
+  if (headerRowIndex === -1) return buildFlatCsvInput(sourceFilename, text);
+
+  const headers = rows[headerRowIndex].map(normalizeHeader);
+  const playerIndex = findColumnIndex(headers, ["player"]);
+  const teamIndex = findColumnIndex(headers, ["team"]);
+  const positionIndex = findColumnIndex(headers, ["fantsyposition", "fantasyposition"]);
+  const marketValueIndex = findColumnIndex(headers, ["auctionmarketvalue"]);
+  const draftSharksValueIndex = findColumnIndex(headers, ["dsauctionvalue"]);
+  const records = rows.slice(headerRowIndex + 1).map((row, index) => ({
+    sourceFilename,
+    rowNumber: headerRowIndex + index + 2,
+    raw: {
+      player: row[playerIndex]?.trim() ?? "",
+      position: row[positionIndex]?.trim() ?? "",
+      team: row[teamIndex]?.trim() ?? "",
+      value: row[marketValueIndex]?.trim() ?? "",
+      rank: row[0]?.trim() ?? "",
+      tier: "",
+      "raw:dsauctionvalue": row[draftSharksValueIndex]?.trim() ?? "",
+      "raw:auctionmarketvalue": row[marketValueIndex]?.trim() ?? "",
+    },
+  }));
+
+  return {
+    records: records.filter((record) => record.raw.player.length > 0),
+    rowsRead: records.length,
+    detectedBlocks: ["DRAFT_SHARKS"],
+    duplicatesSkipped: 0,
+  };
+}
+
+function buildFantasyFootballersCsvRecords(
+  sourceFilename: string,
+  text: string
+): ParsedInput {
+  const rows = parseCsv(text);
+  const headerRowIndex = rows.findIndex((row) => {
+    const headers = row.map(normalizeHeader);
+    return headers.includes("player") && headers.includes("auction_value");
+  });
+
+  if (headerRowIndex === -1) return buildFlatCsvInput(sourceFilename, text);
+
+  const headers = rows[headerRowIndex].map(normalizeHeader);
+  const playerIndex = findColumnIndex(headers, ["player"]);
+  const positionIndex = findColumnIndex(headers, ["position"]);
+  const teamIndex = findColumnIndex(headers, ["team"]);
+  const valueIndex = findColumnIndex(headers, ["auction_value"]);
+  const sourceDateIndex = findColumnIndex(headers, ["source_date"]);
+  const budgetIndex = findColumnIndex(headers, ["budget"]);
+  const riskIndex = findColumnIndex(headers, ["risk"]);
+  const upsideIndex = findColumnIndex(headers, ["upside"]);
+  const records = rows.slice(headerRowIndex + 1).map((row, index) => ({
+    sourceFilename,
+    rowNumber: headerRowIndex + index + 2,
+    raw: {
+      player: row[playerIndex]?.trim() ?? "",
+      position: row[positionIndex]?.trim() ?? "",
+      team: row[teamIndex]?.trim() ?? "",
+      value: row[valueIndex]?.trim() ?? "",
+      rank: "",
+      tier: "",
+      "raw:source_date": row[sourceDateIndex]?.trim() ?? "",
+      "raw:budget": row[budgetIndex]?.trim() ?? "",
+      "raw:risk": row[riskIndex]?.trim() ?? "",
+      "raw:upside": row[upsideIndex]?.trim() ?? "",
+    },
+  }));
+
+  return {
+    records: records.filter((record) => record.raw.player.length > 0),
+    rowsRead: records.length,
+    detectedBlocks: ["FANTASY_FOOTBALLERS"],
+    duplicatesSkipped: 0,
+  };
+}
+
 function buildAliasLookup(aliases: Record<string, string>): Map<string, string> {
   const aliasLookup = new Map<string, string>();
 
@@ -1672,6 +1769,10 @@ function parseSourceExportText({
       ? buildRotoWireCsvRecords(sourceFilename, text)
       : source === "lineupexperts"
         ? buildLineupExpertsCsvRecords(sourceFilename, text)
+        : source === "draftsharks"
+          ? buildDraftSharksCsvRecords(sourceFilename, text)
+          : source === "fantasyfootballers"
+            ? buildFantasyFootballersCsvRecords(sourceFilename, text)
         : buildFlatCsvInput(sourceFilename, text);
 }
 

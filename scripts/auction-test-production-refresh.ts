@@ -25,6 +25,7 @@ const SOURCE_FIXTURES: Record<AuctionValueSourceRegistryId, string | null> = {
   rotowire: "data/auction/source-imports/exports/rotowire-2026.csv",
   lineupexperts: "data/auction/source-imports/exports/lineupexperts-2026.csv",
   draftsharks: null,
+  fantasyfootballers: null,
   footballguys: null,
   fantasynerds: null,
   espn: null,
@@ -35,6 +36,8 @@ const FULL_SOURCE_SET: AuctionValueSourceRegistryId[] = [
   "fantasypros",
   "rotowire",
   "lineupexperts",
+  "draftsharks",
+  "fantasyfootballers",
 ];
 const TWO_SOURCE_SET: AuctionValueSourceRegistryId[] = [
   "fantasypros",

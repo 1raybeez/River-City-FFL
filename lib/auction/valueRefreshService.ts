@@ -43,6 +43,8 @@ const DEFAULT_REQUIRED_SOURCES: AuctionValueSourceRegistryId[] = [
   "fantasypros",
   "rotowire",
   "lineupexperts",
+  "draftsharks",
+  "fantasyfootballers",
 ];
 
 type RunDocument = {

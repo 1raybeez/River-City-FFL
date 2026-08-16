@@ -3,6 +3,7 @@ export type AuctionValueSourceRegistryId =
   | "lineupexperts"
   | "rotowire"
   | "draftsharks"
+  | "fantasyfootballers"
   | "footballguys"
   | "fantasynerds"
   | "espn"
@@ -112,14 +113,26 @@ export const auctionValueSourceRegistry = [
       "Strong alternate paid/subscription candidate. Prefer official exports; do not bypass login or paid content controls.",
     supportsAuctionValues: true,
     supportsCustomLeagueSettings: true,
-    implementationStatus: "not-started",
+    implementationStatus: "adapter-ready",
+  },
+  {
+    id: "fantasyfootballers",
+    displayName: "Fantasy Footballers",
+    type: "export",
+    accessLevel: "subscription",
+    recommendedPriority: 7,
+    notes:
+      "2026 UDK auction export using the source-provided $200 auction value.",
+    supportsAuctionValues: true,
+    supportsCustomLeagueSettings: true,
+    implementationStatus: "adapter-ready",
   },
   {
     id: "footballguys",
     displayName: "Footballguys",
     type: "export",
     accessLevel: "subscription",
-    recommendedPriority: 7,
+    recommendedPriority: 8,
     notes:
       "Strong alternate paid/subscription candidate if auction values are available through an allowed export or official tool.",
     supportsAuctionValues: true,
@@ -131,7 +144,7 @@ export const auctionValueSourceRegistry = [
     displayName: "ESPN",
     type: "public-page",
     accessLevel: "unknown",
-    recommendedPriority: 8,
+    recommendedPriority: 9,
     notes:
       "Secondary candidate unless a clean export/API path exists. Avoid brittle scraping and any protected fantasy league data.",
     supportsAuctionValues: false,
@@ -143,7 +156,7 @@ export const auctionValueSourceRegistry = [
     displayName: "Historical Masterview",
     type: "historical-excel",
     accessLevel: "free",
-    recommendedPriority: 9,
+    recommendedPriority: 10,
     notes:
       "Baseline/reference only. Historical sheets should help validate generated consensus output, not remain the manual source of truth.",
     supportsAuctionValues: true,
@@ -164,6 +177,8 @@ export function getProductionAuctionValueSourceRegistryEntries(): AuctionValueSo
     "fantasypros",
     "rotowire",
     "lineupexperts",
+    "draftsharks",
+    "fantasyfootballers",
   ];
   const registryById = new Map(
     getAuctionValueSourceRegistryByPriority().map((source) => [

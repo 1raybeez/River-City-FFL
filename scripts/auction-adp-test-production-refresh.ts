@@ -19,11 +19,20 @@ import {
 } from "../lib/auction/adpRefreshService";
 
 const SEASON = 2026;
-const FULL_SOURCE_SET: AuctionAdpSourceKey[] = ["fantasypros-adp", "rotowire-adp"];
+const FULL_SOURCE_SET: AuctionAdpSourceKey[] = [
+  "fantasypros-adp",
+  "rotowire-adp",
+  "lineupexperts-adp",
+  "draftsharks-adp",
+  "fantasyfootballers-adp",
+];
 const ONE_SOURCE_SET: AuctionAdpSourceKey[] = ["fantasypros-adp"];
 const SOURCE_FIXTURES: Record<AuctionAdpSourceKey, string> = {
   "fantasypros-adp": "data/auction/adp/source-imports/exports/fantasypros-adp-2026.csv",
   "rotowire-adp": "data/auction/adp/source-imports/exports/rotowire-adp-2026.csv",
+  "lineupexperts-adp": "data/auction/adp/source-imports/exports/lineupexperts-adp-2026.csv",
+  "draftsharks-adp": "data/auction/adp/source-imports/exports/draftsharks-adp-2026.csv",
+  "fantasyfootballers-adp": "data/auction/adp/source-imports/exports/fantasyfootballers-adp-2026.csv",
 };
 const TEST_ACTOR: AuctionAccessSession = {
   email: "auction-adp-smoke@river-city.local",

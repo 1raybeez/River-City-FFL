@@ -1,6 +1,16 @@
-export type AuctionAdpSourceKey = "fantasypros-adp" | "rotowire-adp";
+export type AuctionAdpSourceKey =
+  | "fantasypros-adp"
+  | "rotowire-adp"
+  | "lineupexperts-adp"
+  | "draftsharks-adp"
+  | "fantasyfootballers-adp";
 
-export type AuctionAdpParserKey = "fantasypros-adp-csv" | "rotowire-adp-csv";
+export type AuctionAdpParserKey =
+  | "fantasypros-adp-csv"
+  | "rotowire-adp-csv"
+  | "lineupexperts-adp-csv"
+  | "draftsharks-adp-csv"
+  | "fantasyfootballers-adp-csv";
 
 export type AuctionAdpRefreshStatus =
   | "uploaded"

@@ -363,12 +363,157 @@ function parseRotoWireRows(rows: readonly string[][]): ParsedAdpRecord[] {
   });
 }
 
+function findNormalizedHeaderIndex(headers: readonly string[], candidates: readonly string[]) {
+  return headers.findIndex((header) => candidates.includes(normalizeHeader(header)));
+}
+
+function parseRoundPickOverallAdp(value: string | null | undefined, teamCount = 12) {
+  const normalized = normalizeText(value);
+  if (!normalized) return null;
+  if (!normalized.includes(".")) return parseFiniteNumber(normalized);
+
+  const [roundText, pickText] = normalized.split(".");
+  const round = Number(roundText);
+  const pick = Number(pickText);
+  if (!Number.isInteger(round) || !Number.isInteger(pick) || round < 1 || pick < 1) {
+    return null;
+  }
+
+  return (round - 1) * teamCount + pick;
+}
+
+function parseLineupExpertsRows(rows: readonly string[][]): ParsedAdpRecord[] {
+  const headerIndex = rows.findIndex((row) => {
+    const headers = row.map(normalizeHeader);
+    return (
+      headers.includes("player") &&
+      headers.includes("team") &&
+      headers.includes("position") &&
+      headers.includes("adp")
+    );
+  });
+  if (headerIndex < 0) throw new Error("Lineup Experts ADP CSV is missing player/team/position/ADP headers.");
+
+  const headers = rows[headerIndex].map(normalizeHeader);
+  const playerIndex = findNormalizedHeaderIndex(headers, ["player"]);
+  const teamIndex = findNormalizedHeaderIndex(headers, ["team"]);
+  const positionIndex = findNormalizedHeaderIndex(headers, ["position"]);
+  const adpIndex = findNormalizedHeaderIndex(headers, ["adp"]);
+
+  return rows.slice(headerIndex + 1).map((row, index) => {
+    const playerName = normalizeText(row[playerIndex] ?? "");
+    const position = normalizeAdpPosition(row[positionIndex]);
+    const overallAdp = parseFiniteNumber(row[adpIndex]);
+    const errors: string[] = [];
+    if (!playerName) errors.push("Missing player name.");
+    if (!position) errors.push("Missing position.");
+    if (overallAdp === null) errors.push("Missing overall ADP.");
+    return {
+      rowNumber: headerIndex + index + 2,
+      playerName,
+      position,
+      nflTeam: normalizeTeam(row[teamIndex]),
+      overallAdp,
+      positionAdp: readPositionAdp(row[positionIndex]),
+      playerId: null,
+      warnings: [],
+      errors,
+    };
+  });
+}
+
+function parseDraftSharksRows(rows: readonly string[][]): ParsedAdpRecord[] {
+  const headerIndex = rows.findIndex((row) => {
+    const headers = row.map(normalizeHeader);
+    return (
+      headers.includes("player name") &&
+      headers.includes("player team") &&
+      headers.includes("player position") &&
+      headers.includes("consensus: redraft 0.5 ppr adp")
+    );
+  });
+  if (headerIndex < 0) throw new Error("Draft Sharks ADP CSV is missing player identity or redraft ADP headers.");
+
+  const headers = rows[headerIndex].map(normalizeHeader);
+  const playerIndex = findNormalizedHeaderIndex(headers, ["player name"]);
+  const teamIndex = findNormalizedHeaderIndex(headers, ["player team"]);
+  const positionIndex = findNormalizedHeaderIndex(headers, ["player position"]);
+  const adpIndex = findNormalizedHeaderIndex(headers, ["consensus: redraft 0.5 ppr adp"]);
+
+  return rows.slice(headerIndex + 1).map((row, index) => {
+    const playerName = normalizeText(row[playerIndex] ?? "");
+    const position = normalizeAdpPosition(row[positionIndex]);
+    const overallAdp = parseRoundPickOverallAdp(row[adpIndex]);
+    const errors: string[] = [];
+    if (!playerName) errors.push("Missing player name.");
+    if (!position) errors.push("Missing position.");
+    if (overallAdp === null) errors.push("Missing overall ADP.");
+    return {
+      rowNumber: headerIndex + index + 2,
+      playerName,
+      position,
+      nflTeam: normalizeTeam(row[teamIndex]),
+      overallAdp,
+      positionAdp: null,
+      playerId: null,
+      warnings: [],
+      errors,
+    };
+  });
+}
+
+function parseFantasyFootballersRows(rows: readonly string[][]): ParsedAdpRecord[] {
+  const headerIndex = rows.findIndex((row) => {
+    const headers = row.map(normalizeHeader);
+    return (
+      headers.includes("player") &&
+      headers.includes("position") &&
+      headers.includes("team") &&
+      headers.includes("adp_overall")
+    );
+  });
+  if (headerIndex < 0) throw new Error("Fantasy Footballers ADP CSV is missing explicit overall ADP headers.");
+
+  const headers = rows[headerIndex].map(normalizeHeader);
+  const playerIndex = findNormalizedHeaderIndex(headers, ["player"]);
+  const teamIndex = findNormalizedHeaderIndex(headers, ["team"]);
+  const positionIndex = findNormalizedHeaderIndex(headers, ["position"]);
+  const adpIndex = findNormalizedHeaderIndex(headers, ["adp_overall"]);
+
+  return rows.slice(headerIndex + 1).map((row, index) => {
+    const playerName = normalizeText(row[playerIndex] ?? "");
+    const position = normalizeAdpPosition(row[positionIndex]);
+    const overallAdp = parseFiniteNumber(row[adpIndex]);
+    const errors: string[] = [];
+    if (!playerName) errors.push("Missing player name.");
+    if (!position) errors.push("Missing position.");
+    if (overallAdp === null) errors.push("Missing overall ADP.");
+    return {
+      rowNumber: headerIndex + index + 2,
+      playerName,
+      position,
+      nflTeam: normalizeTeam(row[teamIndex]),
+      overallAdp,
+      positionAdp: null,
+      playerId: null,
+      warnings: [],
+      errors,
+    };
+  });
+}
+
 function parseRowsForSource(sourceKey: AuctionAdpSourceKey, text: string) {
   const rows = parseCsv(text);
 
   return sourceKey === "fantasypros-adp"
     ? parseFantasyProsRows(rows)
-    : parseRotoWireRows(rows);
+    : sourceKey === "rotowire-adp"
+      ? parseRotoWireRows(rows)
+      : sourceKey === "lineupexperts-adp"
+        ? parseLineupExpertsRows(rows)
+        : sourceKey === "draftsharks-adp"
+          ? parseDraftSharksRows(rows)
+          : parseFantasyFootballersRows(rows);
 }
 
 async function fetchSleeperPlayers() {

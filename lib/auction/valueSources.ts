@@ -20,6 +20,7 @@ export type AuctionValueSourceKey =
   | "lineupexperts"
   | "espn"
   | "fantasy-footballers-udk"
+  | "fantasyfootballers"
   | "draft-sharks"
   | (string & {});
 
