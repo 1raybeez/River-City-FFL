@@ -77,6 +77,10 @@ import type { AuctionOwnerProfileSettings } from '@/lib/auction/ownerProfileSett
 import type { AuctionAccessResult } from '@/lib/auction/ownerProfiles';
 import type { WarRoomKeeperState } from '@/lib/auction/warRoomLiveState';
 import type { KeeperAuthority } from '@/lib/auction/keeperAuthorityTypes';
+import type {
+  GlobalNominationReadResult,
+  GlobalNominationRecord,
+} from '@/lib/auction/globalNominationTypes';
 import {
   auctionLiveStrategyPositions,
   parseConversationalLiveStrategyUpdate,
@@ -3877,6 +3881,7 @@ export default function AuctionWarRoomClient({
   initialWarRoomLiveState,
   initialWarRoomBudget,
   initialKeeperAuthority,
+  initialGlobalNomination,
 }: {
   access: AuctionAccessResult;
   initialValueSource?: AuctionWarRoomInitialValueSource;
@@ -3888,6 +3893,7 @@ export default function AuctionWarRoomClient({
   initialWarRoomLiveState?: AuctionWarRoomInitialLiveState | null;
   initialWarRoomBudget?: AuctionWarRoomInitialBudget | null;
   initialKeeperAuthority: KeeperAuthority;
+  initialGlobalNomination: GlobalNominationReadResult;
 }) {
   applyRuntimeAuctionValueSource(initialValueSource);
   applyRuntimeAdpSource(initialAdpSource);
@@ -4056,6 +4062,18 @@ export default function AuctionWarRoomClient({
     'idle' | 'saving' | 'saved' | 'error'
   >('idle');
   const [keeperSaveError, setKeeperSaveError] = useState<string | null>(null);
+  const [globalNomination, setGlobalNomination] = useState<GlobalNominationRecord | null>(
+    () => initialGlobalNomination.nomination
+  );
+  const [globalNominationReadStatus, setGlobalNominationReadStatus] = useState(
+    initialGlobalNomination.status
+  );
+  const [globalNominationError, setGlobalNominationError] = useState<string | null>(
+    initialGlobalNomination.error ?? null
+  );
+  const [globalNominationMutationStatus, setGlobalNominationMutationStatus] = useState<
+    'idle' | 'saving' | 'saved' | 'error'
+  >('idle');
 
   useEffect(() => {
     if (!isDraftCoachOpen) return;
@@ -4069,6 +4087,29 @@ export default function AuctionWarRoomClient({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isDraftCoachOpen]);
+
+  const refreshGlobalNomination = useCallback(async () => {
+    try {
+      const response = await fetch('/api/auction/nomination', { cache: 'no-store' });
+      const payload = (await response.json()) as GlobalNominationReadResult;
+      if (!response.ok || payload.status !== 'available') {
+        setGlobalNominationReadStatus('unavailable');
+        setGlobalNominationError(payload.error ?? 'Current nomination is temporarily unavailable.');
+        return;
+      }
+      setGlobalNominationReadStatus('available');
+      setGlobalNominationError(null);
+      setGlobalNomination(payload.nomination ?? null);
+    } catch (error) {
+      setGlobalNominationReadStatus('unavailable');
+      setGlobalNominationError(error instanceof Error ? error.message : 'Current nomination is temporarily unavailable.');
+    }
+  }, []);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => void refreshGlobalNomination(), 15000);
+    return () => window.clearInterval(interval);
+  }, [refreshGlobalNomination]);
 
   const isManagerWarRoom = Boolean(!access.canRecordSales && access.warRoomId);
   const persistentKeeperRows = useMemo<SleeperSnapshotKeeper[]>(
@@ -4133,6 +4174,50 @@ export default function AuctionWarRoomClient({
     setKeeperSelectedPlayerId('');
     setKeeperCostInput('');
     setKeeperSaveStatus('idle');
+  };
+  const setCurrentNomination = async () => {
+    if (!access.canRecordSales || !selectedPlayer?.sleeperPlayerId) return;
+    setGlobalNominationMutationStatus('saving');
+    setGlobalNominationError(null);
+    try {
+      const response = await fetch('/api/auction/nomination', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerId: selectedPlayer.sleeperPlayerId,
+          playerName: selectedPlayer.matchedSleeperName ?? selectedPlayer.originalPlayerName,
+          position: selectedPlayer.position ?? null,
+          nflTeam: selectedPlayer.nflTeam ?? null,
+          openingBid: 1,
+        }),
+      });
+      const payload = (await response.json()) as { nomination?: GlobalNominationRecord; error?: string };
+      if (!response.ok || !payload.nomination) {
+        throw new Error(payload.error ?? 'Unable to set current nomination.');
+      }
+      setGlobalNomination(payload.nomination);
+      setGlobalNominationReadStatus('available');
+      setGlobalNominationMutationStatus('saved');
+    } catch (error) {
+      setGlobalNominationMutationStatus('error');
+      setGlobalNominationError(error instanceof Error ? error.message : 'Unable to set current nomination.');
+    }
+  };
+  const clearCurrentNomination = async () => {
+    if (!access.canRecordSales) return;
+    setGlobalNominationMutationStatus('saving');
+    try {
+      const response = await fetch('/api/auction/nomination', { method: 'DELETE' });
+      const payload = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(payload.error ?? 'Unable to clear current nomination.');
+      setGlobalNomination(null);
+      setGlobalNominationReadStatus('available');
+      setGlobalNominationError(null);
+      setGlobalNominationMutationStatus('saved');
+    } catch (error) {
+      setGlobalNominationMutationStatus('error');
+      setGlobalNominationError(error instanceof Error ? error.message : 'Unable to clear current nomination.');
+    }
   };
   const authorizedPurchaseRows = useMemo<AuctionWarRoomPurchaseRow[]>(
     () =>
@@ -8953,6 +9038,46 @@ export default function AuctionWarRoomClient({
               <>
 	              <section className={`${selectedPlayer ? 'rounded-3xl p-4' : 'rounded-2xl p-3'} bg-white shadow-lg shadow-black/5 dark:bg-[#121212]`}>
 	                <div className={`grid ${selectedPlayer ? 'gap-4' : 'gap-1'}`}>
+                  <div className="rounded-2xl border border-orange-600/25 bg-orange-600/10 px-4 py-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.25em] text-orange-700 dark:text-orange-300">
+                      Current Nomination · League Global
+                    </p>
+                    {globalNominationReadStatus === 'unavailable' ? (
+                      <p className="mt-2 text-sm font-black uppercase text-rose-700 dark:text-rose-300">
+                        Current nomination temporarily unavailable.
+                      </p>
+                    ) : globalNomination ? (
+                      <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="truncate text-lg font-black uppercase italic">
+                            {globalNomination.playerName}
+                          </p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                            {globalNomination.position ?? 'N/A'} · {globalNomination.nflTeam ?? 'N/A'} · Opening {formatMoney(globalNomination.openingBid)}
+                          </p>
+                        </div>
+                        {access.canRecordSales ? (
+                          <button
+                            type="button"
+                            onClick={() => void clearCurrentNomination()}
+                            disabled={globalNominationMutationStatus === 'saving'}
+                            className="min-h-10 rounded-xl border border-black/15 bg-white px-3 py-2 text-[9px] font-black uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/15 dark:bg-black"
+                          >
+                            Clear Nomination
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-sm font-black uppercase italic text-gray-600 dark:text-gray-300">
+                        NO CURRENT NOMINATION
+                      </p>
+                    )}
+                    {globalNominationError ? (
+                      <p role="alert" className="mt-2 text-xs font-bold text-rose-700 dark:text-rose-300">
+                        {globalNominationError}
+                      </p>
+                    ) : null}
+                  </div>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <p className="text-[9px] font-black uppercase tracking-[0.22em] text-gray-400">
@@ -9689,6 +9814,15 @@ export default function AuctionWarRoomClient({
                         : 'Use master search or My Board'}
                     </p>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() => void setCurrentNomination()}
+                    disabled={!selectedPlayer?.sleeperPlayerId || globalNominationMutationStatus === 'saving'}
+                    className="min-h-10 rounded-xl border border-orange-600/30 bg-orange-600 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-white disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-2"
+                  >
+                    {globalNominationMutationStatus === 'saving' ? 'Saving…' : 'Set Current Nomination'}
+                  </button>
 
                   <label className="block min-w-0">
                     <span className="mb-1 block text-[8px] font-black uppercase tracking-widest text-gray-400">

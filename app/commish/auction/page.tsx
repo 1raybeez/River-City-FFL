@@ -14,6 +14,7 @@ import { readWarRoomLiveAuctionState } from "@/lib/auction/warRoomLiveStateFires
 import { deriveWarRoomBudgetState } from "@/lib/auction/warRoomLiveState";
 import { riverCityAuctionLeagueSettings } from "@/lib/auction/leagueSettings";
 import { readKeeperAuthority } from "@/lib/auction/keeperAuthority";
+import { readGlobalNomination } from "@/lib/auction/globalNominationState";
 import { readPublishedMasterviewFromFirestore } from "@/lib/auction/valueRefreshService";
 import AuctionWarRoomClient from "./AuctionWarRoomClient";
 import type {
@@ -215,6 +216,7 @@ export default async function AuctionWarRoomPage() {
     initialWarRoomLiveState,
     initialWarRoomBudget,
     initialKeeperAuthority,
+    initialGlobalNomination,
   ] = await Promise.all([
     readInitialAuctionValueSource(),
     readInitialAuctionAdpSource(),
@@ -242,6 +244,7 @@ export default async function AuctionWarRoomPage() {
           });
         })(),
     readKeeperAuthority(),
+    readGlobalNomination(),
   ]);
 
   return (
@@ -256,6 +259,7 @@ export default async function AuctionWarRoomPage() {
       initialWarRoomLiveState={initialWarRoomLiveState}
       initialWarRoomBudget={initialWarRoomBudget}
       initialKeeperAuthority={initialKeeperAuthority}
+      initialGlobalNomination={initialGlobalNomination}
     />
   );
 }

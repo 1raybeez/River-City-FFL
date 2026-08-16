@@ -33,7 +33,7 @@ assert.doesNotMatch(client, /mockAuctionPurchases/);
 assert.match(client, /No live Sleeper snapshot or manual sales loaded/);
 
 // The global nomination remains a public/global read and no manager sales path is added.
-assert.match(client, /No current nomination selected/);
+assert.match(client, /NO CURRENT NOMINATION/);
 assert.match(client, /Manual sale controls are commissioner-only/);
 
 console.log("war-room-phase2d.test.ts: PASS");
