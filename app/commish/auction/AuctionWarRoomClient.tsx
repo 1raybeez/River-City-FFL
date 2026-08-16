@@ -4053,6 +4053,16 @@ export default function AuctionWarRoomClient({
   const [manualSaleError, setManualSaleError] = useState<string | null>(null);
   const [manualSaleConfirmation, setManualSaleConfirmation] =
     useState<ManualAuctionSale | null>(null);
+  const [manualSalePersistenceStatus, setManualSalePersistenceStatus] = useState<
+    'idle' | 'saving' | 'saved' | 'error'
+  >('idle');
+  const [pendingManualSale, setPendingManualSale] = useState<{
+    sale: ManualAuctionSale;
+    player: ProcessedPlayerValueRow;
+    team: CanonicalAuctionTeam;
+    snapshot: AuctionWarRoomInitialPurchaseDecision;
+    keepPlayerSelected: boolean;
+  } | null>(null);
   const [keeperRows, setKeeperRows] = useState<WarRoomKeeperState[]>(
     () => initialWarRoomLiveState?.keepers ?? []
   );
@@ -5900,22 +5910,27 @@ export default function AuctionWarRoomClient({
     }
   };
 
-  const persistPurchaseDecisionSnapshot = useCallback((
+  const persistPurchaseDecisionSnapshot = useCallback(async (
     snapshot: AuctionWarRoomInitialPurchaseDecision
-  ) => {
-    setPurchaseDecisionSnapshotsByPurchaseId((currentSnapshots) => {
-      const nextSnapshots = new Map(currentSnapshots);
-      nextSnapshots.set(snapshot.purchaseId, snapshot);
-      return nextSnapshots;
-    });
-
-    void fetch('/api/auction/purchase-decisions', {
+  ): Promise<AuctionWarRoomInitialPurchaseDecision> => {
+    const response = await fetch('/api/auction/purchase-decisions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(snapshot),
-    }).catch((error) => {
-      console.error('Purchase decision snapshot save failed:', error);
     });
+    const payload = (await response.json()) as {
+      snapshot?: AuctionWarRoomInitialPurchaseDecision;
+      error?: string;
+    };
+    if (!response.ok || !payload.snapshot) {
+      throw new Error(payload.error ?? 'Purchase could not be persisted. Keep the sale details and retry.');
+    }
+    setPurchaseDecisionSnapshotsByPurchaseId((currentSnapshots) => {
+      const nextSnapshots = new Map(currentSnapshots);
+      nextSnapshots.set(payload.snapshot!.purchaseId, payload.snapshot!);
+      return nextSnapshots;
+    });
+    return payload.snapshot;
   }, []);
 
   const buildPurchaseDecisionSnapshot = useCallback(({
@@ -6025,7 +6040,7 @@ export default function AuctionWarRoomClient({
     selectedPlayer?.rowNumber,
   ]);
 
-  const recordManualSale = ({
+  const recordManualSale = async ({
     player,
     buyerTeamId,
     priceInput,
@@ -6084,26 +6099,61 @@ export default function AuctionWarRoomClient({
       recordedAt,
     };
 
-    setManualAuctionSales((previousSales) => [...previousSales, sale]);
-    persistPurchaseDecisionSnapshot(
-      buildPurchaseDecisionSnapshot({
-        purchaseId: sale.id,
-        player,
-        salePrice: sale.salePrice,
-        team,
-        source: 'manual-local',
-        purchaseOrder: null,
-        purchasedAt: sale.recordedAt,
-      })
-    );
-    if (!keepPlayerSelected) {
-      clearManualSalePlayer();
-      setManualSalePriceInput('');
-      focusManualSalePlayerSearch();
-    }
+    const snapshot = buildPurchaseDecisionSnapshot({
+      purchaseId: sale.id,
+      player,
+      salePrice: sale.salePrice,
+      team,
+      source: 'manual-local',
+      purchaseOrder: null,
+      purchasedAt: sale.recordedAt,
+    });
+    setPendingManualSale({ sale, player, team, snapshot, keepPlayerSelected });
+    setManualSalePersistenceStatus('saving');
     setManualSaleError(null);
-    setManualSaleConfirmation(sale);
-    setSelectedPlayerRowNumber(player.rowNumber);
+    try {
+      await persistPurchaseDecisionSnapshot(snapshot);
+      setManualAuctionSales((previousSales) => [...previousSales, sale]);
+      setPendingManualSale(null);
+      setManualSalePersistenceStatus('saved');
+      if (!keepPlayerSelected) {
+        clearManualSalePlayer();
+        setManualSalePriceInput('');
+        focusManualSalePlayerSearch();
+      }
+      setManualSaleConfirmation(sale);
+      setSelectedPlayerRowNumber(player.rowNumber);
+    } catch (error) {
+      setManualSalePersistenceStatus('error');
+      setManualSaleError(
+        error instanceof Error
+          ? `${error.message} Sale details are retained; use Retry Sale.`
+          : 'Purchase could not be persisted. Sale details are retained; use Retry Sale.'
+      );
+    }
+  };
+  const retryPendingManualSale = async () => {
+    if (!pendingManualSale) return;
+    setManualSalePersistenceStatus('saving');
+    setManualSaleError(null);
+    try {
+      await persistPurchaseDecisionSnapshot(pendingManualSale.snapshot);
+      setManualAuctionSales((previousSales) =>
+        previousSales.some((sale) => sale.id === pendingManualSale.sale.id)
+          ? previousSales
+          : [...previousSales, pendingManualSale.sale]
+      );
+      setManualSalePersistenceStatus('saved');
+      setManualSaleConfirmation(pendingManualSale.sale);
+      setPendingManualSale(null);
+    } catch (error) {
+      setManualSalePersistenceStatus('error');
+      setManualSaleError(
+        error instanceof Error
+          ? `${error.message} Sale details are retained; use Retry Sale.`
+          : 'Purchase could not be persisted. Sale details are retained; use Retry Sale.'
+      );
+    }
   };
   const undoLastManualSale = () => {
     if (latestUndoableManualSale === null) return;
@@ -9874,7 +9924,7 @@ export default function AuctionWarRoomClient({
 
                   <button
                     type="submit"
-                    disabled={!canRecordManualSale}
+                    disabled={!canRecordManualSale || manualSalePersistenceStatus === 'saving'}
                     className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-orange-600/30 bg-orange-600 px-4 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:border-black/10 disabled:bg-black/[0.06] disabled:text-gray-400 dark:disabled:border-white/10 dark:disabled:bg-white/[0.06]"
                   >
                     <Gavel className="h-4 w-4" />
@@ -9892,8 +9942,21 @@ export default function AuctionWarRoomClient({
                   </button>
                 </form>
 
-                {(manualSaleConfirmation || manualSaleValidationMessage || manualSalePlayerAlreadyTaken || manualSalePlayerStrategyMessage) && (
+                {(pendingManualSale || manualSaleConfirmation || manualSaleValidationMessage || manualSalePlayerAlreadyTaken || manualSalePlayerStrategyMessage) && (
                   <div className="mt-2 grid gap-1.5 text-[10px] font-black uppercase tracking-widest">
+                    {pendingManualSale ? (
+                      <div className="flex flex-col gap-2 rounded-lg border border-rose-600/20 bg-rose-600/10 px-3 py-2 text-rose-700 dark:text-rose-300 sm:flex-row sm:items-center sm:justify-between">
+                        <span>Sale not confirmed. {pendingManualSale.sale.playerName} · {pendingManualSale.sale.teamName} · {formatMoney(pendingManualSale.sale.salePrice)} retained for retry.</span>
+                        <button
+                          type="button"
+                          onClick={() => void retryPendingManualSale()}
+                          disabled={manualSalePersistenceStatus === 'saving'}
+                          className="min-h-9 rounded-lg border border-rose-600/40 px-3 py-2 text-[9px] font-black uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Retry Sale
+                        </button>
+                      </div>
+                    ) : null}
                     {manualSaleConfirmation && (
                       <p className="rounded-lg border border-emerald-600/20 bg-emerald-600/10 px-3 py-2 text-emerald-700 dark:text-emerald-300">
                         Last sale: {manualSaleConfirmation.playerName} to {manualSaleConfirmation.teamName} for {formatMoney(manualSaleConfirmation.salePrice)} | {formatChatTimestamp(manualSaleConfirmation.recordedAt)}

@@ -9,10 +9,13 @@ import { riverCityAuctionLeagueSettings } from "@/lib/auction/leagueSettings";
 import {
   markAuctionPurchaseDecisionUndone,
   readAuctionPurchaseDecisionSnapshots,
-  upsertAuctionPurchaseDecisionSnapshot,
+  recordAuctionPurchaseAtomically,
+  AuctionPurchaseIntegrityError,
 } from "@/lib/auction/purchaseDecisions";
 import type { AuctionPurchaseDecisionSnapshot } from "@/lib/auction/purchaseDecisionTypes";
 import { readAuthorizedWarRoomPurchaseSnapshots } from "@/lib/auction/warRoomPurchaseView";
+import { getCanonicalAuctionTeamById } from "@/lib/auction/canonicalTeamCatalog";
+import { getSleeperPlayerIdentityDirectory } from "@/lib/sleeper";
 
 export const runtime = "nodejs";
 
@@ -179,12 +182,47 @@ export async function POST(req: Request) {
     );
   }
 
-  const savedSnapshot = await upsertAuctionPurchaseDecisionSnapshot({
-    snapshot,
-    capturedBy: actor.email,
-  });
+  const buyerTeamId = readString(snapshot.buyerTeamId);
+  const buyerRosterId = Number(snapshot.buyerRosterId);
+  const buyerTeam = getCanonicalAuctionTeamById(buyerTeamId);
+  if (!buyerTeam || !Number.isInteger(buyerRosterId) || buyerTeam.rosterId !== buyerRosterId) {
+    return NextResponse.json(
+      { error: "The selected buyer franchise and roster are not a canonical 2026 match." },
+      { status: 400 }
+    );
+  }
 
-  return NextResponse.json({ snapshot: savedSnapshot });
+  if (!snapshot.sleeperPlayerId) {
+    return NextResponse.json({ error: "A valid player ID is required." }, { status: 400 });
+  }
+  const playerDirectory = await getSleeperPlayerIdentityDirectory();
+  if (!playerDirectory[snapshot.sleeperPlayerId]) {
+    return NextResponse.json(
+      { error: "The selected player could not be resolved from Sleeper." },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const result = await recordAuctionPurchaseAtomically({
+      snapshot,
+      capturedBy: actor.access.canonicalOwnerId ?? "commissioner",
+      buyerTeamId: buyerTeam.id,
+      buyerRosterId: buyerTeam.rosterId,
+      buyerOwnerProfileId: buyerTeam.managerId,
+      buyerWarRoomId: buyerTeam.warRoomId,
+    });
+    return NextResponse.json(result);
+  } catch (error) {
+    if (error instanceof AuctionPurchaseIntegrityError) {
+      const status = error.code === "stale-state" ? 409 : 400;
+      return NextResponse.json({ error: error.message, code: error.code }, { status });
+    }
+    return NextResponse.json(
+      { error: "Purchase could not be persisted. Keep the sale details and retry." },
+      { status: 503 }
+    );
+  }
 }
 
 export async function DELETE(req: Request) {
@@ -211,7 +249,7 @@ export async function DELETE(req: Request) {
   const result = await markAuctionPurchaseDecisionUndone({
     season: readSeason(body.season ?? searchParams.get("season")),
     purchaseId,
-    undoneBy: actor.email,
+    undoneBy: actor.access.canonicalOwnerId ?? "commissioner",
   });
 
   return NextResponse.json(result);
