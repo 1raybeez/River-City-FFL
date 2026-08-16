@@ -8416,7 +8416,7 @@ export default function AuctionWarRoomClient({
   return (
     <div className="min-h-screen overflow-x-hidden bg-white pb-4 font-sans text-black selection:bg-orange-600 transition-colors duration-300 dark:bg-[#0a0a0a] dark:text-white">
       <header className="sticky top-0 z-50 border-b border-black/10 bg-white/95 backdrop-blur-md dark:border-white/10 dark:bg-[#0a0a0a]/95">
-        <div className="mx-auto grid max-w-[1800px] gap-2 px-3 py-2 sm:px-4 xl:grid-cols-[minmax(230px,0.82fr)_minmax(360px,1.45fr)_minmax(290px,0.9fr)] xl:items-center">
+        <div className="mx-auto grid max-w-[1800px] gap-2 px-3 py-2 sm:px-4 xl:grid-cols-[minmax(320px,0.95fr)_minmax(360px,1.45fr)_minmax(290px,0.9fr)] xl:items-center">
           <div className="flex min-w-0 items-center gap-3">
             <Link
               href="/commish"
@@ -8429,15 +8429,15 @@ export default function AuctionWarRoomClient({
               <Image
                 src={franchiseLogoUrl ?? riverCityLogoUrl}
                 alt={`${draftBoardTitle} logo`}
-                width={40}
-                height={40}
-                className="h-10 w-10 shrink-0 rounded-xl border border-black/10 bg-white object-contain p-1 dark:border-white/10"
+                width={52}
+                height={52}
+                className="h-11 w-11 shrink-0 rounded-xl border border-black/10 bg-white object-cover p-0 dark:border-white/10 sm:h-[52px] sm:w-[52px]"
                 unoptimized
                 onError={(event) => {
                   event.currentTarget.src = riverCityLogoUrl;
                 }}
               />
-              <div className="min-w-0">
+              <div className="min-w-[13rem] flex-1">
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   <h1 className="min-w-0 break-words text-xl font-black uppercase italic leading-none tracking-tight sm:text-2xl">
                     {ownerBoardTeamName ?? 'My Franchise'}
@@ -8451,10 +8451,13 @@ export default function AuctionWarRoomClient({
                 </span>
                 {!access.canRecordSales ? <MockBadge /> : null}
               </div>
-              <p className="mt-1 truncate text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">
-                {ownerIdentityLabel ? `${ownerIdentityLabel} | ` : ''}
-                {riverCityAuctionLeagueSettings.leagueName} | {riverCityAuctionLeagueSettings.season}
-              </p>
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <p className="min-w-0 flex-1 truncate text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                  {ownerIdentityLabel ? `${ownerIdentityLabel} | ` : ''}
+                  {riverCityAuctionLeagueSettings.leagueName} | {riverCityAuctionLeagueSettings.season}
+                </p>
+                <SignOutControl className="shrink-0 border-black/10 text-gray-600 hover:bg-orange-600/10 hover:text-orange-600 dark:border-white/10 dark:text-gray-300" />
+              </div>
             </div>
           </div>
 
@@ -8659,7 +8662,6 @@ export default function AuctionWarRoomClient({
               <span className="sm:hidden">Report</span>
             </Link>
             <ModeToggle />
-            <SignOutControl className="border-black/10 text-gray-600 hover:bg-orange-600/10 hover:text-orange-600 dark:border-white/10 dark:text-gray-300" />
           </div>
         </div>
       </header>
