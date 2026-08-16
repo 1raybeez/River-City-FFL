@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import historicalMasterview2018 from '@/data/auction/processed/masterview-2018.json';
 import historicalMasterview2019 from '@/data/auction/processed/masterview-2019.json';
@@ -1040,11 +1041,6 @@ const rosterGuidanceSeverityStyles: Record<RosterGuidanceSeverity, string> = {
 
 function formatMoney(amount: number | null) {
   return amount === null ? 'N/A' : `$${amount}`;
-}
-
-function formatDraftBoardTitle(teamName: string | null | undefined) {
-  const trimmedTeamName = teamName?.trim();
-  return trimmedTeamName ? `${trimmedTeamName} Draft Board` : 'My Draft Board';
 }
 
 function getOwnerRoleLabel(access: AuctionAccessResult) {
@@ -4271,13 +4267,17 @@ export default function AuctionWarRoomClient({
       : sleeperSnapshot?.teams
           ?.find((team) => team.rosterId === access.sleeperRosterId)
           ?.teamName?.trim() || null;
+  const ownerBoardTeam = getCanonicalAuctionTeamByRosterId(access.sleeperRosterId);
   const ownerBoardTeamName =
+    ownerBoardTeam?.teamName ??
     liveSleeperTeamName ??
     access.sleeperTeamName ??
     access.ownerProfileLabel ??
     initialOwnerSettings?.sleeperTeamName ??
     access.ownerDisplayName;
-  const draftBoardTitle = formatDraftBoardTitle(ownerBoardTeamName);
+  const draftBoardTitle = ownerBoardTeamName ?? 'My Draft Board';
+  const franchiseLogoUrl = ownerBoardTeam?.logoUrl ?? null;
+  const riverCityLogoUrl = '/River City FFL Logo.JPG';
   const ownerIdentityLabel = access.ownerDisplayName ?? access.ownerProfileLabel;
   const ownerSettingsSummary = getOwnerSettingsSummary(initialOwnerSettings);
   const canEditLiveStrategy = Boolean(
@@ -8416,11 +8416,27 @@ export default function AuctionWarRoomClient({
             >
               <ArrowLeft className="h-4 w-4" />
             </Link>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="truncate text-xl font-black uppercase italic tracking-tight sm:text-2xl">
-                  {draftBoardTitle}
-                </h1>
+            <div className="flex min-w-0 items-center gap-2">
+              <Image
+                src={franchiseLogoUrl ?? riverCityLogoUrl}
+                alt={`${draftBoardTitle} logo`}
+                width={40}
+                height={40}
+                className="h-10 w-10 shrink-0 rounded-xl border border-black/10 bg-white object-contain p-1 dark:border-white/10"
+                unoptimized
+                onError={(event) => {
+                  event.currentTarget.src = riverCityLogoUrl;
+                }}
+              />
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <h1 className="min-w-0 break-words text-xl font-black uppercase italic leading-none tracking-tight sm:text-2xl">
+                    {ownerBoardTeamName ?? 'My Franchise'}
+                  </h1>
+                  <span className="shrink-0 text-[9px] font-black uppercase tracking-[0.22em] text-gray-400">
+                    Draft Board
+                  </span>
+                </div>
                 <span className="inline-flex w-fit rounded-full border border-orange-600/20 bg-orange-600/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">
                   {getOwnerRoleLabel(access)}
                 </span>
@@ -8681,7 +8697,7 @@ export default function AuctionWarRoomClient({
 		            {activeWorkspace === 'draft' && (
 		            <div className="order-1 min-h-0 min-w-0">
               <SectionShell
-                title={draftBoardTitle}
+                title="Draft Board"
                 eyebrow="Player Selection"
                 icon={DollarSign}
                 className="min-h-0 lg:flex lg:flex-col"
