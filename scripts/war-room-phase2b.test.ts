@@ -7,6 +7,7 @@ import {
   legacyLiveAuctionStateClassifications,
   assertWarRoomLiveStateScope,
 } from "../lib/auction/warRoomLiveState";
+import { canonicalAuctionTeams } from "../lib/auction/canonicalTeamCatalog";
 
 type FakeAccess = Parameters<typeof assertWarRoomLiveStateScope>[0];
 
@@ -69,9 +70,10 @@ assert.equal(isGlobalAuctionState("current-nomination"), true);
 const purchaseRoute = readFileSync("app/api/auction/purchase-decisions/route.ts", "utf8");
 assert.match(purchaseRoute, /requireAuctionSalesAccess/);
 const clientSource = readFileSync("app/commish/auction/AuctionWarRoomClient.tsx", "utf8");
-assert.match(clientSource, /mockAuctionTeams/);
-assert.match(clientSource, /mockAuctionData/);
+assert.match(clientSource, /canonicalAuctionTeams/);
+assert.doesNotMatch(clientSource, /mockAuctionTeams|mockAuctionData/);
 assert.match(readFileSync("lib/auction/mockAuctionData.ts", "utf8"), /Local Demo Data only/);
+assert.equal(canonicalAuctionTeams.length, 12);
 assert.equal(legacyLiveAuctionStateClassifications.length, 3);
 assert.equal(legacyLiveAuctionStateClassifications.some((entry) => entry.migrationAction === "review-before-migration"), true);
 assert.doesNotMatch(readFileSync("lib/auction/warRoomLiveState.ts", "utf8"), /\.delete\(/);

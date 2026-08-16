@@ -42,8 +42,11 @@ import { SignOutControl } from '@/components/SiteShell';
 import { PlayerDetailDrawer } from './PlayerDetailDrawer';
 import { activeManagers } from '@/lib/managers/activeManagers';
 import {
-  mockAuctionTeams,
-} from '@/lib/auction/mockAuctionData';
+  canonicalAuctionTeams,
+  getCanonicalAuctionTeamById,
+  getCanonicalAuctionTeamByRosterId,
+  type CanonicalAuctionTeam,
+} from '@/lib/auction/canonicalTeamCatalog';
 import type {
   DerivedWarRoomBudgetState,
   WarRoomLiveAuctionState,
@@ -2652,13 +2655,11 @@ let playerPoolStatusOptions = sortPlayerPoolStatuses(Array.from(
 ));
 
 function getTeam(teamId: AuctionTeamId | null) {
-  if (!teamId) return null;
-  return mockAuctionTeams.find((team) => team.id === teamId) ?? null;
+  return getCanonicalAuctionTeamById(teamId);
 }
 
 function getTeamByRosterId(rosterId: number | null | undefined) {
-  if (rosterId === null || rosterId === undefined) return null;
-  return mockAuctionTeams.find((team) => team.rosterId === rosterId) ?? null;
+  return getCanonicalAuctionTeamByRosterId(rosterId);
 }
 
 function MockBadge() {
@@ -3045,8 +3046,8 @@ function getRayKDefStrategyMessages(
 }
 
 const defaultGuidanceTeam =
-  mockAuctionTeams.find((team) => team.rosterId === 1) ??
-  mockAuctionTeams[0] ??
+  canonicalAuctionTeams.find((team) => team.rosterId === 1) ??
+  canonicalAuctionTeams[0] ??
   null;
 
 function buildBudgetRows(purchases: readonly AuctionWarRoomPurchaseRow[]) {
@@ -3073,7 +3074,7 @@ function buildBudgetRows(purchases: readonly AuctionWarRoomPurchaseRow[]) {
     {}
   );
 
-  return mockAuctionTeams.map((team) => {
+  return canonicalAuctionTeams.map((team) => {
     const sleeperKeeperRows = keeperRows.filter(
       (purchase) => purchase.teamId === team.id
     );
@@ -3134,7 +3135,7 @@ function buildBudgetRows(purchases: readonly AuctionWarRoomPurchaseRow[]) {
 }
 
 function buildGuidanceRosterPlayers(
-  team: (typeof mockAuctionTeams)[number] | null,
+  team: CanonicalAuctionTeam | null,
   purchases: readonly AuctionWarRoomPurchaseRow[]
 ): RosterGuidancePlayer[] {
   if (team === null) return [];
@@ -4037,7 +4038,7 @@ export default function AuctionWarRoomClient({
   const [manualSaleBuyerTeamId, setManualSaleBuyerTeamId] = useState<
     AuctionTeamId | ''
   >(
-    guidanceTeam?.id ?? mockAuctionTeams[0]?.id ?? ''
+    guidanceTeam?.id ?? canonicalAuctionTeams[0]?.id ?? ''
   );
   const [manualSaleError, setManualSaleError] = useState<string | null>(null);
   const [manualSaleConfirmation, setManualSaleConfirmation] =
@@ -5786,7 +5787,7 @@ export default function AuctionWarRoomClient({
     purchaseId: string;
     player: ProcessedPlayerValueRow | null;
     salePrice: number;
-    team: (typeof mockAuctionTeams)[number] | null;
+    team: CanonicalAuctionTeam | null;
     source: 'manual-local' | 'sleeper-draft';
     purchaseOrder: number | null;
     purchasedAt: string | null;
@@ -9671,7 +9672,7 @@ export default function AuctionWarRoomClient({
                       className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-black outline-none transition focus:border-orange-600 dark:border-white/10 dark:bg-black/30"
                     >
                       <option value="">Select buyer</option>
-                      {mockAuctionTeams.map((team) => (
+                      {canonicalAuctionTeams.map((team) => (
                         <option key={team.id} value={team.id}>
                           {team.teamName} | {team.managerName}
                         </option>
@@ -13211,7 +13212,7 @@ export default function AuctionWarRoomClient({
         onClearPlan={() => void saveDraftPlanPreference({ clear: true })}
         sale={{
           canRecordSale: access.canRecordSales,
-          buyerOptions: mockAuctionTeams.map((team) => ({
+          buyerOptions: canonicalAuctionTeams.map((team) => ({
             id: team.id,
             label: `${team.teamName} | ${team.managerName}`,
           })),
