@@ -4,6 +4,7 @@ import {
   getAuctionSessionCookieName,
   getAuctionSessionMaxAgeMs,
 } from "@/lib/auth/auctionAccess";
+import { toSafeCurrentMember } from "@/lib/auth/currentMember";
 import { adminAuth } from "@/lib/firebaseAdmin";
 
 type SessionRequestBody = {
@@ -61,8 +62,7 @@ export async function POST(req: Request) {
     });
     const response = NextResponse.json({
       success: true,
-      email,
-      access,
+      member: toSafeCurrentMember(access),
     });
 
     response.cookies.set({

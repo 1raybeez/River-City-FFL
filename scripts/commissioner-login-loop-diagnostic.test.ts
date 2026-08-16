@@ -21,8 +21,8 @@ assert.match(accessSource, /return buildCanonicalManagerAccessResult\(/);
 assert.match(accessSource, /role: "pilot-owner"/);
 assert.match(accessSource, /canAccessMaintenance: false/);
 assert.match(accessSource, /canRecordSales: false/);
-assert.match(commishPage, /requireAuctionAccess\(\)/);
-assert.match(sessionRoute, /access\?\.canAccessWarRoom \|\| access\?\.canAccessMaintenance/);
+assert.match(commishPage, /requireAuctionAccess\("maintenance"\)/);
+assert.match(sessionRoute, /!access\.canAccessWarRoom && !access\.canAccessMaintenance/);
 assert.match(loginPage, /River City Commissioner Hub/);
 
 assert.match(accessSource, /canAccessMaintenance: commissionerAccess\.canAccessMaintenance/);

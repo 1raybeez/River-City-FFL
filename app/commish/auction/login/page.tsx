@@ -8,6 +8,7 @@ import { signInWithPopup } from 'firebase/auth';
 import { ArrowLeft, Lock, Shield } from 'lucide-react';
 import { ModeToggle } from '@/components/ModeToggle';
 import { auth, googleAuthProvider } from '@/lib/firebase';
+import { getSafeReturnTo } from '@/lib/auth/safeReturnTo';
 
 type SessionResponse = {
   success?: boolean;
@@ -62,10 +63,8 @@ function AuctionLoginContent() {
         );
       }
 
-      const requestedReturnTo = searchParams.get('returnTo');
-      const returnTo = requestedReturnTo?.startsWith('/commish') && !requestedReturnTo.startsWith('//')
-        ? requestedReturnTo
-        : '/commish';
+      const requestedReturnTo = getSafeReturnTo(searchParams.get('returnTo'));
+      const returnTo = requestedReturnTo.startsWith('/commish') ? requestedReturnTo : '/commish';
       router.replace(returnTo);
       router.refresh();
     } catch (error) {

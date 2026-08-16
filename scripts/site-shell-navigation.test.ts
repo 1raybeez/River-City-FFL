@@ -16,7 +16,8 @@ for (const href of ["/", "/matchups", "/managers", "/league-info/rivalries", "/h
 assert.match(history, /href="\/"/);
 assert.match(commish, /redirect\('\/commish\/login\?returnTo=%2Fcommish'\)/);
 assert.match(login, /useSearchParams/);
-assert.match(login, /const returnTo = requestedReturnTo\?\.startsWith\('\/commish'\)/);
+assert.match(login, /getSafeReturnTo/);
+assert.match(login, /requestedReturnTo\.startsWith\('\/commish'\)/);
 assert.match(login, /router\.replace\(returnTo\)/);
 assert.match(financeLayout, /returnTo=%2Fcommish%2Ffinance%2F2026/);
 assert.match(auctionPage, /returnTo=%2Fcommish%2Fauction/);
