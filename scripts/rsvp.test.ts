@@ -6,7 +6,7 @@ import {
   RSVP_ATTENDEES,
 } from "../lib/rsvpAttendees";
 
-const page = readFileSync("app/page.tsx", "utf8");
+const page = readFileSync("app/HomeClient.tsx", "utf8");
 const route = readFileSync("app/api/rsvps/route.ts", "utf8");
 
 assert.equal(RSVP_ATTENDEES.length, 14);

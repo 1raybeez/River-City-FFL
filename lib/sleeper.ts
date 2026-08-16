@@ -76,6 +76,11 @@ export interface BracketMatch {
 }
 
 export interface LeagueInfo {
+  status?: string | null;
+  sport?: string | null;
+  season?: string | null;
+  draft_id?: string | null;
+  league_id?: string | null;
   settings: {
     leg: number;
     playoff_week_start?: number;
@@ -387,6 +392,27 @@ export async function getSleeperDraft(
     `https://api.sleeper.app/v1/draft/${safeDraftId}`,
     options
   );
+}
+
+export type RiverCityDraftStatus = "pre_draft" | "drafting" | "paused" | "complete" | "unknown";
+
+export async function getRiverCityAuctionDraftStatus(year: number = 2026, options: SleeperFetchOptions = {}) {
+  const leagueId = LEAGUE_IDS[year] ?? null;
+  if (!leagueId) return { season: year, draftId: null, draftStartAt: null, status: "unknown" as const };
+
+  const league = await getLeagueInfo(leagueId, options);
+  const draftId = readString(league.draft_id);
+  if (!draftId) return { season: year, draftId: null, draftStartAt: null, status: "unknown" as const };
+
+  const draft = await getSleeperDraft(draftId, options);
+  const linkedLeagueMatches = draft?.league_id === leagueId;
+  const seasonMatches = draft?.season === String(year);
+  const isAuction = draft?.type === "auction";
+  if (!draft || !linkedLeagueMatches || !seasonMatches || !isAuction) return { season: year, draftId, draftStartAt: null, status: "unknown" as const };
+
+  const supportedStatus: RiverCityDraftStatus = draft.status === "pre_draft" || draft.status === "drafting" || draft.status === "paused" || draft.status === "complete" ? draft.status : "unknown";
+  const draftStartAt = typeof draft.start_time === "number" && Number.isFinite(draft.start_time) ? new Date(draft.start_time).toISOString() : null;
+  return { season: year, draftId, draftStartAt, status: supportedStatus };
 }
 
 export async function getSleeperDraftPicks(
