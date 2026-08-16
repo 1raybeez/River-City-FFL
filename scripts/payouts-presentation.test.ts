@@ -10,7 +10,7 @@ assert.match(page, /loadPublicOperationalFinancePresentation/);
 assert.match(client, /<SiteShell activePath="\/league-info">/);
 assert.match(client, /River City Payouts/);
 assert.match(client, /2026 Current Season/);
-assert.match(client, /2016–2025/);
+assert.match(client, /Historical archive/);
 assert.match(client, /currentSeason\.approvedRingExpenseCents/);
 assert.match(client, /currentSeason\.projectedChampionCashCents/);
 assert.match(client, /minimumFractionDigits: cents % 100 === 0 \? 0 : 2/);

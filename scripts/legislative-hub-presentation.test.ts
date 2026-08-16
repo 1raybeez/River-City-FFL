@@ -26,7 +26,7 @@ assert.match(page, /handleVote\(prop\.id, 'no'\)/);
 assert.match(page, /Session Archive/);
 assert.match(page, /focus-visible:ring-2/);
 assert.match(page, /max-w-7xl/);
-assert.match(shell, /activePath === "\/commish"/);
+assert.match(shell, /activePath === href/);
 assert.match(layout, /requireAuctionAccess|require/);
 assert.match(constitution, /ratified|amendment|rule/i);
 

@@ -39,7 +39,7 @@ async function main() {
   assert.doesNotMatch(client, /firebase\/firestore|@\/lib\/firebase/);
   assert.match(client, /2026 Current Season/);
   assert.doesNotMatch(client, /\$50 owed|owed.*\$/i);
-  assert.match(client, /Historical Finance \(2016–2025 reconciled\)/);
+assert.match(client, /Historical archive/);
   assert.equal(OPERATIONAL_FINANCE_SEASON_2026.financialOwnerMappings.some((entry) => entry.financialOwnerId === "jeffrey-hudgins"), false);
 
   const opening = await repository.getSnapshot();
