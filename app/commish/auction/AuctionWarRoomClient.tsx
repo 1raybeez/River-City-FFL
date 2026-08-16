@@ -449,6 +449,7 @@ type SleeperSnapshotTeam = {
   ownerUserId: string | null;
   ownerName: string | null;
   teamName: string | null;
+  avatar: string | null;
 };
 
 type SleeperSnapshotResponse = {
@@ -4276,7 +4277,15 @@ export default function AuctionWarRoomClient({
     initialOwnerSettings?.sleeperTeamName ??
     access.ownerDisplayName;
   const draftBoardTitle = ownerBoardTeamName ?? 'My Draft Board';
-  const franchiseLogoUrl = ownerBoardTeam?.logoUrl ?? null;
+  const sleeperTeamAvatar =
+    access.sleeperRosterId == null
+      ? null
+      : sleeperSnapshot?.teams
+          ?.find((team) => team.rosterId === access.sleeperRosterId)
+          ?.avatar?.trim() || null;
+  const franchiseLogoUrl = sleeperTeamAvatar
+    ? `https://sleepercdn.com/avatars/thumbs/${sleeperTeamAvatar}`
+    : null;
   const riverCityLogoUrl = '/River City FFL Logo.JPG';
   const ownerIdentityLabel = access.ownerDisplayName ?? access.ownerProfileLabel;
   const ownerSettingsSummary = getOwnerSettingsSummary(initialOwnerSettings);

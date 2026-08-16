@@ -19,7 +19,6 @@ const rosterSlots = {
 export type CanonicalAuctionTeam = AuctionTeam & {
   franchiseId: string;
   warRoomId: string;
-  logoUrl: string | null;
   ownerIds: readonly string[];
   ownerNames: readonly string[];
   ownerLabel: string;
@@ -85,9 +84,6 @@ function buildTeam(franchiseId: string): CanonicalAuctionTeam | null {
     updatedAt: "2026-01-01T00:00:00.000Z",
     franchiseId: franchise.id,
     warRoomId: `2026:${franchise.id}`,
-    logoUrl: franchise.colorTeamCode
-      ? `https://sleepercdn.com/images/team_logos/nfl/${franchise.colorTeamCode.toLowerCase()}.png`
-      : null,
     ownerIds,
     ownerNames,
     ownerLabel,

@@ -34,6 +34,7 @@ export type SleeperAuctionSyncRosterLike = {
 
 export type SleeperAuctionSyncUserLike = {
   user_id?: string | number | null;
+  avatar?: string | null;
   display_name?: string | null;
   username?: string | null;
   metadata?: {
@@ -64,6 +65,7 @@ export type SleeperAuctionSyncTeam = {
   ownerUserId: string | null;
   ownerName: string | null;
   teamName: string | null;
+  avatar: string | null;
 };
 
 export type SleeperAuctionKeeperRow = {
@@ -439,6 +441,9 @@ export function normalizeSleeperAuctionSyncSnapshot({
       ownerUserId: roster.ownerUserId,
       ownerName: roster.ownerName,
       teamName: roster.teamName,
+      avatar: roster.ownerUserId
+        ? usersById.get(roster.ownerUserId)?.avatar?.trim() || null
+        : null,
     })),
     warnings: normalizedWarnings,
     syncStatus:
