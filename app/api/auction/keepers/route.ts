@@ -10,6 +10,7 @@ import {
 } from "@/lib/auction/warRoomLiveStateFirestore";
 import { assertAuthorizedWarRoomRequest } from "@/lib/auction/warRoomScope";
 import type { WarRoomKeeperState } from "@/lib/auction/warRoomLiveState";
+import { readKeeperAuthority } from "@/lib/auction/keeperAuthority";
 
 export const runtime = "nodejs";
 
@@ -72,7 +73,10 @@ export async function GET() {
   }
 
   const state = await readWarRoomLiveAuctionState(actor.access.warRoomId);
-  return NextResponse.json({ keepers: state?.keepers ?? [] });
+  return NextResponse.json({
+    keepers: state?.keepers ?? [],
+    keeperAuthority: await readKeeperAuthority(),
+  });
 }
 
 export async function PUT(req: Request) {
@@ -84,6 +88,13 @@ export async function PUT(req: Request) {
   const body = await readBody(req);
   try {
     assertAuthorizedWarRoomRequest(actor.access, readScope(body));
+    const keeperAuthority = await readKeeperAuthority();
+    if (keeperAuthority.state !== "editable") {
+      return NextResponse.json(
+        { error: keeperAuthority.message, keeperAuthority },
+        { status: keeperAuthority.state === "locked" ? 409 : 503 }
+      );
+    }
     const keepers = parseKeepers(body.keepers);
     if (!keepers) {
       return NextResponse.json({ error: "keepers must be an array." }, { status: 400 });

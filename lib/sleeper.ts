@@ -18,6 +18,7 @@ export const LEAGUE_IDS: Record<number, string> = {
 };
 
 const CACHE_OPTIONS = { next: { revalidate: 3600 } } as const;
+export type SleeperFetchOptions = { fresh?: boolean };
 
 export interface Transaction {
   transaction_id: string;
@@ -171,9 +172,12 @@ export interface SleeperAuctionDraftSnapshot {
 
 // --- API FETCH HELPERS ---
 
-async function sleeperFetch<T>(url: string): Promise<T | null> {
+async function sleeperFetch<T>(
+  url: string,
+  options: SleeperFetchOptions = {}
+): Promise<T | null> {
   try {
-    const res = await fetch(url, CACHE_OPTIONS);
+    const res = await fetch(url, options.fresh ? { cache: "no-store" } : CACHE_OPTIONS);
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch (error) {
@@ -231,11 +235,14 @@ function sortDraftsByRecency(drafts: SleeperDraft[]) {
   );
 }
 
-async function hydrateSleeperDraft(draft: SleeperDraft) {
+async function hydrateSleeperDraft(
+  draft: SleeperDraft,
+  options: SleeperFetchOptions = {}
+) {
   const draftId = readString(draft.draft_id);
   if (!draftId) return draft;
 
-  return (await getSleeperDraft(draftId)) ?? draft;
+  return (await getSleeperDraft(draftId, options)) ?? draft;
 }
 
 // --- API FUNCTIONS ---
@@ -248,10 +255,14 @@ export async function getNFLState() {
   return data ?? fallback;
 }
 
-export async function getLeagueInfo(leagueId: string = LEAGUE_ID) {
+export async function getLeagueInfo(
+  leagueId: string = LEAGUE_ID,
+  options: SleeperFetchOptions = {}
+) {
   const fallback: LeagueInfo = { settings: { leg: 1 } };
   const data = await sleeperFetch<LeagueInfo>(
-    `https://api.sleeper.app/v1/league/${leagueId}`
+    `https://api.sleeper.app/v1/league/${leagueId}`,
+    options
   );
   return data ?? fallback;
 }
@@ -350,23 +361,31 @@ export async function getLeagueDrafts(year: number = 2026) {
   );
 }
 
-export async function getSleeperLeagueDrafts(year: number = 2026) {
+export async function getSleeperLeagueDrafts(
+  year: number = 2026,
+  options: SleeperFetchOptions = {}
+) {
   const leagueId = LEAGUE_IDS[year];
   if (!leagueId) return [];
 
   const drafts = await sleeperFetch<SleeperDraft[]>(
-    `https://api.sleeper.app/v1/league/${leagueId}/drafts`
+    `https://api.sleeper.app/v1/league/${leagueId}/drafts`,
+    options
   );
 
   return drafts ?? [];
 }
 
-export async function getSleeperDraft(draftId: string | null | undefined) {
+export async function getSleeperDraft(
+  draftId: string | null | undefined,
+  options: SleeperFetchOptions = {}
+) {
   const safeDraftId = readString(draftId);
   if (!safeDraftId) return null;
 
   return sleeperFetch<SleeperDraft>(
-    `https://api.sleeper.app/v1/draft/${safeDraftId}`
+    `https://api.sleeper.app/v1/draft/${safeDraftId}`,
+    options
   );
 }
 
@@ -383,13 +402,16 @@ export async function getSleeperDraftPicks(
   return picks ?? [];
 }
 
-export async function findRiverCityAuctionDraft(year: number = 2026) {
+export async function findRiverCityAuctionDraft(
+  year: number = 2026,
+  options: SleeperFetchOptions = {}
+) {
   const leagueId = LEAGUE_IDS[year];
   if (!leagueId) return null;
 
   const [league, drafts] = await Promise.all([
-    getLeagueInfo(leagueId),
-    getSleeperLeagueDrafts(year),
+    getLeagueInfo(leagueId, options),
+    getSleeperLeagueDrafts(year, options),
   ]);
   if (drafts.length === 0) return null;
 
@@ -399,7 +421,7 @@ export async function findRiverCityAuctionDraft(year: number = 2026) {
     : null;
 
   if (leagueDraft && isSleeperAuctionDraft(leagueDraft)) {
-    return hydrateSleeperDraft(leagueDraft);
+    return hydrateSleeperDraft(leagueDraft, options);
   }
 
   const auctionDrafts = sortDraftsByRecency(
@@ -412,7 +434,7 @@ export async function findRiverCityAuctionDraft(year: number = 2026) {
     auctionDrafts[0] ??
     null;
 
-  return preferredDraft ? hydrateSleeperDraft(preferredDraft) : null;
+  return preferredDraft ? hydrateSleeperDraft(preferredDraft, options) : null;
 }
 
 export function normalizeSleeperAuctionPick(

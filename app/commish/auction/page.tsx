@@ -13,6 +13,7 @@ import { readAuthorizedWarRoomPurchaseSnapshots } from "@/lib/auction/warRoomPur
 import { readWarRoomLiveAuctionState } from "@/lib/auction/warRoomLiveStateFirestore";
 import { deriveWarRoomBudgetState } from "@/lib/auction/warRoomLiveState";
 import { riverCityAuctionLeagueSettings } from "@/lib/auction/leagueSettings";
+import { readKeeperAuthority } from "@/lib/auction/keeperAuthority";
 import { readPublishedMasterviewFromFirestore } from "@/lib/auction/valueRefreshService";
 import AuctionWarRoomClient from "./AuctionWarRoomClient";
 import type {
@@ -213,14 +214,13 @@ export default async function AuctionWarRoomPage() {
     initialPurchaseDecisions,
     initialWarRoomLiveState,
     initialWarRoomBudget,
+    initialKeeperAuthority,
   ] = await Promise.all([
     readInitialAuctionValueSource(),
     readInitialAuctionAdpSource(),
     readInitialOwnerPreferences(ownerProfileId, warRoomId ?? undefined),
     readInitialPurchaseDecisions(actor),
-    actor.access.canRecordSales || !warRoomId
-      ? Promise.resolve(null)
-      : readWarRoomLiveAuctionState(warRoomId),
+    !warRoomId ? Promise.resolve(null) : readWarRoomLiveAuctionState(warRoomId),
     actor.access.canRecordSales || !warRoomId
       ? Promise.resolve(null)
       : (async () => {
@@ -241,6 +241,7 @@ export default async function AuctionWarRoomPage() {
             })),
           });
         })(),
+    readKeeperAuthority(),
   ]);
 
   return (
@@ -254,6 +255,7 @@ export default async function AuctionWarRoomPage() {
       initialPurchaseDecisions={initialPurchaseDecisions}
       initialWarRoomLiveState={initialWarRoomLiveState}
       initialWarRoomBudget={initialWarRoomBudget}
+      initialKeeperAuthority={initialKeeperAuthority}
     />
   );
 }

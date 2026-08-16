@@ -75,6 +75,8 @@ import {
 } from '@/lib/auction/preferenceFallbacks';
 import type { AuctionOwnerProfileSettings } from '@/lib/auction/ownerProfileSettingsTypes';
 import type { AuctionAccessResult } from '@/lib/auction/ownerProfiles';
+import type { WarRoomKeeperState } from '@/lib/auction/warRoomLiveState';
+import type { KeeperAuthority } from '@/lib/auction/keeperAuthorityTypes';
 import {
   auctionLiveStrategyPositions,
   parseConversationalLiveStrategyUpdate,
@@ -3874,6 +3876,7 @@ export default function AuctionWarRoomClient({
   initialPurchaseDecisions,
   initialWarRoomLiveState,
   initialWarRoomBudget,
+  initialKeeperAuthority,
 }: {
   access: AuctionAccessResult;
   initialValueSource?: AuctionWarRoomInitialValueSource;
@@ -3884,6 +3887,7 @@ export default function AuctionWarRoomClient({
   initialPurchaseDecisions?: AuctionWarRoomInitialPurchaseDecision[];
   initialWarRoomLiveState?: AuctionWarRoomInitialLiveState | null;
   initialWarRoomBudget?: AuctionWarRoomInitialBudget | null;
+  initialKeeperAuthority: KeeperAuthority;
 }) {
   applyRuntimeAuctionValueSource(initialValueSource);
   applyRuntimeAdpSource(initialAdpSource);
@@ -4043,6 +4047,15 @@ export default function AuctionWarRoomClient({
   const [manualSaleError, setManualSaleError] = useState<string | null>(null);
   const [manualSaleConfirmation, setManualSaleConfirmation] =
     useState<ManualAuctionSale | null>(null);
+  const [keeperRows, setKeeperRows] = useState<WarRoomKeeperState[]>(
+    () => initialWarRoomLiveState?.keepers ?? []
+  );
+  const [keeperSelectedPlayerId, setKeeperSelectedPlayerId] = useState('');
+  const [keeperCostInput, setKeeperCostInput] = useState('');
+  const [keeperSaveStatus, setKeeperSaveStatus] = useState<
+    'idle' | 'saving' | 'saved' | 'error'
+  >('idle');
+  const [keeperSaveError, setKeeperSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isDraftCoachOpen) return;
@@ -4060,7 +4073,7 @@ export default function AuctionWarRoomClient({
   const isManagerWarRoom = Boolean(!access.canRecordSales && access.warRoomId);
   const persistentKeeperRows = useMemo<SleeperSnapshotKeeper[]>(
     () =>
-      (initialWarRoomLiveState?.keepers ?? []).map((keeper) => ({
+      keeperRows.map((keeper) => ({
         playerId: keeper.playerId,
         playerName: keeper.playerName,
         position: null,
@@ -4074,8 +4087,53 @@ export default function AuctionWarRoomClient({
         source: 'sleeper-keeper' as const,
         priceStatus: keeper.keeperCost === null ? 'missing' as const : 'confirmed' as const,
       })),
-    [access.ownerDisplayName, access.sleeperRosterId, access.sleeperTeamName, initialWarRoomLiveState]
+    [access.ownerDisplayName, access.sleeperRosterId, access.sleeperTeamName, keeperRows]
   );
+  const keeperAuthority = initialKeeperAuthority;
+  const saveKeeperRows = async () => {
+    setKeeperSaveStatus('saving');
+    setKeeperSaveError(null);
+    try {
+      const response = await fetch('/api/auction/keepers', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keepers: keeperRows }),
+      });
+      const payload = (await response.json()) as {
+        keepers?: WarRoomKeeperState[];
+        error?: string;
+        keeperAuthority?: KeeperAuthority;
+      };
+      if (!response.ok) {
+        throw new Error(payload.error ?? keeperAuthority.message);
+      }
+      setKeeperRows(payload.keepers ?? keeperRows);
+      setKeeperSaveStatus('saved');
+    } catch (error) {
+      setKeeperSaveStatus('error');
+      setKeeperSaveError(error instanceof Error ? error.message : 'Unable to save keepers.');
+    }
+  };
+  const addKeeperRow = () => {
+    const player = localPlayerPoolRows.find(
+      (candidate) => candidate.sleeperPlayerId === keeperSelectedPlayerId
+    );
+    if (!player || keeperRows.some((keeper) => keeper.playerId === keeperSelectedPlayerId)) return;
+    const parsedCost = keeperCostInput.trim() === '' ? null : Number(keeperCostInput);
+    if (parsedCost !== null && !Number.isFinite(parsedCost)) return;
+    setKeeperRows((current) => [
+      ...current,
+      {
+        playerId: keeperSelectedPlayerId,
+        playerName: player.matchedSleeperName ?? player.originalPlayerName,
+        keeperCost: parsedCost,
+        status: 'declared',
+      },
+    ]);
+    setKeeperSelectedPlayerId('');
+    setKeeperCostInput('');
+    setKeeperSaveStatus('idle');
+  };
   const authorizedPurchaseRows = useMemo<AuctionWarRoomPurchaseRow[]>(
     () =>
       (initialPurchaseDecisions ?? []).flatMap((purchase) => {
@@ -4103,7 +4161,7 @@ export default function AuctionWarRoomClient({
       }),
     [initialPurchaseDecisions]
   );
-  const sleeperKeepers = isManagerWarRoom
+  const sleeperKeepers = keeperRows.length > 0 || isManagerWarRoom
     ? persistentKeeperRows
     : sleeperSnapshot?.keepers ?? emptySleeperKeepers;
   const sleeperPurchases =
@@ -10698,6 +10756,94 @@ export default function AuctionWarRoomClient({
 
           {activeWorkspace === 'history' && (
           <SectionShell
+            title="Keeper selections"
+            eyebrow="Shared Franchise State"
+            icon={Lock}
+          >
+            <div className="space-y-4">
+              <p className="rounded-xl border border-orange-600/20 bg-orange-600/10 px-4 py-3 text-sm font-bold leading-relaxed text-orange-800 dark:text-orange-200">
+                {keeperAuthority.message}
+              </p>
+              {keeperAuthority.state === 'editable' ? (
+                <>
+                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_10rem_auto] md:items-end">
+                    <label className="text-[10px] font-black uppercase tracking-widest">
+                      Player
+                      <select
+                        value={keeperSelectedPlayerId}
+                        onChange={(event) => setKeeperSelectedPlayerId(event.target.value)}
+                        className="mt-2 block min-h-11 w-full rounded-xl border border-black/15 bg-white px-3 py-2 text-sm normal-case tracking-normal dark:border-white/15 dark:bg-black"
+                      >
+                        <option value="">Select a player</option>
+                        {localPlayerPoolRows
+                          .filter((player) => player.sleeperPlayerId)
+                          .map((player) => (
+                            <option key={player.sleeperPlayerId} value={player.sleeperPlayerId ?? ''}>
+                              {player.matchedSleeperName ?? player.originalPlayerName}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                    <label className="text-[10px] font-black uppercase tracking-widest">
+                      Keeper cost
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={keeperCostInput}
+                        onChange={(event) => setKeeperCostInput(event.target.value)}
+                        className="mt-2 block min-h-11 w-full rounded-xl border border-black/15 bg-white px-3 py-2 text-sm normal-case tracking-normal dark:border-white/15 dark:bg-black"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={addKeeperRow}
+                      disabled={!keeperSelectedPlayerId}
+                      className="min-h-11 rounded-xl border border-orange-600 bg-orange-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Add keeper
+                    </button>
+                  </div>
+                  {keeperRows.length > 0 ? (
+                    <div className="space-y-2">
+                      {keeperRows.map((keeper) => (
+                        <div key={keeper.playerId} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-black/10 bg-black/[0.03] px-3 py-3 dark:border-white/10 dark:bg-white/[0.03]">
+                          <span className="text-sm font-black">{keeper.playerName}</span>
+                          <span className="text-xs font-bold text-gray-500">{keeper.keeperCost === null ? 'Cost pending' : formatMoney(keeper.keeperCost)}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setKeeperRows((current) => current.filter((row) => row.playerId !== keeper.playerId));
+                              setKeeperSaveStatus('idle');
+                            }}
+                            className="rounded-lg border border-rose-600/40 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-rose-700 dark:text-rose-300"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm font-bold text-gray-500">No keepers selected for this shared franchise War Room.</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={saveKeeperRows}
+                    disabled={keeperSaveStatus === 'saving'}
+                    className="min-h-11 rounded-xl border border-black bg-black px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white disabled:cursor-not-allowed disabled:opacity-50 dark:border-white dark:bg-white dark:text-black"
+                  >
+                    {keeperSaveStatus === 'saving' ? 'Saving…' : 'Save keepers'}
+                  </button>
+                  {keeperSaveStatus === 'saved' ? <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">Keeper selections saved.</p> : null}
+                  {keeperSaveError ? <p role="alert" className="text-xs font-bold text-rose-700 dark:text-rose-300">{keeperSaveError}</p> : null}
+                </>
+              ) : null}
+            </div>
+          </SectionShell>
+          )}
+
+          {activeWorkspace === 'history' && (
+          <SectionShell
             title="Sleeper Draft Snapshot"
             eyebrow="Automatic Read-Only Sync"
             icon={RefreshCw}
@@ -10709,7 +10855,7 @@ export default function AuctionWarRoomClient({
                   Season 2026
                 </p>
                 <p className="mt-2 text-sm font-bold leading-relaxed text-gray-500 dark:text-gray-400">
-                  Read-only Sleeper keepers and purchases snapshot. Auto-refreshes every 3 minutes; no writes.
+                  Sleeper keepers and purchases snapshot. Keeper edits use the shared franchise state above; this snapshot remains read-only. Auto-refreshes every 3 minutes.
                 </p>
               </div>
               <button
