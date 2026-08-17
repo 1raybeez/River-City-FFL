@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { AuctionAccessError } from "@/lib/auth/auctionAccess";
 import { requireOperationalFinanceCommissioner } from "@/lib/finance/operationalFinanceDashboardAuth";
-import { buildOperationalFinanceCsv, buildOperationalFinanceExportContext, buildOperationalFinanceExportJson, buildOperationalFinanceReport, canonicalOperationalFinanceExportJson, type OperationalFinanceExportFormat } from "@/lib/finance/operationalFinanceExport";
+import { buildOperationalFinanceArchiveExport, buildOperationalFinanceCsv, buildOperationalFinanceExportContext, buildOperationalFinanceExportJson, buildOperationalFinanceReport, canonicalOperationalFinanceExportJson, type OperationalFinanceExportFormat } from "@/lib/finance/operationalFinanceExport";
 import { getOperationalFinanceLedgerRepository } from "@/lib/finance/operationalFinanceLedgerFirestore";
 
 export const runtime = "nodejs";
@@ -19,7 +19,7 @@ function sameOrigin(req: Request) {
   return allowed.has(origin);
 }
 
-const formats = new Set<OperationalFinanceExportFormat>(["json", "obligations", "settlements", "dues-status", "expenses", "contributions", "adjustments", "report"]);
+const formats = new Set<OperationalFinanceExportFormat>(["json", "archive", "obligations", "settlements", "dues-status", "expenses", "contributions", "adjustments", "report"]);
 
 export async function GET(req: Request, context: { params: Promise<{ season: string }> }) {
   try {
@@ -34,6 +34,11 @@ export async function GET(req: Request, context: { params: Promise<{ season: str
   if (season !== 2026 || !format || !formats.has(format)) return NextResponse.json({ error: "A supported 2026 export format is required." }, { status: 400 });
   const exportContext = buildOperationalFinanceExportContext(await getOperationalFinanceLedgerRepository(2026).getSnapshot());
   const date = "2026";
+  if (format === "archive") {
+    const archive = await getOperationalFinanceLedgerRepository(2026).getArchive(2026);
+    if (!archive) return NextResponse.json({ error: "A closed immutable archive is not available for this season." }, { status: 409 });
+    return new Response(canonicalOperationalFinanceExportJson(buildOperationalFinanceArchiveExport(archive, new Date().toISOString())) + "\n", { headers: { "Content-Type": "application/json; charset=utf-8", "Content-Disposition": `attachment; filename="river-city-ffl-2026-closed-archive.json"` } });
+  }
   if (format === "json") return new Response(canonicalOperationalFinanceExportJson(buildOperationalFinanceExportJson(exportContext)) + "\n", { headers: { "Content-Type": "application/json; charset=utf-8", "Content-Disposition": `attachment; filename="river-city-ffl-2026-finance.json"` } });
   if (format === "report") return new Response(buildOperationalFinanceReport(exportContext), { headers: { "Content-Type": "text/plain; charset=utf-8", "Content-Disposition": `attachment; filename="river-city-ffl-2026-reconciliation.txt"` } });
   return new Response(buildOperationalFinanceCsv(exportContext, format), { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="river-city-ffl-${date}-${format}.csv"` } });

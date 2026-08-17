@@ -1,11 +1,12 @@
 import type {
+  OperationalFinanceArchive,
   OperationalFinanceLedgerSnapshot,
   OperationalFinanceObligation,
   OperationalFinanceSettlement,
 } from "@/lib/finance/operationalFinanceLedgerTypes";
 import { reconcileOperationalFinance } from "@/lib/finance/operationalFinanceReconciliation";
 
-export type OperationalFinanceExportFormat = "json" | "obligations" | "settlements" | "dues-status" | "expenses" | "contributions" | "adjustments" | "report";
+export type OperationalFinanceExportFormat = "json" | "archive" | "obligations" | "settlements" | "dues-status" | "expenses" | "contributions" | "adjustments" | "report";
 
 type ExportContext = Readonly<{
   snapshot: OperationalFinanceLedgerSnapshot;
@@ -72,6 +73,7 @@ export function buildOperationalFinanceExportJson(context: ExportContext) {
   };
   return Object.freeze({
     exportSchemaVersion: "operational-finance-export:1",
+    generatedAt: new Date().toISOString(),
     exportStatus: season.status === "closed" ? "closed / archived" : "operational / provisional",
     seasonMetadata: {
       season: season.season,
@@ -85,6 +87,7 @@ export function buildOperationalFinanceExportJson(context: ExportContext) {
       closedBy: season.closedBy,
       archiveId: season.archiveId ?? null,
       archiveHash: season.archiveHash ?? null,
+      archiveRevision: season.archiveRevision ?? null,
       rulesSnapshotHash: season.rulesSnapshotHash,
       financialOwnerMappingVersion: season.financialOwnerMappingVersion,
     },
@@ -95,6 +98,26 @@ export function buildOperationalFinanceExportJson(context: ExportContext) {
     expenses: [...context.reconciliation.expenses].sort((a, b) => a.obligationId.localeCompare(b.obligationId)).map((expense) => ({ obligationId: expense.obligationId, category: expense.category, fundingSource: expense.fundingSource, amountCents: expense.amountCents, paidCents: expense.paidCents, outstandingCents: expense.outstandingCents, contributedCents: expense.contributedCents, effectiveDate: expense.effectiveDate, description: expense.description, evidenceReference: expense.evidenceReference })),
     adjustments: [...context.reconciliation.adjustments].sort((a, b) => a.adjustmentId.localeCompare(b.adjustmentId)),
     contributions: active.settlements.filter((entry) => entry.direction === "incoming-separate-contribution").sort((a, b) => a.settlementId.localeCompare(b.settlementId)).map(cleanSettlement),
+  });
+}
+
+export function buildOperationalFinanceArchiveExport(archive: OperationalFinanceArchive, exportedAt: string) {
+  return Object.freeze({
+    exportSchemaVersion: "operational-finance-archive-export:1",
+    exportStatus: "closed / immutable archive",
+    manifest: {
+      season: archive.season,
+      archiveId: archive.archiveId,
+      archiveRevision: archive.archiveRevision ?? 1,
+      schemaVersion: archive.schemaVersion,
+      archiveHash: archive.archiveHash,
+      exportedAt,
+      closedAt: archive.closedAt,
+      closedBy: archive.closedBy,
+      sourceLeagueId: archive.sourceLeagueId,
+      provenance: "Server-generated from the authoritative closed operational finance archive.",
+    },
+    archive,
   });
 }
 

@@ -1,7 +1,8 @@
 "use client";
 
 const exports = [
-  ["json", "Download Finance JSON"],
+  ["json", "Download Operational Snapshot JSON"],
+  ["archive", "Download Closed Archive JSON"],
   ["report", "Download Reconciliation Report"],
   ["dues-status", "Download Dues CSV"],
   ["obligations", "Download Obligations CSV"],
