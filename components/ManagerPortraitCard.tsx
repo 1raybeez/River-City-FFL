@@ -16,6 +16,9 @@ type ManagerPortraitCardProps = {
 
 function getLegacyLabel(group: ManagerPortraitCardProps["group"], manager: any) {
   if (group === "staff") return manager.role || "League Staff";
+  if (group === "retired" && manager.fullName === "Landon Elliott") {
+    return "Historical Franchise";
+  }
   if (group === "retired") return "Retired Owner";
   return manager.mode || "Active Owner";
 }
@@ -66,7 +69,7 @@ export default function ManagerPortraitCard({
           <h3 className="text-xl font-black uppercase italic leading-none sm:text-2xl">
             {manager.fullName}
           </h3>
-          <p className="mt-2 line-clamp-2 text-xs font-black uppercase tracking-widest text-white/65">
+          <p className="mt-2 break-words text-xs font-black uppercase tracking-widest text-white/65">
             {displayTeamName}
           </p>
         </div>

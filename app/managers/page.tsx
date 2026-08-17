@@ -15,14 +15,6 @@ type ManagerTab = "active" | "retired" | "staff";
 type ActiveOwnerLayout = "all" | "division";
 type SleeperFetchStatus = "idle" | "loading" | "ready" | "error";
 
-type SleeperUser = {
-  user_id?: string;
-  display_name?: string;
-  metadata?: {
-    team_name?: string;
-  };
-};
-
 type SleeperRoster = {
   owner_id?: string;
   roster_id?: number;
@@ -44,25 +36,6 @@ type DivisionGroup = {
   managers: ActiveManager[];
 };
 
-function applySleeperTeamNames(
-  managers: ActiveManager[],
-  sleeperUsers: SleeperUser[]
-) {
-  return managers.map((manager) => {
-    const sleeperUser = sleeperUsers.find(
-      (user) => user.user_id === manager.sleeperId
-    );
-
-    return {
-      ...manager,
-      teamName:
-        sleeperUser?.metadata?.team_name ||
-        sleeperUser?.display_name ||
-        manager.teamName,
-    };
-  });
-}
-
 function getDivisionName(
   leagueInfo: SleeperLeagueInfo | null,
   divisionId: number
@@ -81,11 +54,7 @@ export default function ManagersPage() {
   const [activeLayout, setActiveLayout] =
     useState<ActiveOwnerLayout>("division");
 
-  // ⭐ THE FIX: Use "as unknown as any[]" to strip the Read-Only status
-  // Then cast it back to ActiveManager[] so your cards still work.
-  const [activeData, setActiveData] = useState<ActiveManager[]>(() =>
-    ((activeManagers as unknown) as any[]).map((m) => ({ ...m })) as ActiveManager[]
-  );
+  const activeData = activeManagers as unknown as ActiveManager[];
   const [leagueInfo, setLeagueInfo] = useState<SleeperLeagueInfo | null>(null);
   const [sleeperRosters, setSleeperRosters] = useState<SleeperRoster[]>([]);
   const [sleeperStatus, setSleeperStatus] =
@@ -106,25 +75,21 @@ export default function ManagersPage() {
       setSleeperError(null);
 
       try {
-        const [leagueResponse, usersResponse, rostersResponse] =
-          await Promise.all([
-            fetch(`https://api.sleeper.app/v1/league/${SLEEPER_LEAGUE_ID}`),
-            fetch(
-              `https://api.sleeper.app/v1/league/${SLEEPER_LEAGUE_ID}/users`
-            ),
-            fetch(
-              `https://api.sleeper.app/v1/league/${SLEEPER_LEAGUE_ID}/rosters`
-            ),
-          ]);
+          const [leagueResponse, rostersResponse] =
+            await Promise.all([
+              fetch(`https://api.sleeper.app/v1/league/${SLEEPER_LEAGUE_ID}`),
+              fetch(
+                `https://api.sleeper.app/v1/league/${SLEEPER_LEAGUE_ID}/rosters`
+              ),
+            ]);
 
-        if (!leagueResponse.ok || !usersResponse.ok || !rostersResponse.ok) {
+        if (!leagueResponse.ok || !rostersResponse.ok) {
           throw new Error("Sleeper division data is unavailable.");
         }
 
-        const [nextLeagueInfo, sleeperUsers, nextRosters] =
+        const [nextLeagueInfo, nextRosters] =
           await Promise.all([
             leagueResponse.json() as Promise<SleeperLeagueInfo>,
-            usersResponse.json() as Promise<SleeperUser[]>,
             rostersResponse.json() as Promise<SleeperRoster[]>,
           ]);
 
@@ -132,9 +97,6 @@ export default function ManagersPage() {
 
         setLeagueInfo(nextLeagueInfo);
         setSleeperRosters(Array.isArray(nextRosters) ? nextRosters : []);
-        setActiveData((currentData) =>
-          applySleeperTeamNames(currentData, sleeperUsers)
-        );
         setSleeperStatus("ready");
       } catch (error) {
         console.error("Sleeper managers fetch failed:", error);
@@ -262,7 +224,7 @@ export default function ManagersPage() {
                 type="button"
                 aria-pressed={activeLayout === "all"}
                 onClick={() => setActiveLayout("all")}
-                className={`rounded-md px-4 py-2 text-[10px] font-black uppercase transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 ${
+                className={`min-h-10 rounded-md px-4 py-2 text-[10px] font-black uppercase transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 ${
                   activeLayout === "all"
                     ? "bg-[#071a33] text-white shadow-lg"
                     : "text-black/55 hover:bg-white dark:text-white/55"
@@ -274,7 +236,7 @@ export default function ManagersPage() {
                 type="button"
                 aria-pressed={activeLayout === "division"}
                 onClick={() => setActiveLayout("division")}
-                className={`rounded-md px-4 py-2 text-[10px] font-black uppercase transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 ${
+                className={`min-h-10 rounded-md px-4 py-2 text-[10px] font-black uppercase transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 ${
                   activeLayout === "division"
                     ? "bg-[#071a33] text-white shadow-lg"
                     : "text-black/55 hover:bg-white dark:text-white/55"
@@ -398,7 +360,7 @@ export default function ManagersPage() {
               Active Owners
             </button>
             <button type="button" aria-pressed={view === "retired"} onClick={() => setView("retired")} className={`min-w-0 rounded-lg px-3 py-3 text-[10px] font-black uppercase tracking-wide transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 ${view === "retired" ? "bg-[#071a33] text-white shadow-lg" : "text-slate-600 hover:bg-white dark:text-white/65 dark:hover:bg-white/10"}`}>
-              Retired Owners
+              Retired / Legacy
             </button>
             <button type="button" aria-pressed={view === "staff"} onClick={() => setView("staff")} className={`min-w-0 rounded-lg px-3 py-3 text-[10px] font-black uppercase tracking-wide transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 ${view === "staff" ? "bg-[#071a33] text-white shadow-lg" : "text-slate-600 hover:bg-white dark:text-white/65 dark:hover:bg-white/10"}`}>
               Staff

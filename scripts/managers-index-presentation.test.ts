@@ -11,7 +11,7 @@ assert.match(page, /River City Managers/);
 assert.match(page, /Owners, retired legacies, and the league office/);
 assert.doesNotMatch(page, /<nav\b/);
 
-for (const label of ["Active Owners", "Retired Owners", "Staff"]) {
+for (const label of ["Active Owners", "Retired / Legacy", "Staff"]) {
   assert.match(page, new RegExp(label));
 }
 assert.match(page, /aria-pressed=\{view === "active"\}/);
@@ -28,7 +28,7 @@ assert.match(card, /getOwnerProfilePathByFullName/);
 assert.match(card, /View \$\{manager\.fullName\} profile/);
 
 assert.doesNotMatch(page, /Net Earnings|ROI|Projected Score|Rivalry Score|financial totals/);
-assert.match(page, /Retired Owners/);
+assert.match(page, /Retired \/ Legacy/);
 assert.match(page, /Staff/);
 
 console.log("Managers index presentation checks passed.");
