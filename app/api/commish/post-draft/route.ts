@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import {
+  AuctionAccessError,
+  requireAuctionAccess,
+} from "@/lib/auth/auctionAccess";
+import {
   createNarrativeDraft,
   createNarrativeDraftsForSnapshot,
   createPostDraftSnapshot,
@@ -32,12 +36,28 @@ import {
 
 export const runtime = "nodejs";
 
+async function getCommissionerActor() {
+  try {
+    return await requireAuctionAccess("maintenance");
+  } catch (error) {
+    if (error instanceof AuctionAccessError) return null;
+    throw error;
+  }
+}
+
+function unauthorized() {
+  return NextResponse.json({ error: "Commissioner access required." }, { status: 401 });
+}
+
 function errorResponse(error: unknown) {
   const status = (isPostDraftWorkflowError(error) || isPostDraftPublicationError(error) || isPostDraftRecapError(error)) && "status" in error ? error.status : 500;
   return NextResponse.json({ error: error instanceof Error ? error.message : "Post-draft workflow failed." }, { status });
 }
 
 export async function GET(request: Request) {
+  const actor = await getCommissionerActor();
+  if (!actor) return unauthorized();
+
   try {
     const url = new URL(request.url);
     const snapshotId = url.searchParams.get("snapshotId") ?? undefined;
@@ -46,6 +66,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const actor = await getCommissionerActor();
+  if (!actor) return unauthorized();
+
   try {
     const body = await request.json() as Record<string, unknown>;
     if (body.action === "capture-snapshot") return NextResponse.json({ snapshot: await createPostDraftSnapshot() }, { status: 201 });
