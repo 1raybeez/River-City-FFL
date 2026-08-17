@@ -35,8 +35,8 @@ export interface Transaction {
 export interface Matchup {
   roster_id: number;
   matchup_id?: number;
-  points: number;
-  starters?: string[];
+  points?: number;
+  starters?: Array<string | null>;
   players?: string[];
   [key: string]: unknown;
 }

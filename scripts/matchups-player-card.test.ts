@@ -28,11 +28,11 @@ assert.match(sleeperSource, /players\/nfl/);
 assert.match(sleeperSource, /displayName/);
 assert.match(sleeperSource, /position/);
 assert.match(sleeperSource, /nflTeam/);
-assert.match(page, /playerDirectory\[starterId\]/);
+assert.match(page, /playerDirectory\[playerId\]/);
 assert.match(page, /displayName/);
 assert.match(page, /position/);
 assert.match(page, /nflTeam/);
-assert.match(page, /Player ID: \{starterId\}/);
+assert.match(page, /Player ID: \$\{playerId\}/);
 assert.match(page, /Starting lineup not available yet\./);
 assert.match(page, /playerDirectory=\{playerDirectory\}/);
 assert.match(page, /getSleeperPlayerIdentityDirectory\(\)/);
@@ -40,5 +40,9 @@ assert.doesNotMatch(identityLoader, /getDocs|player_stats|totalValueScore|keeper
 assert.doesNotMatch(page, /getAllPlayers|resolvePlayerForYear|totalValueScore|keeperCost/);
 assert.doesNotMatch(page, /sleepercdn\.com\/content\/nfl\/players/);
 assert.match(page, /const \[expanded, setExpanded\] = useState\(false\)/);
+assert.match(page, /actual points when available/);
+assert.match(page, /Points unavailable/);
+assert.match(page, /Not started/);
+assert.match(page, /reserve|taxi/i);
 
 console.log("Matchups player-card fixture checks passed.");

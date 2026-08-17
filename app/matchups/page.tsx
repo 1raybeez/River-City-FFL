@@ -56,6 +56,9 @@ type SleeperUser = {
 type SleeperRoster = {
   roster_id: number;
   owner_id?: string | null;
+  players?: string[];
+  reserve?: string[] | null;
+  taxi?: string[] | null;
   settings?: {
     wins?: number;
     losses?: number;
@@ -99,6 +102,14 @@ type TeamDisplay = {
   isPlaceholder: boolean;
 };
 
+type LineupState = "FUTURE" | "LIVE" | "FINAL" | "UNKNOWN";
+
+type LineupEntry = {
+  slot: string;
+  playerId: string | null;
+  index: number;
+};
+
 type PlayoffBracketState = {
   winners: BracketMatch[];
   losers: BracketMatch[];
@@ -137,7 +148,7 @@ function getMatchupId(matchup: Matchup) {
 }
 
 function getScore(matchup?: Matchup) {
-  return typeof matchup?.points === "number" ? matchup.points.toFixed(2) : "0.00";
+  return typeof matchup?.points === "number" ? matchup.points.toFixed(2) : "—";
 }
 
 function buildMatchupGroups(matchups: Matchup[]) {
@@ -201,7 +212,7 @@ function resolveTeam(
       name: "Awaiting Opponent",
       avatar: FALLBACK_AVATAR,
       record: "Record unavailable",
-      score: "0.00",
+      score: "—",
       rosterLabel: sideLabel,
       isPlaceholder: true,
     };
@@ -484,6 +495,74 @@ function getStarterIds(matchup?: Matchup): readonly string[] {
   ) ?? [];
 }
 
+function getConfiguredRosterPositions(leagueInfo: LeagueInfo | null): readonly string[] {
+  const positions = (leagueInfo as (LeagueInfo & { roster_positions?: unknown }) | null)?.roster_positions;
+  return Array.isArray(positions)
+    ? positions.filter((position): position is string => typeof position === "string" && position.trim().length > 0)
+    : [];
+}
+
+function formatSlotLabel(slot: string, index: number) {
+  const labels: Record<string, string> = {
+    BN: "BENCH",
+    IR: "IR",
+    TAXI: "TAXI",
+    FLEX: "FLEX",
+    WRRB_FLEX: "WR/RB FLEX",
+    REC_FLEX: "REC FLEX",
+    SUPER_FLEX: "SUPER FLEX",
+  };
+  return labels[slot] ?? (slot.replaceAll("_", " ") || `STARTER ${index + 1}`);
+}
+
+function getStarterEntries(matchup: Matchup | undefined, leagueInfo: LeagueInfo | null): readonly LineupEntry[] {
+  const starters = matchup?.starters ?? [];
+  const configured = getConfiguredRosterPositions(leagueInfo).filter(
+    (position) => !["BN", "IR", "TAXI"].includes(position)
+  );
+  return starters.map((playerId, index) => ({
+    slot: formatSlotLabel(configured[index] ?? `STARTER ${index + 1}`, index),
+    playerId: typeof playerId === "string" && playerId.trim() ? playerId : null,
+    index,
+  }));
+}
+
+function getPointMap(key: "players_points" | "starters_points", matchup?: Matchup) {
+  const value = matchup?.[key];
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function getPlayerPoints(playerId: string, matchup: Matchup | undefined, starter: boolean) {
+  const playersPoints = getPointMap("players_points", matchup);
+  const startersPoints = getPointMap("starters_points", matchup);
+  const value = playersPoints?.[playerId] ?? (starter ? startersPoints?.[playerId] : undefined);
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function getLineupState(selectedWeek: number, currentWeek: number | null, leagueInfo: LeagueInfo | null): LineupState {
+  if (leagueInfo?.status === "complete") return "FINAL";
+  if (currentWeek === null) return "UNKNOWN";
+  if (selectedWeek < currentWeek) return "FINAL";
+  if (selectedWeek > currentWeek) return "FUTURE";
+  return "LIVE";
+}
+
+function pointsLabel(points: number | null, state: LineupState) {
+  if (points === null) return `${state === "FUTURE" ? "Not started" : "Points unavailable"} —`;
+  return `${points.toFixed(2)} actual points`;
+}
+
+function getRosterPlayerIds(matchup: Matchup | undefined, roster: SleeperRoster | undefined) {
+  const players = roster?.players ?? matchup?.players ?? [];
+  return players.filter((playerId): playerId is string => typeof playerId === "string" && playerId.trim().length > 0);
+}
+
+function getReserveIds(roster: SleeperRoster | undefined, key: "reserve" | "taxi") {
+  return (roster?.[key] ?? []).filter((playerId): playerId is string => typeof playerId === "string" && playerId.trim().length > 0);
+}
+
 function getOwnerId(user?: SleeperUser) {
   if (!user) return null;
   return ownerProfiles.find((profile) => profile.sleeperIds?.includes(user.user_id))?.id ?? null;
@@ -555,41 +634,71 @@ async function loadMatchupHistory(ownerId: string | null, opponentId: string | n
 function StarterList({
   label,
   matchup,
+  roster,
+  leagueInfo,
+  week,
+  currentWeek,
   playerDirectory,
 }: {
   label: string;
   matchup?: Matchup;
+  roster?: SleeperRoster;
+  leagueInfo: LeagueInfo | null;
+  week: number;
+  currentWeek: number | null;
   playerDirectory: Readonly<Record<string, SleeperPlayerIdentity>>;
 }) {
-  const starterIds = getStarterIds(matchup);
+  const starterEntries = getStarterEntries(matchup, leagueInfo);
+  const lineupState = getLineupState(week, currentWeek, leagueInfo);
+  const starterIds = new Set(starterEntries.flatMap((entry) => entry.playerId ? [entry.playerId] : []));
+  const reserveIds = new Set([...getReserveIds(roster, "reserve"), ...getReserveIds(roster, "taxi")]);
+  const benchIds = getRosterPlayerIds(matchup, roster).filter((playerId) => !starterIds.has(playerId) && !reserveIds.has(playerId));
+  const taxiIds = getReserveIds(roster, "taxi");
+  const reserveOnlyIds = getReserveIds(roster, "reserve").filter((playerId) => !taxiIds.includes(playerId));
+
+  const playerMeta = (playerId: string) => playerDirectory[playerId];
+  const renderPlayer = (playerId: string, starter: boolean, slot?: string) => {
+    const player = playerMeta(playerId);
+    const points = getPlayerPoints(playerId, matchup, starter);
+    return (
+      <li key={`${playerId}-${starter ? "starter" : "bench"}-${slot ?? ""}`} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-3 rounded-xl bg-white px-3 py-2 text-sm font-semibold dark:bg-black/20">
+        <div className="min-w-0">
+          <p className="break-words">{player?.displayName ?? `Player ID: ${playerId}`}</p>
+          <p className="mt-1 break-words text-xs font-medium text-black/55 dark:text-white/55">
+            {[slot, player?.position, player?.nflTeam].filter(Boolean).join(" · ") || "Player metadata unavailable"}
+          </p>
+        </div>
+        <span className="self-center whitespace-nowrap text-right text-xs font-black" aria-label={`${player?.displayName ?? `Player ${playerId}`} ${pointsLabel(points, lineupState)}`}>
+          {points === null ? "—" : points.toFixed(2)}
+          <span className="sr-only"> {pointsLabel(points, lineupState)}</span>
+        </span>
+      </li>
+    );
+  };
 
   return (
     <section className="min-w-0 rounded-2xl border border-black/10 bg-black/[0.03] p-3 dark:border-white/10 dark:bg-white/[0.04]" aria-label={`${label} starting lineup`}>
       <h3 className="text-xs font-black uppercase italic tracking-tight">{label}</h3>
-      {starterIds.length === 0 ? (
-        <p className="mt-3 text-sm font-semibold text-black/50 dark:text-white/50">
-          Starting lineup not available yet.
-        </p>
+      <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-black/40 dark:text-white/40">{lineupState} · actual points when available</p>
+      <h4 className="mt-4 text-[11px] font-black uppercase tracking-widest">Starting Lineup</h4>
+      {starterEntries.length === 0 ? (
+        <p className="mt-3 text-sm font-semibold text-black/50 dark:text-white/50">Starting lineup not available yet.</p>
       ) : (
         <ol className="mt-3 min-w-0 space-y-2">
-          {starterIds.map((starterId, index) => (
-            <li key={`${starterId}-${index}`} className="min-w-0 rounded-xl bg-white px-3 py-2 text-sm font-semibold dark:bg-black/20">
-              <span className="mr-2 text-black/40 dark:text-white/40">{index + 1}.</span>
-              {playerDirectory[starterId] ? (
-                <div className="min-w-0">
-                  <p className="break-words">{playerDirectory[starterId].displayName ?? `Player ID: ${starterId}`}</p>
-                  {(playerDirectory[starterId].position || playerDirectory[starterId].nflTeam) && (
-                    <p className="mt-1 break-words text-xs font-medium text-black/55 dark:text-white/55">
-                      {[playerDirectory[starterId].position, playerDirectory[starterId].nflTeam].filter(Boolean).join(" · ")}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <span className="break-all">Player ID: {starterId}</span>
-              )}
-            </li>
-          ))}
+          {starterEntries.map((entry) => entry.playerId
+            ? renderPlayer(entry.playerId, true, entry.slot)
+            : <li key={`empty-${entry.index}`} className="rounded-xl border border-dashed border-black/15 px-3 py-2 text-sm font-black uppercase text-black/50 dark:border-white/15 dark:text-white/50">{entry.slot} · EMPTY SLOT</li>)}
         </ol>
+      )}
+
+      <h4 className="mt-5 text-[11px] font-black uppercase tracking-widest">Bench</h4>
+      {benchIds.length > 0 ? <ul className="mt-3 min-w-0 space-y-2">{benchIds.map((playerId) => renderPlayer(playerId, false))}</ul> : <p className="mt-3 text-sm font-semibold text-black/50 dark:text-white/50">Bench unavailable or empty.</p>}
+
+      {(reserveOnlyIds.length > 0 || taxiIds.length > 0) && (
+        <div className="mt-5 space-y-4">
+          {reserveOnlyIds.length > 0 && <div><h4 className="text-[11px] font-black uppercase tracking-widest">Reserve / IR</h4><ul className="mt-3 min-w-0 space-y-2">{reserveOnlyIds.map((playerId) => renderPlayer(playerId, false, "RESERVE / IR"))}</ul></div>}
+          {taxiIds.length > 0 && <div><h4 className="text-[11px] font-black uppercase tracking-widest">Taxi</h4><ul className="mt-3 min-w-0 space-y-2">{taxiIds.map((playerId) => renderPlayer(playerId, false, "TAXI"))}</ul></div>}
+        </div>
       )}
     </section>
   );
@@ -657,6 +766,9 @@ function MatchupCard({
   group,
   rosters,
   users,
+  leagueInfo,
+  week,
+  currentWeek,
   playerDirectory,
   history,
   projectionState,
@@ -664,6 +776,9 @@ function MatchupCard({
   group: MatchupGroup;
   rosters: SleeperRoster[];
   users: SleeperUser[];
+  leagueInfo: LeagueInfo | null;
+  week: number;
+  currentWeek: number | null;
   playerDirectory: Readonly<Record<string, SleeperPlayerIdentity>>;
   history: MatchupHistory | null;
   projectionState: MatchupProjectionState | null;
@@ -700,8 +815,8 @@ function MatchupCard({
       {expanded && (
         <div id={expandedRegionId} className="min-w-0">
           <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2">
-            <StarterList label={team1.name} matchup={group.teams[0]} playerDirectory={playerDirectory} />
-            <StarterList label={team2.name} matchup={group.teams[1]} playerDirectory={playerDirectory} />
+            <StarterList label={team1.name} matchup={group.teams[0]} roster={rosters.find((roster) => roster.roster_id === group.teams[0]?.roster_id)} leagueInfo={leagueInfo} week={week} currentWeek={currentWeek} playerDirectory={playerDirectory} />
+            <StarterList label={team2.name} matchup={group.teams[1]} roster={rosters.find((roster) => roster.roster_id === group.teams[1]?.roster_id)} leagueInfo={leagueInfo} week={week} currentWeek={currentWeek} playerDirectory={playerDirectory} />
           </div>
 
           <ProjectionContext group={group} team1={team1} team2={team2} identities={playerDirectory} projectionState={projectionState} />
@@ -1187,6 +1302,7 @@ function RivalryHubCard() {
 export default function MatchupsPage() {
   const [activeTab, setActiveTab] = useState<"regular" | "playoffs">("regular");
   const [week, setWeek] = useState<number | null>(null);
+  const [currentWeek, setCurrentWeek] = useState<number | null>(null);
   const [matchups, setMatchups] = useState<Matchup[]>([]);
   const [users, setUsers] = useState<SleeperUser[]>([]);
   const [rosters, setRosters] = useState<SleeperRoster[]>([]);
@@ -1219,7 +1335,11 @@ export default function MatchupsPage() {
     async function loadCurrentWeek() {
       setLoading(true);
       const state = await getNFLState();
-      if (!cancelled) setWeek(normalizeWeek(state.week));
+      if (!cancelled) {
+        const resolvedWeek = normalizeWeek(state.week);
+        setCurrentWeek(resolvedWeek);
+        setWeek(resolvedWeek);
+      }
     }
 
     loadCurrentWeek();
@@ -1240,18 +1360,20 @@ export default function MatchupsPage() {
       setLoadError(null);
 
       try {
-        const [userData, rosterData, matchupData, playerData, projectionResponse] = await Promise.all([
+        const [userData, rosterData, matchupData, playerData, projectionResponse, info] = await Promise.all([
           getLeagueUsers(),
           getLeagueRosters(),
           getMatchups(activeWeek),
           getSleeperPlayerIdentityDirectory(),
           fetch(`/api/projections/active?week=${activeWeek}`),
+          getLeagueInfo(),
         ]);
 
         if (cancelled) return;
 
         setUsers(userData);
         setRosters(rosterData);
+        setLeagueInfo(info);
         setMatchups(Array.isArray(matchupData) ? matchupData : []);
         setPlayerDirectory(playerData);
         const projectionPayload = projectionResponse.ok ? await projectionResponse.json() as { source?: MatchupsProjectionSource; projections?: unknown } : null;
@@ -1456,6 +1578,9 @@ export default function MatchupsPage() {
                     group={group}
                     rosters={rosters}
                     users={users}
+                    leagueInfo={leagueInfo}
+                    week={displayWeek}
+                    currentWeek={currentWeek}
                     playerDirectory={playerDirectory}
                     history={matchupHistory[pair] ?? null}
                     projectionState={projectionState}
