@@ -4,10 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
-  BarChart3,
   CheckCircle2,
-  Database,
-  History,
   Loader2,
   RefreshCcw,
   Shield,
@@ -33,9 +30,6 @@ import type {
 } from "@/lib/auction/valueRefreshTypes";
 
 type OperationId =
-  | "scrape-trades"
-  | "normalize-trades"
-  | "build-distribution"
   | "refresh-current-trades";
 
 type OperationState = {
@@ -57,7 +51,6 @@ type Operation = {
   title: string;
   description: string;
   endpoint: string;
-  requiresKey: boolean;
   requiresConfirmation?: boolean;
   icon: React.ComponentType<{ className?: string }>;
 };
@@ -99,37 +92,10 @@ type UnmatchedReviewSourceSummary = {
 
 const operations: Operation[] = [
   {
-    id: "scrape-trades",
-    title: "Scrape historical trades",
-    description: "Pull historical Sleeper trade data into the archive.",
-    endpoint: "/api/scrape-trades",
-    requiresKey: true,
-    requiresConfirmation: true,
-    icon: History,
-  },
-  {
-    id: "normalize-trades",
-    title: "Normalize trades",
-    description: "Convert raw historical trades into the normalized format.",
-    endpoint: "/api/normalize-trades",
-    requiresKey: true,
-    icon: Database,
-  },
-  {
-    id: "build-distribution",
-    title: "Build distribution",
-    description: "Rebuild the historical imbalance distribution dataset.",
-    endpoint: "/api/build-distribution",
-    requiresKey: true,
-    requiresConfirmation: true,
-    icon: BarChart3,
-  },
-  {
     id: "refresh-current-trades",
     title: "Refresh current-season trade history",
     description: "Fetch 2026 Sleeper trades and store them in trade history.",
     endpoint: "/api/history/trades?season=2026",
-    requiresKey: false,
     icon: RefreshCcw,
   },
 ];
@@ -417,7 +383,6 @@ async function readJsonResponse(response: Response) {
 }
 
 export default function MaintenancePage() {
-  const [scraperKey, setScraperKey] = useState("");
   const [operationState, setOperationState] = useState(initialOperationState);
   const [valueStatus, setValueStatus] =
     useState<AuctionValueStatusResponse | null>(null);
@@ -850,8 +815,6 @@ export default function MaintenancePage() {
       return;
     }
 
-    const trimmedScraperKey = scraperKey.trim();
-
     setOperationState((current) => ({
       ...current,
       [operation.id]: {
@@ -864,11 +827,6 @@ export default function MaintenancePage() {
     try {
       const response = await fetch(operation.endpoint, {
         method: "POST",
-        headers: operation.requiresKey
-          ? {
-              "x-scraper-key": trimmedScraperKey,
-            }
-          : undefined,
       });
       const contentType = response.headers.get("content-type") ?? "";
       const payload = contentType.includes("application/json")
@@ -1561,35 +1519,12 @@ export default function MaintenancePage() {
           </div>
         </section>
 
-        <section aria-labelledby="maintenance-key-heading" className="mb-8 rounded-3xl border border-black/10 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/5 sm:p-6">
-          <h2 id="maintenance-key-heading" className="mb-1 text-lg font-black uppercase italic tracking-tight">
-            Protected maintenance access
-          </h2>
-          <label
-            htmlFor="scraper-key"
-            className="mb-2 block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400"
-          >
-            Scraper key
-          </label>
-          <input
-            id="scraper-key"
-            type="password"
-            value={scraperKey}
-            onChange={(event) => setScraperKey(event.target.value)}
-            autoComplete="off"
-            placeholder="Required for protected maintenance jobs"
-            className="w-full rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-black/40 px-4 py-3 text-sm font-medium outline-none focus:border-orange-600 focus:ring-2 focus:ring-orange-600/20"
-          />
-        </section>
-
         <section aria-labelledby="maintenance-operations-heading" className="grid gap-5">
           <h2 id="maintenance-operations-heading" className="sr-only">Maintenance operations</h2>
           {operations.map((operation) => {
             const state = operationState[operation.id];
             const Icon = operation.icon;
-            const isDisabled =
-              isAnyOperationRunning ||
-              (operation.requiresKey && scraperKey.trim() === "");
+            const isDisabled = isAnyOperationRunning;
 
             return (
               <article

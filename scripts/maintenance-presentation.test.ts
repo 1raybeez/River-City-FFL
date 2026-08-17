@@ -18,9 +18,6 @@ for (const endpoint of [
   "/api/auction/health",
   "/api/auction/values/status?season=2026",
   "/api/auction/adp/status?season=2026",
-  "/api/scrape-trades",
-  "/api/normalize-trades",
-  "/api/build-distribution",
   "/api/history/trades?season=2026",
 ]) {
   assert.match(page, new RegExp(endpoint.replace(/[?]/g, "\\?")));
