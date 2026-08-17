@@ -6,8 +6,7 @@ const shell = fs.readFileSync('components/SiteShell.tsx', 'utf8');
 
 assert.match(page, /<SiteShell activePath="\/league-info">/);
 assert.match(page, /River City Trade Analyzer/);
-assert.match(page, /Trade Comparison is being rebuilt/);
-assert.match(page, /current River City roster and market data/);
+assert.match(page, /<TradeComparison \/>/);
 assert.match(page, /href="\/league-info"/);
 assert.match(page, /overflow-x-clip/);
 assert.match(page, /focus-visible:ring/);

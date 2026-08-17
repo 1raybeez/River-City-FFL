@@ -1,0 +1,24 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+const route = readFileSync("app/api/trade-comparison/route.ts", "utf8");
+const component = readFileSync("components/TradeComparison.tsx", "utf8");
+const page = readFileSync("app/league-info/analyzer/page.tsx", "utf8");
+
+assert.match(route, /getCurrentMember/);
+assert.match(route, /League Member Login required/);
+assert.match(route, /buildServerTradeComparison/);
+assert.match(route, /serializePublicTradeComparison/);
+assert.doesNotMatch(route, /email|uid|token|warRoom|target|budget|strategy|notes/i);
+assert.match(component, /Franchise A/);
+assert.match(component, /Franchise B/);
+assert.match(component, /Compare Trade/);
+assert.match(component, /type="checkbox"/);
+assert.match(component, /Selected/);
+assert.match(component, /positionalBefore|Positional roster counts/);
+assert.match(component, /COMPLETE|PARTIAL|UNAVAILABLE/);
+assert.match(component, /AbortController|requestVersion/);
+assert.doesNotMatch(component, /winner|loser|fairness|probability|projection|Power Rankings|ADP|keeper|budget|strategy|notes/i);
+assert.doesNotMatch(page, /TradeAnalyzer/);
+
+console.log("Trade Comparison M2 source checks passed.");
