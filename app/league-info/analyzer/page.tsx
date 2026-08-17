@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import TradeAnalyzer from "@/components/TradeAnalyzer";
 import SiteShell from "@/components/SiteShell";
 
 export default function AnalyzerPage() {
@@ -19,9 +18,10 @@ export default function AnalyzerPage() {
             <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-600">Compare existing player and team valuation inputs using the league&apos;s Trade Analyzer.</p>
           </div>
         </section>
-        <section aria-label="Trade Analyzer" className="mx-auto w-full max-w-7xl px-2 sm:px-6 lg:px-8">
-          <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm sm:p-4">
-            <TradeAnalyzer />
+        <section aria-label="Trade Comparison status" className="mx-auto w-full max-w-7xl px-2 sm:px-6 lg:px-8">
+          <div className="rounded-2xl border border-orange-200 bg-orange-50 p-6 shadow-sm sm:p-8">
+            <h2 className="text-lg font-black uppercase tracking-tight text-slate-950">Trade Comparison is being rebuilt</h2>
+            <p className="mt-3 max-w-2xl text-sm font-medium leading-7 text-slate-700">Trade Comparison is being rebuilt around current River City roster and market data. The temporary foundation does not provide a trade verdict.</p>
           </div>
         </section>
       </main>
