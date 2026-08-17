@@ -543,7 +543,7 @@ function TeamPanel({
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-black uppercase leading-tight sm:text-[13px]">
+        <p className="break-words text-sm font-black uppercase leading-tight sm:text-[13px]">
           {team.name}
         </p>
         <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-black/35 dark:text-white/35">
@@ -1165,10 +1165,10 @@ function BracketSlot({
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="truncate text-sm font-black uppercase leading-tight">
+            <p className="break-words text-sm font-black uppercase leading-tight">
               {team.teamName}
             </p>
-            <p className="mt-1 truncate text-[11px] font-bold text-black/45 dark:text-white/45">
+            <p className="mt-1 break-words text-[11px] font-bold text-black/45 dark:text-white/45">
               {team.ownerName}
             </p>
           </div>
@@ -1527,8 +1527,8 @@ export default function MatchupsPage() {
           getLeagueUsers(),
           getLeagueRosters(),
           getMatchups(activeWeek),
-          getSleeperPlayerIdentityDirectory(),
-          fetch(`/api/projections/active?week=${activeWeek}`),
+          getSleeperPlayerIdentityDirectory().catch(() => ({})),
+          fetch(`/api/projections/active?week=${activeWeek}`).catch(() => null),
           getLeagueInfo(),
         ]);
 
@@ -1539,7 +1539,7 @@ export default function MatchupsPage() {
         setLeagueInfo(info);
         setMatchups(Array.isArray(matchupData) ? matchupData : []);
         setPlayerDirectory(playerData);
-        const projectionPayload = projectionResponse.ok ? await projectionResponse.json() as { source?: MatchupsProjectionSource; projections?: unknown } : null;
+        const projectionPayload = projectionResponse?.ok ? await projectionResponse.json() as { source?: MatchupsProjectionSource; projections?: unknown } : null;
         setProjectionState(
           projectionPayload?.source && projectionPayload.projections
             ? { source: projectionPayload.source, projections: normalizeProjectionRecords(projectionPayload.projections) }
@@ -1657,7 +1657,7 @@ export default function MatchupsPage() {
             type="button"
             aria-pressed={activeTab === "regular"}
             onClick={() => setActiveTab("regular")}
-            className={`rounded-md px-4 py-2 text-[10px] font-black uppercase transition-all ${
+            className={`min-h-10 rounded-md px-4 py-2 text-[10px] font-black uppercase transition-all ${
               activeTab === "regular"
                 ? "bg-[#071a33] text-white shadow-sm"
                 : "text-slate-500 hover:bg-white dark:text-white/60 dark:hover:bg-white/10"
@@ -1669,7 +1669,7 @@ export default function MatchupsPage() {
             type="button"
             aria-pressed={activeTab === "playoffs"}
             onClick={() => setActiveTab("playoffs")}
-            className={`rounded-md px-4 py-2 text-[10px] font-black uppercase transition-all ${
+            className={`min-h-10 rounded-md px-4 py-2 text-[10px] font-black uppercase transition-all ${
               activeTab === "playoffs"
                 ? "bg-orange-600 text-white shadow-sm"
                 : "text-slate-500 hover:bg-white dark:text-white/60 dark:hover:bg-white/10"
