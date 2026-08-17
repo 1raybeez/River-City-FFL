@@ -15,12 +15,14 @@ const approvedHistoryFixture = {
 };
 
 assert.match(page, /HistoryContext/);
-assert.match(page, /Series History/);
+assert.match(page, /Historical Context/);
 assert.match(page, /competitive record excludes secondary classifications/);
 assert.match(page, /latestMeeting\.season/);
 assert.match(page, /View Full Head-to-Head/);
+assert.match(page, /Recent Meetings/);
+assert.match(page, /View Rivalry Hub/);
 assert.match(page, /Historical Head-to-Head not available\./);
-assert.match(page, /if \(!history \|\| !history\.supported\)/);
+assert.match(page, /if \(!history\)/);
 assert.match(page, /loadMatchupHistory/);
 assert.match(page, /getOwnerId/);
 assert.match(page, /sleeperIds\?\.includes/);

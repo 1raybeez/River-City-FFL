@@ -75,12 +75,39 @@ type MatchupGroup = {
   note?: string;
 };
 
+type MatchupHistoryMeeting = {
+  meetingKey: string;
+  season: number;
+  contextLabel: string;
+  classificationLabel: string;
+  isChampionshipGame: boolean;
+  scoreLabel: string;
+  marginLabel: string;
+  resultLabel: "Win" | "Loss" | "Tie";
+  ownerFranchiseName: string;
+  opponentFranchiseName: string;
+};
+
 type MatchupHistory = {
   supported: boolean;
   owner?: string;
   opponent?: string;
+  ownerFranchiseName?: string;
+  opponentFranchiseName?: string;
   competitiveRecord?: string | null;
   completedMeetings?: string | null;
+  series?: {
+    regularMeetings: string | null;
+    championshipPlayoffMeetings: string | null;
+    championshipGames: string | null;
+  } | null;
+  streak?: string | null;
+  recentMeetings?: MatchupHistoryMeeting[];
+  closestMeeting?: MatchupHistoryMeeting | null;
+  largestWin?: MatchupHistoryMeeting | null;
+  largestLoss?: MatchupHistoryMeeting | null;
+  coverage?: { state: string; title: string; detail: string };
+  rivalryHref?: string | null;
   latestMeeting?: {
     season: number;
     scoreLabel: string;
@@ -755,15 +782,37 @@ function StarterList({
 }
 
 function HistoryContext({ history }: { history: MatchupHistory | null }) {
-  if (!history || !history.supported) {
+  if (!history) {
     return <p className="mt-4 rounded-2xl border border-black/10 px-3 py-3 text-sm font-semibold text-black/50 dark:border-white/10 dark:text-white/50">Historical Head-to-Head not available.</p>;
   }
+  const recentMeetings = history.recentMeetings ?? [];
+  const seriesLabel = history.ownerFranchiseName && history.opponentFranchiseName
+    ? `${history.ownerFranchiseName} vs ${history.opponentFranchiseName}`
+    : `${history.owner ?? "Owner"} vs ${history.opponent ?? "Opponent"}`;
+  const meetingResult = (meeting: MatchupHistoryMeeting) =>
+    meeting.resultLabel === "Win"
+      ? `${meeting.ownerFranchiseName} won`
+      : meeting.resultLabel === "Loss"
+        ? `${meeting.opponentFranchiseName} won`
+        : "Tie";
   return (
-    <section className="mt-4 min-w-0 rounded-2xl border border-black/10 bg-black/[0.03] p-3 dark:border-white/10 dark:bg-white/[0.04]" aria-label="Series history">
-      <h3 className="text-xs font-black uppercase italic tracking-tight">Series History</h3>
-      <p className="mt-2 break-words text-sm font-black">{history.owner} leads {history.opponent} {history.competitiveRecord}</p>
-      <p className="mt-1 text-xs font-semibold text-black/55 dark:text-white/55">{history.completedMeetings} completed meetings · competitive record excludes secondary classifications.</p>
+    <section className="mt-4 min-w-0 rounded-2xl border border-black/10 bg-black/[0.03] p-3 dark:border-white/10 dark:bg-white/[0.04]" aria-label="Historical matchup context">
+      <h3 className="text-xs font-black uppercase italic tracking-tight">Historical Context</h3>
+      <p className="mt-2 break-words text-sm font-black">{seriesLabel}</p>
+      {history.supported && history.competitiveRecord
+        ? <p className="mt-1 break-words text-sm font-black">{history.owner} leads {history.opponent} {history.competitiveRecord}</p>
+        : <p className="mt-1 text-sm font-semibold text-black/55 dark:text-white/55">Series summary unavailable.</p>}
+      {history.completedMeetings && <p className="mt-1 text-xs font-semibold text-black/55 dark:text-white/55">{history.completedMeetings} completed meetings · competitive record excludes secondary classifications.</p>}
+      {history.series && <p className="mt-1 break-words text-xs font-semibold text-black/55 dark:text-white/55">Regular: {history.series.regularMeetings ?? "—"} · Championship playoff: {history.series.championshipPlayoffMeetings ?? "—"} · Championship games: {history.series.championshipGames ?? "—"}</p>}
       {history.latestMeeting && <p className="mt-2 break-words text-xs font-semibold">Last meeting: {history.latestMeeting.season} · {history.latestMeeting.scoreLabel}</p>}
+      {history.coverage && !history.supported && <p className="mt-2 break-words text-xs font-semibold text-amber-800 dark:text-amber-200">{history.coverage.detail}</p>}
+      {recentMeetings.length > 0 && <div className="mt-4"><h4 className="text-[11px] font-black uppercase tracking-widest">Recent Meetings</h4><ul className="mt-2 min-w-0 space-y-2">{recentMeetings.map((meeting) => <li key={meeting.meetingKey} className="min-w-0 rounded-xl bg-white px-3 py-2 text-xs dark:bg-black/20"><p className="break-words font-black">{meeting.season} · {meeting.contextLabel} · {meetingResult(meeting)}</p><p className="mt-1 break-words font-semibold text-black/60 dark:text-white/60">{meeting.scoreLabel} · {meeting.marginLabel} · {meeting.classificationLabel}</p></li>)}</ul></div>}
+      {history.closestMeeting && <p className="mt-3 break-words text-xs font-semibold">Closest game: {history.closestMeeting.scoreLabel} · {history.closestMeeting.marginLabel}</p>}
+      {history.largestWin && <p className="mt-1 break-words text-xs font-semibold">Largest win: {history.largestWin.scoreLabel} · {history.largestWin.marginLabel}</p>}
+      {history.largestLoss && <p className="mt-1 break-words text-xs font-semibold">Largest loss: {history.largestLoss.scoreLabel} · {history.largestLoss.marginLabel}</p>}
+      {history.streak === null && <p className="mt-1 text-xs font-semibold text-black/50 dark:text-white/50">Streak: unavailable in the canonical history source.</p>}
+      {!history.supported && recentMeetings.length === 0 && !history.coverage && <p className="mt-2 text-xs font-semibold text-black/50 dark:text-white/50">No completed historical meetings are available.</p>}
+      {history.rivalryHref && <Link href={history.rivalryHref} className="mt-3 inline-flex min-h-10 max-w-full items-center gap-2 rounded-xl border border-black/15 px-3 py-2 text-xs font-black uppercase focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600">View Rivalry Hub <ArrowRight size={14} aria-hidden="true" /></Link>}
       {history.href && <Link href={history.href} className="mt-3 inline-flex min-h-10 max-w-full items-center gap-2 rounded-xl border border-red-600/30 px-3 py-2 text-xs font-black uppercase text-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 dark:text-red-300">View Full Head-to-Head <ArrowRight size={14} aria-hidden="true" /></Link>}
     </section>
   );
