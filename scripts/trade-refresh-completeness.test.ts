@@ -16,7 +16,7 @@ assert.match(route, /writtenCount/);
 const fetchOffset = refreshBody.indexOf("Promise.all(");
 const gateOffset = refreshBody.indexOf("if (failedResults.length > 0)");
 const normalizeOffset = refreshBody.indexOf("const acceptedTrades");
-const writeOffset = refreshBody.indexOf("firestore");
+const writeOffset = refreshBody.indexOf("await commitTradeWrites");
 assert.ok(fetchOffset >= 0);
 assert.ok(gateOffset > fetchOffset);
 assert.ok(normalizeOffset > gateOffset);
@@ -29,5 +29,9 @@ assert.match(route, /successfulWeeks/);
 assert.match(route, /failedResults\.map\(\(result\) => result\.week\)/);
 assert.match(route, /status: 502/);
 assert.match(route, /requireAuctionAccess\("maintenance"\)/);
+assert.match(route, /commitTradeWrites/);
+assert.match(route, /MAX_ATOMIC_TRADE_WRITES = 500/);
+assert.match(route, /batch\.set/);
+assert.match(route, /await batch\.commit\(\)/);
 
 console.log("Trade refresh completeness checks passed.");

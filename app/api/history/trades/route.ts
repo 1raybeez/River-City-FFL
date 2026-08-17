@@ -9,6 +9,7 @@ import { LEAGUE_IDS } from "@/lib/sleeper";
 import { NextResponse } from "next/server";
 
 const CURRENT_SEASON = 2026;
+const MAX_ATOMIC_TRADE_WRITES = 500;
 
 type TradeTransaction = {
   transaction_id?: string | number | null;
@@ -38,6 +39,33 @@ class TradeRefreshIncompleteError extends Error {
     this.name = "TradeRefreshIncompleteError";
   }
 }
+
+class TradeRefreshCommitError extends Error {
+  constructor(message = "Trade refresh could not be committed.") {
+    super(message);
+    this.name = "TradeRefreshCommitError";
+  }
+}
+
+type TradeWriteBatch = {
+  set(ref: unknown, data: unknown, options: { merge: true }): void;
+  commit(): Promise<unknown>;
+};
+
+type TradeWriteDependencies = {
+  createBatch: () => TradeWriteBatch;
+  tradeRef: (season: number, tradeId: string) => unknown;
+};
+
+const firestoreTradeWriteDependencies: TradeWriteDependencies = {
+  createBatch: () => firestore.batch(),
+  tradeRef: (season, tradeId) =>
+    firestore
+      .collection("trades")
+      .doc(season.toString())
+      .collection("entries")
+      .doc(tradeId),
+};
 
 // Helper to fetch NFL state (week + season)
 async function fetchNFLState() {
@@ -106,6 +134,29 @@ async function fetchTradeWeek(leagueId: string, week: number): Promise<WeekSourc
   }
 }
 
+async function commitTradeWrites(
+  season: number,
+  trades: Array<{ id: string; [key: string]: unknown }>,
+  dependencies: TradeWriteDependencies = firestoreTradeWriteDependencies
+) {
+  if (trades.length > MAX_ATOMIC_TRADE_WRITES) {
+    throw new TradeRefreshCommitError(
+      "Trade refresh exceeds the single-commit Firestore write limit."
+    );
+  }
+
+  const batch = dependencies.createBatch();
+  for (const trade of trades) {
+    batch.set(dependencies.tradeRef(season, trade.id), trade, { merge: true });
+  }
+
+  try {
+    await batch.commit();
+  } catch {
+    throw new TradeRefreshCommitError();
+  }
+}
+
 async function refreshCurrentSeasonTrades(season: number, leagueId: string) {
   const nflState = await fetchNFLState();
   if (!nflState) {
@@ -154,15 +205,7 @@ async function refreshCurrentSeasonTrades(season: number, leagueId: string) {
     };
   });
 
-  // Auto-store in Firebase
-  for (const trade of trades) {
-    await firestore
-      .collection("trades")
-      .doc(season.toString())
-      .collection("entries")
-      .doc(trade.id)
-      .set(trade, { merge: true });
-  }
+  await commitTradeWrites(season, trades);
 
   return {
     season,
@@ -226,6 +269,13 @@ export async function POST(req: Request) {
           failedWeeks: error.failedWeeks,
           sourceFailure: error.sourceFailure,
         },
+        { status: 502 }
+      );
+    }
+
+    if (error instanceof TradeRefreshCommitError) {
+      return NextResponse.json(
+        { error: error.message },
         { status: 502 }
       );
     }
