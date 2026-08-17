@@ -1,6 +1,7 @@
 export type AuctionAdvisorPurchaseSource =
   | "manual"
   | "sleeper"
+  | "live"
   | "demo"
   | "unknown";
 export type AuctionAdvisorPreference = "target" | "fade" | "watch" | "none";

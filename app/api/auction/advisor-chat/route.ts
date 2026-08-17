@@ -133,6 +133,7 @@ function buildContextSummary(context: AuctionAdvisorContext) {
     generatedAt: context.generatedAt,
     playerValuesSeason: context.playerValuesSeason,
     activePurchaseSource: context.activePurchaseSource,
+    dataAvailability: context.dataAvailability,
     budget: context.rayJeffreyBudget
       ? {
           teamName: context.rayJeffreyBudget.teamName,
@@ -409,6 +410,15 @@ function buildLocalAnswer(
   selectedPlayerName: string,
   context: AuctionAdvisorContext
 ): Omit<AdvisorChatResponse, "source" | "contextSummary"> {
+  if (context.dataAvailability.message) {
+    return {
+      answer: "Live purchase context is currently unavailable.",
+      recommendation: "Do not use a demo estimate; retry when live War Room data is available.",
+      reasons: [context.dataAvailability.message],
+      warnings: [],
+    };
+  }
+
   const normalizedQuestion = question.toLowerCase();
 
   if (context.selectedPlayer) {
@@ -550,7 +560,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    const context = buildAuctionAdvisorContext({
+    const context = await buildAuctionAdvisorContext({
+      access: actor.access,
       ownerProfileId: actor.access.ownerProfileId,
       selectedPlayerName,
       topValueTargetLimit: 5,

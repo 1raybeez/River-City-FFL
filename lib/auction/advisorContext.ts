@@ -8,15 +8,6 @@ import {
   type AuctionAdvisorPurchase,
   type AuctionAdvisorWarning,
 } from "@/lib/auction/auctionAdvisor";
-import {
-  calculateAverageDollarsPerOpenRosterSpot,
-  calculateKeeperCostByTeam,
-  calculateMaxBid,
-  calculatePurchaseSpendByTeam,
-  calculateRemainingBudget,
-  calculateRosterSpotsRemaining,
-  calculateTotalSpent,
-} from "@/lib/auction/calculations";
 import { getByeWeekForNflTeam } from "@/lib/auction/byeWeeks";
 import {
   getAuctionFallbackPreferenceTags,
@@ -40,11 +31,12 @@ import {
   type RosterGuidancePlayerValue,
   type RosterGuidanceWarning,
 } from "@/lib/auction/rosterGuidance";
-import {
-  mockAuctionKeepers,
-  mockAuctionPurchases,
-  mockAuctionTeams,
-} from "@/lib/auction/mockAuctionData";
+import type { AuctionAccessResult } from "@/lib/auction/ownerProfiles";
+import { getCanonicalAuctionTeamByRosterId } from "@/lib/auction/canonicalTeamCatalog";
+import { readAuthorizedWarRoomPurchaseSnapshots } from "@/lib/auction/warRoomPurchaseView";
+import { readWarRoomLiveAuctionState } from "@/lib/auction/warRoomLiveStateFirestore";
+import type { WarRoomLiveAuctionState } from "@/lib/auction/warRoomLiveState";
+import { deriveWarRoomBudgetState } from "@/lib/auction/warRoomLiveState";
 import { riverCityAuctionLeagueSettings } from "@/lib/auction/leagueSettings";
 import type { AuctionTeamId } from "@/lib/auction/types";
 
@@ -79,7 +71,7 @@ type ProcessedPlayerValuesFile = {
   rows: ProcessedPlayerValueRow[];
 };
 
-type AdvisorContextPurchaseSource = "demo" | "sleeper";
+type AdvisorContextPurchaseSource = "live" | "unavailable";
 
 type AdvisorContextPurchaseRow = {
   id: string;
@@ -92,14 +84,14 @@ type AdvisorContextPurchaseRow = {
   purchasePrice: number;
   projectedValue: number | null;
   status: "active" | "voided";
-  source: AdvisorContextPurchaseSource;
+  source: "live";
 };
 
 export type BuildAuctionAdvisorContextInput = {
+  access: AuctionAccessResult;
   ownerProfileId?: string | null;
   selectedPlayerName?: string | null;
   selectedSleeperPlayerId?: string | null;
-  activePurchaseSource?: AdvisorContextPurchaseSource | null;
   topValueTargetLimit?: number | null;
   warningLimit?: number | null;
 };
@@ -162,6 +154,13 @@ export type AuctionAdvisorContext = {
     requested: AdvisorContextPurchaseSource;
     applied: AdvisorContextPurchaseSource;
     note: string;
+  };
+  dataAvailability: {
+    purchaseContextAvailable: boolean;
+    budgetContextAvailable: boolean;
+    rosterContextAvailable: boolean;
+    keeperContextAvailable: boolean;
+    message: string | null;
   };
   rayJeffreyBudget: AuctionAdvisorContextBudgetSummary | null;
   rosterNeeds: {
@@ -256,40 +255,22 @@ function getPreference(
   return "none";
 }
 
-function getTeamByRosterId(rosterId: number | null | undefined) {
-  if (rosterId === null || rosterId === undefined) return null;
-  return mockAuctionTeams.find((team) => team.rosterId === rosterId) ?? null;
-}
-
-function getGuidanceTeam() {
-  return (
-    mockAuctionTeams.find((team) => team.rosterId === 1) ??
-    mockAuctionTeams[0] ??
-    null
-  );
-}
-
-function buildMockPurchaseRows(): AdvisorContextPurchaseRow[] {
-  return mockAuctionPurchases.flatMap((purchase) => {
-    const team = getTeamByRosterId(purchase.rosterId);
-    if (!team) return [];
-
-    return [
-      {
-        id: purchase.id,
-        teamId: purchase.teamId,
-        rosterId: purchase.rosterId,
-        playerId: purchase.playerId,
-        playerName: purchase.playerName,
-        position: purchase.position,
-        nflTeam: purchase.nflTeam,
-        purchasePrice: purchase.purchasePrice,
-        projectedValue: purchase.projectedValue,
-        status: purchase.status,
-        source: "demo",
-      },
-    ];
-  });
+function buildLivePurchaseRows(
+  purchases: Awaited<ReturnType<typeof readAuthorizedWarRoomPurchaseSnapshots>>
+): AdvisorContextPurchaseRow[] {
+  return purchases.map((purchase) => ({
+    id: purchase.purchaseId,
+    teamId: (purchase.buyerTeamId ?? "") as AuctionTeamId,
+    rosterId: purchase.buyerRosterId,
+    playerId: purchase.sleeperPlayerId,
+    playerName: purchase.playerName,
+    position: purchase.position,
+    nflTeam: purchase.nflTeam,
+    purchasePrice: purchase.salePrice,
+    projectedValue: purchase.marketValueAtPurchase,
+    status: purchase.status === "active" ? "active" : "voided",
+    source: "live",
+  }));
 }
 
 function getPurchaseMatch(
@@ -337,7 +318,7 @@ function getDisplayStatus(
   purchases: readonly AdvisorContextPurchaseRow[]
 ) {
   const purchaseMatch = getPurchaseMatch(player, purchases);
-  if (purchaseMatch) return "Local Demo Taken";
+  if (purchaseMatch) return "Live Purchase Recorded";
 
   return formatPlayerPoolStatus(player.status);
 }
@@ -397,77 +378,73 @@ function buildBidRecommendationPurchaseSamples(
 }
 
 function buildBudgetSummary(
-  purchases: readonly AdvisorContextPurchaseRow[]
+  state: WarRoomLiveAuctionState,
+  purchases: readonly AdvisorContextPurchaseRow[],
+  team: ReturnType<typeof getCanonicalAuctionTeamByRosterId>
 ): AuctionAdvisorContextBudgetSummary | null {
-  const team = getGuidanceTeam();
   if (!team) return null;
-
-  const keeperCostByTeam = calculateKeeperCostByTeam(mockAuctionKeepers);
-  const purchaseSpendByTeam = calculatePurchaseSpendByTeam(purchases);
-  const purchaseCount = purchases.filter(
-    (purchase) => purchase.teamId === team.id && purchase.status === "active"
+  const derived = deriveWarRoomBudgetState({
+    teamBudget: riverCityAuctionLeagueSettings.auctionBudgetPerTeam,
+    rosterSlots: team.rosterSlots.total,
+    keepers: state.keepers,
+    purchases: purchases.map((purchase) => ({
+      purchaseId: purchase.id,
+      playerId: purchase.playerId,
+      playerName: purchase.playerName,
+      salePrice: purchase.purchasePrice,
+      status: purchase.status === "active" ? "active" : "undone",
+    })),
+  });
+  const filledSlots = state.keepers.length + purchases.filter(
+    (purchase) => purchase.status === "active"
   ).length;
-  const keeperCost = keeperCostByTeam[team.id] ?? 0;
-  const purchaseSpend = purchaseSpendByTeam[team.id] ?? 0;
-  const teamBudget = riverCityAuctionLeagueSettings.auctionBudgetPerTeam;
-  const filledSlots = Math.min(
-    team.rosterSlots.total,
-    team.keeperIds.length + purchaseCount
-  );
-  const rosterSlots = {
-    ...team.rosterSlots,
-    filled: filledSlots,
-    remaining: Math.max(0, team.rosterSlots.total - filledSlots),
-    keeperSlotsUsed: team.keeperIds.length,
-  };
-  const budgetInput = {
-    teamBudget,
-    keeperCostTotal: keeperCost,
-    spentBudget: purchaseSpend,
-  };
-  const totalSpent = calculateTotalSpent(budgetInput);
-  const remainingBudget = calculateRemainingBudget(budgetInput);
-  const rosterSpotsRemaining = calculateRosterSpotsRemaining(rosterSlots);
-  const maxBid = calculateMaxBid(remainingBudget, rosterSpotsRemaining);
 
   return {
     teamId: team.id,
     teamName: team.teamName,
-    managerName: team.managerName,
-    teamBudget,
-    keeperCost,
-    purchaseSpend,
-    totalSpent,
-    remainingBudget,
-    rosterSpotsRemaining,
-    maxBid,
-    averageDollarsPerOpenSlot: calculateAverageDollarsPerOpenRosterSpot(
-      remainingBudget,
-      rosterSpotsRemaining
-    ),
+    managerName: team.ownerLabel,
+    teamBudget: derived.teamBudget,
+    keeperCost: derived.keeperCostTotal,
+    purchaseSpend: derived.spentBudget,
+    totalSpent: derived.totalSpent,
+    remainingBudget: derived.remainingBudget,
+    rosterSpotsRemaining: derived.rosterSpotsRemaining,
+    maxBid: derived.maxBid,
+    averageDollarsPerOpenSlot: derived.averageDollarsPerOpenSlot,
     rosteredPlayerCount: filledSlots,
   };
 }
 
 function buildGuidanceRosterPlayers(
-  purchases: readonly AdvisorContextPurchaseRow[]
+  state: WarRoomLiveAuctionState,
+  purchases: readonly AdvisorContextPurchaseRow[],
+  team: ReturnType<typeof getCanonicalAuctionTeamByRosterId>
 ): RosterGuidancePlayer[] {
-  const team = getGuidanceTeam();
   if (!team) return [];
 
   return [
-    ...mockAuctionKeepers
-      .filter((player) => player.teamId === team.id)
-      .map((player) => ({
-        id: player.id,
-        playerName: player.playerName,
-        position: player.position,
-        nflTeam: player.nflTeam,
-        cost: player.keeperCost,
-        projectedValue: null,
-        byeWeek: getByeWeekForNflTeam(player.nflTeam),
-        source: "Keeper" as const,
-      })),
+    ...state.keepers
+      .filter((player) => player.playerId)
+      .map((player) => {
+        const value = localPlayerPoolRows.find(
+          (candidate) =>
+            normalizeFilterValue(candidate.sleeperPlayerId) ===
+              normalizeFilterValue(player.playerId) ||
+            normalizePlayerMatchValue(candidate.originalPlayerName) ===
+              normalizePlayerMatchValue(player.playerName)
+        );
+
+        return {
+          id: player.playerId,
+          playerName: player.playerName,
+          position: value?.position ?? null,
+          nflTeam: value?.nflTeam ?? null,
+          cost: player.keeperCost,
+          projectedValue: value?.averageValue ?? null,
+          byeWeek: getByeWeekForNflTeam(value?.nflTeam),
+          source: "Keeper" as const,
+        };
+      }),
     ...purchases
       .filter((player) => player.teamId === team.id && player.status === "active")
       .map((player) => ({
@@ -739,11 +716,30 @@ function mapGuidanceWarning(warning: RosterGuidanceWarning): AuctionAdvisorWarni
   };
 }
 
-export function buildAuctionAdvisorContext(
-  input: BuildAuctionAdvisorContextInput = {}
-): AuctionAdvisorContext {
-  const requestedPurchaseSource = input.activePurchaseSource ?? "demo";
-  const appliedPurchaseSource: AdvisorContextPurchaseSource = "demo";
+export async function buildAuctionAdvisorContext(
+  input: BuildAuctionAdvisorContextInput
+): Promise<AuctionAdvisorContext> {
+  const { access } = input;
+  const team = getCanonicalAuctionTeamByRosterId(access.sleeperRosterId);
+  const [liveState, livePurchases] = await Promise.all([
+    access.warRoomId
+      ? readWarRoomLiveAuctionState(access.warRoomId).catch(() => null)
+      : Promise.resolve(null),
+    access.warRoomId && access.sleeperRosterId
+      ? readAuthorizedWarRoomPurchaseSnapshots({ access }).catch(() => null)
+      : Promise.resolve(null),
+  ]);
+  const purchaseContextAvailable = livePurchases !== null;
+  const keeperContextAvailable = liveState !== null;
+  const rosterContextAvailable = keeperContextAvailable && purchaseContextAvailable;
+  const budgetContextAvailable = Boolean(
+    team && rosterContextAvailable
+  );
+  const purchases = livePurchases ? buildLivePurchaseRows(livePurchases) : [];
+  const state = liveState;
+  const appliedPurchaseSource: AdvisorContextPurchaseSource = purchaseContextAvailable
+    ? "live"
+    : "unavailable";
   const topValueTargetLimit = getSafeLimit(
     input.topValueTargetLimit,
     DEFAULT_VALUE_TARGET_LIMIT,
@@ -754,9 +750,14 @@ export function buildAuctionAdvisorContext(
     DEFAULT_WARNING_LIMIT,
     MAX_WARNING_LIMIT
   );
-  const purchases = buildMockPurchaseRows();
-  const budgetSummary = buildBudgetSummary(purchases);
-  const rosterPlayers = buildGuidanceRosterPlayers(purchases);
+  const budgetSummary =
+    state && budgetContextAvailable
+      ? buildBudgetSummary(state, purchases, team)
+      : null;
+  const rosterPlayers =
+    state && rosterContextAvailable
+      ? buildGuidanceRosterPlayers(state, purchases, team)
+      : [];
   const positionCounts = calculatePositionCounts(rosterPlayers);
   const starterNeeds = calculateStarterNeeds(positionCounts);
   const benchDepthNeeds = calculateBenchDepthNeeds(positionCounts);
@@ -785,7 +786,8 @@ export function buildAuctionAdvisorContext(
       rosterPlayers,
       input.ownerProfileId
     ),
-    activePurchaseSource: appliedPurchaseSource,
+    activePurchaseSource:
+      appliedPurchaseSource === "unavailable" ? "unknown" : appliedPurchaseSource,
     teamBudget: budgetSummary
       ? {
           teamName: budgetSummary.teamName,
@@ -829,12 +831,21 @@ export function buildAuctionAdvisorContext(
     playerValuesSeason: localPlayerValues2025.season,
     playerValuesGeneratedAt: localPlayerValues2025.generatedAt,
     activePurchaseSource: {
-      requested: requestedPurchaseSource,
+      requested: appliedPurchaseSource,
       applied: appliedPurchaseSource,
-      note:
-        requestedPurchaseSource === "sleeper"
-          ? "Sleeper Snapshot purchases are not wired into the server context builder yet; Local Demo Data is applied."
-          : "Local Demo Data is applied until Manual Entry or a server-owned Sleeper Snapshot source is wired in.",
+      note: purchaseContextAvailable
+        ? "Live purchase decisions and War Room state are applied."
+        : "Live purchase context is currently unavailable; no demo values were substituted.",
+    },
+    dataAvailability: {
+      purchaseContextAvailable,
+      budgetContextAvailable,
+      rosterContextAvailable,
+      keeperContextAvailable,
+      message:
+        purchaseContextAvailable && budgetContextAvailable && rosterContextAvailable
+          ? null
+          : "Live War Room context is currently unavailable or incomplete.",
     },
     rayJeffreyBudget: budgetSummary,
     rosterNeeds: {
