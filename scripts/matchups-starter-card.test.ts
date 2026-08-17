@@ -18,7 +18,7 @@ assert.match(page, /aria-controls=\{expandedRegionId\}/);
 assert.match(page, /<div id=\{expandedRegionId\} className="min-w-0">/);
 assert.match(page, /Show starters/);
 assert.match(page, /Hide starters/);
-assert.match(page, /Player ID: \$\{playerId\}/);
+assert.match(page, /Unknown Player/);
 assert.match(page, /Starting lineup not available yet\./);
 assert.match(page, /starterEntries\.map/);
 assert.match(page, /<StarterList label=\{team1\.name\} matchup=\{group\.teams\[0\]\} roster=/);

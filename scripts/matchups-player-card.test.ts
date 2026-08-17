@@ -32,7 +32,7 @@ assert.match(page, /playerDirectory\[playerId\]/);
 assert.match(page, /displayName/);
 assert.match(page, /position/);
 assert.match(page, /nflTeam/);
-assert.match(page, /Player ID: \$\{playerId\}/);
+assert.match(page, /Unknown Player/);
 assert.match(page, /Starting lineup not available yet\./);
 assert.match(page, /playerDirectory=\{playerDirectory\}/);
 assert.match(page, /getSleeperPlayerIdentityDirectory\(\)/);
@@ -44,5 +44,8 @@ assert.match(page, /actual points when available/);
 assert.match(page, /Points unavailable/);
 assert.match(page, /Not started/);
 assert.match(page, /reserve|taxi/i);
+assert.match(sleeperSource, /injury_status/);
+assert.match(page, /Unknown Player/);
+assert.match(page, /FALLBACK_AVATAR/);
 
 console.log("Matchups player-card fixture checks passed.");

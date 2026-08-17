@@ -33,6 +33,7 @@ import {
 import { ownerProfiles } from "@/lib/managers/identityData";
 import {
   aggregateStarterProjections,
+  resolveStarterProjection,
   resolveStarterProjections,
   type MatchupsProjectionRecord,
   type MatchupsProjectionSource,
@@ -541,6 +542,14 @@ function getPlayerPoints(playerId: string, matchup: Matchup | undefined, starter
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function getPlayerProjection(
+  player: SleeperPlayerIdentity | undefined,
+  projectionState: MatchupProjectionState | null
+) {
+  if (!player || !projectionState) return null;
+  return resolveStarterProjection(player, projectionState.projections, projectionState.source).projectionPoints;
+}
+
 function getLineupState(selectedWeek: number, currentWeek: number | null, leagueInfo: LeagueInfo | null): LineupState {
   if (leagueInfo?.status === "complete") return "FINAL";
   if (currentWeek === null) return "UNKNOWN";
@@ -639,6 +648,7 @@ function StarterList({
   week,
   currentWeek,
   playerDirectory,
+  projectionState,
 }: {
   label: string;
   matchup?: Matchup;
@@ -647,7 +657,9 @@ function StarterList({
   week: number;
   currentWeek: number | null;
   playerDirectory: Readonly<Record<string, SleeperPlayerIdentity>>;
+  projectionState: MatchupProjectionState | null;
 }) {
+  const [openPlayerId, setOpenPlayerId] = useState<string | null>(null);
   const starterEntries = getStarterEntries(matchup, leagueInfo);
   const lineupState = getLineupState(week, currentWeek, leagueInfo);
   const starterIds = new Set(starterEntries.flatMap((entry) => entry.playerId ? [entry.playerId] : []));
@@ -659,19 +671,57 @@ function StarterList({
   const playerMeta = (playerId: string) => playerDirectory[playerId];
   const renderPlayer = (playerId: string, starter: boolean, slot?: string) => {
     const player = playerMeta(playerId);
-    const points = getPlayerPoints(playerId, matchup, starter);
+    const statePoints = getPlayerPoints(playerId, matchup, starter);
+    const lineupState = getLineupState(week, currentWeek, leagueInfo);
+    const points = lineupState === "FUTURE" ? null : statePoints;
+    const projection = getPlayerProjection(player, projectionState);
+    const delta = points !== null && projection !== null ? points - projection : null;
+    const detailId = `player-detail-${label.replace(/[^a-z0-9]+/gi, "-")}-${playerId}`;
+    const isOpen = openPlayerId === playerId;
+    const contextLabel = starter ? `Starter${slot ? ` · ${slot}` : ""}` : slot ?? "Bench";
     return (
-      <li key={`${playerId}-${starter ? "starter" : "bench"}-${slot ?? ""}`} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-3 rounded-xl bg-white px-3 py-2 text-sm font-semibold dark:bg-black/20">
-        <div className="min-w-0">
-          <p className="break-words">{player?.displayName ?? `Player ID: ${playerId}`}</p>
-          <p className="mt-1 break-words text-xs font-medium text-black/55 dark:text-white/55">
-            {[slot, player?.position, player?.nflTeam].filter(Boolean).join(" · ") || "Player metadata unavailable"}
-          </p>
-        </div>
-        <span className="self-center whitespace-nowrap text-right text-xs font-black" aria-label={`${player?.displayName ?? `Player ${playerId}`} ${pointsLabel(points, lineupState)}`}>
-          {points === null ? "—" : points.toFixed(2)}
-          <span className="sr-only"> {pointsLabel(points, lineupState)}</span>
-        </span>
+      <li key={`${playerId}-${starter ? "starter" : "bench"}-${slot ?? ""}`} className="min-w-0 rounded-xl bg-white dark:bg-black/20">
+        <button
+          type="button"
+          aria-expanded={isOpen}
+          aria-controls={detailId}
+          onClick={() => setOpenPlayerId((current) => current === playerId ? null : playerId)}
+          className="grid min-h-14 w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-red-600"
+        >
+          <span className="min-w-0">
+            <span className="block break-words">{player?.displayName ?? "Unknown Player"}</span>
+            <span className="mt-1 block break-words text-xs font-medium text-black/55 dark:text-white/55">
+              {[slot, player?.position, player?.nflTeam].filter(Boolean).join(" · ") || "Player metadata unavailable"}
+            </span>
+          </span>
+          <span className="self-center whitespace-nowrap text-right text-xs font-black" aria-label={`${player?.displayName ?? "Unknown Player"} ${pointsLabel(points, lineupState)}`}>
+            {points === null ? "—" : points.toFixed(2)}
+            <span className="sr-only"> {pointsLabel(points, lineupState)}</span>
+          </span>
+        </button>
+        {isOpen && (
+          <div id={detailId} className="mx-3 mb-3 min-w-0 rounded-xl border border-black/10 bg-black/[0.03] p-3 dark:border-white/10 dark:bg-white/[0.04]">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-black/10 bg-black/10 dark:border-white/10 dark:bg-white/10">
+                <Image src={FALLBACK_AVATAR} alt="" fill sizes="48px" className="object-cover" unoptimized />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="break-words text-sm font-black uppercase">{player?.displayName ?? "Unknown Player"}</p>
+                <p className="mt-1 break-words text-xs font-semibold text-black/55 dark:text-white/55">
+                  {[player?.position, player?.nflTeam].filter(Boolean).join(" · ") || "Player metadata unavailable"}
+                </p>
+                {player?.injuryStatus && <p className="mt-2 inline-flex rounded-full border border-yellow-500/30 px-2 py-1 text-[10px] font-black uppercase text-yellow-700 dark:text-yellow-300">{player.injuryStatus}</p>}
+              </div>
+              <button type="button" aria-label={`Close ${player?.displayName ?? "player"} details`} onClick={() => setOpenPlayerId(null)} className="min-h-10 min-w-10 rounded-lg px-2 text-xs font-black uppercase focus-visible:outline-2 focus-visible:outline-red-600">Close</button>
+            </div>
+            <dl className="mt-3 grid min-w-0 gap-2 text-xs sm:grid-cols-3">
+              <div><dt className="font-black uppercase tracking-wider text-black/45 dark:text-white/45">Lineup</dt><dd className="mt-1 break-words font-bold">{contextLabel}</dd></div>
+              <div><dt className="font-black uppercase tracking-wider text-black/45 dark:text-white/45">Actual</dt><dd className="mt-1 font-bold">{points === null ? "—" : points.toFixed(2)}</dd></div>
+              {projection !== null && <div><dt className="font-black uppercase tracking-wider text-black/45 dark:text-white/45">Projected</dt><dd className="mt-1 font-bold">{projection.toFixed(1)}</dd></div>}
+            </dl>
+            {delta !== null && <p className="mt-3 text-xs font-black">{delta >= 0 ? "+" : ""}{delta.toFixed(1)} vs projection</p>}
+          </div>
+        )}
       </li>
     );
   };
@@ -815,8 +865,8 @@ function MatchupCard({
       {expanded && (
         <div id={expandedRegionId} className="min-w-0">
           <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2">
-            <StarterList label={team1.name} matchup={group.teams[0]} roster={rosters.find((roster) => roster.roster_id === group.teams[0]?.roster_id)} leagueInfo={leagueInfo} week={week} currentWeek={currentWeek} playerDirectory={playerDirectory} />
-            <StarterList label={team2.name} matchup={group.teams[1]} roster={rosters.find((roster) => roster.roster_id === group.teams[1]?.roster_id)} leagueInfo={leagueInfo} week={week} currentWeek={currentWeek} playerDirectory={playerDirectory} />
+            <StarterList label={team1.name} matchup={group.teams[0]} roster={rosters.find((roster) => roster.roster_id === group.teams[0]?.roster_id)} leagueInfo={leagueInfo} week={week} currentWeek={currentWeek} playerDirectory={playerDirectory} projectionState={projectionState} />
+            <StarterList label={team2.name} matchup={group.teams[1]} roster={rosters.find((roster) => roster.roster_id === group.teams[1]?.roster_id)} leagueInfo={leagueInfo} week={week} currentWeek={currentWeek} playerDirectory={playerDirectory} projectionState={projectionState} />
           </div>
 
           <ProjectionContext group={group} team1={team1} team2={team2} identities={playerDirectory} projectionState={projectionState} />
