@@ -1,9 +1,10 @@
-// scripts/importSleeperTrades.ts
+// Canonical historical trade import entrypoint.
 
 import "dotenv/config";
 import { firestore } from "../lib/firebaseAdmin.js";
 
-// Map of season → Sleeper league ID
+const EXPECTED_PROJECT_ID = "river-city-ffl";
+const MAX_BATCH_WRITES = 500;
 const LEAGUES_BY_SEASON: Record<number, string> = {
   2018: "342868033913540608",
   2019: "466632190273253376",
@@ -16,87 +17,47 @@ const LEAGUES_BY_SEASON: Record<number, string> = {
   2026: "1312149033254416384",
 };
 
-// Fetch all trade transactions for a league in a given season
-async function fetchSleeperTradesForLeagueSeason(
-  leagueId: string,
-  season: number
-): Promise<any[]> {
+async function fetchSleeperTradesForLeagueSeason(leagueId: string, season: number): Promise<any[]> {
   const allTrades: any[] = [];
-
-  // Sleeper exposes transactions by week; we loop through a reasonable range
-  // (1–18 covers regular season; adjust if you want playoffs too)
   for (let week = 1; week <= 18; week++) {
-    const url = `https://api.sleeper.app/v1/league/${leagueId}/transactions/${week}`;
-    const res = await fetch(url);
-
-    if (!res.ok) {
-      console.warn(
-        `⚠️ Failed to fetch transactions for league ${leagueId}, season ${season}, week ${week}: ${res.status}`
-      );
-      continue;
-    }
-
-    const tx = (await res.json()) as any[];
-
-    const tradesForWeek = tx.filter((t) => t.type === "trade");
-    allTrades.push(...tradesForWeek);
+    const response = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/transactions/${week}`);
+    if (!response.ok) throw new Error(`Sleeper returned HTTP ${response.status} for season ${season}, week ${week}.`);
+    const payload: unknown = await response.json();
+    if (!Array.isArray(payload)) throw new Error(`Malformed Sleeper transaction payload for season ${season}, week ${week}.`);
+    allTrades.push(...(payload as any[]).filter((transaction) => transaction.type === "trade"));
   }
-
   return allTrades;
 }
 
-async function importSeasonTrades(season: number, leagueId: string) {
-  console.log(`📡 Fetching trades for ${season}...`);
-  try {
-    const trades = await fetchSleeperTradesForLeagueSeason(leagueId, season);
+async function importSeasonTrades(season: number, leagueId: string, apply: boolean) {
+  const trades = await fetchSleeperTradesForLeagueSeason(leagueId, season);
+  console.log(JSON.stringify({ season, tradeCount: trades.length, mode: apply ? "apply" : "dry-run" }));
+  if (!apply || trades.length === 0) return;
+  if (trades.length > MAX_BATCH_WRITES) throw new Error(`Refusing season ${season}: ${trades.length} writes exceed the single-batch limit.`);
 
-    if (!trades || trades.length === 0) {
-      console.log(`⚠️ No trades found for ${season}`);
-      return;
-    }
-
-    const batch = firestore.batch();
-
-    trades.forEach((trade: any) => {
-      const tradeId = trade.transaction_id || trade.id;
-
-      // Firestore path: historical_trades/{season}/trades/{tradeId}
-      const ref = firestore
-        .collection("historical_trades")
-        .doc(String(season))
-        .collection("trades")
-        .doc(String(tradeId));
-
-      batch.set(
-        ref,
-        {
-          ...trade,
-          season,
-          imported_at: new Date().toISOString(),
-        },
-        { merge: true }
-      );
-    });
-
-    await batch.commit();
-    console.log(`✔️ Successfully imported ${trades.length} trades for ${season}`);
-  } catch (error) {
-    console.error(`❌ Error importing ${season}:`, error);
+  const batch = firestore.batch();
+  for (const trade of trades) {
+    const tradeId = trade.transaction_id || trade.id;
+    const ref = firestore.collection("historical_trades").doc(String(season)).collection("trades").doc(String(tradeId));
+    batch.set(ref, { ...trade, season, imported_at: new Date().toISOString() }, { merge: true });
   }
+  await batch.commit();
+  console.log(`Imported ${trades.length} trades for ${season}.`);
 }
 
 async function main() {
-  console.log("🚀 Starting River City FFL Historical Import...");
-
-  for (const [seasonStr, leagueId] of Object.entries(LEAGUES_BY_SEASON)) {
-    await importSeasonTrades(Number(seasonStr), leagueId);
+  const apply = process.argv.includes("--apply");
+  const { getFirebaseAdminDiagnostics } = await import("../lib/firebaseAdmin.js");
+  const diagnostics = getFirebaseAdminDiagnostics();
+  if (diagnostics.projectId !== EXPECTED_PROJECT_ID) {
+    throw new Error(`Refusing trade import: expected Firebase project ${EXPECTED_PROJECT_ID}, received ${diagnostics.projectId ?? "unknown"}.`);
   }
-
-  console.log("✅ All seasons imported successfully.");
-  process.exit(0);
+  console.log(JSON.stringify({ targetProject: diagnostics.projectId, operation: "historical-trade-import", seasonRange: "2018-2026", mode: apply ? "apply" : "dry-run", requiresApplyFlag: true }));
+  for (const [season, leagueId] of Object.entries(LEAGUES_BY_SEASON)) await importSeasonTrades(Number(season), leagueId, apply);
+  console.log(apply ? "Historical trade import applied." : "DRY RUN ONLY — no Firestore writes were performed.");
 }
 
-main().catch((err) => {
-  console.error("💥 Critical Failure:", err);
-  process.exit(1);
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : "Historical trade import failed.");
+  process.exitCode = 1;
 });

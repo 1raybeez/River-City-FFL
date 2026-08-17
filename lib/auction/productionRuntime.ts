@@ -101,12 +101,6 @@ const AUCTION_PRODUCTION_ENV_SCHEMA: Omit<
     description: "Optional Firebase session cookie duration override.",
   },
   {
-    name: "SCRAPER_SECRET_KEY",
-    requiredInProduction: false,
-    public: false,
-    description: "Only required for legacy maintenance scraper endpoints.",
-  },
-  {
     name: "NEXT_PUBLIC_FIREBASE_API_KEY",
     requiredInProduction: true,
     public: true,

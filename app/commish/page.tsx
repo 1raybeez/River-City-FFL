@@ -10,7 +10,7 @@ import {
 const hubLinks = [
   {
     title: '2026 Finance',
-    description: 'Review dues status, record Venmo payments, and inspect ledger activity.',
+    description: 'Manage the operational ledger, expenses, reconciliation, awards, season close, archive, and exports.',
     href: '/commish/finance/2026',
     icon: WalletCards,
   },
@@ -22,7 +22,7 @@ const hubLinks = [
   },
   {
     title: 'Maintenance',
-    description: 'Run protected commissioner data operations.',
+    description: 'Refresh current-season trades and maintain published auction values and ADP.',
     href: '/commish/maintenance',
     icon: Wrench,
   },
@@ -34,7 +34,7 @@ const hubLinks = [
   },
   {
     title: 'Post-Draft Intelligence',
-    description: 'Capture snapshots and prepare commissioner-only narrative drafts.',
+    description: 'Review Draft Grades, Team Outlook, and League Recap; approve, publish, roll back, or unpublish public intelligence.',
     href: '/commish/post-draft',
     icon: FileText,
   },
