@@ -1,14 +1,14 @@
 // app/api/history/trades/route.ts
 
+import {
+  AuctionAccessError,
+  requireAuctionAccess,
+} from "@/lib/auth/auctionAccess";
 import { firestore } from "@/lib/firebaseAdmin";
 import { LEAGUE_IDS } from "@/lib/sleeper";
 import { NextResponse } from "next/server";
 
 const CURRENT_SEASON = 2026;
-const DEPRECATION_HEADERS = {
-  Deprecation: "true",
-  Warning: '299 - "GET refresh/write behavior is deprecated; use POST."',
-};
 
 // Helper to fetch NFL state (week + season)
 async function fetchNFLState() {
@@ -19,16 +19,6 @@ async function fetchNFLState() {
   } catch {
     return { week: 1, season: "2025" };
   }
-}
-
-async function readStoredTrades(season: number) {
-  const snapshot = await firestore
-    .collection("trades")
-    .doc(season.toString())
-    .collection("entries")
-    .get();
-
-  return snapshot.docs.map((d) => d.data());
 }
 
 async function refreshCurrentSeasonTrades(season: number, leagueId: string) {
@@ -83,46 +73,33 @@ async function refreshCurrentSeasonTrades(season: number, leagueId: string) {
   return trades;
 }
 
-export async function GET(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const season = Number(searchParams.get("season")) || CURRENT_SEASON;
-    const leagueId = LEAGUE_IDS[season];
-
-    if (!leagueId) {
-      return NextResponse.json(
-        { error: "Invalid season or missing league ID." },
-        { status: 400 }
-      );
+export async function GET() {
+  return NextResponse.json(
+    {
+      error: "GET is deprecated and never performs trade refreshes. Use authorized POST.",
+    },
+    {
+      status: 410,
+      headers: {
+        Deprecation: "true",
+        Allow: "POST",
+      },
     }
-
-    // Load from Firebase for past seasons
-    if (season < CURRENT_SEASON) {
-      const trades = await readStoredTrades(season);
-      return NextResponse.json(trades);
-    }
-
-    const trades = await refreshCurrentSeasonTrades(season, leagueId);
-
-    return NextResponse.json(trades, { headers: DEPRECATION_HEADERS });
-  } catch (error) {
-    console.error("Trade history route error:", error);
-    return NextResponse.json(
-      { error: "Failed to load trade history." },
-      { status: 500 }
-    );
-  }
+  );
 }
 
 export async function POST(req: Request) {
   try {
+    await requireAuctionAccess("maintenance");
+
     const { searchParams } = new URL(req.url);
-    const season = Number(searchParams.get("season")) || CURRENT_SEASON;
+    const rawSeason = searchParams.get("season");
+    const season = rawSeason === null ? CURRENT_SEASON : Number(rawSeason);
     const leagueId = LEAGUE_IDS[season];
 
-    if (!leagueId) {
+    if (!Number.isInteger(season) || season !== CURRENT_SEASON || !leagueId) {
       return NextResponse.json(
-        { error: "Invalid season or missing league ID." },
+        { error: "Only the supported current season may be refreshed." },
         { status: 400 }
       );
     }
@@ -131,6 +108,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json(trades);
   } catch (error) {
+    if (error instanceof AuctionAccessError) {
+      return NextResponse.json(
+        { error: "Commissioner maintenance authorization required." },
+        { status: 401 }
+      );
+    }
+
     console.error("Trade history route error:", error);
     return NextResponse.json(
       { error: "Failed to load trade history." },
