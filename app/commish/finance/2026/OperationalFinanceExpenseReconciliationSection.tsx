@@ -28,6 +28,9 @@ export default function OperationalFinanceExpenseReconciliationSection({ dashboa
   const [form, setForm] = useState<"championship-ring" | "auctioneer-food" | null>(null);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
+  const [effectiveDate, setEffectiveDate] = useState("");
+  const [description, setDescription] = useState("");
+  const [evidenceReference, setEvidenceReference] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [paymentFor, setPaymentFor] = useState<string | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -51,7 +54,7 @@ export default function OperationalFinanceExpenseReconciliationSection({ dashboa
       if (!response.ok || !payload.dashboard) throw new Error(payload.error || "The finance record could not be saved.");
       onDashboard(payload.dashboard);
       onConfirmation(success);
-      setForm(null); setAmount(""); setNote(""); setConfirmed(false);
+      setForm(null); setAmount(""); setNote(""); setEffectiveDate(""); setDescription(""); setEvidenceReference(""); setConfirmed(false);
       setPaymentFor(null); setPaymentConfirmed(false); setContributionAmount(""); setContributor("");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The finance record could not be saved.");
@@ -68,6 +71,9 @@ export default function OperationalFinanceExpenseReconciliationSection({ dashboa
       amountCents: parsed,
       ...(overCap ? { approvedRingCapOverrideCents: parsed } : {}),
       commissionerNote: note || null,
+      effectiveDate,
+      description,
+      evidenceReference: evidenceReference || null,
       confirmed: true,
       idempotencyKey: `commissioner-expense-${crypto.randomUUID()}`,
     }, form === "championship-ring" ? "Ring expense approved; no vendor payment was recorded." : "Separately funded food expense approved.");
@@ -96,6 +102,8 @@ export default function OperationalFinanceExpenseReconciliationSection({ dashboa
   }
 
   return <>
+    <ExpenseCorrection expenses={data.expenses} onDashboard={onDashboard} onConfirmation={onConfirmation} />
+    <ReconciliationAdjustment adjustments={data.adjustments} onDashboard={onDashboard} onConfirmation={onConfirmation} />
     <section aria-labelledby="championship-allocation-heading" className="mt-10 rounded-3xl border border-black/10 bg-white p-5 shadow-xl dark:border-white/10 dark:bg-[#121212] sm:p-6">
       <p className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-600">Prize Structure</p>
       <h2 id="championship-allocation-heading" className="text-2xl font-black uppercase italic tracking-tight">Championship Allocation</h2>
@@ -106,6 +114,9 @@ export default function OperationalFinanceExpenseReconciliationSection({ dashboa
       {!ring && form === "championship-ring" && <form onSubmit={createExpense} className="mt-5 grid gap-4 rounded-2xl border border-black/10 p-4 dark:border-white/10 sm:grid-cols-2" noValidate>
         <label className="text-xs font-black uppercase">Actual ring cost<input aria-label="Actual ring cost" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} className={`${control} mt-1.5`} /></label>
         <label className="text-xs font-black uppercase">Optional note<input value={note} maxLength={500} onChange={(event) => setNote(event.target.value)} className={`${control} mt-1.5`} /></label>
+        <label className="text-xs font-black uppercase">Effective date<input type="date" required value={effectiveDate} onChange={(event) => setEffectiveDate(event.target.value)} className={`${control} mt-1.5`} /></label>
+        <label className="text-xs font-black uppercase sm:col-span-2">Description<input required value={description} onChange={(event) => setDescription(event.target.value)} className={`${control} mt-1.5`} /></label>
+        <label className="text-xs font-black uppercase sm:col-span-2">Evidence/reference (optional)<input value={evidenceReference} maxLength={500} onChange={(event) => setEvidenceReference(event.target.value)} className={`${control} mt-1.5`} /></label>
         {parsed && <p className="rounded-xl bg-black/[0.03] p-3 text-sm font-bold dark:bg-white/[0.04] sm:col-span-2">Default cap $80 · Over cap {money(overCap)} · Projected champion cash {championCash === null ? "Invalid" : money(championCash)}</p>}
         <label className="flex items-start gap-3 rounded-xl border border-black/10 p-3 text-sm font-bold dark:border-white/10 sm:col-span-2"><input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} className="mt-0.5 h-4 w-4 accent-orange-600" />{overCap && parsed && championCash !== null ? `I approve ${money(parsed)} of ring funding. This reduces the champion cash payout to ${money(championCash)}.` : "I confirm this actual ring cost and approve the expense obligation."}</label>
         <div className="grid grid-cols-2 gap-3 sm:col-span-2"><button type="button" onClick={() => setForm(null)} className="min-h-11 rounded-xl border border-black/15 text-sm font-black uppercase">Cancel</button><button disabled={pending || !confirmed} className="min-h-11 rounded-xl bg-orange-600 px-2 text-sm font-black uppercase text-white disabled:cursor-not-allowed disabled:opacity-50">{overCap && parsed ? `Approve ${money(parsed)} Ring Funding` : "Confirm Ring Cost"}</button></div>
@@ -132,6 +143,44 @@ export default function OperationalFinanceExpenseReconciliationSection({ dashboa
     </section>
   </>;
 }
+
+function ExpenseCorrection({ expenses, onDashboard, onConfirmation }: { expenses: readonly reconcileExpenseShape[]; onDashboard(value: OperationalFinanceCommissionerDashboardPresentation): void; onConfirmation(value: string): void }) {
+  const [expenseId, setExpenseId] = useState(expenses[0]?.obligationId ?? "");
+  const [amount, setAmount] = useState("");
+  const [date, setDate] = useState("");
+  const [description, setDescription] = useState("");
+  const [evidence, setEvidence] = useState("");
+  const [reason, setReason] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!expenses.length) return null;
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    const parsed = cents(amount);
+    if (!parsed || !date || !description.trim() || !reason.trim()) return setError("Correction amount, date, description, and reason are required.");
+    setPending(true); setError(null);
+    try {
+      const response = await fetch(`/api/commish/finance/2026/expenses/${encodeURIComponent(expenseId)}/correction`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ obligationId: expenseId, amountCents: parsed, effectiveDate: date, description, evidenceReference: evidence || null, reason, confirmed: true, idempotencyKey: `commissioner-expense-correction-${crypto.randomUUID()}` }) });
+      const payload = await response.json() as { dashboard?: OperationalFinanceCommissionerDashboardPresentation; error?: string };
+      if (!response.ok || !payload.dashboard) throw new Error(payload.error || "Expense correction failed.");
+      onDashboard(payload.dashboard); onConfirmation("Expense corrected through reversal and replacement; original history retained.");
+      setAmount(""); setDate(""); setDescription(""); setEvidence(""); setReason("");
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Expense correction failed."); }
+    finally { setPending(false); }
+  }
+  return <section aria-labelledby="expense-correction-heading" className="mt-10 rounded-3xl border border-amber-600/30 bg-amber-50 p-5 dark:bg-amber-950/20 sm:p-6"><h2 id="expense-correction-heading" className="text-lg font-black uppercase">Correct an approved expense</h2><p className="mt-1 text-sm font-semibold">Corrections retain the original accounting record and create a linked replacement.</p><form onSubmit={submit} className="mt-4 grid gap-3 sm:grid-cols-2"><label className="text-xs font-black uppercase">Expense<select value={expenseId} onChange={(event) => setExpenseId(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-black/20 bg-white px-3">{expenses.map((expense) => <option key={expense.obligationId} value={expense.obligationId}>{expense.category}</option>)}</select></label><label className="text-xs font-black uppercase">Corrected amount<input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-black/20 bg-white px-3" /></label><label className="text-xs font-black uppercase">Effective date<input type="date" required value={date} onChange={(event) => setDate(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-black/20 bg-white px-3" /></label><label className="text-xs font-black uppercase">Description<input required value={description} onChange={(event) => setDescription(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-black/20 bg-white px-3" /></label><label className="text-xs font-black uppercase sm:col-span-2">Evidence/reference (optional)<input value={evidence} onChange={(event) => setEvidence(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-black/20 bg-white px-3" /></label><label className="text-xs font-black uppercase sm:col-span-2">Correction reason<input required value={reason} onChange={(event) => setReason(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-black/20 bg-white px-3" /></label><button disabled={pending} className="min-h-11 rounded-xl bg-orange-600 px-4 text-sm font-black uppercase text-white disabled:opacity-50 sm:col-span-2">{pending ? "Saving…" : "Record Correction"}</button>{error && <p role="alert" className="text-sm font-bold text-red-700 sm:col-span-2">{error}</p>}</form></section>;
+}
+
+type reconcileExpenseShape = { obligationId: string; category: "championship-ring" | "auctioneer-food"; fundingSource: "dues-funded" | "separately-funded"; amountCents: number; paidCents: number; outstandingCents: number; contributedCents: number; commissionerNote: string | null; effectiveDate: string | null; description: string | null; evidenceReference: string | null };
+
+function ReconciliationAdjustment({ adjustments, onDashboard, onConfirmation }: { adjustments: readonly { adjustmentId: string; category: "cash_variance" | "bank_fee" | "refund" | "rounding_correction" | "other_approved"; amountCents: number; reason: string; effectiveDate: string; createdAt: string; createdBy: string }[]; onDashboard(value: OperationalFinanceCommissionerDashboardPresentation): void; onConfirmation(value: string): void }) {
+  const [amount, setAmount] = useState(""); const [category, setCategory] = useState<"cash_variance" | "bank_fee" | "refund" | "rounding_correction" | "other_approved">("cash_variance"); const [date, setDate] = useState(""); const [reason, setReason] = useState(""); const [pending, setPending] = useState(false); const [error, setError] = useState<string | null>(null);
+  void setCategory;
+  async function submit(event: React.FormEvent) { event.preventDefault(); const magnitude = cents(amount.replace(/^-/, "")); const signed = amount.trim().startsWith("-") ? -(magnitude ?? 0) : magnitude; if (!signed || !date || !reason.trim()) return setError("Signed amount, effective date, and reason are required."); setPending(true); setError(null); try { const response = await fetch("/api/commish/finance/2026/adjustments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category, amountCents: signed, effectiveDate: date, reason, idempotencyKey: `commissioner-adjustment-${crypto.randomUUID()}` }) }); const payload = await response.json() as { dashboard?: OperationalFinanceCommissionerDashboardPresentation; error?: string }; if (!response.ok || !payload.dashboard) throw new Error(payload.error || "Adjustment failed."); onDashboard(payload.dashboard); onConfirmation("Explicit reconciliation adjustment recorded."); setAmount(""); setDate(""); setReason(""); } catch (caught) { setError(caught instanceof Error ? caught.message : "Adjustment failed."); } finally { setPending(false); } }
+  return <section aria-labelledby="adjustment-heading" className="mt-10 rounded-3xl border border-black/10 bg-white p-5 shadow-xl dark:border-white/10 dark:bg-[#121212] sm:p-6"><h2 id="adjustment-heading" className="text-lg font-black uppercase">Reconciliation adjustments</h2><p className="mt-1 text-sm font-semibold text-gray-500">Explicit, signed corrections only; no automatic balancing.</p><dl className="mt-3 space-y-2 text-sm">{adjustments.map((entry) => <div key={entry.adjustmentId} className="flex flex-wrap justify-between gap-2"><dt>{entry.effectiveDate} · {entry.reason}</dt><dd className="font-black">{money(entry.amountCents)}</dd></div>)}{adjustments.length === 0 && <p className="text-gray-500">No adjustments recorded.</p>}</dl><form onSubmit={submit} className="mt-4 grid gap-3 sm:grid-cols-3"><label className="text-xs font-black uppercase">Signed amount<input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} className={controlStyle} placeholder="-10.00 or 10.00" /></label><label className="text-xs font-black uppercase">Effective date<input type="date" required value={date} onChange={(event) => setDate(event.target.value)} className={controlStyle} /></label><label className="text-xs font-black uppercase">Reason<input required value={reason} onChange={(event) => setReason(event.target.value)} className={controlStyle} /></label><button disabled={pending} className="min-h-11 rounded-xl bg-orange-600 px-4 text-sm font-black uppercase text-white disabled:opacity-50 sm:col-span-3">Record Adjustment</button></form>{error && <p role="alert" className="mt-3 text-sm font-bold text-red-700">{error}</p>}</section>;
+}
+
+const controlStyle = "mt-1 min-h-11 w-full rounded-xl border border-black/20 bg-white px-3 py-2 font-semibold";
 
 function Accounting({ title, rows }: { title: string; rows: readonly (readonly [string, number])[] }) {
   return <div className="min-w-0 rounded-2xl border border-black/10 p-4 dark:border-white/10"><h3 className="font-black uppercase">{title}</h3><dl className="mt-3 space-y-2 text-sm">{rows.map(([label, value]) => <div key={label} className="flex flex-wrap justify-between gap-2"><dt>{label}</dt><dd className="font-black">{money(value)}</dd></div>)}</dl></div>;

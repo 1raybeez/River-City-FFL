@@ -3,7 +3,9 @@ import fs from "node:fs";
 
 import {
   createOperationalFinanceExpense,
+  correctOperationalFinanceExpense,
   getApprovedOperationalRingInput,
+  recordOperationalFinanceAdjustment,
   recordOperationalFinanceContribution,
   recordOperationalFinanceExpenseSettlement,
 } from "../lib/finance/operationalFinanceExpenses";
@@ -37,11 +39,13 @@ async function main() {
   const overCap = await repository();
   await assert.rejects(() => createOperationalFinanceExpense(overCap, 2026, {
     category: "championship-ring", amountCents: 8_600, confirmed: true, idempotencyKey: "expense:ring:over-cap",
+    effectiveDate: "2026-08-11", description: "Fixture ring", evidenceReference: null,
   }, actor, at), /exceeds the approved dues-funded cap/);
 
   const ringRepo = await repository();
   const ringResult = await createOperationalFinanceExpense(ringRepo, 2026, {
     category: "championship-ring", amountCents: 8_600, approvedRingCapOverrideCents: 8_600,
+    effectiveDate: "2026-08-11", description: "Fixture championship ring", evidenceReference: "receipt:ring",
     commissionerNote: "Fixture only.", confirmed: true, idempotencyKey: "expense:ring:approved-override",
   }, actor, at);
   assert.equal(ringResult.value.category, "championship-ring");
@@ -55,11 +59,13 @@ async function main() {
   assert.ok(snapshot.auditEvents.some((entry) => entry.eventType === "expense-obligation-created" && entry.metadata.ringCapOverrideApproved === true));
   const retry = await createOperationalFinanceExpense(ringRepo, 2026, {
     category: "championship-ring", amountCents: 8_600, approvedRingCapOverrideCents: 8_600,
+    effectiveDate: "2026-08-11", description: "Fixture championship ring", evidenceReference: "receipt:ring",
     commissionerNote: "Fixture only.", confirmed: true, idempotencyKey: "expense:ring:approved-override",
   }, actor, at);
   assert.equal(retry.created, false);
   await assert.rejects(() => createOperationalFinanceExpense(ringRepo, 2026, {
     category: "championship-ring", amountCents: 4_000, confirmed: true, idempotencyKey: "expense:ring:silent-edit",
+    effectiveDate: "2026-08-11", description: "Silent edit", evidenceReference: null,
   }, actor, at), /reversal\/replacement/);
 
   await recordOperationalFinanceExpenseSettlement(ringRepo, 2026, ringResult.value.obligationId, {
@@ -78,6 +84,7 @@ async function main() {
   const foodRepo = await repository();
   const food = await createOperationalFinanceExpense(foodRepo, 2026, {
     category: "auctioneer-food", amountCents: 6_000, confirmed: true,
+    effectiveDate: "2026-08-11", description: "Fixture auctioneer food", evidenceReference: "receipt:food",
     idempotencyKey: "expense:food:approved",
   }, actor, at);
   assert.equal(food.value.fundingSource, "separately-funded");
@@ -96,6 +103,30 @@ async function main() {
   assert.doesNotMatch(client, /firebase\/firestore|Net Earnings/);
   assert.match(client, /This reduces the champion cash payout/);
   assert.match(client, /Corrections require reversal\/replacement/);
+  const correction = await correctOperationalFinanceExpense(ringRepo, 2026, {
+    obligationId: ringResult.value.obligationId,
+    amountCents: 8_600,
+    effectiveDate: "2026-08-12",
+    description: "Corrected fixture ring",
+    evidenceReference: "receipt:ring-corrected",
+    approvedRingCapOverrideCents: 8_600,
+    reason: "Corrected evidence reference",
+    confirmed: true,
+    idempotencyKey: "expense:ring:correction-1",
+  }, actor, at);
+  assert.equal(correction.value.replacesObligationId, ringResult.value.obligationId);
+  assert.ok((await ringRepo.getSnapshot()).obligations.some((entry) => entry.obligationId === ringResult.value.obligationId));
+  const adjustment = await recordOperationalFinanceAdjustment(ringRepo, 2026, {
+    category: "cash_variance",
+    amountCents: -125,
+    effectiveDate: "2026-08-12",
+    reason: "Fixture reconciliation variance",
+    idempotencyKey: "adjustment:fixture:1",
+  }, actor, at);
+  assert.equal(adjustment.value.amountCents, -125);
+  await assert.rejects(() => recordOperationalFinanceAdjustment(ringRepo, 2026, {
+    category: "cash_variance", amountCents: 0, effectiveDate: "2026-08-12", reason: "", idempotencyKey: "adjustment:fixture:bad",
+  }, actor, at), /non-zero|reason/);
   console.log("Operational finance expense workflow checks passed.");
 }
 

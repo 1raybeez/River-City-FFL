@@ -268,7 +268,7 @@ async function main() {
   assert.match(layout, /requireOperationalFinanceCommissioner/);
   assert.match(
     layout,
-    /redirect\("\/commish\/auction\/login\?returnTo=%2Fcommish%2Ffinance%2F2026"\)/
+    /redirect\("\/commish\/login\?returnTo=%2Fcommish%2Ffinance%2F2026"\)/
   );
 
   const client = read(

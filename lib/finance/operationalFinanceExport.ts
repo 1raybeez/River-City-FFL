@@ -5,7 +5,7 @@ import type {
 } from "@/lib/finance/operationalFinanceLedgerTypes";
 import { reconcileOperationalFinance } from "@/lib/finance/operationalFinanceReconciliation";
 
-export type OperationalFinanceExportFormat = "json" | "obligations" | "settlements" | "dues-status" | "expenses" | "contributions" | "report";
+export type OperationalFinanceExportFormat = "json" | "obligations" | "settlements" | "dues-status" | "expenses" | "contributions" | "adjustments" | "report";
 
 type ExportContext = Readonly<{
   snapshot: OperationalFinanceLedgerSnapshot;
@@ -66,6 +66,7 @@ export function buildOperationalFinanceExportJson(context: ExportContext) {
     currentlyAllocatedCents: r.currentlyAllocatedCents,
     currentlyUnallocatedCents: r.currentlyUnallocatedCents,
     cashOnHandCents: r.cashOnHandCents,
+    reconciliationAdjustmentCents: r.reconciliationAdjustmentCents,
     readyToClose: r.readyToClose,
     checks: r.checks,
   };
@@ -91,7 +92,8 @@ export function buildOperationalFinanceExportJson(context: ExportContext) {
     obligations: active.obligations.sort((a, b) => a.obligationId.localeCompare(b.obligationId)).map(cleanObligation),
     settlements: active.settlements.sort((a, b) => a.settlementId.localeCompare(b.settlementId)).map(cleanSettlement),
     reversals: active.reversals.sort((a, b) => a.reversalId.localeCompare(b.reversalId)).map(cleanReversal),
-    expenses: [...context.reconciliation.expenses].sort((a, b) => a.obligationId.localeCompare(b.obligationId)).map((expense) => ({ obligationId: expense.obligationId, category: expense.category, fundingSource: expense.fundingSource, amountCents: expense.amountCents, paidCents: expense.paidCents, outstandingCents: expense.outstandingCents, contributedCents: expense.contributedCents })),
+    expenses: [...context.reconciliation.expenses].sort((a, b) => a.obligationId.localeCompare(b.obligationId)).map((expense) => ({ obligationId: expense.obligationId, category: expense.category, fundingSource: expense.fundingSource, amountCents: expense.amountCents, paidCents: expense.paidCents, outstandingCents: expense.outstandingCents, contributedCents: expense.contributedCents, effectiveDate: expense.effectiveDate, description: expense.description, evidenceReference: expense.evidenceReference })),
+    adjustments: [...context.reconciliation.adjustments].sort((a, b) => a.adjustmentId.localeCompare(b.adjustmentId)),
     contributions: active.settlements.filter((entry) => entry.direction === "incoming-separate-contribution").sort((a, b) => a.settlementId.localeCompare(b.settlementId)).map(cleanSettlement),
   });
 }
@@ -127,8 +129,9 @@ export function buildOperationalFinanceCsv(context: ExportContext, format: Exclu
     });
     return csv([["franchise_id", "financial_owner_id", "assessed_cents", "assessed_usd", "settled_cents", "settled_usd", "outstanding_cents", "outstanding_usd", "status"], ...rows]);
   }
-  if (format === "expenses") return csv([["expense_id", "category", "amount_cents", "amount_usd", "funding_source", "paid_cents", "paid_usd", "contributed_cents", "contributed_usd"], ...[...context.reconciliation.expenses].sort((a, b) => a.obligationId.localeCompare(b.obligationId)).map((entry) => [entry.obligationId, entry.category, entry.amountCents, dollars(entry.amountCents), entry.fundingSource, entry.paidCents, dollars(entry.paidCents), entry.contributedCents, dollars(entry.contributedCents)])]);
-  return csv([["contribution_id", "expense_obligation_id", "amount_cents", "amount_usd", "payment_method"], ...active.settlements.filter((entry) => entry.direction === "incoming-separate-contribution").sort((a, b) => a.settlementId.localeCompare(b.settlementId)).map((entry) => [entry.settlementId, entry.obligationId, entry.amountCents, dollars(entry.amountCents), entry.paymentMethod])]);
+  if (format === "expenses") return csv([["expense_id", "category", "effective_date", "description", "evidence_reference", "amount_cents", "amount_usd", "funding_source", "paid_cents", "paid_usd", "contributed_cents", "contributed_usd"], ...[...context.reconciliation.expenses].sort((a, b) => a.obligationId.localeCompare(b.obligationId)).map((entry) => [entry.obligationId, entry.category, entry.effectiveDate, entry.description, entry.evidenceReference, entry.amountCents, dollars(entry.amountCents), entry.fundingSource, entry.paidCents, dollars(entry.paidCents), entry.contributedCents, dollars(entry.contributedCents)])]);
+  if (format === "contributions") return csv([["contribution_id", "expense_obligation_id", "amount_cents", "amount_usd", "payment_method"], ...active.settlements.filter((entry) => entry.direction === "incoming-separate-contribution").sort((a, b) => a.settlementId.localeCompare(b.settlementId)).map((entry) => [entry.settlementId, entry.obligationId, entry.amountCents, dollars(entry.amountCents), entry.paymentMethod])]);
+  return csv([["adjustment_id", "category", "amount_cents", "amount_usd", "reason", "effective_date", "created_at", "created_by"], ...[...context.reconciliation.adjustments].sort((a, b) => a.adjustmentId.localeCompare(b.adjustmentId)).map((entry) => [entry.adjustmentId, entry.category, entry.amountCents, dollars(entry.amountCents), entry.reason, entry.effectiveDate, entry.createdAt, entry.createdBy])]);
 }
 
 export function buildOperationalFinanceReport(context: ExportContext) {

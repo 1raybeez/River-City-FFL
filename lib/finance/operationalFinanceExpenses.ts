@@ -1,14 +1,18 @@
 import {
   recordApprovedExpense,
+  recordReconciliationAdjustment,
+  replaceObligation,
+  type RecordObligationInput,
   recordSettlement,
 } from "@/lib/finance/operationalFinanceLedger";
 import type {
   OperationalFinanceActor,
   OperationalFinanceLedgerRepository,
   OperationalFinanceLedgerSnapshot,
+  OperationalFinanceObligation,
   OperationalFinancePaymentMethod,
 } from "@/lib/finance/operationalFinanceLedgerTypes";
-import { OPERATIONAL_FINANCE_SEASON_2026 } from "@/lib/finance/operationalFinanceRules";
+import { OPERATIONAL_FINANCE_SEASON_2026, validateRingExpense } from "@/lib/finance/operationalFinanceRules";
 
 const EXPENSE_METHODS = new Set<OperationalFinancePaymentMethod>([
   "venmo",
@@ -43,6 +47,18 @@ function optionalNote(value: unknown) {
   const normalized = value.trim();
   if (normalized.length > 500) throw new Error("Commissioner note must be 500 characters or fewer.");
   return normalized || null;
+}
+
+function requiredText(value: unknown, label: string, maxLength = 500) {
+  if (typeof value !== "string" || !value.trim()) throw new Error(`${label} is required.`);
+  const normalized = value.trim();
+  if (normalized.length > maxLength) throw new Error(`${label} must be ${maxLength} characters or fewer.`);
+  return normalized;
+}
+
+function requiredDate(value: unknown, label: string) {
+  if (typeof value !== "string" || Number.isNaN(Date.parse(value))) throw new Error(`${label} must be a valid ISO date.`);
+  return new Date(value).toISOString().slice(0, 10);
 }
 
 function optionalTimestamp(value: unknown) {
@@ -95,6 +111,9 @@ export async function createOperationalFinanceExpense(
     "amountCents",
     "approvedRingCapOverrideCents",
     "commissionerNote",
+    "effectiveDate",
+    "description",
+    "evidenceReference",
     "confirmed",
     "idempotencyKey",
   ]);
@@ -107,6 +126,9 @@ export async function createOperationalFinanceExpense(
     throw new Error("Explicit commissioner expense confirmation is required.");
   }
   const amountCents = cents(input.amountCents, "Expense amount");
+  const effectiveDate = requiredDate(input.effectiveDate, "Effective expense date");
+  const description = requiredText(input.description, "Expense description", 240);
+  const evidenceReference = optionalNote(input.evidenceReference);
   const override = input.approvedRingCapOverrideCents;
   let approvedRingCapOverrideCents: number | undefined;
   if (override !== undefined && override !== null) {
@@ -155,12 +177,81 @@ export async function createOperationalFinanceExpense(
       amountCents,
       approvedRingCapOverrideCents,
       commissionerNote: optionalNote(input.commissionerNote),
+      effectiveDate,
+      description,
+      evidenceReference,
       sourceRef: `commissioner-dashboard:2026:${input.category}`,
     },
     actor,
     key,
     recordedAt
   );
+}
+
+export async function correctOperationalFinanceExpense(
+  repository: OperationalFinanceLedgerRepository,
+  season: number,
+  raw: unknown,
+  actor: OperationalFinanceActor,
+  recordedAt: string
+) {
+  requireCommissioner(actor);
+  if (season !== 2026) throw new Error("Expense correction currently supports 2026 only.");
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("An expense correction request object is required.");
+  const input = raw as Record<string, unknown>;
+  const allowed = new Set(["obligationId", "amountCents", "effectiveDate", "description", "evidenceReference", "approvedRingCapOverrideCents", "commissionerNote", "confirmed", "reason", "idempotencyKey"]);
+  const unsupported = Object.keys(input).find((key) => !allowed.has(key));
+  if (unsupported) throw new Error(`Unsupported expense correction field: ${unsupported}.`);
+  if (input.confirmed !== true) throw new Error("Explicit commissioner correction confirmation is required.");
+  if (typeof input.obligationId !== "string" || !input.obligationId.trim()) throw new Error("Expense obligation ID is required.");
+  const reason = requiredText(input.reason, "Correction reason", 500);
+  const snapshot = await repository.getSnapshot();
+  const original = snapshot.obligations.find((entry) => entry.obligationId === input.obligationId && entry.season === season);
+  if (!original || (original.category !== "championship-ring" && original.category !== "auctioneer-food")) throw new Error("Approved expense was not found.");
+  if (snapshot.reversals.some((entry) => entry.targetType === "obligation" && entry.targetId === original.obligationId)) throw new Error("This expense has already been corrected or voided.");
+  const key = idempotency(input.idempotencyKey, "expense correction");
+  let replacementExpenseEvidence: OperationalFinanceObligation["expenseEvidence"] = {
+    actualCostCents: cents(input.amountCents, "Expense amount"),
+    defaultFundingCapCents: original.expenseEvidence?.defaultFundingCapCents ?? null,
+    approvedFundingCapCents: original.expenseEvidence?.approvedFundingCapCents ?? null,
+    overCapCents: original.expenseEvidence?.overCapCents ?? 0,
+    overrideApproved: original.expenseEvidence?.overrideApproved ?? false,
+    effectiveDate: requiredDate(input.effectiveDate, "Effective expense date"),
+    description: requiredText(input.description, "Expense description", 240),
+    evidenceReference: optionalNote(input.evidenceReference),
+    commissionerNote: optionalNote(input.commissionerNote),
+  };
+  const replacement: RecordObligationInput = {
+    obligationId: `${original.obligationId}:correction:${key}`,
+    season: 2026,
+    category: original.category,
+    amountCents: cents(input.amountCents, "Expense amount"),
+    fundingSource: original.fundingSource,
+    franchiseId: null,
+    financialOwnerId: null,
+    expenseEvidence: replacementExpenseEvidence,
+    ruleRef: original.ruleRef,
+    ruleProvenance: original.ruleProvenance,
+    sourceRef: `commissioner-dashboard:2026:${original.category}:correction`,
+  };
+  if (original.category === "championship-ring") {
+    const validation = validateRingExpense(replacement.amountCents, input.approvedRingCapOverrideCents === undefined ? undefined : cents(input.approvedRingCapOverrideCents, "Ring funding override"));
+    if (!validation.resolved) throw new Error(validation.errors.map((entry) => entry.message).join(" "));
+    replacementExpenseEvidence = { ...replacementExpenseEvidence, approvedFundingCapCents: input.approvedRingCapOverrideCents === undefined ? original.expenseEvidence?.approvedFundingCapCents ?? OPERATIONAL_FINANCE_SEASON_2026.ringPolicy.defaultCapCents : cents(input.approvedRingCapOverrideCents, "Ring funding override"), overCapCents: validation.overCapCents ?? 0, overrideApproved: input.approvedRingCapOverrideCents !== undefined };
+  }
+  return replaceObligation(repository, original.obligationId, { ...replacement, expenseEvidence: replacementExpenseEvidence }, reason, actor, key, recordedAt);
+}
+
+export async function recordOperationalFinanceAdjustment(repository: OperationalFinanceLedgerRepository, season: number, raw: unknown, actor: OperationalFinanceActor, recordedAt: string) {
+  requireCommissioner(actor);
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("An adjustment request object is required.");
+  const input = raw as Record<string, unknown>;
+  const allowed = new Set(["category", "amountCents", "reason", "effectiveDate", "idempotencyKey"]);
+  const unsupported = Object.keys(input).find((key) => !allowed.has(key));
+  if (unsupported) throw new Error(`Unsupported adjustment field: ${unsupported}.`);
+  if (input.category !== "cash_variance" && input.category !== "bank_fee" && input.category !== "refund" && input.category !== "rounding_correction" && input.category !== "other_approved") throw new Error("Adjustment category is invalid.");
+  if (!Number.isSafeInteger(input.amountCents) || input.amountCents === 0) throw new Error("Adjustment amount must be a non-zero integer number of cents.");
+  return recordReconciliationAdjustment(repository, { season: 2026, category: input.category, amountCents: Number(input.amountCents), reason: requiredText(input.reason, "Adjustment reason", 500), effectiveDate: requiredDate(input.effectiveDate, "Adjustment effective date"), sourceRef: "commissioner-dashboard:2026:reconciliation-adjustment" }, actor, idempotency(input.idempotencyKey, "adjustment"), recordedAt);
 }
 
 export async function recordOperationalFinanceExpenseSettlement(

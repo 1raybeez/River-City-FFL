@@ -30,9 +30,12 @@ async function main() {
   assert.equal(preseason.readyToClose, false);
   assert.equal(preseason.checks.find((entry) => entry.id === "required-awards")?.state, "PENDING");
   assert.equal(preseason.approvedRingExpenseCents, null);
+  const adjusted = reconcileOperationalFinance({ ...opening, adjustments: [{ adjustmentId: "fixture-adjustment", season: 2026, category: "cash_variance", amountCents: -125, reason: "Fixture variance", effectiveDate: "2026-08-11", createdAt: at, createdBy: { actorId: "commissioner:test", role: "commissioner" }, idempotencyKey: "adjustment:fixture" }] }, { seasonState: "preseason" });
+  assert.equal(adjusted.reconciliationAdjustmentCents, -125);
+  assert.equal(adjusted.cashOnHandCents, 24_875);
 
   const template = opening.obligations[0];
-  const ring: OperationalFinanceObligation = { ...template, obligationId: "fixture-ring", category: "championship-ring", amountCents: 1_600, fundingSource: "dues-funded", financialOwnerId: null, franchiseId: null, expenseEvidence: { actualCostCents: 1_600, defaultFundingCapCents: 8_000, approvedFundingCapCents: 8_000, overCapCents: 0, overrideApproved: false, commissionerNote: null } };
+  const ring: OperationalFinanceObligation = { ...template, obligationId: "fixture-ring", category: "championship-ring", amountCents: 1_600, fundingSource: "dues-funded", financialOwnerId: null, franchiseId: null, expenseEvidence: { actualCostCents: 1_600, effectiveDate: "2026-08-11", description: "Fixture ring", evidenceReference: null, defaultFundingCapCents: 8_000, approvedFundingCapCents: 8_000, overCapCents: 0, overrideApproved: false, commissionerNote: null } };
   const food: OperationalFinanceObligation = { ...template, obligationId: "fixture-food", category: "auctioneer-food", amountCents: 6_000, fundingSource: "separately-funded", financialOwnerId: null, franchiseId: null };
   const partial: OperationalFinanceLedgerSnapshot = { ...opening, obligations: [...opening.obligations, ring, food], settlements: [...opening.settlements, { ...opening.settlements[0], settlementId: "fixture-contribution", obligationId: food.obligationId, direction: "incoming-separate-contribution", amountCents: 2_000, contributorOwnerId: "ray-long", contributorFranchiseId: "prestigio-mundial" }] };
   const partialResult = reconcileOperationalFinance(partial, { seasonState: "regular-season" });

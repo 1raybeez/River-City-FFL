@@ -10,6 +10,7 @@ import {
 } from "@/lib/finance/operationalFinanceLedger";
 import type {
   OperationalFinanceAuditEvent,
+  OperationalFinanceAdjustment,
   OperationalFinanceArchive,
   OperationalFinanceIdempotencyRecord,
   OperationalFinanceLedgerRepository,
@@ -27,6 +28,7 @@ type LedgerRecord =
   | OperationalFinanceObligation
   | OperationalFinanceSettlement
   | OperationalFinanceReversal
+  | OperationalFinanceAdjustment
   | OperationalFinanceAuditEvent
   | OperationalFinanceMigrationRecord
   | OperationalFinanceIdempotencyRecord
@@ -37,6 +39,7 @@ const SUBCOLLECTIONS = {
   obligations: "obligations",
   settlements: "settlements",
   reversals: "reversals",
+  adjustments: "adjustments",
   auditEvents: "audit_events",
   reconciliation: "reconciliation",
   migrationRecords: "migration_records",
@@ -140,6 +143,11 @@ function transactionAdapter(
         ? readAll<OperationalFinanceReversal>(SUBCOLLECTIONS.reversals)
         : [];
     },
+    async getAllAdjustments(requestedSeason) {
+      return requestedSeason === season
+        ? readAll<OperationalFinanceAdjustment>(SUBCOLLECTIONS.adjustments)
+        : [];
+    },
     async putSeason(value) {
       if (pendingSeason) throw new Error(`Season ${value.season} is already queued.`);
       pendingSeason = clone(value);
@@ -156,6 +164,9 @@ function transactionAdapter(
     },
     async putReversal(value) {
       await create(SUBCOLLECTIONS.reversals, value.reversalId, value);
+    },
+    async putAdjustment(value) {
+      await create(SUBCOLLECTIONS.adjustments, value.adjustmentId, value);
     },
     async putAuditEvent(value) {
       await create(SUBCOLLECTIONS.auditEvents, value.eventId, value);
@@ -211,12 +222,13 @@ export class FirestoreOperationalFinanceLedgerRepository
     const seasonRef = this.database
       .collection(OPERATIONAL_FINANCE_COLLECTION)
       .doc(String(this.season));
-    const [season, obligations, settlements, reversals, auditEvents, migrationRecords, idempotencyRecords] =
+    const [season, obligations, settlements, reversals, adjustments, auditEvents, migrationRecords, idempotencyRecords] =
       await Promise.all([
         seasonRef.get(),
         seasonRef.collection(SUBCOLLECTIONS.obligations).get(),
         seasonRef.collection(SUBCOLLECTIONS.settlements).get(),
         seasonRef.collection(SUBCOLLECTIONS.reversals).get(),
+        seasonRef.collection(SUBCOLLECTIONS.adjustments).get(),
         seasonRef.collection(SUBCOLLECTIONS.auditEvents).get(),
         seasonRef.collection(SUBCOLLECTIONS.migrationRecords).get(),
         seasonRef.collection(SUBCOLLECTIONS.idempotency).get(),
@@ -226,6 +238,7 @@ export class FirestoreOperationalFinanceLedgerRepository
       obligations: obligations.docs.map((entry) => entry.data() as OperationalFinanceObligation),
       settlements: settlements.docs.map((entry) => entry.data() as OperationalFinanceSettlement),
       reversals: reversals.docs.map((entry) => entry.data() as OperationalFinanceReversal),
+      adjustments: adjustments.docs.map((entry) => entry.data() as OperationalFinanceAdjustment),
       auditEvents: auditEvents.docs.map((entry) => entry.data() as OperationalFinanceAuditEvent),
       migrationRecords: migrationRecords.docs.map((entry) => entry.data() as OperationalFinanceMigrationRecord),
       idempotencyRecords: idempotencyRecords.docs.map((entry) => entry.data() as OperationalFinanceIdempotencyRecord),

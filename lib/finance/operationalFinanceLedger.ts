@@ -8,6 +8,7 @@ import type { OperationalFinanceProposal } from "@/lib/finance/operationalFinanc
 import type {
   OperationalFinanceActor,
   OperationalFinanceAuditEvent,
+  OperationalFinanceAdjustment,
   OperationalFinanceDuesStatus,
   OperationalFinanceFundingSource,
   OperationalFinanceIdempotencyRecord,
@@ -74,6 +75,9 @@ export interface RecordExpenseInput {
   readonly amountCents: number;
   readonly approvedRingCapOverrideCents?: number;
   readonly commissionerNote?: string | null;
+  readonly effectiveDate?: string | null;
+  readonly description?: string | null;
+  readonly evidenceReference?: string | null;
   readonly sourceRef: string;
 }
 
@@ -94,6 +98,15 @@ export interface OperationalFinanceMigrationPlan {
   readonly outstandingCents: number;
   readonly deletes: 0;
   readonly legacyMutations: 0;
+}
+
+export interface RecordAdjustmentInput {
+  readonly season: 2026;
+  readonly category: OperationalFinanceAdjustment["category"];
+  readonly amountCents: number;
+  readonly reason: string;
+  readonly effectiveDate: string;
+  readonly sourceRef: string;
 }
 
 const AWARD_CATEGORIES = new Set<OperationalFinanceObligationCategory>([
@@ -516,6 +529,9 @@ export async function recordApprovedExpense(
       financialOwnerId: null,
       expenseEvidence: {
         actualCostCents: input.amountCents,
+        effectiveDate: input.effectiveDate ?? null,
+        description: input.description ?? null,
+        evidenceReference: input.evidenceReference ?? null,
         defaultFundingCapCents: isRing
           ? OPERATIONAL_FINANCE_SEASON_2026.ringPolicy.defaultCapCents
           : null,
@@ -763,6 +779,42 @@ export async function replaceObligation(
       "obligation-replaced"
     );
     return deepFreeze({ created: true, value });
+  });
+}
+
+export async function recordReconciliationAdjustment(
+  repository: OperationalFinanceLedgerRepository,
+  input: RecordAdjustmentInput,
+  actor: OperationalFinanceActor,
+  idempotencyKey: string,
+  recordedAt: string
+): Promise<OperationalFinanceMutationResult<OperationalFinanceAdjustment>> {
+  requireCommissioner(actor);
+  if (input.season !== 2026) throw new Error("Reconciliation adjustments currently support 2026 only.");
+  if (!["cash_variance", "bank_fee", "refund", "rounding_correction", "other_approved"].includes(input.category)) throw new Error("Adjustment category is invalid.");
+  if (!Number.isSafeInteger(input.amountCents) || input.amountCents === 0) throw new Error("Adjustment amount must be a non-zero integer number of cents.");
+  if (!Number.isInteger(Date.parse(input.effectiveDate))) throw new Error("Adjustment effective date is invalid.");
+  const reason = requireNonEmpty(input.reason, "Adjustment reason");
+  return repository.runTransaction(async (transaction) => {
+    const duplicate = await existingTarget(transaction, idempotencyKey, "adjustment-recorded", async (id) =>
+      (await transaction.getAllAdjustments(input.season)).find((entry) => entry.adjustmentId === id) ?? null
+    );
+    if (duplicate) return duplicate;
+    const value = deepFreeze<OperationalFinanceAdjustment>({
+      adjustmentId: `operational-finance-adjustment:${input.season}:${idempotencyKey}`,
+      season: input.season,
+      category: input.category,
+      amountCents: input.amountCents,
+      reason,
+      effectiveDate: new Date(input.effectiveDate).toISOString().slice(0, 10),
+      createdAt: recordedAt,
+      createdBy: { ...actor },
+      idempotencyKey,
+    });
+    await transaction.putAdjustment(value);
+    await transaction.putAuditEvent(auditEvent(input.season, "adjustment-recorded", actor, "adjustment", value.adjustmentId, recordedAt, reason, idempotencyKey, null, value.adjustmentId, { amountCents: value.amountCents, effectiveDate: value.effectiveDate, category: value.category, sourceRef: input.sourceRef }));
+    await transaction.putIdempotency(idempotencyRecord(input.season, "adjustment-recorded", "adjustment", value.adjustmentId, idempotencyKey, recordedAt));
+    return { created: true, value };
   });
 }
 

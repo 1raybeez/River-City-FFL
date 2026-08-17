@@ -86,6 +86,7 @@ const EVENT_LABELS: Record<OperationalFinanceAuditEvent["eventType"], string> = 
   "obligation-replaced": "Obligation replaced",
   "settlement-reversed": "Payment reversed",
   "migration-recorded": "Opening migration recorded",
+  "adjustment-recorded": "Reconciliation adjustment recorded",
 };
 
 function awardCategoryLabel(category: string) {
@@ -110,6 +111,7 @@ const EVENT_SORT_PRIORITY: Record<OperationalFinanceAuditEvent["eventType"], num
   "expense-obligation-created": 2,
   "season-metadata-created": 1,
   "season-closed": 8,
+  "adjustment-recorded": 5,
 };
 
 function formatRecordedDate(value: string | null) {

@@ -1,5 +1,6 @@
 import type {
   OperationalFinanceAuditEvent,
+  OperationalFinanceAdjustment,
   OperationalFinanceArchive,
   OperationalFinanceIdempotencyRecord,
   OperationalFinanceLedgerRepository,
@@ -17,6 +18,7 @@ type MemoryState = {
   obligations: Map<string, OperationalFinanceObligation>;
   settlements: Map<string, OperationalFinanceSettlement>;
   reversals: Map<string, OperationalFinanceReversal>;
+  adjustments: Map<string, OperationalFinanceAdjustment>;
   auditEvents: Map<string, OperationalFinanceAuditEvent>;
   migrationRecords: Map<string, OperationalFinanceMigrationRecord>;
   idempotencyRecords: Map<string, OperationalFinanceIdempotencyRecord>;
@@ -41,6 +43,7 @@ function cloneState(state: MemoryState): MemoryState {
     obligations: new Map([...state.obligations].map(([key, value]) => [key, clone(value)])),
     settlements: new Map([...state.settlements].map(([key, value]) => [key, clone(value)])),
     reversals: new Map([...state.reversals].map(([key, value]) => [key, clone(value)])),
+    adjustments: new Map([...state.adjustments].map(([key, value]) => [key, clone(value)])),
     auditEvents: new Map([...state.auditEvents].map(([key, value]) => [key, clone(value)])),
     migrationRecords: new Map([...state.migrationRecords].map(([key, value]) => [key, clone(value)])),
     idempotencyRecords: new Map([...state.idempotencyRecords].map(([key, value]) => [key, clone(value)])),
@@ -82,6 +85,9 @@ function transactionFor(state: MemoryState): OperationalFinanceLedgerTransaction
     async getAllReversals(season) {
       return clone([...state.reversals.values()].filter((entry) => entry.season === season));
     },
+    async getAllAdjustments(season) {
+      return clone([...state.adjustments.values()].filter((entry) => entry.season === season));
+    },
     async putSeason(value) {
       if (state.seasons.has(value.season)) throw new Error(`Season ${value.season} already exists.`);
       state.seasons.set(value.season, clone(value));
@@ -98,6 +104,9 @@ function transactionFor(state: MemoryState): OperationalFinanceLedgerTransaction
     },
     async putReversal(value) {
       putUnique(state.reversals, value.reversalId, value, "Reversal");
+    },
+    async putAdjustment(value) {
+      putUnique(state.adjustments, value.adjustmentId, value, "Adjustment");
     },
     async putAuditEvent(value) {
       putUnique(state.auditEvents, value.eventId, value, "Audit event");
@@ -123,6 +132,7 @@ export class InMemoryOperationalFinanceLedgerRepository
     obligations: new Map(),
     settlements: new Map(),
     reversals: new Map(),
+    adjustments: new Map(),
     auditEvents: new Map(),
     migrationRecords: new Map(),
     idempotencyRecords: new Map(),
@@ -144,6 +154,7 @@ export class InMemoryOperationalFinanceLedgerRepository
       obligations: clone([...this.state.obligations.values()]),
       settlements: clone([...this.state.settlements.values()]),
       reversals: clone([...this.state.reversals.values()]),
+      adjustments: clone([...this.state.adjustments.values()]),
       auditEvents: clone([...this.state.auditEvents.values()]),
       migrationRecords: clone([...this.state.migrationRecords.values()]),
       idempotencyRecords: clone([...this.state.idempotencyRecords.values()]),

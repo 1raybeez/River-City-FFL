@@ -19,7 +19,7 @@ function sameOrigin(req: Request) {
   return allowed.has(origin);
 }
 
-const formats = new Set<OperationalFinanceExportFormat>(["json", "obligations", "settlements", "dues-status", "expenses", "contributions", "report"]);
+const formats = new Set<OperationalFinanceExportFormat>(["json", "obligations", "settlements", "dues-status", "expenses", "contributions", "adjustments", "report"]);
 
 export async function GET(req: Request, context: { params: Promise<{ season: string }> }) {
   try {

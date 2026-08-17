@@ -8,6 +8,7 @@ const exports = [
   ["settlements", "Download Settlements CSV"],
   ["expenses", "Download Expenses CSV"],
   ["contributions", "Download Contributions CSV"],
+  ["adjustments", "Download Adjustments CSV"],
 ] as const;
 
 export default function OperationalFinanceExportSection() {

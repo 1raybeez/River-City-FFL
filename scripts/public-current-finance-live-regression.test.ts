@@ -32,6 +32,7 @@ async function main() {
   }, actor, "public-live:dues:stan", recordedAt);
 
   await createOperationalFinanceExpense(repository, 2026, {
+    effectiveDate: "2026-08-11", description: "Fixture ring", evidenceReference: "private-reference",
     category: "championship-ring",
     amountCents: 1_377,
     confirmed: true,

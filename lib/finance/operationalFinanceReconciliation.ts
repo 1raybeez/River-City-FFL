@@ -34,6 +34,7 @@ export type OperationalFinanceReconciliation = Readonly<{
   separatelyFundedExpenseCents: number;
   paidSeparatelyFundedExpenseCents: number;
   separatelyFundedContributionCents: number;
+  reconciliationAdjustmentCents: number;
   approvedRingExpenseCents: number | null;
   projectedChampionCashCents: number | null;
   approvedChampionCashCents: number | null;
@@ -53,6 +54,18 @@ export type OperationalFinanceReconciliation = Readonly<{
     outstandingCents: number;
     contributedCents: number;
     commissionerNote: string | null;
+    effectiveDate: string | null;
+    description: string | null;
+    evidenceReference: string | null;
+  }>[];
+  adjustments: readonly Readonly<{
+    adjustmentId: string;
+    category: "cash_variance" | "bank_fee" | "refund" | "rounding_correction" | "other_approved";
+    amountCents: number;
+    reason: string;
+    effectiveDate: string;
+    createdAt: string;
+    createdBy: string;
   }>[];
 }>; 
 
@@ -137,6 +150,8 @@ export function reconcileOperationalFinance(
     settlements.filter((entry) => entry.direction === "incoming-separate-contribution"),
     (entry) => entry.amountCents
   );
+  const adjustments = snapshot.adjustments.filter((entry) => entry.season === season);
+  const reconciliationAdjustmentCents = sum(adjustments, (entry) => entry.amountCents);
   const approvedAwardCents = sum(awards, (entry) => entry.amountCents);
   const approvedDuesFundedExpenseCents = sum(duesFundedExpenses, (entry) => entry.amountCents);
   const separatelyFundedExpenseCents = sum(separateExpenses, (entry) => entry.amountCents);
@@ -227,6 +242,7 @@ export function reconcileOperationalFinance(
     check("required-awards", awards.length === requiredAwardCount ? "PASS" : completeSeason ? "ISSUE" : "PENDING", "All required awards accounted for", `${awards.length} of ${requiredAwardCount} required award obligations are approved.`),
     check("allocation", approvedAwardCents + approvedDuesFundedExpenseCents > 60_000 ? "ISSUE" : approvedAwardCents + approvedDuesFundedExpenseCents === 60_000 ? "PASS" : completeSeason ? "ISSUE" : "PENDING", "No unexplained dues-pool cents", `${approvedAwardCents + approvedDuesFundedExpenseCents} of 60000 cents are currently allocated.`),
     check("cash-settlement", duesAssessedCents === duesCollectedCents && approvedAwardCents === paidAwardCents && approvedDuesFundedExpenseCents === paidDuesFundedExpenseCents ? "PASS" : completeSeason ? "ISSUE" : "PENDING", "Required cash movements complete", "Dues, awards, and dues-funded expenses remain tracked independently."),
+    check("reconciliation-adjustments", adjustments.every((entry) => Number.isSafeInteger(entry.amountCents) && entry.amountCents !== 0 && entry.reason.trim() && !Number.isNaN(Date.parse(entry.effectiveDate))) ? "PASS" : "ISSUE", "Reconciliation adjustments are explicit and valid", adjustments.length ? `${adjustments.length} commissioner-recorded adjustment(s) included.` : "No explicit reconciliation adjustment has been recorded."),
   ] as const;
   const currentlyAllocatedCents = approvedAwardCents + approvedDuesFundedExpenseCents;
   const issues = checks.filter((entry) => entry.state === "ISSUE");
@@ -254,8 +270,20 @@ export function reconcileOperationalFinance(
       outstandingCents: expense.amountCents - paidCents,
       contributedCents,
       commissionerNote: expense.expenseEvidence?.commissionerNote ?? null,
+      effectiveDate: expense.expenseEvidence?.effectiveDate ?? null,
+      description: expense.expenseEvidence?.description ?? null,
+      evidenceReference: expense.expenseEvidence?.evidenceReference ?? null,
     });
   });
+  const adjustmentDetails = adjustments.map((entry) => Object.freeze({
+    adjustmentId: entry.adjustmentId,
+    category: entry.category,
+    amountCents: entry.amountCents,
+    reason: entry.reason,
+    effectiveDate: entry.effectiveDate,
+    createdAt: entry.createdAt,
+    createdBy: entry.createdBy.actorId,
+  }));
   return Object.freeze({
     season,
     status: readyToClose ? "ready-to-close" : issues.length ? "issues-found" : "season-in-progress",
@@ -275,16 +303,18 @@ export function reconcileOperationalFinance(
     separatelyFundedExpenseCents,
     paidSeparatelyFundedExpenseCents,
     separatelyFundedContributionCents,
+    reconciliationAdjustmentCents,
     approvedRingExpenseCents: ring?.amountCents ?? null,
     projectedChampionCashCents,
     approvedChampionCashCents: champion?.amountCents ?? null,
     currentlyAllocatedCents,
     currentlyUnallocatedCents: 60_000 - currentlyAllocatedCents,
-    cashOnHandCents: duesCollectedCents - paidAwardCents - paidDuesFundedExpenseCents,
+    cashOnHandCents: duesCollectedCents + reconciliationAdjustmentCents - paidAwardCents - paidDuesFundedExpenseCents,
     checks: Object.freeze(checks),
     issues: Object.freeze(issues),
     pendingChecks: Object.freeze(pendingChecks),
     readyToClose,
     expenses: Object.freeze(expenses),
+    adjustments: Object.freeze(adjustmentDetails),
   });
 }

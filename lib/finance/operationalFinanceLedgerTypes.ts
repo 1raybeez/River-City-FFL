@@ -17,6 +17,7 @@ export type OperationalFinanceArchive = Readonly<{
   obligations: readonly Readonly<Record<string, unknown>>[];
   settlements: readonly Readonly<Record<string, unknown>>[];
   reversals: readonly Readonly<Record<string, unknown>>[];
+  adjustments: readonly Readonly<Record<string, unknown>>[];
   expenses: readonly Readonly<Record<string, unknown>>[];
   contributions: readonly Readonly<Record<string, unknown>>[];
   coverage: Readonly<Record<string, unknown>> | null;
@@ -73,11 +74,26 @@ export type OperationalFinanceProposalEvidence = Readonly<{
 
 export type OperationalFinanceExpenseEvidence = Readonly<{
   actualCostCents: number;
+  effectiveDate?: string | null;
+  description?: string | null;
+  evidenceReference?: string | null;
   defaultFundingCapCents: number | null;
   approvedFundingCapCents: number | null;
   overCapCents: number;
   overrideApproved: boolean;
   commissionerNote: string | null;
+}>;
+
+export type OperationalFinanceAdjustment = Readonly<{
+  adjustmentId: string;
+  season: number;
+  category: "cash_variance" | "bank_fee" | "refund" | "rounding_correction" | "other_approved";
+  amountCents: number;
+  reason: string;
+  effectiveDate: string;
+  createdAt: string;
+  createdBy: OperationalFinanceActor;
+  idempotencyKey: string;
 }>;
 
 export interface OperationalFinanceObligation {
@@ -144,6 +160,7 @@ export type OperationalFinanceAuditEventType =
   | "obligation-reversed"
   | "obligation-replaced"
   | "settlement-reversed"
+  | "adjustment-recorded"
   | "migration-recorded"
   | "season-closed";
 
@@ -158,6 +175,7 @@ export interface OperationalFinanceAuditEvent {
     | "obligation"
     | "settlement"
     | "reversal"
+    | "adjustment"
     | "migration";
   readonly targetId: string;
   readonly createdAt: string;
@@ -189,7 +207,7 @@ export interface OperationalFinanceIdempotencyRecord {
   readonly idempotencyKey: string;
   readonly season: number;
   readonly operation: string;
-  readonly targetType: "season" | "obligation" | "settlement" | "reversal" | "migration";
+  readonly targetType: "season" | "obligation" | "settlement" | "reversal" | "adjustment" | "migration";
   readonly targetId: string;
   readonly createdAt: string;
 }
@@ -233,6 +251,7 @@ export interface OperationalFinanceLedgerSnapshot {
   readonly obligations: readonly OperationalFinanceObligation[];
   readonly settlements: readonly OperationalFinanceSettlement[];
   readonly reversals: readonly OperationalFinanceReversal[];
+  readonly adjustments: readonly OperationalFinanceAdjustment[];
   readonly auditEvents: readonly OperationalFinanceAuditEvent[];
   readonly migrationRecords: readonly OperationalFinanceMigrationRecord[];
   readonly idempotencyRecords: readonly OperationalFinanceIdempotencyRecord[];
@@ -248,11 +267,13 @@ export interface OperationalFinanceLedgerTransaction {
   getAllObligations(season: number): Promise<readonly OperationalFinanceObligation[]>;
   getAllSettlements(season: number): Promise<readonly OperationalFinanceSettlement[]>;
   getAllReversals(season: number): Promise<readonly OperationalFinanceReversal[]>;
+  getAllAdjustments(season: number): Promise<readonly OperationalFinanceAdjustment[]>;
   updateSeason(value: OperationalFinanceSeasonLedger): Promise<void>;
   putSeason(value: OperationalFinanceSeasonLedger): Promise<void>;
   putObligation(value: OperationalFinanceObligation): Promise<void>;
   putSettlement(value: OperationalFinanceSettlement): Promise<void>;
   putReversal(value: OperationalFinanceReversal): Promise<void>;
+  putAdjustment(value: OperationalFinanceAdjustment): Promise<void>;
   putAuditEvent(value: OperationalFinanceAuditEvent): Promise<void>;
   putMigrationRecord(value: OperationalFinanceMigrationRecord): Promise<void>;
   putIdempotency(value: OperationalFinanceIdempotencyRecord): Promise<void>;

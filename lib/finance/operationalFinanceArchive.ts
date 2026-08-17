@@ -118,6 +118,7 @@ function buildArchive(
   const obligations = snapshot.obligations.filter((entry) => entry.season === 2026).sort((a, b) => a.obligationId.localeCompare(b.obligationId)).map(cleanObligation);
   const settlements = snapshot.settlements.filter((entry) => entry.season === 2026).sort((a, b) => a.settlementId.localeCompare(b.settlementId)).map(cleanSettlement);
   const reversals = snapshot.reversals.filter((entry) => entry.season === 2026).sort((a, b) => a.reversalId.localeCompare(b.reversalId)).map((entry) => withoutKeys(entry as unknown as Record<string, unknown>, ["idempotencyKey"]));
+  const adjustments = snapshot.adjustments.filter((entry) => entry.season === 2026).sort((a, b) => a.adjustmentId.localeCompare(b.adjustmentId)).map((entry) => withoutKeys(entry as unknown as Record<string, unknown>, ["idempotencyKey"]));
   const expenses = review.reconciliation.expenses.slice().sort((a, b) => a.obligationId.localeCompare(b.obligationId)).map((expense) => withoutKeys(expense as unknown as Record<string, unknown>, ["commissionerNote"]));
   const contributions = settlements.filter((entry) => entry.direction === "incoming-separate-contribution");
   const base = {
@@ -132,6 +133,7 @@ function buildArchive(
     obligations,
     settlements,
     reversals,
+    adjustments,
     expenses,
     contributions,
     coverage: proposalSet?.coverage ? { ...proposalSet.coverage } : null,
@@ -170,6 +172,7 @@ export async function closeOperationalFinanceSeason(
       obligations: await transaction.getAllObligations(2026),
       settlements: await transaction.getAllSettlements(2026),
       reversals: await transaction.getAllReversals(2026),
+      adjustments: await transaction.getAllAdjustments(2026),
       auditEvents: [],
       migrationRecords: [],
       idempotencyRecords: [],
