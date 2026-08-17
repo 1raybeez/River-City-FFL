@@ -635,7 +635,11 @@ function normalizeProjectionRecords(value: unknown): MatchupsProjectionRecord[] 
 }
 
 function projectionSourceLabel(source: MatchupsProjectionSource) {
-  return source === "weekly-live" ? "Weekly live" : source === "weekly-derived" ? "Weekly derived" : "Season fallback";
+  return source === "weekly-live"
+    ? "WEEKLY PROJECTION"
+    : source === "weekly-derived"
+      ? "DERIVED WEEKLY ESTIMATE"
+      : "SEASON-BASED ESTIMATE";
 }
 
 function projectTeam(
@@ -841,7 +845,7 @@ function ProjectionContext({
 
   const scoreLine = (team: TeamDisplay, aggregate: StarterProjectionAggregation) => aggregate.coverageComplete
     ? `${team.name}: ${aggregate.projectedTotalPoints?.toFixed(1)}`
-    : `${team.name}: Projected score unavailable — ${aggregate.projectedStarterCount} of ${aggregate.totalStarterCount} starters have projections.`;
+    : `${team.name}: Projected score unavailable — incomplete starter projection coverage (${aggregate.projectedStarterCount} of ${aggregate.totalStarterCount} starters projected).`;
   const edge = first.coverageComplete && second.coverageComplete
     ? first.projectedTotalPoints === second.projectedTotalPoints
       ? "Projected Edge: Even"
