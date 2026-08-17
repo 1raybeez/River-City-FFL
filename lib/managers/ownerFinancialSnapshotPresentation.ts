@@ -13,7 +13,7 @@ export type OwnerFinancialSnapshotState =
 export type OwnerFinancialSnapshotPresentation = Readonly<{
   ownerId: string;
   state: OwnerFinancialSnapshotState;
-  title: "Recorded Winnings (2016–2025)";
+  title: string;
   recordedWinnings: number | null;
   recordedWinningsLabel: string | null;
   cashPaid: number | null;
@@ -21,8 +21,8 @@ export type OwnerFinancialSnapshotPresentation = Readonly<{
   activitySeasons: readonly number[];
   activityLabel: string | null;
   coverageStartSeason: 2016;
-  coverageEndSeason: 2025;
-  coverageLabel: "2016–2025 reconciled records";
+  coverageEndSeason: number;
+  coverageLabel: string;
   statusMessage: string | null;
   attributionNote: string | null;
   scopeNote: string;
@@ -67,12 +67,13 @@ export function buildOwnerFinancialSnapshotPresentation(
 ): OwnerFinancialSnapshotPresentation | null {
   if (input.ownerStatus === "staff") return null;
 
+  const coverageLabel = `${input.coverage.firstSeason}–${input.coverage.latestSeason} reconciled records`;
   const base = {
     ownerId: input.ownerId,
-    title: "Recorded Winnings (2016–2025)" as const,
+    title: `Recorded Winnings (${input.coverage.firstSeason}–${input.coverage.latestSeason})`,
     coverageStartSeason: input.coverage.firstSeason,
     coverageEndSeason: input.coverage.latestSeason,
-    coverageLabel: "2016–2025 reconciled records" as const,
+    coverageLabel,
     attributionNote: ATTRIBUTION_NOTES[input.ownerId] ?? null,
     scopeNote:
       "Official River City attribution only; private co-owner distributions are outside these records.",

@@ -260,6 +260,16 @@ async function existingTarget<T>(
   return deepFreeze({ created: false, value: target });
 }
 
+async function ensureSeasonMutable(
+  transaction: OperationalFinanceLedgerTransaction,
+  season: number
+) {
+  const ledger = await transaction.getSeason(season);
+  if (ledger?.status === "closed") {
+    throw new Error("Closed season is immutable; use the approved commissioner correction workflow.");
+  }
+}
+
 async function putObligation(
   transaction: OperationalFinanceLedgerTransaction,
   input: RecordObligationInput,
@@ -374,6 +384,7 @@ export async function recordObligation(
       }
       return duplicate;
     }
+    await ensureSeasonMutable(transaction, input.season);
     return deepFreeze({
       created: true,
       value: await putObligation(
@@ -675,6 +686,7 @@ export async function recordSettlement(
       }
       return duplicate;
     }
+    await ensureSeasonMutable(transaction, input.season);
     return deepFreeze({ created: true, value: await putSettlement(transaction, input, actor, idempotencyKey, recordedAt) });
   });
 }
@@ -734,6 +746,7 @@ export async function reverseObligation(
   return repository.runTransaction(async (transaction) => {
     const duplicate = await existingTarget(transaction, idempotencyKey, "obligation-reversed", async (id) => (await transaction.getAllReversals(season)).find((entry) => entry.reversalId === id) ?? null);
     if (duplicate) return duplicate;
+    await ensureSeasonMutable(transaction, season);
     return deepFreeze({ created: true, value: await putReversal(transaction, season, "obligation", obligationId, reason, actor, idempotencyKey, recordedAt) });
   });
 }
@@ -751,6 +764,7 @@ export async function reverseSettlement(
   return repository.runTransaction(async (transaction) => {
     const duplicate = await existingTarget(transaction, idempotencyKey, "settlement-reversed", async (id) => (await transaction.getAllReversals(season)).find((entry) => entry.reversalId === id) ?? null);
     if (duplicate) return duplicate;
+    await ensureSeasonMutable(transaction, season);
     return deepFreeze({ created: true, value: await putReversal(transaction, season, "settlement", settlementId, reason, actor, idempotencyKey, recordedAt) });
   });
 }
@@ -768,6 +782,7 @@ export async function replaceObligation(
   return repository.runTransaction(async (transaction) => {
     const duplicate = await existingTarget(transaction, idempotencyKey, "obligation-replaced", (id) => transaction.getObligation(id));
     if (duplicate) return duplicate;
+    await ensureSeasonMutable(transaction, replacement.season);
     const reversalKey = `${idempotencyKey}:reversal`;
     const reversal = await putReversal(transaction, replacement.season, "obligation", originalObligationId, reason, actor, reversalKey, recordedAt, replacement.obligationId);
     const value = await putObligation(
@@ -800,6 +815,7 @@ export async function recordReconciliationAdjustment(
       (await transaction.getAllAdjustments(input.season)).find((entry) => entry.adjustmentId === id) ?? null
     );
     if (duplicate) return duplicate;
+    await ensureSeasonMutable(transaction, input.season);
     const value = deepFreeze<OperationalFinanceAdjustment>({
       adjustmentId: `operational-finance-adjustment:${input.season}:${idempotencyKey}`,
       season: input.season,
@@ -888,6 +904,7 @@ export async function apply2026OpeningDuesMigration(
       await transaction.putSeason(season);
       await transaction.putAuditEvent(auditEvent(2026, "season-metadata-created", actor, "season", "2026", recordedAt, "Operational finance season metadata created.", `${key}:season`));
     }
+    await ensureSeasonMutable(transaction, 2026);
     for (const assessment of plan.assessments) {
       await putObligation(transaction, assessment, actor, `migration:2026:assessment:${assessment.franchiseId}`, recordedAt);
     }

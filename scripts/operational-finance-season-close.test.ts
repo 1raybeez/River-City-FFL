@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 
-import { apply2026OpeningDuesMigration } from "../lib/finance/operationalFinanceLedger";
+import { apply2026OpeningDuesMigration, recordReconciliationAdjustment } from "../lib/finance/operationalFinanceLedger";
 import { InMemoryOperationalFinanceLedgerRepository } from "../lib/finance/operationalFinanceLedgerMemory";
-import { closeOperationalFinanceSeason, reviewOperationalFinanceSeasonClose } from "../lib/finance/operationalFinanceArchive";
+import { closeOperationalFinanceSeason, reopenOperationalFinanceSeasonForCorrection, reviewOperationalFinanceSeasonClose } from "../lib/finance/operationalFinanceArchive";
 import { operationalFinanceArchiveToHistoricalTransactions, closedOperationalFinanceArchivesToHistoricalTransactions } from "../lib/history/operationalFinanceHistoricalAdapter";
+import { buildFinancialHistory } from "../lib/history/financialHistory";
+import { HISTORICAL_FINANCIAL_SOURCE, HISTORICAL_FINANCIAL_TRANSACTIONS } from "../lib/history/historicalFinancialData";
 import type { OperationalFinanceLedgerRepository, OperationalFinanceLedgerTransaction, OperationalFinanceObligation, OperationalFinanceSettlement } from "../lib/finance/operationalFinanceLedgerTypes";
 
 const at = "2026-12-31T23:59:00.000Z";
@@ -68,6 +70,23 @@ async function main() {
   const retry = await closeOperationalFinanceSeason(first, completeContext, actor, "close:fixture:1", at, true);
   assert.equal(retry.created, false);
   await assert.rejects(() => closeOperationalFinanceSeason(first, completeContext, actor, "close:fixture:2", at, true), /closed|immutable/i);
+  assert.equal(closed.archive.archiveRevision, 1);
+  await assert.rejects(
+    () => reopenOperationalFinanceSeasonForCorrection(first, system, "not allowed", "reopen:bad", at),
+    /commissioner/i
+  );
+  await assert.rejects(
+    () => recordReconciliationAdjustment(first, { season: 2026, category: "cash_variance", amountCents: 100, reason: "closed correction", effectiveDate: "2026-12-31", sourceRef: "fixture" }, actor, "adjust:closed", at),
+    /closed season is immutable/i
+  );
+  const reopened = await reopenOperationalFinanceSeasonForCorrection(first, actor, "Correct approved close evidence", "reopen:fixture:1", at);
+  assert.equal(reopened.created, true);
+  assert.equal((await first.getSnapshot()).seasons[0].status, "reconciling");
+  const corrected = await closeOperationalFinanceSeason(first, completeContext, actor, "close:fixture:2", at, true);
+  assert.equal(corrected.archive.archiveRevision, 2);
+  assert.equal(corrected.archive.supersedesArchiveId, closed.archive.archiveId);
+  assert.equal((await first.getAllArchives(2026)).length, 2);
+  assert.equal((await first.getAllArchives(2026))[0].archiveId, closed.archive.archiveId);
 
   const second = await readyRepository();
   const closedAgain = await closeOperationalFinanceSeason(second, completeContext, actor, "close:fixture:1", at, true);
@@ -81,11 +100,21 @@ async function main() {
   assert.equal(transactions.reduce((sum, entry) => sum + entry.recordedWinningsAmount, 0), 584);
   assert.equal(transactions.reduce((sum, entry) => sum + entry.cashPaidAmount, 0), 584);
   assert.equal(closedOperationalFinanceArchivesToHistoricalTransactions([]).length, 0);
+  const historical = buildFinancialHistory({
+    source: HISTORICAL_FINANCIAL_SOURCE,
+    transactions: HISTORICAL_FINANCIAL_TRANSACTIONS,
+    operationalArchives: [closed.archive, corrected.archive],
+  });
+  assert.deepEqual(historical.coverage.seasons.slice(-2), [2025, 2026]);
+  assert.equal(historical.coverage.latestSeason, 2026);
+  assert.equal(historical.coverage.season2026, "closed-operational-archive");
+  assert.equal(historical.transactions.filter((entry) => entry.season === 2026).length, transactions.length);
 
   const failingBase = await readyRepository();
   const failing: OperationalFinanceLedgerRepository = {
     getSnapshot: () => failingBase.getSnapshot(),
     getArchive: (season) => failingBase.getArchive(season),
+    getAllArchives: (season) => failingBase.getAllArchives(season),
     runTransaction: <T>(operation: (transaction: OperationalFinanceLedgerTransaction) => Promise<T>) => failingBase.runTransaction((transaction) => operation({ ...transaction, putArchive: async () => { throw new Error("archive storage unavailable"); } })),
   };
   await assert.rejects(() => closeOperationalFinanceSeason(failing, completeContext, actor, "close:failure", at, true), /archive storage unavailable/i);

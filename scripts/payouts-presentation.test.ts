@@ -5,7 +5,7 @@ const page = fs.readFileSync('app/league-info/payouts/page.tsx', 'utf8');
 const client = fs.readFileSync('components/league-info/FinancialHistoryClient.tsx', 'utf8');
 const shell = fs.readFileSync('components/SiteShell.tsx', 'utf8');
 
-assert.match(page, /loadFinancialHistoryPresentation/);
+assert.match(page, /loadFinancialHistoryPresentationWithOperationalArchive/);
 assert.match(page, /loadPublicOperationalFinancePresentation/);
 assert.match(client, /<SiteShell activePath="\/league-info">/);
 assert.match(client, /River City Payouts/);

@@ -113,7 +113,9 @@ function buildArchive(
   review: OperationalFinanceCloseReview,
   actor: OperationalFinanceActor,
   closedAt: string,
-  proposalSet?: OperationalFinanceProposalSet | null
+  proposalSet?: OperationalFinanceProposalSet | null,
+  archiveRevision = 1,
+  supersedesArchiveId: string | null = null
 ): OperationalFinanceArchive {
   const obligations = snapshot.obligations.filter((entry) => entry.season === 2026).sort((a, b) => a.obligationId.localeCompare(b.obligationId)).map(cleanObligation);
   const settlements = snapshot.settlements.filter((entry) => entry.season === 2026).sort((a, b) => a.settlementId.localeCompare(b.settlementId)).map(cleanSettlement);
@@ -122,7 +124,9 @@ function buildArchive(
   const expenses = review.reconciliation.expenses.slice().sort((a, b) => a.obligationId.localeCompare(b.obligationId)).map((expense) => withoutKeys(expense as unknown as Record<string, unknown>, ["commissionerNote"]));
   const contributions = settlements.filter((entry) => entry.direction === "incoming-separate-contribution");
   const base = {
-    archiveId: `operational-finance-archive:2026`,
+    archiveId: `operational-finance-archive:2026:r${archiveRevision}`,
+    archiveRevision,
+    supersedesArchiveId,
     season: 2026,
     schemaVersion: OPERATIONAL_FINANCE_ARCHIVE_SCHEMA_VERSION,
     rulesVersion: season.rulesVersion || OPERATIONAL_FINANCE_SCHEMA_VERSION,
@@ -167,6 +171,8 @@ export async function closeOperationalFinanceSeason(
       if (archive) throw new Error("The 2026 season is already closed and immutable.");
       throw new Error("Closed season archive is missing.");
     }
+    const previousArchive = await transaction.getArchive(2026);
+    const archiveRevision = previousArchive ? (previousArchive.archiveRevision ?? 1) + 1 : 1;
     const snapshot: OperationalFinanceLedgerSnapshot = {
       seasons: [season],
       obligations: await transaction.getAllObligations(2026),
@@ -179,7 +185,16 @@ export async function closeOperationalFinanceSeason(
     };
     const review = reviewOperationalFinanceSeasonClose(snapshot, context);
     if (!review.readyToClose) throw new Error(`Season close blocked: ${review.blockers.join(" ")}`);
-    const archive = buildArchive(snapshot, season, review, actor, closedAt, context.proposalSet);
+    const archive = buildArchive(
+      snapshot,
+      season,
+      review,
+      actor,
+      closedAt,
+      context.proposalSet,
+      archiveRevision,
+      previousArchive?.archiveId ?? null
+    );
     const closedSeason = {
       ...season,
       status: "closed" as const,
@@ -188,6 +203,7 @@ export async function closeOperationalFinanceSeason(
       closedBy: actor.actorId,
       archiveId: archive.archiveId,
       archiveHash: archive.archiveHash,
+      archiveRevision: archive.archiveRevision,
     };
     await transaction.putArchive(archive);
     await transaction.updateSeason(closedSeason);
@@ -200,11 +216,17 @@ export async function closeOperationalFinanceSeason(
       targetType: "season",
       targetId: "2026",
       createdAt: closedAt,
-      reason: "Commissioner explicitly closed the fully reconciled season; immutable archive verified before close metadata was written.",
+      reason: previousArchive
+        ? "Commissioner explicitly re-closed the fully reconciled season after an approved correction; the prior archive remains immutable and is superseded by this revision."
+        : "Commissioner explicitly closed the fully reconciled season; immutable archive verified before close metadata was written.",
       idempotencyKey,
       beforeRef: null,
       afterRef: archive.archiveId,
-      metadata: { archiveHash: archive.archiveHash },
+      metadata: {
+        archiveHash: archive.archiveHash,
+        archiveRevision: archive.archiveRevision ?? 1,
+        supersedesArchiveId: archive.supersedesArchiveId ?? null,
+      },
     });
     await transaction.putIdempotency({
       idempotencyKey,
@@ -215,5 +237,61 @@ export async function closeOperationalFinanceSeason(
       createdAt: closedAt,
     });
     return Object.freeze({ created: true, archive });
+  });
+}
+
+export async function reopenOperationalFinanceSeasonForCorrection(
+  repository: OperationalFinanceLedgerRepository,
+  actor: OperationalFinanceActor,
+  reason: string,
+  idempotencyKey: string,
+  reopenedAt: string
+) {
+  if (actor.role !== "commissioner" || !actor.actorId.trim()) throw new Error("Commissioner authorization is required to reopen the season for correction.");
+  if (!reason.trim()) throw new Error("A correction reason is required.");
+  if (!/^[a-zA-Z0-9:._-]{8,240}$/.test(idempotencyKey)) throw new Error("A stable correction idempotency key is required.");
+  return repository.runTransaction(async (transaction) => {
+    const existing = await transaction.getIdempotency(idempotencyKey);
+    if (existing) {
+      if (existing.operation !== "season-reopened-for-correction") throw new Error("Idempotency key was already used for a different operation.");
+      const season = await transaction.getSeason(2026);
+      if (!season) throw new Error("The 2026 operational finance ledger was not found.");
+      return Object.freeze({ created: false, season });
+    }
+    const season = await transaction.getSeason(2026);
+    if (!season) throw new Error("The 2026 operational finance ledger was not found.");
+    if (season.status !== "closed") throw new Error("Only a closed season can be reopened for correction.");
+    const archive = await transaction.getArchive(2026);
+    if (!archive) throw new Error("Closed season archive is missing.");
+    const reopened = {
+      ...season,
+      status: "reconciling" as const,
+      updatedAt: reopenedAt,
+    };
+    await transaction.updateSeason(reopened);
+    await transaction.putAuditEvent({
+      eventId: `operational-finance-audit:${idempotencyKey}`,
+      season: 2026,
+      eventType: "season-reopened-for-correction",
+      actorId: actor.actorId,
+      actorRole: actor.role,
+      targetType: "season",
+      targetId: "2026",
+      createdAt: reopenedAt,
+      reason,
+      idempotencyKey,
+      beforeRef: archive.archiveId,
+      afterRef: "2026:reconciling",
+      metadata: { archiveHash: archive.archiveHash, archiveRevision: archive.archiveRevision ?? 1 },
+    });
+    await transaction.putIdempotency({
+      idempotencyKey,
+      season: 2026,
+      operation: "season-reopened-for-correction",
+      targetType: "season",
+      targetId: archive.archiveId,
+      createdAt: reopenedAt,
+    });
+    return Object.freeze({ created: true, season: reopened });
   });
 }

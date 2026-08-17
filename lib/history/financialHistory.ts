@@ -3,6 +3,8 @@ import type {
   FinancialTransactionCategory,
   HistoricalFinancialTransaction,
 } from "@/lib/history/historicalFinancialData";
+import { closedOperationalFinanceArchivesToHistoricalTransactions } from "@/lib/history/operationalFinanceHistoricalAdapter";
+import type { OperationalFinanceArchive } from "@/lib/finance/operationalFinanceLedgerTypes";
 
 export type FinancialSeasonLedger = {
   readonly season: number;
@@ -51,9 +53,9 @@ export type FranchiseFinancialSummary = {
 
 export type FinancialCoverage = {
   readonly firstSeason: 2016;
-  readonly latestSeason: 2025;
+  readonly latestSeason: number;
   readonly pre2016: "no-source";
-  readonly season2026: "outside-historical-ledger";
+  readonly season2026: "outside-historical-ledger" | "closed-operational-archive";
   readonly seasons: readonly number[];
   readonly bySeason: readonly {
     readonly season: number;
@@ -110,6 +112,7 @@ export type FinancialHistoryAggregate = {
 export type FinancialHistoryInput = {
   readonly source: FinancialHistoryAggregate["source"];
   readonly transactions: readonly HistoricalFinancialTransaction[];
+  readonly operationalArchives?: readonly OperationalFinanceArchive[];
 };
 
 export type FinancialTransactionFilter = {
@@ -306,7 +309,17 @@ function requireInitialized() {
 export function buildFinancialHistory(
   input: FinancialHistoryInput
 ): FinancialHistoryAggregate {
-  const transactions = [...clone(input.transactions)].sort((first, second) =>
+  const archivesBySeason = new Map<number, OperationalFinanceArchive>();
+  for (const archive of input.operationalArchives ?? []) {
+    const current = archivesBySeason.get(archive.season);
+    if (!current || (archive.archiveRevision ?? 1) > (current.archiveRevision ?? 1)) {
+      archivesBySeason.set(archive.season, archive);
+    }
+  }
+  const operationalTransactions = closedOperationalFinanceArchivesToHistoricalTransactions(
+    [...archivesBySeason.values()]
+  );
+  const transactions = [...clone([...input.transactions, ...operationalTransactions])].sort((first, second) =>
     first.transactionKey.localeCompare(second.transactionKey)
   );
   const duplicates = duplicateKeys(transactions);
@@ -338,9 +351,13 @@ export function buildFinancialHistory(
   ];
 
   const seasons = uniqueSortedNumbers(transactions.map((transaction) => transaction.season));
+  const legacySeasons = seasons.filter((season) => season <= 2025);
+  const hasClosed2026 = seasons.includes(2026);
   if (
-    seasons.length !== 10 ||
-    seasons.some((season, index) => season !== 2016 + index)
+    legacySeasons.length !== 10 ||
+    legacySeasons.some((season, index) => season !== 2016 + index) ||
+    seasons.some((season) => season > 2026) ||
+    (hasClosed2026 && !archivesBySeason.has(2026))
   ) {
     throw new Error("Historical financial input must cover every season from 2016 through 2025.");
   }
@@ -391,9 +408,9 @@ export function buildFinancialHistory(
     franchiseSummaries,
     coverage: {
       firstSeason: 2016,
-      latestSeason: 2025,
+      latestSeason: seasons[seasons.length - 1] ?? 2025,
       pre2016: "no-source",
-      season2026: "outside-historical-ledger",
+      season2026: hasClosed2026 ? "closed-operational-archive" : "outside-historical-ledger",
       seasons,
       bySeason: seasonLedgers.map((ledger) => ({
         season: ledger.season,

@@ -123,10 +123,12 @@ function transactionAdapter(
     },
     async getArchive(requestedSeason) {
       if (requestedSeason !== season) return null;
-      const queued = pending.get("archive")?.get("closed");
-      if (queued) return clone(queued as OperationalFinanceArchive);
-      const snapshot = await transaction.get(seasonRef.collection("archives").doc("closed"));
-      return snapshot.exists ? clone(snapshot.data() as OperationalFinanceArchive) : null;
+      const archives = await readAll<OperationalFinanceArchive>("archive");
+      return clone(archives.sort((a, b) => (b.archiveRevision ?? 1) - (a.archiveRevision ?? 1))[0] ?? null);
+    },
+    async getAllArchives(requestedSeason) {
+      if (requestedSeason !== season) return [];
+      return clone((await readAll<OperationalFinanceArchive>("archive")).sort((a, b) => (a.archiveRevision ?? 1) - (b.archiveRevision ?? 1)));
     },
     async getAllObligations(requestedSeason) {
       return requestedSeason === season
@@ -178,7 +180,7 @@ function transactionAdapter(
       await create(SUBCOLLECTIONS.idempotency, value.idempotencyKey, value);
     },
     async putArchive(value) {
-      await create("archive", "closed", value);
+      await create("archive", value.archiveId, value);
     },
   };
 
@@ -251,9 +253,19 @@ export class FirestoreOperationalFinanceLedgerRepository
       .collection(OPERATIONAL_FINANCE_COLLECTION)
       .doc(String(season))
       .collection("archives")
-      .doc("closed")
       .get();
-    return snapshot.exists ? clone(snapshot.data() as OperationalFinanceArchive) : null;
+    const archives = snapshot.docs.map((entry) => entry.data() as OperationalFinanceArchive);
+    return clone(archives.sort((a, b) => (b.archiveRevision ?? 1) - (a.archiveRevision ?? 1))[0] ?? null);
+  }
+
+  async getAllArchives(season: number) {
+    if (season !== this.season) return [];
+    const snapshot = await this.database
+      .collection(OPERATIONAL_FINANCE_COLLECTION)
+      .doc(String(season))
+      .collection("archives")
+      .get();
+    return clone(snapshot.docs.map((entry) => entry.data() as OperationalFinanceArchive).sort((a, b) => (a.archiveRevision ?? 1) - (b.archiveRevision ?? 1)));
   }
 }
 

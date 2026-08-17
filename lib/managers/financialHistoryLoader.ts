@@ -5,6 +5,7 @@ import {
   HISTORICAL_FINANCIAL_TRANSACTIONS,
 } from "@/lib/history/historicalFinancialData";
 import { buildFinancialHistory } from "@/lib/history/financialHistory";
+import { getOperationalFinanceLedgerRepository } from "@/lib/finance/operationalFinanceLedgerFirestore";
 import {
   franchises,
   ownerProfiles,
@@ -14,18 +15,18 @@ import {
   buildFinancialHistoryPresentation,
   type FinancialHistoryPresentation,
 } from "@/lib/managers/financialHistoryPresentation";
+import type { OperationalFinanceArchive } from "@/lib/finance/operationalFinanceLedgerTypes";
 
 let financialPresentation: FinancialHistoryPresentation | null = null;
 
-export function loadFinancialHistoryPresentation() {
-  if (financialPresentation) return financialPresentation;
-
+function buildPresentation(operationalArchives: readonly OperationalFinanceArchive[] = []) {
   const aggregate = buildFinancialHistory({
     source: HISTORICAL_FINANCIAL_SOURCE,
     transactions: HISTORICAL_FINANCIAL_TRANSACTIONS,
+    operationalArchives,
   });
 
-  financialPresentation = buildFinancialHistoryPresentation({
+  return buildFinancialHistoryPresentation({
     aggregate,
     ownerDisplays: ownerProfiles.map((owner) => ({
       id: owner.id,
@@ -49,6 +50,15 @@ export function loadFinancialHistoryPresentation() {
       ),
     })),
   });
+}
 
+export function loadFinancialHistoryPresentation() {
+  if (financialPresentation) return financialPresentation;
+  financialPresentation = buildPresentation();
   return financialPresentation;
+}
+
+export async function loadFinancialHistoryPresentationWithOperationalArchive() {
+  const archive = await getOperationalFinanceLedgerRepository(2026).getArchive(2026);
+  return buildPresentation(archive ? [archive] : []);
 }

@@ -1,4 +1,4 @@
-import { loadFinancialHistoryPresentation } from "@/lib/managers/financialHistoryLoader";
+import { loadFinancialHistoryPresentationWithOperationalArchive } from "@/lib/managers/financialHistoryLoader";
 import FinancialHistoryClient from "@/components/league-info/FinancialHistoryClient";
 import { loadPublicOperationalFinancePresentation } from "@/lib/finance/publicOperationalFinanceLoader";
 import {
@@ -9,7 +9,9 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function PayoutsPage() {
-  const presentation = buildPublicPayoutHistory(loadFinancialHistoryPresentation());
+  const presentation = buildPublicPayoutHistory(
+    await loadFinancialHistoryPresentationWithOperationalArchive()
+  );
   const currentSeason = buildPublicPayoutCurrentSeason(
     await loadPublicOperationalFinancePresentation()
   );

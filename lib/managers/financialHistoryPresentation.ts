@@ -82,16 +82,16 @@ export type FinancialLeaderboardRow = Readonly<{
 }>;
 
 export type FinancialHistoryPresentation = Readonly<{
-  defaultSeason: 2025;
+  defaultSeason: number;
   seasonOptions: readonly number[];
   overallSummary: readonly FinancialSummaryItem[];
   seasons: readonly FinancialSeasonPresentation[];
   leaderboard: readonly FinancialLeaderboardRow[];
   coverage: Readonly<{
     firstSeason: 2016;
-    latestSeason: 2025;
+    latestSeason: number;
     pre2016: "no-source";
-    season2026: "outside-historical-ledger";
+    season2026: "outside-historical-ledger" | "closed-operational-archive";
     statement: string;
   }>;
 }>;
@@ -349,7 +349,7 @@ export function buildFinancialHistoryPresentation(input: {
     }));
 
   return {
-    defaultSeason: 2025,
+    defaultSeason: input.aggregate.coverage.latestSeason,
     seasonOptions,
     overallSummary: [
       { label: "Reconciled seasons", value: seasonOptions.length, kind: "count" },
@@ -386,7 +386,9 @@ export function buildFinancialHistoryPresentation(input: {
       pre2016: input.aggregate.coverage.pre2016,
       season2026: input.aggregate.coverage.season2026,
       statement:
-        "Commissioner financial records are reconciled for 2016–2025. No source archive is available before 2016, and 2026 is outside this historical ledger.",
+        input.aggregate.coverage.season2026 === "closed-operational-archive"
+          ? "Commissioner financial records are reconciled for 2016–2025, with the closed 2026 operational finance archive included. No source archive is available before 2016."
+          : "Commissioner financial records are reconciled for 2016–2025. No source archive is available before 2016, and 2026 is outside this historical ledger.",
     },
   };
 }

@@ -82,6 +82,7 @@ const EVENT_LABELS: Record<OperationalFinanceAuditEvent["eventType"], string> = 
   "expense-settlement-recorded": "Expense payment recorded",
   "separate-contribution-recorded": "Separate contribution recorded",
   "season-closed": "Season closed and archived",
+  "season-reopened-for-correction": "Season reopened for approved correction",
   "obligation-reversed": "Obligation reversed",
   "obligation-replaced": "Obligation replaced",
   "settlement-reversed": "Payment reversed",
@@ -111,6 +112,7 @@ const EVENT_SORT_PRIORITY: Record<OperationalFinanceAuditEvent["eventType"], num
   "expense-obligation-created": 2,
   "season-metadata-created": 1,
   "season-closed": 8,
+  "season-reopened-for-correction": 9,
   "adjustment-recorded": 5,
 };
 
