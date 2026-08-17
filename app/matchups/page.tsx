@@ -122,6 +122,7 @@ type MatchupProjectionState = Readonly<{
 }>;
 
 type TeamDisplay = {
+  rosterId: number | null;
   name: string;
   avatar: string;
   record: string;
@@ -131,6 +132,11 @@ type TeamDisplay = {
 };
 
 type LineupState = "FUTURE" | "LIVE" | "FINAL" | "UNKNOWN";
+
+type MatchupOutcome = Readonly<{
+  rosterId: number;
+  label: string;
+}>;
 
 type LineupEntry = {
   slot: string;
@@ -237,6 +243,7 @@ function resolveTeam(
 
   if (rosterId === null) {
     return {
+      rosterId: null,
       name: "Awaiting Opponent",
       avatar: FALLBACK_AVATAR,
       record: "Record unavailable",
@@ -261,6 +268,7 @@ function resolveTeam(
     (roster ? `Roster ${rosterId}` : `Unknown Roster ${rosterId}`);
 
   return {
+    rosterId,
     name: teamName,
     avatar: user?.avatar
       ? `https://sleepercdn.com/avatars/thumbs/${user.avatar}`
@@ -274,6 +282,38 @@ function resolveTeam(
 
 function getNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function getMatchupPoints(matchup?: Matchup) {
+  return typeof matchup?.points === "number" && Number.isFinite(matchup.points)
+    ? matchup.points
+    : null;
+}
+
+function getMatchupOutcome(
+  first: Matchup | undefined,
+  second: Matchup | undefined,
+  state: LineupState
+) {
+  if (state === "FUTURE" || state === "UNKNOWN") return [] as MatchupOutcome[];
+
+  const firstPoints = getMatchupPoints(first);
+  const secondPoints = getMatchupPoints(second);
+  const firstRosterId = getRosterId(first);
+  const secondRosterId = getRosterId(second);
+  if (firstPoints === null || secondPoints === null || firstRosterId === null || secondRosterId === null) {
+    return [] as MatchupOutcome[];
+  }
+
+  if (firstPoints === secondPoints) {
+    return [
+      { rosterId: firstRosterId, label: state === "LIVE" ? "Currently tied" : "Tie" },
+      { rosterId: secondRosterId, label: state === "LIVE" ? "Currently tied" : "Tie" },
+    ];
+  }
+
+  const leadingRosterId = firstPoints > secondPoints ? firstRosterId : secondRosterId;
+  return [{ rosterId: leadingRosterId, label: state === "LIVE" ? "Current leader" : "Winner" }];
 }
 
 function resolveBracketTeam(
@@ -471,12 +511,17 @@ function hasCompletedBracketGame(matches: BracketMatch[]) {
 function TeamPanel({
   team,
   side,
+  lineupState,
+  outcome,
 }: {
   team: TeamDisplay;
   side: "left" | "right";
+  lineupState: LineupState;
+  outcome: MatchupOutcome | null;
 }) {
   const colorClass = side === "left" ? "text-red-600" : "text-blue-600";
   const borderClass = side === "left" ? "border-red-600" : "border-blue-600";
+  const score = lineupState === "FUTURE" || lineupState === "UNKNOWN" ? "—" : team.score;
 
   return (
     <div
@@ -509,9 +554,16 @@ function TeamPanel({
         </p>
       </div>
 
-      <p className={`shrink-0 text-2xl font-black leading-none ${colorClass} sm:text-3xl`}>
-        {team.score}
-      </p>
+      <div className="shrink-0 text-right">
+        {outcome?.rosterId === team.rosterId && (
+          <span className="mb-1 block text-[9px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+            {outcome.label}
+          </span>
+        )}
+        <p className={`text-2xl font-black leading-none ${colorClass} sm:text-3xl`} aria-label={`${team.name} actual score ${score}`}>
+          {score}
+        </p>
+      </div>
     </div>
   );
 }
@@ -578,6 +630,7 @@ function getPlayerProjection(
 }
 
 function getLineupState(selectedWeek: number, currentWeek: number | null, leagueInfo: LeagueInfo | null): LineupState {
+  if (leagueInfo?.status === "pre_draft") return "FUTURE";
   if (leagueInfo?.status === "complete") return "FINAL";
   if (currentWeek === null) return "UNKNOWN";
   if (selectedWeek < currentWeek) return "FINAL";
@@ -889,30 +942,37 @@ function MatchupCard({
   const [expanded, setExpanded] = useState(false);
   const team1 = resolveTeam(group.teams[0], rosters, users, "Team 1");
   const team2 = resolveTeam(group.teams[1], rosters, users, "Team 2");
+  const lineupState = getLineupState(week, currentWeek, leagueInfo);
+  const outcomes = getMatchupOutcome(group.teams[0], group.teams[1], lineupState);
   const expandedRegionId = `${group.id}-expanded-content`;
   const matchupLabel = `${team1.name} versus ${team2.name}`;
 
   return (
     <article className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#121212] sm:p-6">
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
-        <TeamPanel team={team1} side="left" />
+        <TeamPanel team={team1} side="left" lineupState={lineupState} outcome={outcomes.find((outcome) => outcome.rosterId === team1.rosterId) ?? null} />
         <div className="flex items-center justify-center">
           <span className="rounded-full bg-black/[0.04] px-3 py-1 text-[10px] font-black uppercase italic tracking-widest text-black/25 dark:bg-white/[0.06] dark:text-white/25">
             VS
           </span>
         </div>
-        <TeamPanel team={team2} side="right" />
+        <TeamPanel team={team2} side="right" lineupState={lineupState} outcome={outcomes.find((outcome) => outcome.rosterId === team2.rosterId) ?? null} />
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-black/10 bg-black/[0.03] px-3 py-2 text-[10px] font-black uppercase tracking-widest dark:border-white/10 dark:bg-white/[0.04]" aria-label={`Matchup state ${lineupState}`}>
+        <span>{lineupState}</span>
+        <span className="text-black/50 dark:text-white/50">Week {week} · {lineupState === "LIVE" ? "In progress" : lineupState === "FINAL" ? "Completed result" : lineupState === "FUTURE" ? "Not started" : "Result unavailable"}</span>
       </div>
 
       <button
         type="button"
         aria-expanded={expanded}
         aria-controls={expandedRegionId}
-        aria-label={`${expanded ? "Collapse" : "Expand"} starters for ${matchupLabel}`}
+        aria-label={`${expanded ? "Collapse" : "Expand"} matchup details for ${matchupLabel}`}
         onClick={() => setExpanded((current) => !current)}
         className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-black/10 px-4 py-2 text-xs font-black uppercase tracking-widest transition hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 dark:border-white/10 dark:hover:bg-white/[0.06]"
       >
-        {expanded ? "Hide starters" : "Show starters"}
+        {expanded ? "HIDE MATCHUP DETAILS" : "VIEW MATCHUP DETAILS"}
       </button>
 
       {expanded && (
