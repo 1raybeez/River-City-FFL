@@ -88,6 +88,7 @@ const PODCASTS = [
 const WEBSITES = [
   { name: "Fantasy Footballers", desc: "Expert rankings and high-quality draft/in-season tools.", type: "Premium", url: "https://www.thefantasyfootballers.com" },
   { name: "Fantasy Pros", desc: "Consensus rankings and the MyPlaybook tool suite.", type: "Freemium", url: "https://www.fantasypros.com" },
+  { name: "DraftSharks", desc: "Fantasy football rankings, projections, draft tools, and analysis for preseason and in-season research.", type: "Free", url: "https://www.draftsharks.com/" },
   { name: "Fantasy Genius", desc: "Advanced league insights and custom Power Rankings.", type: "Free", url: "https://www.fantasygenius.io" },
   { name: "Rotowire", desc: "Real-time news updates and comprehensive stat tracking.", type: "Premium", url: "https://www.rotowire.com/football" },
   { name: "FTN Fantasy", desc: "Proprietary stats and elite betting/fantasy data.", type: "Premium", url: "https://ftnfantasy.com/nfl" },
