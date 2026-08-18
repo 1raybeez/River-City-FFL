@@ -47,6 +47,7 @@ export interface SleeperPlayerIdentity {
   position: string | null;
   nflTeam: string | null;
   injuryStatus?: string | null;
+  avatar?: string | null;
 }
 
 type SleeperPlayerDirectoryEntry = {
@@ -58,6 +59,7 @@ type SleeperPlayerDirectoryEntry = {
   team?: string | null;
   injury_status?: string | null;
   status?: string | null;
+  avatar?: string | null;
 };
 
 export interface BracketSource {
@@ -338,6 +340,7 @@ export async function getSleeperPlayerIdentityDirectory(): Promise<Record<string
           : typeof player.status === "string" && /questionable|doubtful|out|ir/i.test(player.status)
             ? player.status.trim()
             : null,
+        avatar: typeof player.avatar === "string" && player.avatar.trim() ? player.avatar.trim() : null,
       } satisfies SleeperPlayerIdentity];
     })
   );

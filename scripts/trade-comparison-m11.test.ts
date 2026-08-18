@@ -1,0 +1,44 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+
+const component = fs.readFileSync("components/TradeComparison.tsx", "utf8");
+const route = fs.readFileSync("app/api/trade-comparison/multi-team/route.ts", "utf8");
+const foundation = fs.readFileSync("lib/tradeComparison/multiTeamFoundation.ts", "utf8");
+
+for (const label of ["Trade builder", "League Trade", "Trade Sandbox", "Reset Trade", "Try a Random Trade", "Sandbox player search", "Outgoing package", "Destination", "Trade summary", "River City analysis", "Package details", "Roster impact", "Data / coverage"]) assert.match(component, new RegExp(label.replace(/[ /]/g, "[ _/]"), "i"));
+assert.doesNotMatch(component, /market-intelligence-title|>Market intelligence</i);
+assert.match(component, /Add (?:Team|Participant)/);
+for (const position of ["QB", "RB", "WR", "TE", "K", "DEF", "UNKNOWN"]) assert.match(component, new RegExp(`\\b${position}\\b`));
+assert.match(component, /sleepercdn\.com\/(?:avatars\/thumbs|content\/nfl\/players)/);
+assert.match(component, /franchise\.avatar/);
+assert.match(component, /FALLBACK_IMAGE/);
+assert.match(component, /h-9 w-9/);
+assert.match(component, /franchise\?\.franchiseName/);
+assert.match(component, /franchise && <>/);
+assert.match(component, /Add Participant/);
+assert.match(component, /disabled:bg-slate-200/);
+assert.match(component, /participants\.map/);
+assert.match(component, /selectedFranchiseIds/);
+assert.match(component, /selectedFranchiseIds\.has\(candidate\.franchiseId\)/);
+assert.match(component, /mode === "LEAGUE_TRADE" && !candidate\.available/);
+assert.doesNotMatch(component, /franchises\.some\(\(other\) => other\.franchiseId === candidate\.franchiseId/);
+assert.match(component, /mode === "SANDBOX" \? franchises/);
+assert.doesNotMatch(component, /setMode\("LEAGUE_TRADE"\)/);
+assert.match(component, /Final keeper and auction acquisition costs are required/);
+for (const label of ["Before", "After", "No players received", "No players sent", "NOT_APPLICABLE", "Routing: validated", "Acquisition costs: pending auction", "historical trade calibration"]) assert.match(component, new RegExp(label, "i"));
+assert.match(component, /positionalBefore/);
+assert.match(component, /positionalAfter/);
+assert.match(component, /overflow-x-auto/);
+assert.match(component, /historical two-team calibration does not apply to multi-team trades/);
+assert.match(component, /summaryRows/);
+assert.doesNotMatch(component, /temporary winner|placeholder score|fake score|estimated score/i);
+assert.match(route, /buildMultiTeamRouting/);
+assert.match(route, /getCurrentMember/);
+assert.match(foundation, /DESTINATION_NOT_PARTICIPANT/);
+assert.match(foundation, /PLAYER_NOT_ROSTERED/);
+assert.match(foundation, /MULTI_TEAM_MAX_PARTICIPANTS/);
+assert.match(foundation, /CURRENT_RIVER_CITY_COST_BASIS/);
+assert.match(foundation, /MULTI_TEAM_UNCALIBRATED/);
+assert.match(foundation, /DUPLICATE_PLAYER/);
+
+console.log("Trade Comparison M11 builder and activation checks passed");

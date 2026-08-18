@@ -3,7 +3,7 @@ import type { CurrentFranchiseRoster, PublishedAuctionValue, TradeComparisonInpu
 import { TRADE_COMPARISON_POSITIONS } from "./types";
 import { validateTradeComparisonInput } from "./validation";
 
-export type CanonicalTradeComparisonTeam = { franchiseId: string; franchiseName: string; rosterId: number | null };
+export type CanonicalTradeComparisonTeam = { franchiseId: string; franchiseName: string; rosterId: number | null; avatar?: string | null };
 type SleeperRosterLike = { roster_id?: number | string | null; players?: unknown };
 
 function normalizePosition(value: string | null | undefined): TradeComparisonPosition | null {
@@ -31,9 +31,9 @@ export function buildCurrentFranchiseRosters({ teams, rosters, playerDirectory }
     const roster = team.rosterId === null ? null : rostersById.get(team.rosterId) ?? null;
     const players = readPlayerIds(roster?.players).map<TradeComparisonPlayer>((playerId) => {
       const identity = playerDirectory[playerId];
-      return { playerId, name: identity?.displayName ?? null, position: normalizePosition(identity?.position), nflTeam: identity?.nflTeam ?? null };
+      return { playerId, name: identity?.displayName ?? null, position: normalizePosition(identity?.position), nflTeam: identity?.nflTeam ?? null, injuryStatus: identity?.injuryStatus ?? null, avatar: identity?.avatar ?? null, byeWeek: null };
     });
-    return { franchiseId: team.franchiseId, franchiseName: team.franchiseName, rosterId: team.rosterId, available: roster !== null, players };
+    return { franchiseId: team.franchiseId, franchiseName: team.franchiseName, rosterId: team.rosterId, avatar: team.avatar ?? null, available: roster !== null, players };
   });
 }
 

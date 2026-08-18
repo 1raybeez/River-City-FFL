@@ -35,15 +35,17 @@ async function requireMember() {
 export async function GET() {
   try {
     if (!(await requireMember())) return NextResponse.json({ success: false, error: "League Member Login required." }, { status: 401 });
-    const { rosters } = await loadTradeComparisonContext();
+    const { rosters, playerDirectory } = await loadTradeComparisonContext();
     return NextResponse.json({
       success: true,
       franchises: rosters.map((roster) => ({
         franchiseId: roster.franchiseId,
         franchiseName: roster.franchiseName,
         available: roster.available,
-        players: roster.players.map((player) => ({ playerId: player.playerId, name: player.name, position: player.position, nflTeam: player.nflTeam })),
+        avatar: roster.avatar ?? null,
+        players: roster.players.map((player) => ({ playerId: player.playerId, name: player.name, position: player.position, nflTeam: player.nflTeam, injuryStatus: player.injuryStatus ?? null, avatar: player.avatar ?? null, byeWeek: player.byeWeek ?? null })),
       })),
+      sandboxPlayers: Object.values(playerDirectory).map((player) => ({ playerId: player.playerId, name: player.displayName, position: player.position, nflTeam: player.nflTeam, injuryStatus: player.injuryStatus ?? null, avatar: player.avatar ?? null, byeWeek: null })),
     }, { headers: { "Cache-Control": "private, no-store" } });
   } catch {
     return NextResponse.json({ success: false, error: "Current roster data is temporarily unavailable." }, { status: 503 });

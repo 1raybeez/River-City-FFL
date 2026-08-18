@@ -10,6 +10,9 @@ export type TradeComparisonPlayer = {
   name: string | null;
   position: TradeComparisonPosition | null;
   nflTeam: string | null;
+  injuryStatus?: string | null;
+  avatar?: string | null;
+  byeWeek?: number | null;
 };
 
 export type CurrentFranchiseRoster = {
@@ -18,6 +21,7 @@ export type CurrentFranchiseRoster = {
   rosterId: number | null;
   available: boolean;
   players: TradeComparisonPlayer[];
+  avatar?: string | null;
 };
 
 export type PublishedAuctionValue = {
