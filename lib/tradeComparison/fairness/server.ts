@@ -1,6 +1,8 @@
 import "server-only";
 
 export { evaluateFairness } from "./evaluateFairness";
+export { buildFairnessMarketIntelligence } from "./marketIntelligence";
+export type { FairnessCorePackageContext } from "./marketIntelligence";
 export { serializePublicFairnessResult } from "./publicSerializer";
 export type { FairnessProvenance, FairnessKeeperCostSnapshotRow, FairnessValueSnapshotRow } from "./sourceContracts";
 export { normalizeKeeperSourceRecord, toFairnessKeeperCostStatus } from "./keeperCostSource";

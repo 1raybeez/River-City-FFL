@@ -50,6 +50,13 @@ function unavailableResult(coverage: "PARTIAL" | "UNAVAILABLE", limitations: str
     leadingSide: null,
     explanationFactors: [],
     limitations,
+    coverageDetail: {
+      modelValue: coverage === "UNAVAILABLE" ? "UNAVAILABLE" : "PARTIAL",
+      acquisitionCost: coverage === "UNAVAILABLE" ? "UNAVAILABLE" : "PARTIAL",
+      auctionConsensus: "UNAVAILABLE",
+      adpConsensus: "UNAVAILABLE",
+      calibration: "UNAVAILABLE",
+    },
   };
 }
 
@@ -129,5 +136,12 @@ export function evaluateFairness({
       "This is a River City-specific model estimate, not an objective determination of trade fairness.",
       ...(faabMode === "NEUTRAL" ? ["FAAB is neutral until explicit transferred-FAAB inputs are approved."] : []),
     ],
+    coverageDetail: {
+      modelValue: "COMPLETE",
+      acquisitionCost: "COMPLETE",
+      auctionConsensus: "UNAVAILABLE",
+      adpConsensus: "UNAVAILABLE",
+      calibration: "COMPLETE",
+    },
   };
 }

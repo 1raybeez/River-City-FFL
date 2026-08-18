@@ -20,5 +20,43 @@ export function serializePublicFairnessResult(result: FairnessResult) {
     leadingSide: result.leadingSide,
     explanationFactors: [...result.explanationFactors],
     limitations: [...result.limitations],
+    coverageDetail: result.coverageDetail
+      ? {
+          modelValue: result.coverageDetail.modelValue,
+          acquisitionCost: result.coverageDetail.acquisitionCost,
+          auctionConsensus: result.coverageDetail.auctionConsensus,
+          adpConsensus: result.coverageDetail.adpConsensus,
+          calibration: result.coverageDetail.calibration,
+        }
+      : undefined,
+    marketIntelligence: result.marketIntelligence
+      ? {
+          packages: result.marketIntelligence.packages.map((pkg) => ({
+            packageId: pkg.packageId,
+            totalAuctionConsensus: pkg.totalAuctionConsensus,
+            auctionConsensusCoverage: pkg.auctionConsensusCoverage,
+            completeAuctionContextCount: pkg.completeAuctionContextCount,
+            totalPlayerCount: pkg.totalPlayerCount,
+            medianAdp: pkg.medianAdp,
+            bestAdp: pkg.bestAdp,
+            adpCoverage: pkg.adpCoverage,
+            completeAdpContextCount: pkg.completeAdpContextCount,
+          })),
+          signalAgreement: {
+            state: result.marketIntelligence.signalAgreement.state,
+            modelPackageId: result.marketIntelligence.signalAgreement.modelPackageId,
+            supportingSignals: result.marketIntelligence.signalAgreement.supportingSignals.map((signal) => ({
+              signal: signal.signal,
+              strongerPackageId: signal.strongerPackageId,
+              disposition: signal.disposition,
+            })),
+          },
+          reasoning: result.marketIntelligence.reasoning.map((factor) => ({
+            packageId: factor.packageId,
+            source: factor.source,
+            code: factor.code,
+          })),
+        }
+      : undefined,
   };
 }

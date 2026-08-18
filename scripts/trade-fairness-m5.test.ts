@@ -8,6 +8,7 @@ import { FANTASYCALC_FAIRNESS_CONFIGURATION, type FairnessProvenance } from "../
 import { normalizeKeeperSourceRecord, toFairnessKeeperCostStatus } from "../lib/tradeComparison/fairness/keeperCostSource";
 import { ACQUISITION_SOURCE_PRIORITY, normalizeAcquisitionSourceRecord, reconcileAcquisitionSnapshot } from "../lib/tradeComparison/fairness/acquisitionCostSource";
 import type { FairnessPlayer } from "../lib/tradeComparison/fairness/types";
+import { buildFairnessMarketIntelligence } from "../lib/tradeComparison/fairness/marketIntelligence";
 
 const player = (
   playerId: string,
@@ -157,5 +158,125 @@ const keeperAdapter = readFileSync("lib/tradeComparison/fairness/keeperCostSourc
 assert.doesNotMatch(keeperAdapter, /target|preferredEntry|WarRoom|strategy|notes|budget|finance|email|uid/i);
 const acquisitionAdapter = readFileSync("lib/tradeComparison/fairness/acquisitionCostSource.ts", "utf8");
 assert.doesNotMatch(acquisitionAdapter, /target|preferredEntry|WarRoom|strategy|notes|budget|finance|email|uid/i);
+
+const marketPlayer = (playerId: string, modelValue: number, acquisitionCost: number, auctionConsensus: number | null, averageAdp: number | null) => ({
+  playerId,
+  value: modelValue,
+  keeperCost: acquisitionCost,
+  keeperCostStatus: "KNOWN_VALUE" as const,
+  auctionConsensus,
+  averageAdp,
+});
+const olave = marketPlayer("olave", 80, 18, 30, 12);
+const etienne = marketPlayer("etienne", 70, 12, 16.4, 24);
+assert.equal(olave.keeperCost, 18);
+assert.equal(olave.auctionConsensus, 30);
+assert.equal(etienne.keeperCost, 12);
+assert.equal(etienne.auctionConsensus, 16.4);
+assert.notEqual(olave.value, olave.keeperCost);
+assert.notEqual(olave.keeperCost, olave.auctionConsensus);
+assert.notEqual(olave.auctionConsensus, olave.averageAdp);
+
+const marketAgreement = buildFairnessMarketIntelligence({
+  packages: [
+    { packageId: "A", players: [olave] },
+    { packageId: "B", players: [etienne] },
+  ],
+  core: [
+    { packageId: "A", netValue: 20, deltaTalent: 12, deltaSurplus: 8 },
+    { packageId: "B", netValue: 5, deltaTalent: 3, deltaSurplus: 2 },
+  ],
+});
+assert.equal(marketAgreement.packages[0].totalAuctionConsensus, 30);
+assert.equal(marketAgreement.packages[0].medianAdp, 12);
+assert.equal(marketAgreement.packages[0].auctionConsensusCoverage, "COMPLETE");
+assert.equal(marketAgreement.packages[0].adpCoverage, "COMPLETE");
+assert.equal(marketAgreement.signalAgreement.state, "STRONG_AGREEMENT");
+assert.equal(marketAgreement.signalAgreement.modelPackageId, "A");
+assert.deepEqual(
+  marketAgreement.signalAgreement.supportingSignals.map((signal) => signal.disposition),
+  ["AGREES", "AGREES", "AGREES", "AGREES"]
+);
+
+const marketDisagreement = buildFairnessMarketIntelligence({
+  packages: [
+    { packageId: "A", players: [marketPlayer("inflated", 5, 11, 3, 40)] },
+    { packageId: "B", players: [marketPlayer("market", 30, 12, 20, 10)] },
+  ],
+  core: [
+    { packageId: "A", netValue: 20, deltaTalent: 12, deltaSurplus: 8 },
+    { packageId: "B", netValue: 5, deltaTalent: 3, deltaSurplus: 2 },
+  ],
+});
+assert.equal(marketDisagreement.signalAgreement.state, "MIXED");
+assert.ok(marketDisagreement.reasoning.some((factor) => factor.code === "MARKET_DISAGREEMENT"));
+
+const strongWithoutAdp = buildFairnessMarketIntelligence({
+  packages: [
+    { packageId: "A", players: [marketPlayer("a1", 50, 10, 20, null)] },
+    { packageId: "B", players: [marketPlayer("b1", 40, 15, 10, null)] },
+  ],
+  core: [
+    { packageId: "A", netValue: 20, deltaTalent: 10, deltaSurplus: 8 },
+    { packageId: "B", netValue: 5, deltaTalent: 2, deltaSurplus: 1 },
+  ],
+});
+assert.equal(strongWithoutAdp.signalAgreement.state, "STRONG_AGREEMENT");
+
+const moderateWithOnlyCore = buildFairnessMarketIntelligence({
+  packages: [
+    { packageId: "A", players: [marketPlayer("a2", 50, 10, null, null)] },
+    { packageId: "B", players: [marketPlayer("b2", 40, 15, null, null)] },
+  ],
+  core: [
+    { packageId: "A", netValue: 20, deltaTalent: 10, deltaSurplus: 0 },
+    { packageId: "B", netValue: 5, deltaTalent: 2, deltaSurplus: 0 },
+  ],
+});
+assert.equal(moderateWithOnlyCore.signalAgreement.state, "LIMITED_AGREEMENT");
+
+const neutralAuction = buildFairnessMarketIntelligence({
+  packages: [
+    { packageId: "A", players: [marketPlayer("a3", 50, 10, 20, null)] },
+    { packageId: "B", players: [marketPlayer("b3", 40, 15, 20, null)] },
+  ],
+  core: [
+    { packageId: "A", netValue: 20, deltaTalent: 10, deltaSurplus: 8 },
+    { packageId: "B", netValue: 5, deltaTalent: 2, deltaSurplus: 1 },
+  ],
+});
+assert.equal(neutralAuction.signalAgreement.supportingSignals[2]?.disposition, "NEUTRAL");
+assert.equal(neutralAuction.signalAgreement.state, "MODERATE_AGREEMENT");
+
+const bothSidesReasoned = buildFairnessMarketIntelligence({
+  packages: [
+    { packageId: "A", players: [marketPlayer("a4", 50, 10, 20, 20)] },
+    { packageId: "B", players: [marketPlayer("b4", 40, 15, 10, 10)] },
+  ],
+  core: [
+    { packageId: "A", netValue: 20, deltaTalent: 10, deltaSurplus: -2 },
+    { packageId: "B", netValue: 5, deltaTalent: -3, deltaSurplus: 8 },
+  ],
+});
+assert.ok(bothSidesReasoned.reasoning.some((factor) => factor.packageId === "A"));
+assert.ok(bothSidesReasoned.reasoning.some((factor) => factor.packageId === "B"));
+
+const partialMarket = buildFairnessMarketIntelligence({
+  packages: [
+    { packageId: "A", players: [olave, marketPlayer("missing-auction-a", 20, 4, null, 10)] },
+    { packageId: "B", players: [etienne, marketPlayer("missing-auction", 20, 4, null, 25)] },
+  ],
+  core: [
+    { packageId: "A", netValue: 10, deltaTalent: 5, deltaSurplus: 5 },
+    { packageId: "B", netValue: 10, deltaTalent: 5, deltaSurplus: 5 },
+  ],
+});
+assert.equal(partialMarket.packages[0].auctionConsensusCoverage, "PARTIAL");
+assert.equal(partialMarket.packages[1].auctionConsensusCoverage, "PARTIAL");
+assert.equal(partialMarket.packages[1].adpCoverage, "COMPLETE");
+assert.equal(partialMarket.signalAgreement.state, "INSUFFICIENT_DATA");
+
+const serializedMarket = JSON.stringify({ ...serializePublicFairnessResult(cookLondon), marketIntelligence: marketAgreement });
+assert.doesNotMatch(serializedMarket, /target|cap|strategy|note|budget|finance|email|uid|warRoom|preferredEntry|private/i);
 
 console.log("Trade Fairness M5/M6/M7/M8 foundation checks passed.");

@@ -7,6 +7,15 @@ export type FairnessStatus = "READY" | "UNAVAILABLE";
 export type FairnessLeadingSide = "A" | "B" | null;
 export type FairnessFaabMode = "EXPLICIT" | "NEUTRAL";
 export type FairnessKeeperCostStatus = "KNOWN_ZERO" | "KNOWN_VALUE" | "MISSING";
+export type FairnessSignalCoverage = FairnessCoverage;
+
+export type FairnessCoverageDetail = {
+  modelValue: FairnessSignalCoverage;
+  acquisitionCost: FairnessSignalCoverage;
+  auctionConsensus: FairnessSignalCoverage;
+  adpConsensus: FairnessSignalCoverage;
+  calibration: FairnessSignalCoverage;
+};
 
 export type FairnessPlayer = {
   playerId: string;
@@ -69,4 +78,67 @@ export type FairnessResult = {
   leadingSide: FairnessLeadingSide;
   explanationFactors: FairnessExplanationFactor[];
   limitations: string[];
+  coverageDetail?: FairnessCoverageDetail;
+  marketIntelligence?: FairnessMarketIntelligence;
+};
+
+export type FairnessMarketCoverage = FairnessCoverage;
+export type FairnessMarketSignal = "MODEL_TALENT" | "ACQUISITION_SURPLUS" | "AUCTION_CONSENSUS" | "ADP";
+export type FairnessSignalAgreementState =
+  | "STRONG_AGREEMENT"
+  | "MODERATE_AGREEMENT"
+  | "LIMITED_AGREEMENT"
+  | "MIXED"
+  | "INSUFFICIENT_DATA";
+export type FairnessSignalDisposition = "AGREES" | "OPPOSES" | "NEUTRAL" | "UNAVAILABLE";
+
+export type FairnessMarketPlayer = FairnessPlayer & {
+  auctionConsensus: number | null;
+  averageAdp: number | null;
+};
+
+export type FairnessMarketPackage = {
+  packageId: string;
+  players: FairnessMarketPlayer[];
+};
+
+export type FairnessMarketPackageContext = {
+  packageId: string;
+  totalAuctionConsensus: number | null;
+  auctionConsensusCoverage: FairnessMarketCoverage;
+  completeAuctionContextCount: number;
+  totalPlayerCount: number;
+  medianAdp: number | null;
+  bestAdp: number | null;
+  adpCoverage: FairnessMarketCoverage;
+  completeAdpContextCount: number;
+};
+
+export type FairnessMarketSignalEdge = {
+  signal: FairnessMarketSignal;
+  strongerPackageId: string | null;
+  disposition: FairnessSignalDisposition;
+};
+
+export type FairnessMarketReasoningFactor = {
+  packageId: string;
+  source: "CORE_MODEL" | "MARKET_INTELLIGENCE";
+  code:
+    | "HIGHER_MODEL_TALENT"
+    | "HIGHER_ACQUISITION_SURPLUS"
+    | "EARLIER_ADP_ASSET"
+    | "STRONGER_AUCTION_CONTEXT"
+    | "MARKET_DISAGREEMENT";
+};
+
+export type FairnessSignalAgreement = {
+  state: FairnessSignalAgreementState;
+  modelPackageId: string | null;
+  supportingSignals: FairnessMarketSignalEdge[];
+};
+
+export type FairnessMarketIntelligence = {
+  packages: FairnessMarketPackageContext[];
+  signalAgreement: FairnessSignalAgreement;
+  reasoning: FairnessMarketReasoningFactor[];
 };

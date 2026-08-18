@@ -173,3 +173,31 @@ Fairness remains unavailable when acquisition data or model values are incomplet
 ## Neutral presentation
 
 If activated after review, the model should use `Very Balanced`, `Balanced`, `Noticeable Advantage`, `Significant Advantage`, and `Extreme Imbalance`. The result must remain explicitly modeled, not an objective determination of fairness.
+
+## M9 fairness plus five-source market intelligence
+
+M9 adds a disconnected, server-owned-contract-ready supporting layer. It keeps four signals separate: FantasyCalc-compatible dynasty model value; actual River City acquisition cost; published five-source auction consensus; and published five-source ADP consensus.
+
+The canonical published readers are `readPublishedMasterviewFromFirestore()` and `readPublishedAdpConsensusFromFirestore()`. Their safe rows provide `GeneratedMasterviewRow.averageValue` and `AuctionAdpConsensusRow.consensusOverallAdp`/`medianOverallAdp`. The approved five sources for both registries are FantasyPros, RotoWire, Lineup Experts, Draft Sharks, and Fantasy Footballers. No second pipeline or War Room state is used.
+
+For each package, auction context is the sum of known published auction consensus values, with explicit complete/partial/unavailable coverage and a complete-player count. ADP is not summed as package value: the layer reports median ADP and best (lowest) ADP, plus coverage/counts. Lower ADP means an earlier expected selection. Missing context remains missing.
+
+Signal agreement is deterministic and never changes the calibrated fairness score. When the model package is not tied, two or more available signals agreeing with it and no opposing signal produce `STRONG_AGREEMENT`; one agreeing signal and no opposing signal produces `MODERATE_AGREEMENT`; at least one agreeing and one opposing signal produces `MIXED`; ties, no model edge, or no usable signals produce `INSUFFICIENT_DATA`.
+
+Structured reasoning is factual for each package ID. Core factors can identify higher model talent or acquisition surplus. Market factors can identify stronger auction context, an earlier ADP asset, or market disagreement. No roster-need, rebuild, contender, subjective, or narrative claims are generated.
+
+Core model and calibration coverage remain independent from auction and ADP coverage. Complete core fairness can remain available with partial market context. The M5–M8 model, thresholds, neutral labels, and `River City Model Edge` terminology are unchanged. Inflated prices preserve model value separately from acquisition cost and can produce negative surplus; underpriced acquisitions preserve positive surplus.
+
+The contracts use package arrays and package IDs rather than an internal two-team algorithm, so a future N-team comparison can compare arbitrary package collections. That future phase still needs multi-package UI and serializer review. Hypothetical/random trades remain inactive; any future boundary must resolve player identity, model values, acquisition costs, and market rows server-side rather than trusting client-submitted values.
+
+The public serializer uses explicit allow-list construction for additive coverage, package, agreement, and reasoning fields. No strategy, finance, notes, target, UID, email, War Room, or private narrative data is included. The active M1–M4 Analyzer/API/UI remains disconnected, with no production write or deployment in M9.
+
+### M9A agreement finalization
+
+The calibrated River City Model Edge is the reference result, not a fifth vote. Supporting evidence is classified independently as `AGREES`, `OPPOSES`, `NEUTRAL`, or `UNAVAILABLE`. The supporting signals are adjusted model talent, acquisition surplus, complete auction-consensus package context, and one complete package-level ADP signal.
+
+Auction direction requires complete coverage for every package and compares total published auction consensus using a $0.01 tolerance. Partial or unavailable auction context remains factual context but produces no vote. ADP direction requires complete coverage for every package and compares package median ADP, with lower ADP favored and a $0.01 tie tolerance. Best ADP remains explanatory context and never creates a second ADP vote.
+
+Agreement states are: `STRONG_AGREEMENT` for at least three agreeing signals and zero opposing signals; `MODERATE_AGREEMENT` for exactly two agreeing signals and zero opposing signals; `LIMITED_AGREEMENT` for exactly one agreeing signal and zero opposing signals; `MIXED` for at least one agreeing and one opposing signal; and `INSUFFICIENT_DATA` for a tied/unavailable model edge or zero usable directional evidence. Neutral and unavailable signals do not count as agreement or opposition, and one unavailable signal does not make an otherwise supported result insufficient.
+
+Core model factors and supporting market intelligence remain separate. Both package IDs can receive factual reasoning factors when their own talent, surplus, auction, or ADP context supports one. The package-array contract remains suitable for future N-team comparisons, although multi-package UI and activation boundaries remain future work.
