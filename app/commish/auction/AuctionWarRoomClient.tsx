@@ -41,6 +41,7 @@ import {
 import { ModeToggle } from '@/components/ModeToggle';
 import { SignOutControl } from '@/components/SiteShell';
 import { PlayerDetailDrawer } from './PlayerDetailDrawer';
+import RecommendedNow from './RecommendedNow';
 import { activeManagers } from '@/lib/managers/activeManagers';
 import {
   canonicalAuctionTeams,
@@ -169,6 +170,7 @@ import {
   type RosterGuidanceWarning,
 } from '@/lib/auction/rosterGuidance';
 import type { AuctionTeamId } from '@/lib/auction/types';
+import type { RecommendedNowResult } from '@/lib/auction/recommendedNow';
 
 const statusStyles: Record<string, string> = {
   active: 'border-emerald-600/20 bg-emerald-600/10 text-emerald-600',
@@ -3916,6 +3918,9 @@ export default function AuctionWarRoomClient({
     useState<SleeperSnapshotLoadStatus>('idle');
   const [sleeperSnapshotError, setSleeperSnapshotError] =
     useState<string | null>(null);
+  const [recommendedNow, setRecommendedNow] = useState<RecommendedNowResult | null>(null);
+  const [recommendedNowStatus, setRecommendedNowStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [recommendedNowError, setRecommendedNowError] = useState<string | null>(null);
   const [sleeperLastAttemptedRefreshAt, setSleeperLastAttemptedRefreshAt] =
     useState<string | null>(null);
   const [sleeperLastSuccessfulRefreshAt, setSleeperLastSuccessfulRefreshAt] =
@@ -4157,6 +4162,7 @@ export default function AuctionWarRoomClient({
       }
       setKeeperRows(payload.keepers ?? keeperRows);
       setKeeperSaveStatus('saved');
+      void refreshRecommendedNow();
     } catch (error) {
       setKeeperSaveStatus('error');
       setKeeperSaveError(error instanceof Error ? error.message : 'Unable to save keepers.');
@@ -4288,6 +4294,20 @@ export default function AuctionWarRoomClient({
     : null;
   const riverCityLogoUrl = '/River City FFL Logo.JPG';
   const ownerIdentityLabel = access.ownerDisplayName ?? access.ownerProfileLabel;
+  const refreshRecommendedNow = useCallback(async () => {
+    setRecommendedNowStatus('loading');
+    setRecommendedNowError(null);
+    try {
+      const response = await fetch('/api/auction/recommended-now', { cache: 'no-store' });
+      const payload = (await response.json()) as RecommendedNowResult & { error?: string };
+      if (!response.ok) throw new Error(payload.error ?? 'Recommended Now is unavailable.');
+      setRecommendedNow(payload);
+      setRecommendedNowStatus('ready');
+    } catch (error) {
+      setRecommendedNowStatus('error');
+      setRecommendedNowError(error instanceof Error ? error.message : 'Recommended Now is unavailable.');
+    }
+  }, []);
   const ownerSettingsSummary = getOwnerSettingsSummary(initialOwnerSettings);
   const canEditLiveStrategy = Boolean(
     access.ownerProfileId &&
@@ -4361,6 +4381,15 @@ export default function AuctionWarRoomClient({
     ]
   );
   const activePurchaseRows = mergedActivePurchaseRows.rows;
+  useEffect(() => {
+    if (activeWorkspace !== 'draft') return;
+    void refreshRecommendedNow();
+  }, [activeWorkspace, keeperRows.length, activePurchaseRows.length, sleeperLastSuccessfulRefreshAt, refreshRecommendedNow]);
+  useEffect(() => {
+    if (activeWorkspace !== 'draft') return;
+    const intervalId = window.setInterval(() => void refreshRecommendedNow(), sleeperAutoRefreshIntervalMs);
+    return () => window.clearInterval(intervalId);
+  }, [activeWorkspace, refreshRecommendedNow]);
   const openMarketPurchaseRows = useMemo(
     () =>
       activePurchaseRows.filter(
@@ -5810,6 +5839,7 @@ export default function AuctionWarRoomClient({
         setDraftPlanLiveOverrideAboveAiConfirmed(false);
       }
       setDraftPlanSaveStatus('saved');
+      void refreshRecommendedNow();
     } catch (error) {
       setDraftPlanError(
         error instanceof Error ? error.message : 'Unable to save draft plan.'
@@ -6200,6 +6230,7 @@ export default function AuctionWarRoomClient({
     });
     setManualSaleConfirmation(nextUndoableConfirmation);
     setManualSaleError(null);
+    void refreshRecommendedNow();
   };
   useEffect(() => {
     if (!access.canRecordSales || !isUsingSleeperPurchases) return;
@@ -8694,6 +8725,14 @@ export default function AuctionWarRoomClient({
               );
             })}
           </div>
+
+          {activeWorkspace === 'draft' && (
+            <RecommendedNow
+              result={recommendedNow}
+              loading={recommendedNowStatus === 'loading'}
+              error={recommendedNowError}
+            />
+          )}
 
           {(activeWorkspace === 'draft' ||
             activeWorkspace === 'strategy' ||
