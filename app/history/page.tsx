@@ -6,7 +6,7 @@ export default function HistoryPage() {
   const rankings = calculateAllTimeStats();
 
   return (
-    <SiteShell activePath="/history">
+    <SiteShell activePath="/league-info">
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="history-title">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-orange-600">League History</p>

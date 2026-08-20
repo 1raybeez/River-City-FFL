@@ -16,6 +16,6 @@ assert.match(page, /role="alert"/);
 assert.match(page, /grid-cols-1/);
 assert.match(page, /focus-visible:ring/);
 assert.doesNotMatch(page, /<nav/);
-assert.match(shell, /\["League Info", "\/league-info"\]/);
+assert.match(shell, /isSiteNavItemActive/);
 
 console.log('Archives presentation test passed');

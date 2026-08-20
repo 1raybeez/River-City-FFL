@@ -14,8 +14,8 @@ assert.deepEqual(
   PRIMARY_SITE_NAV_ITEMS.map((item) => item.label),
   ["Home", "Matchups", "Managers", "League Info"]
 );
-assert.equal(PRIMARY_SITE_NAV_ITEMS.some((item) => item.href === "/history"), false);
-assert.equal(PRIMARY_SITE_NAV_ITEMS.some((item) => item.href === "/league-info/rivalries"), false);
+assert.equal(PRIMARY_SITE_NAV_ITEMS.some((item) => String(item.href) === "/history"), false);
+assert.equal(PRIMARY_SITE_NAV_ITEMS.some((item) => String(item.href) === "/league-info/rivalries"), false);
 assert.equal(MOBILE_SITE_NAV_ITEMS.some((item) => item.href === "/predictor"), true);
 assert.equal(isSiteNavItemActive(PRIMARY_SITE_NAV_ITEMS[3], "/league-info/constitution"), true);
 assert.equal(isSiteNavItemActive(PRIMARY_SITE_NAV_ITEMS[3], "/history"), false);

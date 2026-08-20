@@ -13,6 +13,6 @@ assert.match(page, /focus-visible:ring/);
 assert.doesNotMatch(page, /TradeAnalyzer/);
 assert.doesNotMatch(page, /fairness|winner|loser|grade|probability/i);
 assert.doesNotMatch(page, /<nav/);
-assert.match(shell, /\["League Info", "\/league-info"\]/);
+assert.match(shell, /isSiteNavItemActive/);
 
 console.log('Analyzer presentation test passed');

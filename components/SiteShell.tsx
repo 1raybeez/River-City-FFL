@@ -6,6 +6,7 @@ import { Menu, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import MemberAccountMenu from "@/components/MemberAccountMenu";
+import LeagueInfoShell from "@/components/LeagueInfoShell";
 import { anonymousCurrentMember, type CurrentMember } from "@/lib/auth/currentMemberContract";
 import { getSafeReturnTo } from "@/lib/auth/safeReturnTo";
 import {
@@ -13,6 +14,7 @@ import {
   MOBILE_SITE_NAV_ITEMS,
   PRIMARY_SITE_NAV_ITEMS,
 } from "@/lib/navigation/siteNavigation";
+import { isLeagueInfoDestination } from "@/lib/navigation/leagueInfoNavigation";
 
 export function SignOutControl({ className = "" }: { className?: string }) {
   const router = useRouter();
@@ -50,6 +52,9 @@ export default function SiteShell({ children, activePath }: { children: React.Re
     ? [...MOBILE_SITE_NAV_ITEMS, { label: "Commissioner Hub", href: "/commish", match: "exact" as const }]
     : MOBILE_SITE_NAV_ITEMS;
   const currentPath = activePath ?? pathname ?? "/";
+  const pageContent = isLeagueInfoDestination(pathname ?? currentPath)
+    ? <LeagueInfoShell>{children}</LeagueInfoShell>
+    : children;
   return <div className="min-h-screen bg-[#f7f8fa] text-slate-950 dark:bg-[#0a0a0a] dark:text-white">
     <nav className="sticky top-0 z-50 border-b border-white/10 bg-[#071a33]/95 px-4 py-3 text-white backdrop-blur-md sm:px-6" aria-label="River City site navigation">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
@@ -59,6 +64,6 @@ export default function SiteShell({ children, activePath }: { children: React.Re
       </div>
       {open && <div id="site-mobile-navigation" className="mx-auto mt-3 grid max-w-7xl grid-cols-2 gap-2 rounded-xl border border-white/15 bg-[#0b2444] p-3 lg:hidden">{visibleMobileLinks.map((item) => { const active = isSiteNavItemActive(item, currentPath); return <Link key={item.href} href={item.href} onClick={() => setOpen(false)} aria-current={active ? "page" : undefined} className={`rounded-lg border px-3 py-3 text-[9px] font-black uppercase tracking-widest ${active ? "border-amber-400 text-white" : "border-white/10 text-white/75 hover:bg-white/10"}`}>{item.label}</Link>; })}{member.authenticated ? <MemberAccountMenu member={member} mobile onNavigate={() => setOpen(false)} signOutControl={<SignOutControl className="min-h-10" />} /> : <Link href={loginHref} onClick={() => setOpen(false)} className="col-span-2 min-h-11 rounded-lg border border-amber-300/60 px-3 py-3 text-center text-[10px] font-black uppercase tracking-widest text-amber-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">League Member Login</Link>}</div>}
     </nav>
-    {children}
+    {pageContent}
   </div>;
 }

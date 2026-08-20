@@ -19,6 +19,6 @@ assert.match(page, /overflow-x-hidden/);
 assert.match(page, /Search player or owner/);
 assert.match(page, /focus:border-orange-600/);
 assert.doesNotMatch(page, /<nav/);
-assert.match(shell, /\["League Info", "\/league-info"\]/);
+assert.match(shell, /isSiteNavItemActive/);
 
 console.log('Draft presentation test passed');

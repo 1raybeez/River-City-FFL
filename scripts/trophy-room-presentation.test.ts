@@ -17,6 +17,6 @@ assert.match(page, /role="tabpanel"/);
 assert.match(page, /grid-cols-1/);
 assert.match(page, /focus-visible:ring/);
 assert.doesNotMatch(page, /<nav/);
-assert.match(shell, /\["League Info", "\/league-info"\]/);
+assert.match(shell, /isSiteNavItemActive/);
 
 console.log('Trophy Room presentation test passed');

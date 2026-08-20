@@ -19,6 +19,6 @@ assert.match(client, /href="\/league-info"/);
 assert.match(client, /focus-visible/);
 assert.doesNotMatch(client, /Net Earnings|ROI|Venmo|idempotency|audit actor|payment reference/i);
 assert.doesNotMatch(client, /<nav/);
-assert.match(shell, /\["League Info", "\/league-info"\]/);
+assert.match(shell, /isSiteNavItemActive/);
 
 console.log('Payouts presentation test passed');

@@ -37,6 +37,6 @@ assert.doesNotMatch(client, /Net Earnings|ROI|profitability/i);
 assert.match(page, /loadOperationalFinanceDashboardFromFirestore/);
 assert.match(layout, /requireOperationalFinanceCommissioner/);
 assert.match(layout, /returnTo=%2Fcommish%2Ffinance%2F2026/);
-assert.match(shell, /activePath === href/);
+assert.match(shell, /isSiteNavItemActive/);
 
 console.log("Commissioner Finance presentation checks passed.");

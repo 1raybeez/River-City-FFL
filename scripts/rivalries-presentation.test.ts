@@ -23,6 +23,6 @@ assert.match(client, /router\.push\(headToHeadOpponent\.href\)/);
 assert.match(client, /overflow-x-hidden/);
 assert.match(client, /focus-visible:ring/);
 assert.doesNotMatch(client, /<nav/);
-assert.match(shell, /\["League Info", "\/league-info"\]/);
+assert.match(shell, /isSiteNavItemActive/);
 
 console.log('Rivalries presentation test passed');

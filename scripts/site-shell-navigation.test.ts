@@ -10,7 +10,7 @@ const financeLayout = readFileSync("app/commish/finance/layout.tsx", "utf8");
 const auctionPage = readFileSync("app/commish/auction/page.tsx", "utf8");
 const nav = readFileSync("lib/navigation/siteNavigation.ts", "utf8");
 
-assert.match(history, /<SiteShell activePath="\/history">/);
+assert.match(history, /<SiteShell activePath="\/league-info">/);
 assert.match(shell, /PRIMARY_SITE_NAV_ITEMS/);
 assert.match(shell, /isSiteNavItemActive/);
 assert.match(nav, /Home/);
