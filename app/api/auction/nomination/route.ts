@@ -9,6 +9,7 @@ import {
   clearGlobalNomination,
   readGlobalNomination,
   setGlobalNomination,
+  updateGlobalNominationBid,
 } from "@/lib/auction/globalNominationState";
 
 export const runtime = "nodejs";
@@ -39,6 +40,11 @@ function readOpeningBid(value: unknown) {
   if (value === null || value === undefined || value === "") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
+function readCurrentBid(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 export async function GET() {
@@ -100,6 +106,35 @@ export async function DELETE() {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unable to clear current nomination." },
+      { status: 503 }
+    );
+  }
+}
+
+export async function PATCH(req: Request) {
+  const actor = await getSalesActor();
+  if (!actor?.access.canRecordSales || !actor.access.canonicalOwnerId) {
+    return NextResponse.json({ error: "Commissioner sales access required." }, { status: 401 });
+  }
+  let body: Record<string, unknown>;
+  try {
+    body = (await req.json()) as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: "Current bid payload is invalid." }, { status: 400 });
+  }
+  const currentBid = readCurrentBid(body.currentBid);
+  if (currentBid === null) {
+    return NextResponse.json({ error: "A non-negative current bid is required." }, { status: 400 });
+  }
+  try {
+    const nomination = await updateGlobalNominationBid({
+      actorOwnerId: actor.access.canonicalOwnerId,
+      currentBid,
+    });
+    return NextResponse.json({ status: "available", nomination });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to update current bid." },
       { status: 503 }
     );
   }

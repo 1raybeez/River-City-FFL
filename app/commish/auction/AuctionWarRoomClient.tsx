@@ -42,6 +42,7 @@ import { ModeToggle } from '@/components/ModeToggle';
 import { SignOutControl } from '@/components/SiteShell';
 import { PlayerDetailDrawer } from './PlayerDetailDrawer';
 import RecommendedNow from './RecommendedNow';
+import NominatedPlayerAdvice from './NominatedPlayerAdvice';
 import { activeManagers } from '@/lib/managers/activeManagers';
 import {
   canonicalAuctionTeams,
@@ -83,6 +84,7 @@ import type {
   GlobalNominationReadResult,
   GlobalNominationRecord,
 } from '@/lib/auction/globalNominationTypes';
+import type { NominatedPlayerAdvice as NominatedPlayerAdviceResult } from '@/lib/auction/nominationAdvisor';
 import {
   auctionLiveStrategyPositions,
   parseConversationalLiveStrategyUpdate,
@@ -859,7 +861,7 @@ const playerPoolSortOptions: Array<{ label: string; value: PlayerPoolSortKey }> 
   { label: 'High Value', value: 'highValue' },
   { label: 'ADP', value: 'adp' },
   { label: 'Demand Pressure', value: 'demandPressure' },
-  { label: 'Planned Cap', value: 'plannedCap' },
+  { label: 'Private Max', value: 'plannedCap' },
   { label: 'Preferred Entry', value: 'preferredEntry' },
   { label: 'Position', value: 'position' },
   { label: 'Player Name', value: 'playerName' },
@@ -1963,7 +1965,7 @@ function deriveCurrentAiCeiling({
 
   if (plannedCap !== null && plannedCap > ceiling && preferenceTags.includes('target')) {
     ceiling = Math.min(plannedCap, baseCeiling + strategicLiftLimit);
-    reasons.push('Saved Planned Cap supports the upper end of the AI range.');
+    reasons.push('Saved Private Max keeps the AI range within the owner ceiling.');
   }
 
   if (preferenceTags.includes('fade')) {
@@ -1974,6 +1976,11 @@ function deriveCurrentAiCeiling({
     );
     ceiling = Math.min(ceiling, fadeLimit);
     warnings.push('Fade tag keeps the Live Context Ceiling at value-only territory.');
+  }
+
+  if (plannedCap !== null) {
+    ceiling = Math.min(ceiling, plannedCap);
+    reasons.push(`Private Max keeps the Live Context Ceiling at ${formatMoney(plannedCap)}.`);
   }
 
   if (kDefStrategyMax !== null) {
@@ -2631,7 +2638,7 @@ function DraftPlanChips({
       ) : null}
       {preference?.plannedCap !== null && preference?.plannedCap !== undefined ? (
         <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-300">
-          PLAN {formatMoney(preference.plannedCap)}
+          MAX {formatMoney(preference.plannedCap)}
         </span>
       ) : null}
       {aiCeiling !== null && aiCeiling !== undefined ? (
@@ -3899,6 +3906,7 @@ export default function AuctionWarRoomClient({
 
   const masterPlayerSearchInputRef = useRef<HTMLInputElement | null>(null);
   const manualSalePriceInputRef = useRef<HTMLInputElement | null>(null);
+  const currentNominationSectionRef = useRef<HTMLElement | null>(null);
   const myBoardResultsScrollRef = useRef<HTMLDivElement | null>(null);
   const draftPlanSyncedPlayerIdRef = useRef<string | null>(null);
   const syncedSleeperTeamNameRef = useRef<string | null>(null);
@@ -4086,6 +4094,9 @@ export default function AuctionWarRoomClient({
   const [globalNominationMutationStatus, setGlobalNominationMutationStatus] = useState<
     'idle' | 'saving' | 'saved' | 'error'
   >('idle');
+  const [nominationAdvice, setNominationAdvice] = useState<NominatedPlayerAdviceResult | null>(null);
+  const [nominationAdviceStatus, setNominationAdviceStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [currentBidInput, setCurrentBidInput] = useState('');
 
   useEffect(() => {
     if (!isDraftCoachOpen) return;
@@ -4117,6 +4128,60 @@ export default function AuctionWarRoomClient({
       setGlobalNominationError(error instanceof Error ? error.message : 'Current nomination is temporarily unavailable.');
     }
   }, []);
+
+  useEffect(() => {
+    setCurrentBidInput(globalNomination?.currentBid === null || globalNomination?.currentBid === undefined ? '' : String(globalNomination.currentBid));
+  }, [globalNomination?.currentBid, globalNomination?.playerId]);
+
+  const updateCurrentNominationBid = async () => {
+    if (!access.canRecordSales || !globalNomination) return;
+    const currentBid = Number(currentBidInput);
+    if (!Number.isFinite(currentBid) || currentBid < 0) return;
+    setGlobalNominationMutationStatus('saving');
+    try {
+      const response = await fetch('/api/auction/nomination', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentBid }),
+      });
+      const payload = (await response.json()) as { nomination?: GlobalNominationRecord; error?: string };
+      if (!response.ok || !payload.nomination) throw new Error(payload.error ?? 'Unable to update current bid.');
+      setGlobalNomination(payload.nomination);
+      setGlobalNominationMutationStatus('saved');
+    } catch (error) {
+      setGlobalNominationMutationStatus('error');
+      setGlobalNominationError(error instanceof Error ? error.message : 'Unable to update current bid.');
+    }
+  };
+
+  const refreshNominationAdvice = useCallback(async () => {
+    if (!globalNomination) {
+      setNominationAdvice(null);
+      setNominationAdviceStatus('idle');
+      return;
+    }
+    setNominationAdviceStatus('loading');
+    try {
+      const response = await fetch('/api/auction/nomination-advice', { cache: 'no-store' });
+      const payload = (await response.json()) as { advice?: NominatedPlayerAdviceResult | null };
+      if (!response.ok) throw new Error('Nomination advice is temporarily unavailable.');
+      setNominationAdvice(payload.advice ?? null);
+      setNominationAdviceStatus('ready');
+    } catch {
+      setNominationAdvice(null);
+      setNominationAdviceStatus('error');
+    }
+  }, [globalNomination]);
+
+  useEffect(() => {
+    void refreshNominationAdvice();
+  }, [refreshNominationAdvice]);
+
+  useEffect(() => {
+    if (!globalNomination) return;
+    const intervalId = window.setInterval(() => void refreshNominationAdvice(), 15000);
+    return () => window.clearInterval(intervalId);
+  }, [globalNomination, refreshNominationAdvice]);
 
   useEffect(() => {
     const interval = window.setInterval(() => void refreshGlobalNomination(), 15000);
@@ -4686,22 +4751,7 @@ export default function AuctionWarRoomClient({
       ),
     [draftPlanPreferencesByPlayerId, initialPreferenceFallbacks]
   );
-  const availableTargetCount = localPlayerPoolRows.filter((player) => {
-    const playerStatus = getPlayerPoolDisplayStatus(
-      player,
-      activePurchaseRows,
-      isUsingSleeperPurchases
-    );
-
-    return (
-      isAvailablePlayerPoolStatus(playerStatus) &&
-      getEffectivePreferenceTags(player).includes('target')
-    );
-  }).length;
-  const activeMyBoardFilter =
-    myBoardFilter === 'targets' && availableTargetCount === 0
-      ? 'available'
-      : myBoardFilter;
+  const activeMyBoardFilter = myBoardFilter;
 
   const filteredPlayerPoolRows = useMemo(() => {
     const searchNeedle = normalizeFilterValue(playerPoolSearch);
@@ -5026,6 +5076,12 @@ export default function AuctionWarRoomClient({
         ? `Legal max reserves ${formatMoney(currentNominationReserveAfterWinning)} for ${formatRemainingRosterSpotCount(currentNominationReserveSpotsAfterWinning)}.`
         : 'Legal max uses remaining budget after required roster reserve.';
   const selectedPlayerSavedPlannedCap = selectedPlayerDraftPlan?.plannedCap ?? null;
+  const currentNominationEffectiveModelMaxBid =
+    currentNominationBaselineMaxBid === null
+      ? selectedPlayerSavedPlannedCap
+      : selectedPlayerSavedPlannedCap === null
+        ? currentNominationBaselineMaxBid
+        : Math.min(currentNominationBaselineMaxBid, selectedPlayerSavedPlannedCap);
   const currentNominationLiveOverrideResult = parseDraftPlanDollarInput(
     draftPlanLiveOverrideInput,
     'Live Override'
@@ -5547,20 +5603,23 @@ export default function AuctionWarRoomClient({
     currentNominationLiveOverrideAccepted ? currentNominationLiveOverrideValue : null;
   const currentNominationActionableCeiling =
     currentNominationAcceptedLiveOverrideValue !== null
-      ? currentNominationLegalMaxBid !== null
-        ? Math.min(
-            currentNominationAcceptedLiveOverrideValue,
-            currentNominationLegalMaxBid
-          )
-        : currentNominationAcceptedLiveOverrideValue
-      : currentNominationBaselineMaxBid;
+      ? Math.min(
+          currentNominationAcceptedLiveOverrideValue,
+          ...(currentNominationLegalMaxBid === null
+            ? []
+            : [currentNominationLegalMaxBid]),
+          ...(selectedPlayerSavedPlannedCap === null
+            ? []
+            : [selectedPlayerSavedPlannedCap])
+        )
+      : currentNominationEffectiveModelMaxBid;
   const currentNominationActionableCeilingLabel = formatMoney(
     currentNominationActionableCeiling
   );
   const currentNominationActionableCeilingDetail =
     currentNominationAcceptedLiveOverrideValue !== null
       ? `Live Override ${formatMoney(currentNominationAcceptedLiveOverrideValue)}${currentNominationLegalMaxBid !== null ? ` | Legal Max ${formatMoney(currentNominationLegalMaxBid)}` : ''}`
-      : `Recommended Max ${formatMoney(currentNominationBaselineMaxBid)} is the primary ceiling. Live Context Ceiling ${formatMoney(currentNominationCurrentAiCeiling.ceiling)} is advanced context only.`;
+      : `Effective Max ${formatMoney(currentNominationEffectiveModelMaxBid)} is the primary ceiling. Live Context Ceiling ${formatMoney(currentNominationCurrentAiCeiling.ceiling)} is advanced context only.`;
   const currentNominationBaseRecommendation =
     currentNominationManualBidValue !== null
       ? currentNominationDraftIntelligence?.recommendation ??
@@ -5575,14 +5634,14 @@ export default function AuctionWarRoomClient({
     selectedPlayerSavedPlannedCap !== null &&
     currentNominationLegalMaxBid !== null &&
     currentNominationLegalMaxBid < selectedPlayerSavedPlannedCap
-      ? 'Current Legal Max is below your saved Planned Cap.'
+      ? 'Current Legal Max is below your saved Private Max.'
       : null,
     currentNominationManualBidValue !== null &&
     selectedPlayerSavedPlannedCap !== null &&
     currentNominationManualBidValue > selectedPlayerSavedPlannedCap &&
     currentNominationActionableCeiling !== null &&
     currentNominationManualBidValue <= currentNominationActionableCeiling
-      ? 'Current bid is above Planned Cap but remains within Recommended Max.'
+      ? 'Current bid is above Private Max but remains within Recommended Max.'
       : null,
     currentNominationLiveOverrideResult.error,
     currentNominationLiveOverrideExceedsAi &&
@@ -5619,7 +5678,7 @@ export default function AuctionWarRoomClient({
       ? `Live Context Ceiling is ${formatMoney(currentNominationCurrentAiCeiling.ceiling)}.`
       : null,
     selectedPlayerSavedPlannedCap !== null
-      ? `Saved Planned Cap is ${formatMoney(selectedPlayerSavedPlannedCap)}.`
+      ? `Saved Private Max is ${formatMoney(selectedPlayerSavedPlannedCap)}.`
       : null,
     guidanceBudgetRow?.budgetIsIncomplete
       ? `Legal Max is incomplete because ${formatMissingKeeperPriceCount(guidanceBudgetRow.missingKeeperPriceCount)}.`
@@ -5771,10 +5830,10 @@ export default function AuctionWarRoomClient({
       ? { amount: null, error: null }
       : plannedCapOverride !== null
         ? { amount: plannedCapOverride, error: null }
-        : parseDraftPlanDollarInput(draftPlanPlannedCapInput, 'Planned Cap');
+        : parseDraftPlanDollarInput(draftPlanPlannedCapInput, 'Private Max');
 
     if (plannedCapOverride !== null && plannedCapOverride < 1) {
-      setDraftPlanError('Planned Cap must be at least $1.');
+      setDraftPlanError('Private Max must be at least $1.');
       setDraftPlanSaveStatus('error');
       return;
     }
@@ -5785,7 +5844,7 @@ export default function AuctionWarRoomClient({
       (preferredEntryResult.amount !== null &&
       plannedCapResult.amount !== null &&
       preferredEntryResult.amount > plannedCapResult.amount
-        ? 'Preferred Entry cannot exceed Planned Cap.'
+        ? 'Preferred Entry cannot exceed Private Max.'
         : null) ??
       (preferredEntryResult.amount !== null &&
       currentNominationLegalMaxBid !== null &&
@@ -5877,6 +5936,21 @@ export default function AuctionWarRoomClient({
     setManualSaleHighlightedMatchIndex(0);
     setManualSaleError(null);
     focusManualSalePriceInput();
+    window.requestAnimationFrame(() => {
+      currentNominationSectionRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      });
+    });
+  };
+
+  const selectRecommendedNowPlayer = (playerId: string) => {
+    const player = localPlayerPoolRows.find(
+      (candidate) => candidate.sleeperPlayerId === playerId
+    );
+    if (!player) return;
+    setActiveWorkspace('draft');
+    selectManualSalePlayer(player);
   };
   const clearManualSalePlayer = () => {
     setSelectedPlayerRowNumber(null);
@@ -8731,6 +8805,8 @@ export default function AuctionWarRoomClient({
               result={recommendedNow}
               loading={recommendedNowStatus === 'loading'}
               error={recommendedNowError}
+              onSelectPlayer={selectRecommendedNowPlayer}
+              selectedPlayerId={selectedPlayer?.sleeperPlayerId ?? null}
             />
           )}
 
@@ -9152,7 +9228,7 @@ export default function AuctionWarRoomClient({
             >
               {activeWorkspace === 'draft' && (
               <>
-	              <section className={`${selectedPlayer ? 'rounded-3xl p-4' : 'rounded-2xl p-3'} bg-white shadow-lg shadow-black/5 dark:bg-[#121212]`}>
+                  <section ref={currentNominationSectionRef} className={`${selectedPlayer ? 'rounded-3xl p-4' : 'rounded-2xl p-3'} bg-white shadow-lg shadow-black/5 dark:bg-[#121212]`}>
 	                <div className={`grid ${selectedPlayer ? 'gap-4' : 'gap-1'}`}>
                   <div className="rounded-2xl border border-orange-600/25 bg-orange-600/10 px-4 py-3">
                     <p className="text-[9px] font-black uppercase tracking-[0.25em] text-orange-700 dark:text-orange-300">
@@ -9169,18 +9245,18 @@ export default function AuctionWarRoomClient({
                             {globalNomination.playerName}
                           </p>
                           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
-                            {globalNomination.position ?? 'N/A'} · {globalNomination.nflTeam ?? 'N/A'} · Opening {formatMoney(globalNomination.openingBid)}
+                            {globalNomination.position ?? 'N/A'} · {globalNomination.nflTeam ?? 'N/A'} · Opening {formatMoney(globalNomination.openingBid)} · Current {formatMoney(globalNomination.currentBid)}
                           </p>
                         </div>
                         {access.canRecordSales ? (
-                          <button
-                            type="button"
-                            onClick={() => void clearCurrentNomination()}
-                            disabled={globalNominationMutationStatus === 'saving'}
-                            className="min-h-10 rounded-xl border border-black/15 bg-white px-3 py-2 text-[9px] font-black uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/15 dark:bg-black"
-                          >
-                            Clear Nomination
-                          </button>
+                          <div className="flex flex-wrap items-end justify-end gap-2">
+                            <label className="text-right text-[8px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                              Current Bid
+                              <input value={currentBidInput} onChange={(event) => setCurrentBidInput(event.target.value)} inputMode="decimal" className="mt-1 block w-24 rounded-lg border border-black/15 bg-white px-2 py-2 text-right text-sm font-black text-black dark:border-white/15 dark:bg-black dark:text-white" />
+                            </label>
+                            <button type="button" onClick={() => void updateCurrentNominationBid()} disabled={globalNominationMutationStatus === 'saving'} className="min-h-10 rounded-xl border border-orange-600/30 bg-orange-600/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-50">Update Bid</button>
+                            <button type="button" onClick={() => void clearCurrentNomination()} disabled={globalNominationMutationStatus === 'saving'} className="min-h-10 rounded-xl border border-black/15 bg-white px-3 py-2 text-[9px] font-black uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/15 dark:bg-black">Clear Nomination</button>
+                          </div>
                         ) : null}
                       </div>
                     ) : (
@@ -9194,6 +9270,13 @@ export default function AuctionWarRoomClient({
                       </p>
                     ) : null}
                   </div>
+                  {globalNomination && nominationAdvice ? (
+                    <NominatedPlayerAdvice advice={nominationAdvice} />
+                  ) : globalNomination && nominationAdviceStatus === 'error' ? (
+                    <p className="rounded-2xl border border-black/10 bg-black/[0.03] px-4 py-3 text-xs font-bold text-gray-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300">
+                      Nomination advice temporarily unavailable; bidding controls remain available.
+                    </p>
+                  ) : null}
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <p className="text-[9px] font-black uppercase tracking-[0.22em] text-gray-400">
@@ -9693,7 +9776,7 @@ export default function AuctionWarRoomClient({
 
                       <label className="block min-w-0">
                         <span className="mb-1 block text-[8px] font-black uppercase tracking-widest text-gray-400">
-                          Planned Cap
+                          Private Max
                         </span>
                         <input
                           type="number"
@@ -9774,7 +9857,7 @@ export default function AuctionWarRoomClient({
                           }
                           className="inline-flex h-8 items-center justify-center rounded-lg border border-amber-500/30 bg-white/60 px-3 text-[9px] font-black uppercase tracking-widest text-amber-800 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:bg-black/20 dark:text-amber-200"
                         >
-                          Update Planned Cap
+                          Update Private Max
                         </button>
                       </div>
                     )}
@@ -9822,7 +9905,7 @@ export default function AuctionWarRoomClient({
                         </p>
                       </div>
                       <div className="rounded-xl bg-black/[0.025] px-3 py-2 dark:bg-white/[0.04]">
-                        <p className="text-gray-400">Planned Cap</p>
+                        <p className="text-gray-400">Private Max</p>
                         <p className="mt-1 text-sm">
                           {draftPlanPlannedCapInput.trim()
                             ? `$${draftPlanPlannedCapInput.trim()}`

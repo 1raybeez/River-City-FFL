@@ -65,6 +65,36 @@ export type RecommendedNowResult = {
     bestValueEligibility: string;
   };
   diagnostic?: RecommendedNowDiagnostic;
+  evaluation?: RecommendedNowEvaluation | null;
+};
+
+export type RecommendedNowEvaluation = {
+  playerId: string;
+  playerName: string;
+  position: string | null;
+  nflTeam: string | null;
+  auctionConsensus: number | null;
+  auctionLow: number | null;
+  auctionHigh: number | null;
+  auctionSourceCount: number;
+  adp: number | null;
+  adpSourceCount: number;
+  targetLow: number | null;
+  targetHigh: number | null;
+  preferenceTag: RecommendedNowPreference["tag"] | null;
+  valuePercentile: number;
+  demandPercentile: number | null;
+  scarcity: number;
+  rosterFit: number;
+  starterNeed: number;
+  benchNeed: number;
+  affordability: RecommendedNowAffordability;
+  affordabilityScore: number;
+  budgetSafeMax: number;
+  leaguePressure: number;
+  privatePreference: number;
+  categoryScores: Partial<Record<RecommendedNowCategory, number>>;
+  recommendationCategory: RecommendedNowCategory | null;
 };
 
 type RecommendedNowDiagnosticTrace = {
@@ -203,6 +233,8 @@ type Candidate = {
   demandPercentile: number | null;
   scarcity: number;
   rosterFit: number;
+  starterNeed: number;
+  benchNeed: number;
   affordability: RecommendedNowAffordability;
   affordabilityScore: number;
   budgetSafeMax: number;
@@ -327,7 +359,7 @@ function buildWhy(category: RecommendedNowCategory, candidate: Candidate) {
 
 export function buildRecommendedNow(
   input: RecommendedNowInput,
-  options: { diagnostic?: boolean } = {}
+  options: { diagnostic?: boolean; evaluationPlayerId?: string } = {}
 ): RecommendedNowResult {
   const now = input.generatedAt ?? new Date().toISOString();
   const warnings: string[] = [];
@@ -355,6 +387,7 @@ export function buildRecommendedNow(
         budget: "River City auction budget and minimum-roster max-bid calculation",
       },
       policies: { bestValueEligibility: BEST_VALUE_ELIGIBILITY_POLICY_VERSION },
+      evaluation: null,
     };
   }
 
@@ -434,6 +467,8 @@ export function buildRecommendedNow(
       demandPercentile,
       scarcity,
       rosterFit,
+      starterNeed,
+      benchNeed,
       affordability: affordability.label,
       affordabilityScore: affordability.score,
       budgetSafeMax,
@@ -527,6 +562,43 @@ export function buildRecommendedNow(
   const unavailableCategories: RecommendedNowCategory[] = ["UPSIDE PLAY"];
   warnings.push("UPSIDE PLAY is unavailable because no approved upside input exists in the current War Room data.");
   if (recommendations.length < 5) warnings.push("Fewer than five defensible distinct recommendations were available.");
+  const evaluatedCandidate = options.evaluationPlayerId
+    ? candidates.find((candidate) => candidate.value.playerId === options.evaluationPlayerId) ?? null
+    : null;
+  const evaluation = evaluatedCandidate
+    ? {
+        playerId: evaluatedCandidate.value.playerId,
+        playerName: evaluatedCandidate.value.playerName,
+        position: evaluatedCandidate.value.position,
+        nflTeam: evaluatedCandidate.value.nflTeam,
+        auctionConsensus: evaluatedCandidate.value.auctionConsensus,
+        auctionLow: evaluatedCandidate.value.auctionLow,
+        auctionHigh: evaluatedCandidate.value.auctionHigh,
+        auctionSourceCount: evaluatedCandidate.value.auctionSourceCount,
+        adp: evaluatedCandidate.adp?.adp ?? null,
+        adpSourceCount: evaluatedCandidate.adp?.sourceCount ?? 0,
+        targetLow: evaluatedCandidate.preference?.preferredEntry ?? null,
+        targetHigh: evaluatedCandidate.preference?.plannedCap ?? null,
+        preferenceTag: evaluatedCandidate.preference?.tag ?? null,
+        valuePercentile: evaluatedCandidate.valuePercentile,
+        demandPercentile: evaluatedCandidate.demandPercentile,
+        scarcity: evaluatedCandidate.scarcity,
+        rosterFit: evaluatedCandidate.rosterFit,
+        starterNeed: evaluatedCandidate.starterNeed,
+        benchNeed: evaluatedCandidate.benchNeed,
+        affordability: evaluatedCandidate.affordability,
+        affordabilityScore: evaluatedCandidate.affordabilityScore,
+        budgetSafeMax: evaluatedCandidate.budgetSafeMax,
+        leaguePressure: evaluatedCandidate.leaguePressure,
+        privatePreference: preferenceScore(evaluatedCandidate.preference),
+        categoryScores: Object.fromEntries(
+          categoryOrder
+            .filter((category) => category !== "UPSIDE PLAY")
+            .map((category) => [category, categoryScorers[category](evaluatedCandidate)])
+        ),
+        recommendationCategory: recommendations.find((recommendation) => recommendation.playerId === evaluatedCandidate.value.playerId)?.category ?? null,
+      }
+    : null;
   const result: RecommendedNowResult = {
     status: warnings.length > 0 ? "partial" : "ready",
     version: RECOMMENDATION_ENGINE_VERSION,
@@ -542,6 +614,7 @@ export function buildRecommendedNow(
       budget: "River City auction budget and minimum-roster max-bid calculation",
     },
     policies: { bestValueEligibility: BEST_VALUE_ELIGIBILITY_POLICY_VERSION },
+    evaluation,
   };
   if (options.diagnostic) {
     const diagnosticPositions = ["QB", "RB", "WR", "TE", "K", "DEF"];

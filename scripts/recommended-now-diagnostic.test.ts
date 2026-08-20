@@ -5,8 +5,8 @@ import { buildRecommendedNow } from "../lib/auction/recommendedNow";
 const route = readFileSync("app/api/auction/recommended-now/route.ts", "utf8");
 assert.match(route, /requireAuctionWarRoomAccess/);
 assert.match(route, /searchParams\.get\("diagnostic"\) === "1"/);
-assert.match(route, /diagnostic: diagnosticRequested/);
-assert.ok(route.indexOf("requireAuctionWarRoomAccess") < route.indexOf("diagnosticRequested"));
+assert.match(route, /diagnostic: new URL\(request\.url\)/);
+assert.ok(route.indexOf("requireAuctionWarRoomAccess") < route.indexOf("diagnostic: new URL"));
 assert.doesNotMatch(route, /ownerId=|userId=|franchiseId=/);
 
 const result = buildRecommendedNow({

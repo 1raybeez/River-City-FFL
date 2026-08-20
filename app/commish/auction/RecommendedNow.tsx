@@ -24,10 +24,12 @@ function money(value: number | null) {
   return value === null ? '—' : `$${Math.round(value)}`;
 }
 
-export default function RecommendedNow({ result, loading, error }: {
+export default function RecommendedNow({ result, loading, error, onSelectPlayer, selectedPlayerId }: {
   result: RecommendedNowResult | null;
   loading: boolean;
   error: string | null;
+  onSelectPlayer: (playerId: string) => void;
+  selectedPlayerId: string | null;
 }) {
   return (
     <section className="mb-6 rounded-2xl border border-orange-600/25 bg-white p-4 shadow-sm dark:bg-[#121212]" aria-labelledby="recommended-now-heading">
@@ -46,7 +48,14 @@ export default function RecommendedNow({ result, loading, error }: {
       {!loading && !error && result && result.recommendations.length > 0 && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {result.recommendations.map((recommendation, index) => (
-            <article key={recommendation.playerId} className="min-w-0 rounded-xl border border-black/10 bg-black/[0.025] p-3 dark:border-white/10 dark:bg-white/[0.04]">
+            <button
+              key={recommendation.playerId}
+              type="button"
+              aria-pressed={selectedPlayerId === recommendation.playerId}
+              aria-label={`View ${recommendation.playerName} in the Draft HUD`}
+              onClick={() => onSelectPlayer(recommendation.playerId)}
+              className={`min-w-0 rounded-xl border p-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 ${selectedPlayerId === recommendation.playerId ? 'border-orange-600/50 bg-orange-600/10 ring-1 ring-inset ring-orange-600/30' : 'border-black/10 bg-black/[0.025] hover:border-orange-600/30 hover:bg-orange-600/5 dark:border-white/10 dark:bg-white/[0.04]'} `}
+            >
               <div className="mb-3 flex items-start justify-between gap-2">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#071a33] text-xs font-black text-white">{index + 1}</span>
                 <span className={`rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-widest ${categoryStyles[recommendation.category] ?? 'border-black/10 bg-black/5 text-black/60'}`}>{recommendation.category}</span>
@@ -70,10 +79,12 @@ export default function RecommendedNow({ result, loading, error }: {
               </div>
               <p className="mt-3 text-[10px] font-medium leading-4 text-black/65 dark:text-white/65"><span className="font-black uppercase tracking-widest text-black/40 dark:text-white/40">Why: </span>{recommendation.why}</p>
               <div className="mt-3 flex flex-wrap gap-2 text-[8px] font-black uppercase tracking-widest text-black/45 dark:text-white/45">
-                <span>Target {money(recommendation.targetLow)}–{money(recommendation.targetHigh)}</span>
-                <span>Stretch {money(recommendation.stretchMax)}</span>
+                <span>Entry {money(recommendation.targetLow)}</span>
+                <span>Private Max {money(recommendation.targetHigh)}</span>
+                <span>Budget Max {money(recommendation.stretchMax)}</span>
+                <span className="text-orange-600">View in Draft HUD</span>
               </div>
-            </article>
+            </button>
           ))}
         </div>
       )}

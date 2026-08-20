@@ -626,7 +626,7 @@ export function PlayerDetailDrawer({
                     </p>
                   </div>
                   <div className="rounded-xl bg-black/[0.03] p-3 dark:bg-white/[0.04]">
-                    <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Your Planned Cap</p>
+                    <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Your Private Max</p>
                     <p className="mt-1 text-sm font-black">{money(plannedCapAmount)}</p>
                     <p className="mt-1 text-xs font-bold leading-relaxed text-gray-500 dark:text-gray-400">
                       Your saved pre-draft plan. It can be changed as the auction develops.
@@ -751,6 +751,7 @@ export function PlayerDetailDrawer({
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="grid gap-1.5">
                     <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Preferred Entry</span>
+                    <span className="text-[9px] font-medium text-gray-400">Soft desired price to start/target buying.</span>
                     <input
                       inputMode="numeric"
                       value={plan.preferredEntry}
@@ -760,7 +761,8 @@ export function PlayerDetailDrawer({
                     />
                   </label>
                   <label className="grid gap-1.5">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Planned Cap</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Private Max</span>
+                    <span className="text-[9px] font-medium text-gray-400">Hard stop. Advisor passes above this price.</span>
                     <input
                       inputMode="numeric"
                       value={plan.plannedCap}

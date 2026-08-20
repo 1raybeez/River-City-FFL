@@ -142,3 +142,33 @@ export async function clearGlobalNomination({
   if (!result) throw new Error("Unable to clear current nomination.");
   return result;
 }
+
+export async function updateGlobalNominationBid({
+  season = 2026,
+  actorOwnerId,
+  currentBid,
+}: {
+  season?: number;
+  actorOwnerId: string;
+  currentBid: number;
+}): Promise<GlobalNominationRecord> {
+  const ref = getNominationRef(season);
+  let result: GlobalNominationRecord | null = null;
+  await firestore.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(ref);
+    const previous = snapshot.exists ? readRecord(season, snapshot.data()) : null;
+    if (!previous || previous.state !== "active" || !previous.playerId || !previous.playerName) {
+      throw new Error("No active nomination is available.");
+    }
+    result = {
+      ...previous,
+      currentBid,
+      updatedAt: new Date().toISOString(),
+      updatedByOwnerId: actorOwnerId,
+      version: previous.version + 1,
+    };
+    transaction.set(ref, result);
+  });
+  if (!result) throw new Error("Unable to update current nomination bid.");
+  return result;
+}

@@ -91,10 +91,11 @@ assert.equal(reconciliation.activePurchases.find((row) => row.playerId === "owne
 assert.equal(reconciliation.activePurchases.find((row) => row.playerId === "owner-b-purchase")?.rosterId, 2);
 
 const route = readFileSync("app/api/auction/recommended-now/route.ts", "utf8");
+const serverRoute = readFileSync("lib/auction/recommendedNowServer.ts", "utf8");
 assert.match(route, /requireAuctionWarRoomAccess/);
-assert.match(route, /actor\.access\.ownerProfileId/);
-assert.match(route, /actor\.access\.sleeperRosterId/);
-assert.match(route, /actor\.access\.warRoomId/);
+assert.match(serverRoute, /ownerProfileId/);
+assert.match(serverRoute, /sleeperRosterId/);
+assert.match(serverRoute, /warRoomId/);
 assert.doesNotMatch(route, /searchParams\.get\("(?:ownerId|userId|ownerProfileId|franchiseId|rosterId|sleeperRosterId|warRoomId)"\)/);
 assert.doesNotMatch(route, /request\.json/);
 assert.doesNotMatch(route, /request\.text/);
