@@ -8,12 +8,18 @@ const commish = readFileSync("app/commish/page.tsx", "utf8");
 const login = readFileSync("app/commish/auction/login/page.tsx", "utf8");
 const financeLayout = readFileSync("app/commish/finance/layout.tsx", "utf8");
 const auctionPage = readFileSync("app/commish/auction/page.tsx", "utf8");
+const nav = readFileSync("lib/navigation/siteNavigation.ts", "utf8");
 
 assert.match(history, /<SiteShell activePath="\/history">/);
-assert.match(shell, /aria-current=\{activePath === href \? "page"/);
-for (const href of ["/", "/matchups", "/managers", "/league-info/rivalries", "/history", "/league-info"]) {
-  assert.match(shell, new RegExp(href.replaceAll("/", "\\/")));
-}
+assert.match(shell, /PRIMARY_SITE_NAV_ITEMS/);
+assert.match(shell, /isSiteNavItemActive/);
+assert.match(nav, /Home/);
+assert.match(nav, /Matchups/);
+assert.match(nav, /Managers/);
+assert.match(nav, /League Info/);
+assert.doesNotMatch(nav, /label: "Rivalries"/);
+assert.doesNotMatch(nav, /label: "History"/);
+assert.match(nav, /pathname\.startsWith/);
 assert.match(accountMenu, /member\.canAccessMaintenance[\s\S]*href="\/commish"/);
 assert.match(history, /href="\/"/);
 assert.match(commish, /redirect\('\/commish\/login\?returnTo=%2Fcommish'\)/);

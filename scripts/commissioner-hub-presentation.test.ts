@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 
 const page = readFileSync("app/commish/page.tsx", "utf8");
 const shell = readFileSync("components/SiteShell.tsx", "utf8");
+const nav = readFileSync("lib/navigation/siteNavigation.ts", "utf8");
 
 assert.match(page, /import SiteShell from ['"]@\/components\/SiteShell['"]/);
 assert.match(page, /<SiteShell activePath="\/commish">/);
@@ -30,6 +31,8 @@ assert.match(page, /grid gap-4 md:grid-cols-2 xl:grid-cols-3/);
 assert.match(page, /focus-visible:ring-2/);
 assert.doesNotMatch(page, /<ModeToggle/);
 assert.doesNotMatch(page, /Back to Home/);
-assert.match(shell, /aria-current=\{activePath === href \? "page"/);
+assert.match(shell, /PRIMARY_SITE_NAV_ITEMS/);
+assert.match(shell, /member\.canAccessMaintenance/);
+assert.match(nav, /label: "League Info"/);
 
 console.log("Commissioner Hub presentation checks passed.");

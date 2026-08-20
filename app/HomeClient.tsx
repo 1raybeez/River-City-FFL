@@ -10,6 +10,7 @@ import { db } from "@/lib/firebase";
 import { getCountdownParts, type BoxOneState } from "@/lib/home/boxOneState";
 import type { CurrentMember } from "@/lib/auth/currentMemberContract";
 import type { PublicLeagueRecap } from "@/lib/postDraftNarrativeTypes";
+import { isSiteNavItemActive, MOBILE_SITE_NAV_ITEMS, PRIMARY_SITE_NAV_ITEMS } from "@/lib/navigation/siteNavigation";
 import { collection, doc, getDoc, onSnapshot } from "firebase/firestore";
 import { RSVP_ATTENDEES, resolveRsvpAttendee } from "@/lib/rsvpAttendees";
 
@@ -17,11 +18,6 @@ const RECAP_LOADING_TEXT = "Loading latest league note...";
 const RECAP_FALLBACK_TEXT = "Commish recap could not be loaded. Check back soon for the latest league update.";
 const PUBLIC_AUCTION_VALUE_STATUS = "Values ready";
 const PUBLIC_ADP_STATUS = "ADP ready";
-const mobileNavLinks = [
-  ["Home", "/"], ["Managers", "/managers"], ["League Info", "/league-info"], ["Commish", "/commish"], ["Matchups", "/matchups"],
-  ["Power Rankings", "/predictor"], ["History", "/history"], ["Rivalries", "/league-info/rivalries"],
-];
-
 const managers = RSVP_ATTENDEES.map((attendee) => [attendee.name, attendee.id] as const);
 
 type DashboardCardProps = { label: string; icon?: ReactNode; children: ReactNode; accent?: boolean };
@@ -248,16 +244,18 @@ export default function HomeClient({ initialMember, initialPublishedRecap, initi
     ? `For 2026, the public finance summary reports a championship allocation of ${publicFinance.championshipAllocation ?? "—"} and projected champion cash of ${publicFinance.projectedChampionCash ?? "—"}.`
     : "Current 2026 finance details are temporarily unavailable.";
 
-  const visibleMobileNavLinks = initialMember.canAccessMaintenance ? mobileNavLinks : mobileNavLinks.filter(([, href]) => href !== "/commish");
+  const visibleMobileNavLinks = initialMember.canAccessMaintenance
+    ? [...MOBILE_SITE_NAV_ITEMS, { label: "Commissioner Hub", href: "/commish", match: "exact" as const }]
+    : MOBILE_SITE_NAV_ITEMS;
 
   return <div className="min-h-screen bg-[#f7f8fa] text-slate-950 dark:bg-[#0a0a0a] dark:text-white">
     <nav className="sticky top-0 z-50 border-b border-white/10 bg-[#071a33]/95 px-4 py-3 text-white backdrop-blur-md sm:px-6" aria-label="River City site navigation">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
         <Link href="/" className="flex min-w-0 items-center gap-3" aria-label="River City FFL home"><span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full border border-white/20 bg-white"><Image src="/River City FFL Logo.JPG" alt="" fill className="object-cover" unoptimized /></span><span className="hidden min-w-0 sm:block"><span className="block text-lg font-black uppercase italic leading-none">River City FFL</span><span className="mt-1 block text-[8px] font-bold uppercase tracking-[0.18em] text-white/55">A tradition of competition</span></span></Link>
-        <div className="hidden min-w-0 items-center gap-1 lg:flex">{[["Home", "/"], ["Matchups", "/matchups"], ["Managers", "/managers"], ["Rivalries", "/league-info/rivalries"], ["History", "/history"], ["League Info", "/league-info"]].map(([label, href]) => <Link key={href} href={href} aria-current={href === "/" ? "page" : undefined} className={`rounded-md px-3 py-2 text-[10px] font-black uppercase transition ${href === "/" ? "border-b-2 border-amber-400 text-white" : "text-white/65 hover:bg-white/10 hover:text-white"}`}>{label}</Link>)}{initialMember.authenticated ? <MemberAccountMenu member={initialMember} signOutControl={<SignOutControl />} /> : <Link href="/member/login?returnTo=%2F" className="ml-3 rounded-md border border-white/35 px-3 py-2 text-[10px] font-black uppercase text-white transition hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">League Member Login</Link>}</div>
+        <div className="hidden min-w-0 items-center gap-1 lg:flex">{PRIMARY_SITE_NAV_ITEMS.map((item) => { const active = isSiteNavItemActive(item, "/"); return <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={`rounded-md px-3 py-2 text-[10px] font-black uppercase transition ${active ? "border-b-2 border-amber-400 text-white" : "text-white/65 hover:bg-white/10 hover:text-white"}`}>{item.label}</Link>; })}{initialMember.authenticated ? <MemberAccountMenu member={initialMember} signOutControl={<SignOutControl />} /> : <Link href="/member/login?returnTo=%2F" className="ml-3 rounded-md border border-white/35 px-3 py-2 text-[10px] font-black uppercase text-white transition hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">League Member Login</Link>}</div>
         <button type="button" aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"} aria-expanded={isMobileMenuOpen} aria-controls="home-mobile-navigation" onClick={() => setIsMobileMenuOpen((open) => !open)} className="rounded-lg border border-white/25 p-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 lg:hidden">{isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}</button>
       </div>
-      {isMobileMenuOpen && <div id="home-mobile-navigation" className="mx-auto mt-3 grid max-w-7xl grid-cols-2 gap-2 rounded-xl border border-white/15 bg-[#0b2444] p-3 lg:hidden">{visibleMobileNavLinks.map(([label, href]) => <Link key={href} href={href} onClick={() => setIsMobileMenuOpen(false)} className="rounded-lg border border-white/10 px-3 py-3 text-[9px] font-black uppercase tracking-widest text-white/75 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">{label}</Link>)}{initialMember.authenticated ? <MemberAccountMenu member={initialMember} mobile onNavigate={() => setIsMobileMenuOpen(false)} signOutControl={<SignOutControl className="min-h-10" />} /> : <Link href="/member/login?returnTo=%2F" onClick={() => setIsMobileMenuOpen(false)} className="col-span-2 min-h-11 rounded-lg border border-amber-300/60 px-3 py-3 text-center text-[10px] font-black uppercase tracking-widest text-amber-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">League Member Login</Link>}</div>}
+      {isMobileMenuOpen && <div id="home-mobile-navigation" className="mx-auto mt-3 grid max-w-7xl grid-cols-2 gap-2 rounded-xl border border-white/15 bg-[#0b2444] p-3 lg:hidden">{visibleMobileNavLinks.map((item) => { const active = isSiteNavItemActive(item, "/"); return <Link key={item.href} href={item.href} onClick={() => setIsMobileMenuOpen(false)} aria-current={active ? "page" : undefined} className={`rounded-lg border px-3 py-3 text-[9px] font-black uppercase tracking-widest ${active ? "border-amber-400 text-white" : "border-white/10 text-white/75 hover:bg-white/10"}`}>{item.label}</Link>; })}{initialMember.authenticated ? <MemberAccountMenu member={initialMember} mobile onNavigate={() => setIsMobileMenuOpen(false)} signOutControl={<SignOutControl className="min-h-10" />} /> : <Link href="/member/login?returnTo=%2F" onClick={() => setIsMobileMenuOpen(false)} className="col-span-2 min-h-11 rounded-lg border border-amber-300/60 px-3 py-3 text-center text-[10px] font-black uppercase tracking-widest text-amber-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">League Member Login</Link>}</div>}
     </nav>
     <header className="mx-auto max-w-7xl px-4 pb-6 pt-8 sm:px-6 lg:px-8"><div className="flex items-center gap-4"><div className="relative h-16 w-16 overflow-hidden rounded-full border-2 border-white bg-white shadow-lg"><Image src="/River City FFL Logo.JPG" alt="River City FFL logo" fill className="object-cover" priority unoptimized /></div><div><p className="text-[10px] font-black uppercase tracking-[0.3em] text-orange-600">River City FFL</p><h1 className="mt-1 text-4xl font-black uppercase italic tracking-tighter sm:text-5xl">2026 League Dashboard</h1><p className="mt-1 text-xs font-medium text-slate-500 dark:text-white/50">Est. 2011 · Richmond, Virginia</p></div></div></header>
     <main className="mx-auto grid max-w-7xl gap-5 px-4 pb-12 sm:px-6 md:grid-cols-2 lg:grid-cols-12 lg:px-8" aria-label="Home dashboard">
