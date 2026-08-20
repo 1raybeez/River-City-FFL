@@ -7,7 +7,7 @@ import {
 import {
   clearAuctionOwnerPreference,
   readAuctionOwnerPreferences,
-  upsertAuctionOwnerPreference,
+  updateAuctionOwnerPreference,
 } from "@/lib/auction/ownerPreferences";
 import {
   type AuctionOwnerPreferenceTag,
@@ -155,11 +155,21 @@ export async function PUT(req: Request) {
   const ownerProfileId = getActorOwnerProfileId(actor);
   const { season } = readPreferenceScope(searchParams, body, ownerProfileId);
   const sleeperPlayerId = readString(body.sleeperPlayerId);
-  const tag = readString(body.tag);
-  const preferredEntry = readNullableDollar(
-    body.preferredEntry ?? body.openingBid
-  );
-  const plannedCap = readNullableDollar(body.plannedCap ?? body.hardCap);
+  const hasTag = Object.prototype.hasOwnProperty.call(body, "tag");
+  const hasPreferredEntry =
+    Object.prototype.hasOwnProperty.call(body, "preferredEntry") ||
+    Object.prototype.hasOwnProperty.call(body, "openingBid");
+  const hasPlannedCap =
+    Object.prototype.hasOwnProperty.call(body, "plannedCap") ||
+    Object.prototype.hasOwnProperty.call(body, "hardCap");
+  const hasNote = Object.prototype.hasOwnProperty.call(body, "note");
+  const tag = hasTag ? readString(body.tag) : null;
+  const preferredEntry = hasPreferredEntry
+    ? readNullableDollar(body.preferredEntry ?? body.openingBid)
+    : null;
+  const plannedCap = hasPlannedCap
+    ? readNullableDollar(body.plannedCap ?? body.hardCap)
+    : null;
 
   if (!sleeperPlayerId) {
     return NextResponse.json(
@@ -168,21 +178,21 @@ export async function PUT(req: Request) {
     );
   }
 
-  if (!validOwnerPreferenceTags.has(tag as AuctionOwnerPreferenceTag)) {
+  if (hasTag && !validOwnerPreferenceTags.has(tag as AuctionOwnerPreferenceTag)) {
     return NextResponse.json(
       { error: "Invalid draft plan tag." },
       { status: 400 }
     );
   }
 
-  if (preferredEntry === undefined) {
+  if (hasPreferredEntry && preferredEntry === undefined) {
     return NextResponse.json(
       { error: "Preferred Entry must be a whole dollar amount of at least $1." },
       { status: 400 }
     );
   }
 
-  if (plannedCap === undefined) {
+  if (hasPlannedCap && plannedCap === undefined) {
     return NextResponse.json(
       { error: "Planned Cap must be a whole dollar amount of at least $1." },
       { status: 400 }
@@ -190,6 +200,10 @@ export async function PUT(req: Request) {
   }
 
   if (
+    hasPreferredEntry &&
+    hasPlannedCap &&
+    preferredEntry !== undefined &&
+    plannedCap !== undefined &&
     preferredEntry !== null &&
     plannedCap !== null &&
     preferredEntry > plannedCap
@@ -200,19 +214,34 @@ export async function PUT(req: Request) {
     );
   }
 
-  const preference = await upsertAuctionOwnerPreference({
-    preference: {
+  if (!hasTag && !hasPreferredEntry && !hasPlannedCap && !hasNote) {
+    return NextResponse.json(
+      { error: "At least one draft plan field must be provided." },
+      { status: 400 }
+    );
+  }
+
+  let preference;
+  try {
+    preference = await updateAuctionOwnerPreference({
       season,
       ownerProfileId,
       sleeperPlayerId,
-      tag: tag as AuctionOwnerPreferenceTag,
-      preferredEntry,
-      plannedCap,
-      note: readNote(body.note),
-    },
-    updatedBy: actor.email,
-    warRoomId: actor.access.warRoomId ?? undefined,
-  });
+      patch: {
+        ...(hasTag ? { tag: tag as AuctionOwnerPreferenceTag } : {}),
+        ...(hasPreferredEntry ? { preferredEntry: preferredEntry ?? null } : {}),
+        ...(hasPlannedCap ? { plannedCap: plannedCap ?? null } : {}),
+        ...(hasNote ? { note: readNote(body.note) } : {}),
+      },
+      updatedBy: actor.email,
+      warRoomId: actor.access.warRoomId ?? undefined,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to save draft plan." },
+      { status: 400 }
+    );
+  }
 
   return NextResponse.json({ preference });
 }

@@ -13,6 +13,10 @@ import {
   AUCTION_WAR_ROOM_COLLECTION,
   getLegacyWarRoomProfileIds,
 } from "@/lib/auction/warRoomScope";
+import {
+  mergeAuctionOwnerPreferencePatch,
+  type AuctionOwnerPreferencePatch,
+} from "@/lib/auction/preferenceUpdateSemantics";
 
 const validOwnerPreferenceTags = new Set<AuctionOwnerPreferenceTag>([
   "open",
@@ -183,6 +187,73 @@ export async function upsertAuctionOwnerPreference({
   });
 
   return serializedPreference;
+}
+
+export async function updateAuctionOwnerPreference({
+  season,
+  ownerProfileId,
+  sleeperPlayerId,
+  patch,
+  updatedBy,
+  warRoomId,
+}: {
+  season: number;
+  ownerProfileId: string;
+  sleeperPlayerId: string;
+  patch: AuctionOwnerPreferencePatch;
+  updatedBy: string;
+  warRoomId?: string;
+}) {
+  const updatedAt = new Date().toISOString();
+  const scopeRef = warRoomId
+    ? firestore
+        .collection(AUCTION_WAR_ROOM_COLLECTION)
+        .doc(warRoomId)
+        .collection("preferences")
+        .doc(String(season))
+    : getPreferenceScopeRef(season, ownerProfileId);
+  const playerRef = scopeRef.collection("players").doc(sleeperPlayerId);
+
+  let serializedPreference: AuctionOwnerPlayerPreference;
+  await firestore.runTransaction(async (transaction) => {
+    const existingSnapshot = await transaction.get(playerRef);
+    const existing = existingSnapshot.exists
+      ? readOwnerPreferenceDocument(sleeperPlayerId, existingSnapshot.data() ?? {})
+      : null;
+    const merged = mergeAuctionOwnerPreferencePatch(existing, patch);
+    if (
+      merged.preferredEntry !== null &&
+      merged.plannedCap !== null &&
+      merged.preferredEntry > merged.plannedCap
+    ) {
+      throw new Error("Preferred Entry cannot exceed Private Max.");
+    }
+    serializedPreference = {
+      season,
+      ownerProfileId,
+      ...(warRoomId ? { warRoomId } : {}),
+      sleeperPlayerId,
+      ...merged,
+      updatedAt,
+      updatedBy,
+      schemaVersion: 2,
+    };
+
+    transaction.set(
+      scopeRef,
+      {
+        season,
+        ownerProfileId,
+        ...(warRoomId ? { warRoomId } : {}),
+        updatedAt,
+        updatedBy,
+      },
+      { merge: true }
+    );
+    transaction.set(playerRef, serializedPreference);
+  });
+
+  return serializedPreference!;
 }
 
 export async function clearAuctionOwnerPreference({

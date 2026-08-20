@@ -3955,9 +3955,13 @@ export default function AuctionWarRoomClient({
     );
   const [draftPlanTagInput, setDraftPlanTagInput] =
     useState<AuctionOwnerPreferenceTag>('open');
+  const [draftPlanTagDirty, setDraftPlanTagDirty] = useState(false);
   const [draftPlanPreferredEntryInput, setDraftPlanPreferredEntryInput] =
     useState('');
+  const [draftPlanPreferredEntryDirty, setDraftPlanPreferredEntryDirty] =
+    useState(false);
   const [draftPlanPlannedCapInput, setDraftPlanPlannedCapInput] = useState('');
+  const [draftPlanPlannedCapDirty, setDraftPlanPlannedCapDirty] = useState(false);
   const [draftPlanLiveOverrideInput, setDraftPlanLiveOverrideInput] =
     useState('');
   const [
@@ -3965,6 +3969,7 @@ export default function AuctionWarRoomClient({
     setDraftPlanLiveOverrideAboveAiConfirmed,
   ] = useState(false);
   const [draftPlanNoteInput, setDraftPlanNoteInput] = useState('');
+  const [draftPlanNoteDirty, setDraftPlanNoteDirty] = useState(false);
   const [draftPlanSaveStatus, setDraftPlanSaveStatus] = useState<
     'idle' | 'saving' | 'saved' | 'error'
   >('idle');
@@ -5006,21 +5011,25 @@ export default function AuctionWarRoomClient({
     draftPlanSyncedPlayerIdRef.current = selectedDraftPlanPlayerId;
 
     setDraftPlanTagInput(selectedPlayerDraftPlanEditorTag);
+    setDraftPlanTagDirty(false);
     setDraftPlanPreferredEntryInput(
       selectedPlayerDraftPlan?.preferredEntry === null ||
         selectedPlayerDraftPlan?.preferredEntry === undefined
         ? ''
         : String(selectedPlayerDraftPlan.preferredEntry)
     );
+    setDraftPlanPreferredEntryDirty(false);
     setDraftPlanPlannedCapInput(
       selectedPlayerDraftPlan?.plannedCap === null ||
         selectedPlayerDraftPlan?.plannedCap === undefined
         ? ''
         : String(selectedPlayerDraftPlan.plannedCap)
     );
+    setDraftPlanPlannedCapDirty(false);
     setDraftPlanLiveOverrideInput('');
     setDraftPlanLiveOverrideAboveAiConfirmed(false);
     setDraftPlanNoteInput(selectedPlayerDraftPlan?.note ?? '');
+    setDraftPlanNoteDirty(false);
     if (didSelectDifferentPlayer) {
       setDraftPlanSaveStatus('idle');
       setDraftPlanError(null);
@@ -5862,17 +5871,30 @@ export default function AuctionWarRoomClient({
     setDraftPlanError(null);
 
     try {
+      const preferenceBody: Record<string, unknown> = {
+        season: riverCityAuctionLeagueSettings.season,
+        sleeperPlayerId,
+      };
+      if (clear) {
+        preferenceBody.tag = 'open';
+        preferenceBody.preferredEntry = null;
+        preferenceBody.plannedCap = null;
+        preferenceBody.note = null;
+      } else {
+        if (draftPlanTagDirty) preferenceBody.tag = draftPlanTagInput;
+        if (draftPlanPreferredEntryDirty) {
+          preferenceBody.preferredEntry = preferredEntryResult.amount;
+        }
+        if (draftPlanPlannedCapDirty || plannedCapOverride !== null) {
+          preferenceBody.plannedCap = plannedCapResult.amount;
+        }
+        if (draftPlanNoteDirty) preferenceBody.note = draftPlanNoteInput.trim() || null;
+      }
+
       const response = await fetch('/api/auction/preferences', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          season: riverCityAuctionLeagueSettings.season,
-          sleeperPlayerId,
-          tag: clear ? 'open' : draftPlanTagInput,
-          preferredEntry: preferredEntryResult.amount,
-          plannedCap: plannedCapResult.amount,
-          note: clear ? null : draftPlanNoteInput.trim() || null,
-        }),
+        body: JSON.stringify(preferenceBody),
       });
       const payload = (await response.json()) as {
         preference?: AuctionOwnerPlayerPreference;
@@ -5897,6 +5919,10 @@ export default function AuctionWarRoomClient({
         setDraftPlanLiveOverrideInput('');
         setDraftPlanLiveOverrideAboveAiConfirmed(false);
       }
+      setDraftPlanTagDirty(false);
+      setDraftPlanPreferredEntryDirty(false);
+      setDraftPlanPlannedCapDirty(false);
+      setDraftPlanNoteDirty(false);
       setDraftPlanSaveStatus('saved');
       void refreshRecommendedNow();
     } catch (error) {
@@ -5905,6 +5931,62 @@ export default function AuctionWarRoomClient({
       );
       setDraftPlanSaveStatus('error');
     }
+  };
+  const saveQuickPreferenceTag = async (
+    player: (typeof localPlayerPoolRows)[number],
+    tag: AuctionOwnerPreferenceTag
+  ) => {
+    const sleeperPlayerId = player.sleeperPlayerId?.trim();
+    if (!sleeperPlayerId) return;
+
+    try {
+      const response = await fetch('/api/auction/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          season: riverCityAuctionLeagueSettings.season,
+          sleeperPlayerId,
+          tag,
+        }),
+      });
+      const payload = (await response.json()) as {
+        preference?: AuctionOwnerPlayerPreference;
+        error?: string;
+      };
+      if (!response.ok || !payload.preference) {
+        throw new Error(payload.error ?? 'Unable to update target tag.');
+      }
+
+      setDraftPlanPreferencesByPlayerId((currentPreferences) => {
+        const nextPreferences = new Map(currentPreferences);
+        nextPreferences.set(
+          normalizeFilterValue(payload.preference!.sleeperPlayerId),
+          payload.preference!
+        );
+        return nextPreferences;
+      });
+      if (selectedPlayer?.sleeperPlayerId === sleeperPlayerId) {
+        setDraftPlanTagInput(tag);
+        setDraftPlanTagDirty(false);
+      }
+      void refreshRecommendedNow();
+    } catch (error) {
+      setDraftPlanError(
+        error instanceof Error ? error.message : 'Unable to update target tag.'
+      );
+      setDraftPlanSaveStatus('error');
+    }
+  };
+  const toggleQuickPreferenceTag = async (
+    player: (typeof localPlayerPoolRows)[number]
+  ) => {
+    const currentTag = getSavedDraftPlanPreference(player)?.tag ?? 'open';
+    if (currentTag !== 'open' && currentTag !== 'target') {
+      setDraftPlanError('Use Draft Plan to change WATCH or FADE preferences.');
+      setDraftPlanSaveStatus('error');
+      return;
+    }
+    await saveQuickPreferenceTag(player, currentTag === 'target' ? 'open' : 'target');
   };
   const resetPlayerPoolFilters = () => {
     setPlayerPoolSearch('');
@@ -9028,6 +9110,25 @@ export default function AuctionWarRoomClient({
 	                                  {player.position ?? 'N/A'} · {player.nflTeam ?? 'N/A'} · Bye {formatByeWeek(byeWeek)}
 	                                </p>
 	                              </div>
+	                              <span
+	                                role="button"
+	                                tabIndex={0}
+	                                aria-label={`${preferenceTags.includes('target') ? 'Remove' : 'Mark'} ${player.originalPlayerName} target`}
+	                                onClick={(event) => {
+	                                  event.stopPropagation();
+                                  void toggleQuickPreferenceTag(player);
+	                                }}
+	                                onKeyDown={(event) => {
+	                                  if (event.key === 'Enter' || event.key === ' ') {
+	                                    event.preventDefault();
+	                                    event.stopPropagation();
+                                    void toggleQuickPreferenceTag(player);
+	                                  }
+	                                }}
+                                className="shrink-0 cursor-pointer rounded px-1 text-lg font-black text-emerald-600 hover:bg-emerald-600/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+	                              >
+	                                {preferenceTags.includes('target') ? '⭐' : '☆'}
+	                              </span>
 	                              <span className={`shrink-0 rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-widest ${getMyBoardStatusClass(displayStatusLabel)}`}>
 	                                {displayStatusLabel}
 	                              </span>
@@ -9153,8 +9254,24 @@ export default function AuctionWarRoomClient({
                             >
 	                              <td className="px-2 py-1">
 	                                <div className="flex min-w-0 items-center gap-1.5">
-	                                  <span className={preferenceTags.includes('target') ? 'text-emerald-600' : 'text-gray-300 dark:text-gray-600'}>
-	                                    {preferenceTags.includes('target') ? '⭐' : '•'}
+	                                  <span
+	                                    role="button"
+	                                    tabIndex={0}
+	                                    aria-label={`${preferenceTags.includes('target') ? 'Remove' : 'Mark'} ${player.originalPlayerName} target`}
+	                                    onClick={(event) => {
+	                                      event.stopPropagation();
+	                                      void toggleQuickPreferenceTag(player);
+	                                    }}
+	                                    onKeyDown={(event) => {
+	                                      if (event.key === 'Enter' || event.key === ' ') {
+	                                        event.preventDefault();
+	                                        event.stopPropagation();
+	                                        void toggleQuickPreferenceTag(player);
+	                                      }
+	                                    }}
+                                    className={`cursor-pointer rounded px-1 text-lg font-black hover:bg-emerald-600/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${preferenceTags.includes('target') ? 'text-emerald-600' : 'text-gray-300 dark:text-gray-600'}`}
+	                                  >
+	                                    {preferenceTags.includes('target') ? '⭐' : '☆'}
 	                                  </span>
 	                                  <p className={`truncate font-black ${isDrafted ? 'line-through' : ''}`}>
 	                                    {player.originalPlayerName}
@@ -9738,6 +9855,7 @@ export default function AuctionWarRoomClient({
                             type="button"
                             onClick={() => {
                               setDraftPlanTagInput(option.value);
+                              setDraftPlanTagDirty(true);
                               setDraftPlanSaveStatus('idle');
                               setDraftPlanError(null);
                             }}
@@ -9766,6 +9884,7 @@ export default function AuctionWarRoomClient({
                           value={draftPlanPreferredEntryInput}
                           onChange={(event) => {
                             setDraftPlanPreferredEntryInput(event.target.value);
+                            setDraftPlanPreferredEntryDirty(true);
                             setDraftPlanSaveStatus('idle');
                             setDraftPlanError(null);
                           }}
@@ -9786,6 +9905,7 @@ export default function AuctionWarRoomClient({
                           value={draftPlanPlannedCapInput}
                           onChange={(event) => {
                             setDraftPlanPlannedCapInput(event.target.value);
+                            setDraftPlanPlannedCapDirty(true);
                             setDraftPlanSaveStatus('idle');
                             setDraftPlanError(null);
                           }}
@@ -9872,6 +9992,7 @@ export default function AuctionWarRoomClient({
                         rows={2}
                         onChange={(event) => {
                           setDraftPlanNoteInput(event.target.value);
+                          setDraftPlanNoteDirty(true);
                           setDraftPlanSaveStatus('idle');
                           setDraftPlanError(null);
                         }}
@@ -13696,10 +13817,30 @@ export default function AuctionWarRoomClient({
         onCoachInputChange={setDraftCoachChatInput}
         onAskCoach={(question) => void askDraftCoachForSelectedPlayer(question)}
         onClearCoach={clearDraftCoachChat}
-        onTagChange={setDraftPlanTagInput}
-        onPreferredEntryChange={setDraftPlanPreferredEntryInput}
-        onPlannedCapChange={setDraftPlanPlannedCapInput}
-        onNoteChange={setDraftPlanNoteInput}
+        onTagChange={(tag) => {
+          setDraftPlanTagInput(tag);
+          setDraftPlanTagDirty(true);
+          setDraftPlanSaveStatus('idle');
+          setDraftPlanError(null);
+        }}
+        onPreferredEntryChange={(value) => {
+          setDraftPlanPreferredEntryInput(value);
+          setDraftPlanPreferredEntryDirty(true);
+          setDraftPlanSaveStatus('idle');
+          setDraftPlanError(null);
+        }}
+        onPlannedCapChange={(value) => {
+          setDraftPlanPlannedCapInput(value);
+          setDraftPlanPlannedCapDirty(true);
+          setDraftPlanSaveStatus('idle');
+          setDraftPlanError(null);
+        }}
+        onNoteChange={(value) => {
+          setDraftPlanNoteInput(value);
+          setDraftPlanNoteDirty(true);
+          setDraftPlanSaveStatus('idle');
+          setDraftPlanError(null);
+        }}
         onSavePlan={() => void saveDraftPlanPreference()}
         onClearPlan={() => void saveDraftPlanPreference({ clear: true })}
         sale={{
