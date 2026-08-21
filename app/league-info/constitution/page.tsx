@@ -11,6 +11,13 @@ import { collection, onSnapshot } from "firebase/firestore";
 import constitutionData from '@/lib/constitutionData';
 import ConstitutionSection from '@/components/ConstitutionSection';
 import SiteShell from '@/components/SiteShell';
+import {
+  formatGovernanceDate,
+  getLatestRatifiedAt,
+  isValidCurrentRuleId,
+  normalizeRatifiedAmendment,
+  type NormalizedGovernanceRecord,
+} from '@/lib/constitutionAuthority';
 
 type RatifiedRule = {
   id: string;
@@ -19,6 +26,7 @@ type RatifiedRule = {
   title: string;
   content: string[];
   passedAt: string;
+  effectiveDate?: string | null;
   voteTotals: {
     yes: number;
     no: number;
@@ -101,13 +109,28 @@ export default function ConstitutionPage() {
     return constitutionData.reduce((acc, section) => {
       const subsectionIds = new Set(section.subsections?.map((sub) => sub.id) ?? []);
       const count = liveRules.filter(
-        (rule) => rule.sectionId === section.id || subsectionIds.has(rule.sectionId)
+        (rule) => isValidCurrentRuleId(rule.sectionId) && (rule.sectionId === section.id || subsectionIds.has(rule.sectionId))
       ).length;
 
       if (count > 0) acc[section.id] = count;
       return acc;
     }, {} as Record<string, number>);
   }, [liveRules]);
+
+  const normalizedAmendments = useMemo(
+    () => liveRules
+      .map((rule) => normalizeRatifiedAmendment(rule))
+      .filter((rule): rule is NormalizedGovernanceRecord => rule !== null),
+    [liveRules]
+  );
+
+  const amendmentsByTarget = useMemo(() => {
+    return normalizedAmendments.reduce((acc, amendment) => {
+      if (!amendment.sectionId) return acc;
+      acc[amendment.sectionId] = [...(acc[amendment.sectionId] ?? []), amendment];
+      return acc;
+    }, {} as Record<string, NormalizedGovernanceRecord[]>);
+  }, [normalizedAmendments]);
 
   /**
    * 2. THE LOGIC BRIDGE:
@@ -116,7 +139,7 @@ export default function ConstitutionPage() {
    * Matching top-level section amendments are added as generated subsections.
    */
   const combinedRules = useMemo(() => {
-    const rulesBySectionId = liveRules.reduce((acc, rule) => {
+    const rulesBySectionId = liveRules.filter((rule) => isValidCurrentRuleId(rule.sectionId)).reduce((acc, rule) => {
       if (!rule.sectionId) return acc;
       acc[rule.sectionId] = [...(acc[rule.sectionId] ?? []), rule];
       return acc;
@@ -260,7 +283,14 @@ export default function ConstitutionPage() {
           <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-orange-600">League Info</p>
           <h1 id="constitution-title" className="mt-2 font-sans text-4xl font-black italic uppercase tracking-tight text-slate-950 sm:text-5xl">River City Constitution</h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">Bylaws, scoring, trade rules, and approved amendments for River City FFL.</p>
-          <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-orange-700"><Gavel size={12} aria-hidden="true" /> Live legislative sync active</p>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <p className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-orange-700"><Gavel size={12} aria-hidden="true" /> Live legislative sync active</p>
+            {getLatestRatifiedAt(normalizedAmendments) && (
+              <p className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600">
+                Last updated: {formatGovernanceDate(getLatestRatifiedAt(normalizedAmendments) as string)}
+              </p>
+            )}
+          </div>
         </section>
         {rulesError && (
           <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-bold text-red-700" role="alert">
@@ -343,6 +373,7 @@ export default function ConstitutionPage() {
                   isOpen={openSections.includes(section.id)}
                   onToggle={() => toggleSection(section.id)}
                   amendmentCount={amendmentCountsBySection[section.id] ?? 0}
+                  amendments={amendmentsByTarget}
                 />
               </div>
             ))
@@ -357,7 +388,7 @@ export default function ConstitutionPage() {
         {/* FOOTER ACTION */}
         <div className="mt-12 border-t border-slate-200 pt-8 text-center">
           <Link href="/history/version-history" className="group inline-flex items-center gap-3 rounded-lg bg-orange-600 px-6 py-3 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2">
-            Version History <History size={16} /> <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            Constitution History <History size={16} /> <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>
       </main>

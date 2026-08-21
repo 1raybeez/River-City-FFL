@@ -6,14 +6,14 @@ import type { VersionEntry as StaticVersionEntry } from "@/lib/versionHistory";
 import VersionEntry from "@/components/VersionEntry";
 import Link from "next/link";
 import { ArrowLeft, History } from "lucide-react";
-import { db } from "@/lib/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
 import SiteShell from "@/components/SiteShell";
 
 type FirebaseVersionEntry = StaticVersionEntry & {
   id: string;
   proposalId?: string;
+  amendmentTitle?: string;
   isLegislativeUpdate: true;
+  source: "live-version-history";
 };
 
 function getEntryTime(entry: StaticVersionEntry) {
@@ -41,35 +41,36 @@ export default function VersionHistoryPage() {
   const [historyError, setHistoryError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(
-      collection(db, "version_history_updates"),
-      (snapshot) => {
-        const entries: FirebaseVersionEntry[] = snapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            version: "Legislative Update",
-            date: getValidEntryDate(data.date),
-            changes: Array.isArray(data.changes) ? data.changes : [],
-            proposalId: data.proposalId,
-            isLegislativeUpdate: true as const,
-          };
-        });
-
-        setFirebaseEntries(entries);
+    const controller = new AbortController();
+    fetch("/api/history/version-history", { signal: controller.signal, cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`Version history request failed: ${response.status}`);
+        return (await response.json()) as { entries?: Array<Record<string, unknown>> };
+      })
+      .then((payload) => {
+        setFirebaseEntries((payload.entries ?? []).map((entry) => ({
+          id: typeof entry.id === "string" ? entry.id : "unknown",
+          version: "Legislative Update",
+          date: getValidEntryDate(entry.date),
+          changes: Array.isArray(entry.changes) ? entry.changes : [],
+          proposalId: typeof entry.proposalId === "string" ? entry.proposalId : undefined,
+          amendmentTitle: typeof entry.amendmentTitle === "string" ? entry.amendmentTitle : undefined,
+          isLegislativeUpdate: true as const,
+          source: "live-version-history" as const,
+        })));
         setHistoryError(null);
-      },
-      (error) => {
-        console.error("Version history updates listener failed:", error);
-        setHistoryError("Live version history updates could not be loaded. Check Firestore read permissions for version_history_updates.");
-      }
-    );
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        console.error("Version history updates request failed:", error);
+        setHistoryError("Live version history updates could not be loaded.");
+      });
 
-    return () => unsubscribe();
+    return () => controller.abort();
   }, []);
 
   const combinedHistory = useMemo(() => {
-    return [...firebaseEntries, ...versionHistory].sort(
+    return [...firebaseEntries, ...versionHistory.map((entry) => ({ ...entry, source: "legacy-version-history" as const }))].sort(
       (a, b) => getEntryTime(b) - getEntryTime(a)
     );
   }, [firebaseEntries]);
@@ -97,15 +98,17 @@ export default function VersionHistoryPage() {
         )}
 
         <section aria-labelledby="version-history-entries" className="space-y-4">
-          <h2 id="version-history-entries" className="flex items-center gap-3 text-2xl font-black uppercase italic tracking-tight"><History size={20} className="text-orange-600" aria-hidden="true" /> Version history</h2>
+          <h2 id="version-history-entries" className="flex items-center gap-3 text-2xl font-black uppercase italic tracking-tight"><History size={20} className="text-orange-600" aria-hidden="true" /> Amendment history</h2>
           {combinedHistory.map((entry) => (
-            <div key={`${entry.version}-${entry.date}-${"id" in entry ? entry.id : "static"}`}>
+              <div id={"id" in entry ? `version-history-proposal-${entry.id}` : `version-history-${entry.version}-${entry.date}`.replace(/[^a-zA-Z0-9_-]/g, "-")} key={`${entry.version}-${entry.date}-${"id" in entry ? entry.id : "static"}`}>
               {isFirebaseVersionEntry(entry) && (
-                <div className="mb-2 inline-flex items-center rounded-full border border-orange-600/20 bg-orange-600/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-orange-600">
-                  Ratified Legislative Update
+                <div className="mb-2 inline-flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-orange-600">
+                  <span className="inline-flex items-center rounded-full border border-orange-600/20 bg-orange-600/10 px-3 py-1">
+                    Ratified Legislative Update
+                  </span>
                 </div>
               )}
-              <VersionEntry entry={entry} />
+              <VersionEntry entry={entry} source={entry.source} displayTitle={isFirebaseVersionEntry(entry) ? entry.amendmentTitle : undefined} proposalId={isFirebaseVersionEntry(entry) ? entry.proposalId : undefined} />
             </div>
           ))}
         </section>

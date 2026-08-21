@@ -8,6 +8,8 @@ import {
   Hammer, Calendar, Trophy, MessageSquare, DollarSign, 
   History, ExternalLink 
 } from 'lucide-react';
+import type { NormalizedGovernanceRecord } from '@/lib/constitutionAuthority';
+import { formatGovernanceDate } from '@/lib/constitutionAuthority';
 
 const IconMap: Record<string, React.ReactNode> = {
   gavel: <Gavel size={20} />,
@@ -43,9 +45,10 @@ interface Props {
   isOpen: boolean; // Managed by parent now
   onToggle: () => void; // Managed by parent now
   amendmentCount?: number;
+  amendments?: Record<string, NormalizedGovernanceRecord[]>;
 }
 
-export default function ConstitutionSection({ title, icon, subsections, isOpen, onToggle, amendmentCount = 0 }: Props) {
+export default function ConstitutionSection({ title, icon, subsections, isOpen, onToggle, amendmentCount = 0, amendments = {} }: Props) {
   const sectionContentId = `constitution-content-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
   
   const renderContentWithLinks = (text: string) => {
@@ -125,6 +128,13 @@ export default function ConstitutionSection({ title, icon, subsections, isOpen, 
                         </span>
                       )}
                     </h4>
+                    {(amendments[sub.id] ?? []).map((amendment) => (
+                      <div key={amendment.proposalId ?? `${sub.id}-${amendment.ratifiedAt}`} className="mb-3 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-orange-700" aria-label="Ratified amendment metadata">
+                        <span className="rounded-full border border-orange-600/20 bg-orange-600/10 px-2 py-1">Ratified {amendment.ratifiedAt ? formatGovernanceDate(amendment.ratifiedAt) : "date unavailable"}</span>
+                        {amendment.voteTotals && <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">Vote {amendment.voteTotals.yes}-{amendment.voteTotals.no}</span>}
+                        <Link href="/history/version-history" className="rounded px-1 underline decoration-orange-500/40 underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600">View history</Link>
+                      </div>
+                    ))}
                     <div className="space-y-2 pl-4 border-l-2 border-gray-100 dark:border-white/5">
                       {sub.content.map((line, i) => (
                         <p key={i} className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed italic">{renderContentWithLinks(line)}</p>

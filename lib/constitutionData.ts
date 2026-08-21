@@ -458,29 +458,28 @@ const constitutionData: ConstitutionSection[] = [
         id: "12.1",
         title: "12.1 Purpose",
         content: [
-          "This section establishes that all past and future rule changes are recorded and accessible to league members."
+          "All ratified changes to this Constitution shall be maintained as part of the league's permanent historical record."
         ]
       },
       {
         id: "12.2",
-        title: "12.2 Website Version History",
+        title: "12.2 Constitution Version History",
         content: [
-          "All amendment entries — including dates, sections modified, proposal authors, vote results, and effective seasons — are maintained on the League Website → Version History page."
+          "The Constitution Version History documents approved amendments using the historical information available to the league, including ratification dates, affected sections, and voting results where recorded."
         ]
       },
       {
         id: "12.3",
-        title: "12.3 Constitution Cleanliness",
+        title: "12.3 Current Constitution",
         content: [
-          "The full amendment log is not stored inside this document.",
-          "A clickable link at the bottom directs owners to the complete version history."
+          "The Constitution page represents the league's current rules, including all applicable ratified amendments. Historical amendment information is maintained separately so the current rules remain easy to read."
         ]
       },
       {
         id: "12.4",
         title: "12.4 Update Requirement",
         content: [
-          "All approved rule changes must be posted to the website within 7 days."
+          "All approved rule changes must be reflected in the Constitution and its historical record within 7 days."
         ]
       }
     ]
