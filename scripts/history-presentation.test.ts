@@ -4,6 +4,8 @@ import fs from 'node:fs';
 const page = fs.readFileSync('app/history/page.tsx', 'utf8');
 
 assert.match(page, /<SiteShell activePath="\/league-info">/);
+assert.match(page, /Back to League Info/);
+assert.match(page, /href="\/league-info"/);
 assert.match(page, /League History/);
 assert.match(page, /River City Hall of Fame/);
 assert.match(page, /calculateAllTimeStats\(\)/);

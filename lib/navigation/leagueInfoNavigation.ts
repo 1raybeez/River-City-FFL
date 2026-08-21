@@ -2,6 +2,7 @@ export type LeagueInfoSection =
   | 'overview'
   | 'constitution'
   | 'legislation'
+  | 'payouts'
   | 'history'
   | 'rivalries'
   | 'draft'
@@ -18,6 +19,7 @@ export const LEAGUE_INFO_SECTION_ITEMS: readonly LeagueInfoSectionItem[] = [
   { id: 'overview', label: 'Overview', href: '/league-info' },
   { id: 'constitution', label: 'Constitution', href: '/league-info/constitution' },
   { id: 'legislation', label: 'Legislation', href: '/league-info/legislative' },
+  { id: 'payouts', label: 'Payouts', href: '/league-info/payouts' },
   { id: 'history', label: 'History', href: '/history' },
   { id: 'rivalries', label: 'Rivalries', href: '/league-info/rivalries' },
   { id: 'draft', label: 'Draft', href: '/league-info/draft' },
@@ -29,7 +31,7 @@ const ROUTE_MAPPINGS: readonly { section: LeagueInfoSection; exact?: string; pre
   { section: 'constitution', exact: '/history/version-history' },
   { section: 'history', exact: '/history' },
   { section: 'overview', exact: '/league-info' },
-  { section: 'overview', exact: '/league-info/payouts' },
+  { section: 'payouts', exact: '/league-info/payouts' },
   { section: 'history', exact: '/league-info/archives' },
   { section: 'history', exact: '/league-info/trophy-room' },
   { section: 'constitution', exact: '/league-info/constitution' },

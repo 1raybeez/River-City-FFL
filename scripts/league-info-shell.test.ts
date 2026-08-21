@@ -11,23 +11,23 @@ const siteShell = readFileSync("components/SiteShell.tsx", "utf8");
 
 assert.deepEqual(
   LEAGUE_INFO_SECTION_ITEMS.map((item) => item.label),
-  ["Overview", "Constitution", "Legislation", "History", "Rivalries", "Draft", "Trade Analyzer", "Resources"]
+  ["Overview", "Constitution", "Legislation", "Payouts", "History", "Rivalries", "Draft", "Trade Analyzer", "Resources"]
 );
 assert.deepEqual(
   LEAGUE_INFO_SECTION_ITEMS.map((item) => item.href),
-  ["/league-info", "/league-info/constitution", "/league-info/legislative", "/history", "/league-info/rivalries", "/league-info/draft", "/league-info/analyzer", "/league-info/resources"]
+  ["/league-info", "/league-info/constitution", "/league-info/legislative", "/league-info/payouts", "/history", "/league-info/rivalries", "/league-info/draft", "/league-info/analyzer", "/league-info/resources"]
 );
 
 const activeRoutes = {
   "/league-info": "overview",
   "/league-info/constitution": "constitution",
   "/league-info/legislative/new": "legislation",
+  "/league-info/payouts": "payouts",
   "/history": "history",
   "/league-info/rivalries": "rivalries",
   "/league-info/draft": "draft",
   "/league-info/analyzer": "analyzer",
   "/league-info/resources": "resources",
-  "/league-info/payouts": "overview",
   "/league-info/archives": "history",
   "/league-info/trophy-room": "history",
   "/history/version-history": "constitution",
@@ -46,6 +46,8 @@ assert.match(shell, /focus-visible:ring/);
 assert.match(siteShell, /isLeagueInfoDestination/);
 assert.doesNotMatch(shell, /War Room|Commissioner Hub/);
 assert.doesNotMatch(shell, /href=.*analyzer.*PRIMARY/);
+assert.doesNotMatch(siteShell, /label: "Payouts"/);
+assert.equal(getLeagueInfoSectionForPath("/league-info/payouts"), "payouts");
 
 for (const route of ["/league-info/payouts", "/league-info/archives", "/league-info/trophy-room", "/history/version-history"]) {
   assert.equal(isLeagueInfoDestination(route), true, `${route} must remain in League Info context`);

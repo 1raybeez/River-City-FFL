@@ -6,30 +6,33 @@ const shell = fs.readFileSync('components/SiteShell.tsx', 'utf8');
 const nav = fs.readFileSync('lib/navigation/siteNavigation.ts', 'utf8');
 
 assert.match(page, /<SiteShell activePath="\/league-info">/);
-assert.match(page, /League Info/);
-assert.match(page, /River City League Hub/);
-assert.match(page, /grid-cols-1[^\"]*md:grid-cols-2[^\"]*lg:grid-cols-3/);
+assert.match(page, /League Snapshot/);
+assert.match(page, /Current Season/);
+assert.match(page, /League Format/);
+assert.match(page, /Auction draft/);
+assert.doesNotMatch(page, /In-person auction draft/);
+assert.match(page, /Governance/);
+assert.match(page, /History/);
+assert.doesNotMatch(page, /River City League Hub/);
+assert.doesNotMatch(page, /League destinations|League Destinations/);
+assert.doesNotMatch(page, /More league records|Payouts|Archives|Trophy Room|Matchups/);
 assert.match(page, /focus-visible:ring/);
 
 const destinations = {
   Constitution: '/league-info/constitution',
-  Payouts: '/league-info/payouts',
-  'Draft Board': '/league-info/draft',
-  Archives: '/league-info/archives',
-  Resources: '/league-info/resources',
-  Rivalries: '/league-info/rivalries',
-  'Trophy Room': '/league-info/trophy-room',
-  'Trade Analyzer': '/league-info/analyzer',
+  Legislation: '/league-info/legislative',
+  History: '/history',
 };
 
 for (const [title, href] of Object.entries(destinations)) {
-  assert.match(page, new RegExp(`title: '${title}'`));
-  assert.match(page, new RegExp(`href: '${href.replaceAll('/', '\\/')}'`));
+  assert.match(page, new RegExp(title));
+  assert.match(page, new RegExp(`['\"]${href.replaceAll('/', '\\/')}['\"]`));
 }
 
-assert.doesNotMatch(page, /from ['"]@\/lib\//);
-assert.doesNotMatch(page, /loadPublicOperationalFinance|loadRivalry|<TradeAnalyzer/);
-assert.doesNotMatch(page, /<nav/);
+assert.match(page, /constitutionData/);
+assert.match(page, /riverCityAuctionLeagueSettings/);
+assert.match(page, /LEAGUE_ID/);
+assert.doesNotMatch(page, /War Room|Commissioner Hub/);
 assert.match(shell, /PRIMARY_SITE_NAV_ITEMS/);
 assert.match(nav, /label: "Home"/);
 assert.match(nav, /label: "Matchups"/);
