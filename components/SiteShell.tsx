@@ -15,6 +15,7 @@ import {
   PRIMARY_SITE_NAV_ITEMS,
 } from "@/lib/navigation/siteNavigation";
 import { isLeagueInfoDestination } from "@/lib/navigation/leagueInfoNavigation";
+import OwnerFeedbackFooter from "@/components/OwnerFeedbackFooter";
 
 export function SignOutControl({ className = "" }: { className?: string }) {
   const router = useRouter();
@@ -65,5 +66,6 @@ export default function SiteShell({ children, activePath }: { children: React.Re
       {open && <div id="site-mobile-navigation" className="mx-auto mt-3 grid max-w-7xl grid-cols-2 gap-2 rounded-xl border border-white/15 bg-[#0b2444] p-3 lg:hidden">{visibleMobileLinks.map((item) => { const active = isSiteNavItemActive(item, currentPath); return <Link key={item.href} href={item.href} onClick={() => setOpen(false)} aria-current={active ? "page" : undefined} className={`rounded-lg border px-3 py-3 text-[9px] font-black uppercase tracking-widest ${active ? "border-amber-400 text-white" : "border-white/10 text-white/75 hover:bg-white/10"}`}>{item.label}</Link>; })}{member.authenticated ? <MemberAccountMenu member={member} mobile onNavigate={() => setOpen(false)} signOutControl={<SignOutControl className="min-h-10" />} /> : <Link href={loginHref} onClick={() => setOpen(false)} className="col-span-2 min-h-11 rounded-lg border border-amber-300/60 px-3 py-3 text-center text-[10px] font-black uppercase tracking-widest text-amber-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">League Member Login</Link>}</div>}
     </nav>
     {pageContent}
+    <OwnerFeedbackFooter />
   </div>;
 }

@@ -66,6 +66,12 @@ service cloud.firestore {
       }
     }
 
+    // Owner feedback is written only through authenticated server/Admin SDK
+    // paths. Slice A does not expose client reads.
+    match /site_feedback/{document} {
+      allow read, write: if false;
+    }
+
     // Deny every collection not explicitly approved above. Admin SDK access is
     // not governed by client security rules and remains available server-side.
     match /{document=**} {
