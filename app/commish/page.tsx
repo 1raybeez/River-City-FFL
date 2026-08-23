@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { FileText, Gavel, Grid3X3, Home, Shield, WalletCards, Wrench } from 'lucide-react';
+import { FileText, Gavel, Grid3X3, Home, MessageSquare, Shield, WalletCards, Wrench } from 'lucide-react';
 import SiteShell from '@/components/SiteShell';
 import {
   AuctionAccessError,
@@ -37,6 +37,12 @@ const hubLinks = [
     description: 'Review Draft Grades, Team Outlook, and League Recap; approve, publish, roll back, or unpublish public intelligence.',
     href: '/commish/post-draft',
     icon: FileText,
+  },
+  {
+    title: 'Site Feedback',
+    description: 'Review owner bug reports and site improvement suggestions.',
+    href: '/commish/feedback',
+    icon: MessageSquare,
   },
   {
     title: 'Home',

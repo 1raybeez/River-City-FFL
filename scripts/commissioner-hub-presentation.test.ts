@@ -18,6 +18,7 @@ const destinations = [
   ["Maintenance", "/commish/maintenance"],
   ["Auction War Room", "/commish/auction"],
   ["Home", "/"],
+  ["Site Feedback", "/commish/feedback"],
 ] as const;
 
 for (const [title, href] of destinations) {
@@ -26,6 +27,7 @@ for (const [title, href] of destinations) {
 }
 
 assert.match(page, /Open the 2026 Auction War Room and draft-day tools\./);
+assert.match(page, /Review owner bug reports and site improvement suggestions\./);
 assert.doesNotMatch(page, /commissioner-only views/);
 assert.match(page, /grid gap-4 md:grid-cols-2 xl:grid-cols-3/);
 assert.match(page, /focus-visible:ring-2/);
