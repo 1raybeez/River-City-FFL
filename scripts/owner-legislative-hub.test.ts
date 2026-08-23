@@ -9,8 +9,18 @@ const voteApi = readFileSync("app/api/league-info/legislative/vote/route.ts", "u
 const engine = readFileSync("lib/legislativeServer.ts", "utf8");
 
 assert.match(page, /<SiteShell activePath="\/league-info"/);
-assert.match(page, /Active Floor/);
-assert.match(page, /Session Archive/);
+assert.match(page, /Vote Now/);
+assert.match(page, /Current Business/);
+assert.match(page, /Recent Results/);
+assert.match(page, /Historical Sessions/);
+assert.equal((page.match(/aria-labelledby="submit-proposal-title"/g) ?? []).length, 1);
+assert.ok(page.indexOf('id="submit-proposal-title"') < page.indexOf('id="vote-now-title"'));
+assert.ok(page.indexOf('id="vote-now-title"') < page.indexOf('id="current-business-title"'));
+assert.ok(page.indexOf('id="current-business-title"') < page.indexOf('id="recent-results-title"'));
+assert.ok(page.indexOf('id="recent-results-title"') < page.indexOf('id="historical-sessions-title"'));
+assert.match(page, /Show full proposal/);
+assert.match(page, /aria-pressed/);
+assert.match(page, /No proposals currently require your vote/);
 assert.match(page, /api\/league-info\/legislative\/vote/);
 assert.doesNotMatch(page, /selectedManagerId|Verify Identity|managerId/);
 assert.doesNotMatch(form, /<select|managerId|Verify Identity/);
@@ -23,7 +33,10 @@ assert.match(voteApi, /recordOwnerLegislativeVote/);
 assert.match(voteApi, /session\.access\.canonicalOwnerId/);
 assert.match(engine, /getLegislativeManagerIdForCanonicalOwner/);
 assert.match(engine, /recordOwnerLegislativeVote/);
-assert.match(engine, /data\.sessionYear !== CURRENT_LEGISLATIVE_SESSION_YEAR/);
+assert.match(engine, /data\.sessionYear !== session\.sessionYear/);
 assert.match(engine, /status.*active/);
+assert.match(engine, /voteNow/);
+assert.match(engine, /currentBusiness/);
+assert.match(engine, /recentResults/);
 
 console.log("Owner Legislative Hub security and presentation checks passed.");

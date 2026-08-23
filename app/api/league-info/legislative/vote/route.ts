@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireLegislativeOwner } from "@/lib/auth/legislativeAccess";
+import { validateJsonMutationRequest } from "@/lib/auth/requestSecurity";
 import { recordOwnerLegislativeVote } from "@/lib/legislativeServer";
 
 export async function POST(request: Request) {
+  const invalidRequest = validateJsonMutationRequest(request);
+  if (invalidRequest) return invalidRequest;
   try {
     const session = await requireLegislativeOwner();
     const canonicalOwnerId = session.access.canonicalOwnerId;

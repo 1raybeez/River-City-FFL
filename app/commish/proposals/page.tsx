@@ -31,15 +31,17 @@ const managers = [
   { name: "Wade Cameron", id: "342838548870762496" }
 ];
 
-const CURRENT_LEGISLATIVE_SESSION_YEAR = 2027;
-const MEETING_DATE = new Date(`${CURRENT_LEGISLATIVE_SESSION_YEAR}-03-20T20:30:00`);
-const VOTING_DEADLINE = new Date(MEETING_DATE.getTime() + 7 * 24 * 60 * 60 * 1000);
-
 export default function ProposalsPage() {
   const [mounted, setMounted] = useState(false);
   const [proposals, setProposals] = useState<any[]>([]);
   const [selectedManagerId, setSelectedManagerId] = useState("");
   const [now, setNow] = useState(new Date());
+  const [sessionYear, setSessionYear] = useState<number | null>(null);
+  const [meetingDate, setMeetingDate] = useState<string | null>(null);
+  const [votingDeadline, setVotingDeadline] = useState<string | null>(null);
+  const [interimVotingOpensAt, setInterimVotingOpensAt] = useState<string | null>(null);
+  const [interimVotingClosesAt, setInterimVotingClosesAt] = useState<string | null>(null);
+  const [sessionPhase, setSessionPhase] = useState<string | null>(null);
   const [isOverrideOpen, setIsOverrideOpen] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [proposalError, setProposalError] = useState<string | null>(null);
@@ -48,11 +50,19 @@ export default function ProposalsPage() {
   const [selectedArchivedProposal, setSelectedArchivedProposal] = useState<ArchivedProposal | null>(null);
 
   // LOGIC: Voting is open if time is right OR manual override is toggled
-  const isVotingOpen = (now >= MEETING_DATE && now <= VOTING_DEADLINE) || isOverrideOpen;
-  const isVotingFinished = now > VOTING_DEADLINE && !isOverrideOpen;
-  const isPreMeeting = now < MEETING_DATE && !isOverrideOpen;
+  const meeting = meetingDate ? new Date(meetingDate) : null;
+  const deadline = votingDeadline ? new Date(votingDeadline) : null;
+  const interimOpens = interimVotingOpensAt ? new Date(interimVotingOpensAt) : null;
+  const interimCloses = interimVotingClosesAt ? new Date(interimVotingClosesAt) : null;
+  const isVotingOpen = Boolean(
+    isOverrideOpen ||
+      (sessionPhase === "ANNUAL_VOTING" && meeting && deadline && now >= meeting && now <= deadline)
+      || (sessionPhase === "INTERIM" && interimOpens && interimCloses && now >= interimOpens && now <= interimCloses)
+  );
+  const isVotingFinished = Boolean(deadline && now > deadline && !isOverrideOpen && sessionPhase !== "INTERIM");
+  const isPreMeeting = sessionPhase === "COLLECTING" && !isOverrideOpen;
   const currentSessionProposals = proposals.filter(
-    (proposal) => proposal.sessionYear === CURRENT_LEGISLATIVE_SESSION_YEAR
+    (proposal) => proposal.sessionYear === sessionYear
   );
   const activeProposals = currentSessionProposals.filter(
     (proposal) => String(proposal.status ?? "").toLowerCase() === "active"
@@ -72,9 +82,21 @@ export default function ProposalsPage() {
   const applyProposalState = useCallback((payload: {
     proposals?: unknown;
     isOverrideOpen?: unknown;
+    sessionYear?: unknown;
+    meetingDate?: unknown;
+    annualVotingClosesAt?: unknown;
+    interimVotingOpensAt?: unknown;
+    interimVotingClosesAt?: unknown;
+    sessionPhase?: unknown;
   }) => {
     setProposals(Array.isArray(payload.proposals) ? payload.proposals : []);
     setIsOverrideOpen(payload.isOverrideOpen === true);
+    setSessionYear(typeof payload.sessionYear === "number" ? payload.sessionYear : null);
+    setMeetingDate(typeof payload.meetingDate === "string" ? payload.meetingDate : null);
+    setVotingDeadline(typeof payload.annualVotingClosesAt === "string" ? payload.annualVotingClosesAt : null);
+    setInterimVotingOpensAt(typeof payload.interimVotingOpensAt === "string" ? payload.interimVotingOpensAt : null);
+    setInterimVotingClosesAt(typeof payload.interimVotingClosesAt === "string" ? payload.interimVotingClosesAt : null);
+    setSessionPhase(typeof payload.sessionPhase === "string" ? payload.sessionPhase : null);
   }, []);
 
   const loadProposalState = useCallback(async () => {
@@ -113,6 +135,7 @@ export default function ProposalsPage() {
       error?: string;
       passedCount?: number;
       failedCount?: number;
+      tiedCount?: number;
     };
     if (!response.ok) throw new Error(payload.error || "Legislative update failed.");
     applyProposalState(payload);
@@ -144,10 +167,11 @@ export default function ProposalsPage() {
       const result = await updateProposalState({ action: "finalize" });
       const passedCount = result.passedCount ?? 0;
       const failedCount = result.failedCount ?? 0;
+      const tiedCount = result.tiedCount ?? 0;
 
       setFinalizeMessage({
         type: "success",
-        text: `Voting finalized: ${passedCount} passed, ${failedCount} failed.`,
+        text: `Voting finalized: ${passedCount} passed, ${failedCount} failed, ${tiedCount} tied.`,
       });
     } catch (error) {
       console.error("Finalize voting failed:", error);
@@ -174,7 +198,7 @@ export default function ProposalsPage() {
 
   const getProposalStatus = (proposal: any) => {
     const status = String(proposal.status ?? "active").toLowerCase();
-    if (status === "passed" || status === "failed") return status;
+    if (status === "passed" || status === "failed" || status === "tied") return status;
     return "active";
   };
 
@@ -287,7 +311,7 @@ export default function ProposalsPage() {
             </div>
           ) : isPreMeeting ? (
             <div className="col-span-2 py-6 text-center font-black uppercase text-[10px] tracking-[0.3em] opacity-30 bg-black/5 flex items-center justify-center gap-2">
-              <Clock size={14} /> Voting Unlocks {MEETING_DATE.toLocaleDateString()}
+              <Clock size={14} /> Voting Unlocks {meeting?.toLocaleDateString() ?? "the configured meeting"}
             </div>
           ) : isVotingFinished ? (
             <div className="col-span-2 py-6 text-center font-black uppercase text-[10px] tracking-[0.3em] text-orange-600 bg-orange-600/10 flex items-center justify-center gap-2">
@@ -323,7 +347,7 @@ export default function ProposalsPage() {
               <p className="mb-3 text-[10px] font-black uppercase tracking-[0.3em] text-orange-600">Commissioner Hub</p>
               <h1 className="text-4xl font-black uppercase italic leading-none tracking-tighter text-[#071a33] sm:text-5xl dark:text-white">Legislative Hub</h1>
               <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-600 dark:text-gray-400">Proposals, voting and amendments for the league rule-change workflow.</p>
-              <p className="mt-2 text-[10px] font-black uppercase tracking-[0.25em] text-orange-600">{CURRENT_LEGISLATIVE_SESSION_YEAR} Winter Owners Meeting</p>
+              <p className="mt-2 text-[10px] font-black uppercase tracking-[0.25em] text-orange-600">{sessionYear ?? "Current"} Winter Owners Meeting</p>
               <Link href="/commish" className="mt-4 inline-flex min-h-10 items-center rounded-xl border border-slate-300 px-4 py-2 text-xs font-black uppercase tracking-wider text-[#071a33] transition hover:border-orange-600 hover:text-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 dark:border-white/20 dark:text-white">Return to Commissioner Hub</Link>
             </div>
           </div>

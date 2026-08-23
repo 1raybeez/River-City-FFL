@@ -4,14 +4,21 @@ import { FieldValue } from "firebase-admin/firestore";
 import { firestore } from "@/lib/firebaseAdmin";
 import { activeManagers } from "@/lib/managers/activeManagers";
 import { ownerProfilesById } from "@/lib/managers/identityData";
-
-export const CURRENT_LEGISLATIVE_SESSION_YEAR = 2027;
-export const LEGISLATIVE_MEETING_DATE = new Date(
-  `${CURRENT_LEGISLATIVE_SESSION_YEAR}-03-20T20:30:00`
-);
-export const LEGISLATIVE_VOTING_DEADLINE = new Date(
-  LEGISLATIVE_MEETING_DATE.getTime() + 7 * 24 * 60 * 60 * 1000
-);
+import {
+  hasAllEligibleVotes,
+  isLegislativeVotingOpen,
+  LEGISLATIVE_ELIGIBLE_VOTE_COUNT,
+  proposalSessionTypeForNow,
+  resolveLegislativeResult,
+  resolveLegislativeSessionPhase,
+} from "@/lib/legislativeSession";
+import { readLegislativeSessionConfig } from "@/lib/legislativeSessionServer";
+import { LEGISLATIVE_ARCHIVE } from "@/lib/legislativeArchive";
+import {
+  buildNormalizedLegislativeRecords,
+} from "@/lib/legislativeReadModel";
+import { isValidCurrentRuleId } from "@/lib/constitutionAuthority";
+import { resolveExternalLegislativeResult } from "@/lib/legislativeExternalResult";
 
 const legislativeManagers: Record<
   string,
@@ -90,22 +97,19 @@ export function getLegislativeManagerIdForCanonicalOwner(
   );
 }
 
-function isOwnerVotingOpen(now: Date, isOverrideOpen: boolean) {
-  return (
-    (now >= LEGISLATIVE_MEETING_DATE && now <= LEGISLATIVE_VOTING_DEADLINE) ||
-    isOverrideOpen
-  );
-}
-
 export async function readOwnerLegislativeState(canonicalOwnerId: string | null) {
-  const state = await readLegislativeState();
+  const [state, session] = await Promise.all([
+    readLegislativeState(),
+    readLegislativeSessionConfig(),
+  ]);
   const now = new Date();
-  const isVotingOpen = isOwnerVotingOpen(now, state.isOverrideOpen);
+  const phase = resolveLegislativeSessionPhase(session, now);
+  const isVotingOpen = isLegislativeVotingOpen(session, now, state.isOverrideOpen);
   const viewerManagerId = canonicalOwnerId
     ? getLegislativeManagerIdForCanonicalOwner(canonicalOwnerId)
     : null;
   const proposals = (state.proposals as Array<Record<string, unknown>>)
-    .filter((proposal) => proposal.sessionYear === CURRENT_LEGISLATIVE_SESSION_YEAR)
+    .filter((proposal) => proposal.sessionYear === session.sessionYear)
     .map((proposal) => {
       const votes = readVotes(proposal.votes);
       const viewerVote = viewerManagerId
@@ -117,7 +121,6 @@ export async function readOwnerLegislativeState(canonicalOwnerId: string | null)
         : null;
       return {
         id: proposal.id,
-        managerId: proposal.managerId,
         submittedBy: proposal.submittedBy,
         managerImage: proposal.managerImage,
         sessionYear: proposal.sessionYear,
@@ -130,15 +133,78 @@ export async function readOwnerLegislativeState(canonicalOwnerId: string | null)
       };
     });
 
+  const normalizedRecords = buildNormalizedLegislativeRecords(
+    (state.proposals as Array<Record<string, unknown>>).map((proposal) => ({
+      id: String(proposal.id),
+      sessionYear: typeof proposal.sessionYear === "number" ? proposal.sessionYear : undefined,
+      sessionType: proposal.sessionType === "INTERIM" ? "INTERIM" : proposal.sessionType === "ANNUAL" ? "ANNUAL" : undefined,
+      title: typeof proposal.title === "string" ? proposal.title : undefined,
+      description: typeof proposal.description === "string" ? proposal.description : undefined,
+      section: typeof proposal.section === "string" ? proposal.section : undefined,
+      submittedBy: typeof proposal.submittedBy === "string" ? proposal.submittedBy : undefined,
+      status: typeof proposal.status === "string" ? proposal.status : undefined,
+      votes: proposal.votes as { yes?: unknown[]; no?: unknown[] } | undefined,
+      viewerVote: (proposals.find((item) => item.id === proposal.id)?.viewerVote ?? null) as "yes" | "no" | null,
+      createdAt: typeof proposal.createdAt === "string" ? proposal.createdAt : null,
+      finalizedAt: typeof proposal.finalizedAt === "string" ? proposal.finalizedAt : null,
+      passedAt: typeof proposal.passedAt === "string" ? proposal.passedAt : null,
+      externalResult: proposal.externalResult as {
+        yes?: number;
+        no?: number;
+        total?: number;
+        recordedAt?: string | null;
+        recordedBy?: string | null;
+        sourceLabel?: string;
+      } | null,
+      resultSource: proposal.resultSource === "sleeper" || proposal.resultSource === "manual_external" || proposal.resultSource === "website"
+        ? proposal.resultSource
+        : undefined,
+    })),
+    LEGISLATIVE_ARCHIVE
+  );
+  const currentRecords = normalizedRecords.filter(
+    (record) => record.sessionYear === session.sessionYear
+  );
+  const activeRecords = currentRecords.filter((record) => record.status === "active");
+  const voteNow = activeRecords.filter(
+    (record) => isVotingOpen && (!canonicalOwnerId || record.viewerVote === null)
+  );
+  const currentBusiness = activeRecords.filter(
+    (record) => !voteNow.some((candidate) => candidate.id === record.id)
+  );
+  const recentResults = currentRecords.filter((record) =>
+    record.status === "passed" || record.status === "failed" || record.status === "tied"
+  );
+  const historicalRecords = normalizedRecords.filter(
+    (record) => record.sessionYear !== session.sessionYear
+  );
+
   return {
-    sessionYear: CURRENT_LEGISLATIVE_SESSION_YEAR,
-    meetingDate: LEGISLATIVE_MEETING_DATE.toISOString(),
-    votingDeadline: LEGISLATIVE_VOTING_DEADLINE.toISOString(),
+    sessionYear: session.sessionYear,
+    sessionPhase: phase,
+    sessionSource: session.source,
+    meetingDate: session.meetingDate,
+    votingDeadline: session.annualVotingClosesAt,
+    annualVotingOpensAt: session.annualVotingOpensAt,
+    interimVotingOpensAt: session.interimVotingOpensAt,
+    interimVotingClosesAt: session.interimVotingClosesAt,
+    eligibleVoteCount: LEGISLATIVE_ELIGIBLE_VOTE_COUNT,
     isVotingOpen,
-    isVotingFinished: now > LEGISLATIVE_VOTING_DEADLINE && !state.isOverrideOpen,
-    isPreMeeting: now < LEGISLATIVE_MEETING_DATE && !state.isOverrideOpen,
+    allEligibleVotesCast: (state.proposals as Array<Record<string, unknown>>)
+      .filter((proposal) => proposal.sessionYear === session.sessionYear)
+      .some((proposal) => {
+        const votes = readVotes(proposal.votes);
+        return hasAllEligibleVotes(votes.yes.length, votes.no.length);
+      }),
+    isVotingFinished:
+      !isVotingOpen && phase !== "COLLECTING" && phase !== "INTERIM",
+    isPreMeeting: phase === "COLLECTING",
     authenticatedOwner: Boolean(canonicalOwnerId),
-    proposals,
+    voteNow,
+    currentBusiness,
+    recentResults,
+    historicalRecords,
+    archiveYears: Array.from(new Set(historicalRecords.map((record) => record.sessionYear).filter((year): year is number => year !== null))).sort((a, b) => b - a),
   };
 }
 
@@ -148,6 +214,9 @@ export async function readLegislativeState() {
     firestore.doc("league_settings/voting_state").get(),
   ]);
 
+  const session = await readLegislativeSessionConfig();
+  const now = new Date();
+  const phase = resolveLegislativeSessionPhase(session, now);
   return {
     proposals: proposalSnapshot.docs.map((document) => ({
       id: document.id,
@@ -155,6 +224,21 @@ export async function readLegislativeState() {
     })),
     isOverrideOpen:
       votingSnapshot.exists && votingSnapshot.get("isOverrideOpen") === true,
+    sessionYear: session.sessionYear,
+    sessionPhase: phase,
+    sessionSource: session.source,
+    meetingDate: session.meetingDate,
+    annualVotingOpensAt: session.annualVotingOpensAt,
+    annualVotingClosesAt: session.annualVotingClosesAt,
+    interimVotingOpensAt: session.interimVotingOpensAt,
+    interimVotingClosesAt: session.interimVotingClosesAt,
+    eligibleVoteCount: LEGISLATIVE_ELIGIBLE_VOTE_COUNT,
+    allEligibleVotesCast: proposalSnapshot.docs.some((document) => {
+      const data = document.data();
+      if (data.sessionYear !== session.sessionYear) return false;
+      const votes = readVotes(data.votes);
+      return hasAllEligibleVotes(votes.yes.length, votes.no.length);
+    }),
   };
 }
 
@@ -162,6 +246,11 @@ export async function createLegislativeProposal(
   input: Record<string, unknown>,
   actorEmail: string
 ) {
+  const session = await readLegislativeSessionConfig();
+  const sessionPhase = resolveLegislativeSessionPhase(session, new Date());
+  if (sessionPhase === "CLOSED") {
+    throw new Error("A new legislative session configuration is required.");
+  }
   const managerId = readText(input.managerId, 32);
   const manager = legislativeManagers[managerId];
   const section = readText(input.section, 100);
@@ -181,7 +270,8 @@ export async function createLegislativeProposal(
     submittedBy: manager.name,
     managerImage: `/managers/${manager.image}`,
     sleeperId: managerId,
-    sessionYear: CURRENT_LEGISLATIVE_SESSION_YEAR,
+    sessionYear: session.sessionYear,
+    sessionType: proposalSessionTypeForNow(session),
     status: "active",
     votes: { yes: [], no: [] },
     createdAt: FieldValue.serverTimestamp(),
@@ -260,9 +350,12 @@ export async function recordOwnerLegislativeVote(
     throw new Error("A valid proposal and vote are required.");
   }
 
-  const votingSnapshot = await firestore.doc("league_settings/voting_state").get();
+  const [votingSnapshot, session] = await Promise.all([
+    firestore.doc("league_settings/voting_state").get(),
+    readLegislativeSessionConfig(),
+  ]);
   const isOverrideOpen = votingSnapshot.exists && votingSnapshot.get("isOverrideOpen") === true;
-  if (!isOwnerVotingOpen(new Date(), isOverrideOpen)) {
+  if (!isLegislativeVotingOpen(session, new Date(), isOverrideOpen)) {
     throw new Error("Voting is not open.");
   }
 
@@ -272,7 +365,7 @@ export async function recordOwnerLegislativeVote(
     if (!snapshot.exists) throw new Error("Proposal was not found.");
     const data = snapshot.data() ?? {};
     if (
-      data.sessionYear !== CURRENT_LEGISLATIVE_SESSION_YEAR ||
+      data.sessionYear !== session.sessionYear ||
       String(data.status ?? "").toLowerCase() !== "active"
     ) {
       throw new Error("This proposal is no longer eligible for owner voting.");
@@ -290,11 +383,14 @@ export async function recordOwnerLegislativeVote(
 }
 
 export async function finalizeLegislativeVoting(actorEmail: string) {
-  const snapshot = await firestore.collection("proposals").get();
+  const [snapshot, session] = await Promise.all([
+    firestore.collection("proposals").get(),
+    readLegislativeSessionConfig(),
+  ]);
   const activeProposals = snapshot.docs.filter((document) => {
     const data = document.data();
     return (
-      data.sessionYear === CURRENT_LEGISLATIVE_SESSION_YEAR &&
+      data.sessionYear === session.sessionYear &&
       String(data.status ?? "").toLowerCase() === "active"
     );
   });
@@ -310,19 +406,25 @@ export async function finalizeLegislativeVoting(actorEmail: string) {
   });
   let passedCount = 0;
   let failedCount = 0;
+  let tiedCount = 0;
 
   activeProposals.forEach((document) => {
     const data = document.data();
     const votes = readVotes(data.votes);
-    const passed = votes.yes.length > votes.no.length;
+    const result = resolveLegislativeResult(votes.yes.length, votes.no.length);
     batch.update(document.ref, {
-      status: passed ? "passed" : "failed",
+      status: result,
       finalizedAt: FieldValue.serverTimestamp(),
       finalizedBy: actorEmail,
     });
 
-    if (!passed) {
+    if (result === "failed") {
       failedCount += 1;
+      return;
+    }
+
+    if (result === "tied") {
+      tiedCount += 1;
       return;
     }
 
@@ -362,5 +464,92 @@ export async function finalizeLegislativeVoting(actorEmail: string) {
   });
 
   await batch.commit();
-  return { passedCount, failedCount };
+  return {
+    passedCount,
+    failedCount,
+    tiedCount,
+    allEligibleVotesCast: activeProposals.every((document) => {
+      const votes = readVotes(document.data().votes);
+      return hasAllEligibleVotes(votes.yes.length, votes.no.length);
+    }),
+  };
+}
+
+export async function recordExternalLegislativeResult(input: {
+  proposalId: string;
+  yes: number;
+  no: number;
+  source: "sleeper" | "manual_external";
+  sourceLabel: string;
+  actorEmail: string;
+}) {
+  if (!Number.isInteger(input.yes) || input.yes < 0 || !Number.isInteger(input.no) || input.no < 0) {
+    throw new Error("External vote totals must be non-negative integers.");
+  }
+  if (!input.sourceLabel.trim()) throw new Error("An external result source is required.");
+  const total = input.yes + input.no;
+  if (total === 0) throw new Error("An external result must include votes.");
+
+  const proposalRef = firestore.collection("proposals").doc(input.proposalId);
+  const result = resolveExternalLegislativeResult(input.yes, input.no);
+  const recordedAt = new Date().toISOString();
+  let outcome: "recorded" | "noop" = "recorded";
+
+  await firestore.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(proposalRef);
+    if (!snapshot.exists) throw new Error("Proposal was not found.");
+    const data = snapshot.data() ?? {};
+    const currentStatus = String(data.status ?? "").toLowerCase();
+    const currentExternal = data.externalResult as Record<string, unknown> | undefined;
+    const sameResult =
+      currentExternal?.yes === input.yes &&
+      currentExternal?.no === input.no &&
+      currentExternal?.total === total &&
+      data.resultSource === input.source;
+
+    if (sameResult && currentStatus === result) {
+      outcome = "noop";
+      return;
+    }
+    if (currentStatus !== "active") {
+      throw new Error("Conflicting finalized result already exists.");
+    }
+    if ((readVotes(data.votes).yes.length + readVotes(data.votes).no.length) > 0) {
+      throw new Error("Website votes already exist; external result cannot overwrite them.");
+    }
+
+    transaction.update(proposalRef, {
+      status: result,
+      resultSource: input.source,
+      externalResult: {
+        yes: input.yes,
+        no: input.no,
+        total,
+        recordedAt: FieldValue.serverTimestamp(),
+        recordedBy: input.actorEmail,
+        sourceLabel: input.sourceLabel.trim(),
+      },
+      finalizedAt: FieldValue.serverTimestamp(),
+      finalizedBy: input.actorEmail,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    const sectionId = readText(data.section, 100).match(/^\d+(?:\.\d+)*/)?.[0] ?? null;
+    if (result === "passed" && isValidCurrentRuleId(sectionId)) {
+      const title = readText(data.title, 180);
+      const description = readText(data.description, 5000);
+      transaction.set(
+        firestore.collection("ratified_rules").doc(input.proposalId),
+        { proposalId: input.proposalId, sectionId, title, content: [description], passedAt: recordedAt, voteTotals: { yes: input.yes, no: input.no } },
+        { merge: true }
+      );
+      transaction.set(
+        firestore.collection("version_history_updates").doc(input.proposalId),
+        { version: "Auto-Update", date: new Date().toLocaleDateString("en-US", { timeZone: "America/New_York" }), changes: [{ rule: sectionId, description: `${title} (Passed ${input.yes}-${input.no})` }], proposalId: input.proposalId },
+        { merge: true }
+      );
+    }
+  });
+
+  return { outcome, status: result, yes: input.yes, no: input.no, total, source: input.source };
 }

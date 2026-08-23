@@ -13,7 +13,7 @@ assert.match(page, /Commissioner Hub/);
 assert.match(page, /Legislative Hub/);
 assert.match(page, /Proposals, voting and amendments/);
 assert.match(page, /Return to Commissioner Hub/);
-assert.match(page, /Current_LEGISLATIVE_SESSION_YEAR|CURRENT_LEGISLATIVE_SESSION_YEAR/);
+assert.match(page, /sessionYear/);
 assert.match(page, /Floor is Open for Voting|Chamber Closed Until Meeting/);
 assert.match(page, /Active Floor/);
 assert.match(page, /Finalized Results/);

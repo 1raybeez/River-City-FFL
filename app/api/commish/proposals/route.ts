@@ -8,6 +8,7 @@ import {
   finalizeLegislativeVoting,
   readLegislativeState,
   recordLegislativeVote,
+  recordExternalLegislativeResult,
   setLegislativeVotingOverride,
 } from "@/lib/legislativeServer";
 
@@ -120,6 +121,24 @@ export async function PATCH(req: Request) {
 
     if (body.action === "finalize") {
       const result = await finalizeLegislativeVoting(actor.email);
+      return NextResponse.json({ ...result, ...(await readLegislativeState()) });
+    }
+
+    if (body.action === "record-external-result") {
+      if (typeof body.proposalId !== "string" || typeof body.yes !== "number" || typeof body.no !== "number") {
+        throw new Error("proposalId, yes, and no are required.");
+      }
+      if (body.source !== "sleeper" && body.source !== "manual_external") {
+        throw new Error("A supported external result source is required.");
+      }
+      const result = await recordExternalLegislativeResult({
+        proposalId: body.proposalId,
+        yes: body.yes,
+        no: body.no,
+        source: body.source,
+        sourceLabel: typeof body.sourceLabel === "string" ? body.sourceLabel : body.source,
+        actorEmail: actor.email,
+      });
       return NextResponse.json({ ...result, ...(await readLegislativeState()) });
     }
 
