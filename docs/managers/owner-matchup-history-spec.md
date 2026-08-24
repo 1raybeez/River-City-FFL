@@ -67,7 +67,7 @@ Phase 3 must consume this foundation. It must not create a second owner or franc
 | `components/transactions/Treasury.tsx` | Calculates current payouts | Fourteen weekly matchup endpoints, roster settings, and winners bracket | Weekly high scorers and prize assignments | Matchup-adjacent business logic inside UI. It does not produce records or reusable matchup history and should remain separate. |
 | `lib/managers/activeManagers.ts` | Manually curated active profiles | Generated/manual manager data | Hard-coded displayed `record` and other profile fields | No provenance or game classification is encoded. Do not use as a matchup source; later compare it with engine output. |
 | `lib/managers/retiredManagers.ts` | Manually curated retired profiles | Manual manager data | Some hard-coded displayed `record` values | Incomplete and not matchup-level. Use only as a later conflict check. |
-| `lib/stats.ts` | Calculates placement statistics | `lib/manual-history.ts` | Championships, runner-ups, thirds, podiums, and average placement | Its `wins` property means championships, not matchup wins. It is out of scope as a matchup source. |
+| Canonical History Authority | Calculates approved placement statistics | `lib/history/historicalSeasonResults.ts` | Championships, runner-ups, thirds, podiums, and average placement | Placement metrics are out of scope as a matchup source. |
 
 ### Duplicated owner and Sleeper ID maps
 

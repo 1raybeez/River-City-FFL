@@ -11,7 +11,6 @@ import {
   HISTORY_CURRENT_SEASON,
   HISTORY_LAST_COMPLETED_SEASON,
 } from "../lib/history/historyAuthority";
-import { calculateAllTimeStats } from "../lib/stats";
 
 const completedResults = getCompletedHistoryResults();
 const championships = getCanonicalChampionshipResults();
@@ -73,9 +72,6 @@ assert.equal(resumes.find((resume) => resume.manager === "Ray Long")?.seasonsPla
 
 const expectedTopTen = ["Tommy Moore", "David Besedich", "Aaron Hawkins", "Keith Polarek", "Bryan Doane", "Gordie Gahagan", "JD Dowling", "Garet Prior", "Brian Stevens", "Wade Cameron"];
 assert.deepEqual(resumes.slice(0, 10).map((resume) => resume.manager), expectedTopTen);
-const legacyStats = calculateAllTimeStats();
-assert.equal(legacyStats.find((stat) => stat.manager === "David Besedich")?.wins, 1);
-
 assert.equal(getHistoricalPostseasonEra(2011), "Consolation Bracket era");
 assert.equal(getHistoricalPostseasonEra(2021), "Consolation Bracket era");
 assert.equal(getHistoricalPostseasonEra(2022), "Toilet Bowl era");
