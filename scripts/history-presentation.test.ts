@@ -19,7 +19,7 @@ assert.doesNotMatch(page, /Damar Hamlin/);
 assert.match(page, /Hall of Fame/);
 assert.match(page, /All-Time Rankings/);
 assert.doesNotMatch(page, /Contextual preview|canonical authority|reviewed standings source above/);
-assert.match(page, /calculateAllTimeStats\(\)/);
+assert.match(page, /getCanonicalHallOfFameResumes\(\)/);
 assert.match(page, /League eras/);
 assert.match(page, /2022–Present/);
 assert.match(page, /Historical data coverage/);

@@ -5,7 +5,6 @@ import {
 } from "@/lib/history/historicalSeasonResults";
 import { riverCityAuctionLeagueSettings } from "@/lib/auction/leagueSettings";
 import { ownerProfilesById } from "@/lib/managers/identityData";
-import type { ManagerStats } from "@/lib/stats";
 
 const coverage = getHistoricalSeasonResultsCoverage();
 
@@ -20,6 +19,18 @@ export const HISTORY_MATCHUP_COVERAGE_START_SEASON = 2018 as const;
 export type HistoricalPostseasonEra =
   | "Consolation Bracket era"
   | "Toilet Bowl era";
+
+export type CanonicalHallOfFameResume = {
+  ownerId: string;
+  manager: string;
+  championships: number;
+  championshipYears: number[];
+  runnerUpFinishes: number;
+  thirdPlaceFinishes: number;
+  podiumFinishes: number;
+  averageFinish: number;
+  seasonsPlayed: number;
+};
 
 export function getCompletedHistoryResults(): HistoricalSeasonResult[] {
   return getAllHistoricalSeasonResults().filter(
@@ -62,31 +73,73 @@ export function getCanonicalChampionNames(): string[] {
   );
 }
 
-/**
- * Keeps the existing Hall of Fame snapshot metrics while replacing its title
- * count/years and primary sort with canonical championship credits.
- */
-export function reconcileHallOfFameStats(
-  stats: ManagerStats[]
-): ManagerStats[] {
-  const credits = new Map<string, number[]>();
-  for (const result of getCanonicalChampionshipResults()) {
-    for (const ownerId of result.ownerIds) {
-      const name = ownerProfilesById[ownerId]?.fullName ?? ownerId;
-      credits.set(name, [...(credits.get(name) ?? []), result.season]);
+export function getCanonicalHallOfFameResumes(): CanonicalHallOfFameResume[] {
+  const resumeByOwner = new Map<string, CanonicalHallOfFameResume>();
+  const ownerSeasonKeys = new Set<string>();
+  const podiumSeasonKeys = new Set<string>();
+
+  for (const result of getCompletedHistoryResults()) {
+    for (const ownerId of new Set(result.ownerIds)) {
+      const owner = ownerProfilesById[ownerId];
+      if (!owner) continue;
+
+      const ownerSeasonKey = `${ownerId}:${result.season}`;
+      if (ownerSeasonKeys.has(ownerSeasonKey)) continue;
+      ownerSeasonKeys.add(ownerSeasonKey);
+
+      const resume = resumeByOwner.get(ownerId) ?? {
+        ownerId,
+        manager: owner.fullName,
+        championships: 0,
+        championshipYears: [],
+        runnerUpFinishes: 0,
+        thirdPlaceFinishes: 0,
+        podiumFinishes: 0,
+        averageFinish: 0,
+        seasonsPlayed: 0,
+      };
+
+      resume.seasonsPlayed += 1;
+      resume.averageFinish += result.finalPlacement;
+
+      if (result.isHistoricalChampion) {
+        resume.championships += 1;
+        resume.championshipYears.push(result.season);
+      } else if (result.finalPlacement === 2) {
+        resume.runnerUpFinishes += 1;
+      }
+
+      if (result.finalPlacement === 3) {
+        resume.thirdPlaceFinishes += 1;
+      }
+
+      if (result.finalPlacement <= 3) {
+        const podiumKey = `${ownerId}:${result.season}`;
+        if (!podiumSeasonKeys.has(podiumKey)) {
+          podiumSeasonKeys.add(podiumKey);
+          resume.podiumFinishes += 1;
+        }
+      }
+
+      resumeByOwner.set(ownerId, resume);
     }
   }
 
-  return stats
-    .map((stat) => {
-      const titles = credits.get(stat.manager) ?? [];
-      return { ...stat, wins: titles.length, titles };
-    })
-    .sort((first, second) => {
-      if (second.wins !== first.wins) return second.wins - first.wins;
-      if (first.avgRank !== second.avgRank) return first.avgRank - second.avgRank;
-      return second.top3 - first.top3;
-    });
+  return [...resumeByOwner.values()]
+    .map((resume) => ({
+      ...resume,
+      championshipYears: [...new Set(resume.championshipYears)].sort(
+        (first, second) => first - second
+      ),
+      averageFinish: resume.averageFinish / resume.seasonsPlayed,
+    }))
+    .sort(
+      (first, second) =>
+        second.championships - first.championships ||
+        first.averageFinish - second.averageFinish ||
+        second.podiumFinishes - first.podiumFinishes ||
+        first.manager.localeCompare(second.manager)
+    );
 }
 
 export function getHistoricalPostseasonEra(

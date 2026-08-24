@@ -2,27 +2,23 @@ import Link from "next/link";
 import SiteShell from "@/components/SiteShell";
 import { riverCityAuctionLeagueSettings } from "@/lib/auction/leagueSettings";
 import { ownerProfilesById } from "@/lib/managers/identityData";
-import { calculateAllTimeStats } from "@/lib/stats";
 import {
-  getCanonicalChampionshipResults,
   getCanonicalChampionNames,
+  getCanonicalChampionshipResults,
+  getCanonicalHallOfFameResumes,
   getCompletedHistoryResults,
   getHistoricalPostseasonEra,
   getHistoryMatchupCoverageNote,
   HISTORY_CURRENT_SEASON,
   HISTORY_FIRST_COMPLETED_SEASON,
   HISTORY_LAST_COMPLETED_SEASON,
-  reconcileHallOfFameStats,
 } from "@/lib/history/historyAuthority";
 
 const cardClass = "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm";
 const linkClass = "rounded-lg text-sm font-bold text-blue-800 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400";
 
-function ownerName(ownerId: string) {
-  return ownerProfilesById[ownerId]?.fullName ?? ownerId;
-}
-
 export default function HistoryPage() {
+  const rankings = getCanonicalHallOfFameResumes().slice(0, 5);
   const completedResults = getCompletedHistoryResults();
   const championshipResults = getCanonicalChampionshipResults();
   const completedSeasons = [...new Set(completedResults.map((result) => result.season))].sort((a, b) => b - a);
@@ -30,12 +26,11 @@ export default function HistoryPage() {
     const results = championshipResults.filter((result) => result.season === season);
     return {
       season,
-      champions: results.flatMap((result) => result.ownerIds.map(ownerName)),
+      champions: results.flatMap((result) => result.ownerIds.map((ownerId) => ownerProfilesById[ownerId]?.fullName ?? ownerId)),
       teams: results.map((result) => result.rawTeamName).filter(Boolean),
     };
   });
   const uniqueChampionCount = getCanonicalChampionNames().length;
-  const rankings = reconcileHallOfFameStats(calculateAllTimeStats()).slice(0, 5);
 
   return (
     <SiteShell activePath="/league-info">
@@ -66,7 +61,7 @@ export default function HistoryPage() {
 
         <section className="mt-10" aria-labelledby="hall-title">
           <p className="text-xs font-black uppercase tracking-widest text-amber-700">Hall of Fame</p><h2 id="hall-title" className="mt-1 text-2xl font-black">All-Time Rankings</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">Career rankings across River City history.</p>
-          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="hidden overflow-x-auto md:block"><table className="w-full text-left text-sm"><caption className="sr-only">Hall of Fame preview</caption><thead className="bg-slate-50 text-xs uppercase tracking-widest text-slate-500"><tr><th className="px-5 py-3">Rank</th><th className="px-5 py-3">Manager</th><th className="px-5 py-3">Titles</th><th className="px-5 py-3">Avg Finish</th><th className="px-5 py-3">Seasons</th></tr></thead><tbody>{rankings.map((stat, index) => <tr key={stat.manager} className="border-t border-slate-100"><td className="px-5 py-3 font-bold">{index + 1}</td><td className="px-5 py-3 font-bold">{stat.manager}</td><td className="px-5 py-3">{stat.wins}</td><td className="px-5 py-3">{stat.avgRank}</td><td className="px-5 py-3">{stat.seasons}</td></tr>)}</tbody></table></div><div className="grid gap-3 p-4 md:hidden">{rankings.map((stat, index) => <article key={stat.manager} className="rounded-xl bg-slate-50 p-4"><div className="flex justify-between gap-3"><h3 className="font-black">{index + 1}. {stat.manager}</h3><span className="text-xs font-bold text-slate-500">{stat.seasons} seasons</span></div><p className="mt-2 text-sm text-slate-600">{stat.wins} titles · {stat.avgRank} average finish</p></article>)}</div></div>
+          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="hidden overflow-x-auto md:block"><table className="w-full text-left text-sm"><caption className="sr-only">Hall of Fame preview</caption><thead className="bg-slate-50 text-xs uppercase tracking-widest text-slate-500"><tr><th className="px-5 py-3">Rank</th><th className="px-5 py-3">Manager</th><th className="px-5 py-3">Titles</th><th className="px-5 py-3">Avg Finish</th><th className="px-5 py-3">Seasons</th></tr></thead><tbody>{rankings.map((stat, index) => <tr key={stat.ownerId} className="border-t border-slate-100"><td className="px-5 py-3 font-bold">{index + 1}</td><td className="px-5 py-3 font-bold">{stat.manager}</td><td className="px-5 py-3">{stat.championships}</td><td className="px-5 py-3">{stat.averageFinish.toFixed(2)}</td><td className="px-5 py-3">{stat.seasonsPlayed}</td></tr>)}</tbody></table></div><div className="grid gap-3 p-4 md:hidden">{rankings.map((stat, index) => <article key={stat.ownerId} className="rounded-xl bg-slate-50 p-4"><div className="flex justify-between gap-3"><h3 className="font-black">{index + 1}. {stat.manager}</h3><span className="text-xs font-bold text-slate-500">{stat.seasonsPlayed} seasons</span></div><p className="mt-2 text-sm text-slate-600">{stat.championships} titles · {stat.averageFinish.toFixed(2)} average finish</p></article>)}</div></div>
         </section>
 
         <section className="mt-10" aria-labelledby="eras-title"><h2 id="eras-title" className="text-2xl font-black">League eras</h2><div className="mt-4 grid gap-4 md:grid-cols-2"><div className={cardClass}><h3 className="font-black">2011–2021</h3><p className="mt-2 text-sm leading-6 text-slate-600">{getHistoricalPostseasonEra(2011).toUpperCase()}</p></div><div className={cardClass}><h3 className="font-black">2022–Present</h3><p className="mt-2 text-sm leading-6 text-slate-600">{getHistoricalPostseasonEra(2022).toUpperCase()}</p></div></div><div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-5"><p className="text-xs font-black uppercase tracking-widest text-slate-500">Historical data coverage</p><p className="mt-2 text-sm leading-6 text-slate-600">{getHistoryMatchupCoverageNote()} Final standings and championship history are available back to 2011.</p></div></section>

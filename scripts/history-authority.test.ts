@@ -3,13 +3,13 @@ import {
   getCanonicalChampionNames,
   getCanonicalChampionshipResults,
   getCanonicalChampionshipResultsForSeason,
+  getCanonicalHallOfFameResumes,
   getCompletedHistoryResults,
   getHistoricalPostseasonEra,
   getHistoryMatchupCoverageNote,
   hasCanonicalMatchupCoverage,
   HISTORY_CURRENT_SEASON,
   HISTORY_LAST_COMPLETED_SEASON,
-  reconcileHallOfFameStats,
 } from "../lib/history/historyAuthority";
 import { calculateAllTimeStats } from "../lib/stats";
 
@@ -48,15 +48,33 @@ assert.deepEqual(championNames, [
 assert.equal(new Set(championNames).size, championNames.length);
 assert.equal(championships.some((result) => result.season === 2026), false);
 
-const reconciled = reconcileHallOfFameStats(calculateAllTimeStats());
-const tommy = reconciled.find((stat) => stat.manager === "Tommy Moore");
-const david = reconciled.find((stat) => stat.manager === "David Besedich");
-assert.deepEqual(tommy && { wins: tommy.wins, titles: tommy.titles }, { wins: 5, titles: [2023, 2022, 2017, 2016, 2013] });
-assert.deepEqual(david && { wins: david.wins, titles: david.titles }, { wins: 2, titles: [2022, 2021] });
-const legacyDavid = calculateAllTimeStats().find((stat) => stat.manager === "David Besedich");
-assert.equal(david?.avgRank, legacyDavid?.avgRank);
-assert.equal(reconciled[0]?.manager, "Tommy Moore");
-assert.equal(reconciled[0]?.wins, 5);
+const resumes = getCanonicalHallOfFameResumes();
+assert.equal(resumes.length, 28);
+assert.equal(new Set(resumes.map((resume) => resume.ownerId)).size, resumes.length);
+const tommy = resumes.find((resume) => resume.manager === "Tommy Moore");
+const david = resumes.find((resume) => resume.manager === "David Besedich");
+assert.deepEqual(tommy && { championships: tommy.championships, years: tommy.championshipYears }, { championships: 5, years: [2013, 2016, 2017, 2022, 2023] });
+assert.deepEqual(david && { championships: david.championships, years: david.championshipYears }, { championships: 2, years: [2021, 2022] });
+assert.equal(david?.runnerUpFinishes, 0);
+assert.equal(david?.podiumFinishes, 3);
+assert.equal(resumes.find((resume) => resume.manager === "JD Dowling")?.seasonsPlayed, 15);
+assert.ok(Math.abs((resumes.find((resume) => resume.manager === "JD Dowling")?.averageFinish ?? 0) - 5.9333333333) < 0.000001);
+assert.equal(resumes.find((resume) => resume.manager === "Landon Elliott")?.seasonsPlayed, 14);
+assert.ok(Math.abs((resumes.find((resume) => resume.manager === "Landon Elliott")?.averageFinish ?? 0) - 7.4285714286) < 0.000001);
+assert.equal(resumes.find((resume) => resume.manager === "Darren Kusaj")?.averageFinish, 9.5);
+assert.equal(resumes.find((resume) => resume.manager === "Rachel Woolard")?.averageFinish, 10);
+assert.equal(resumes.some((resume) => resume.manager === "Unknown"), false);
+
+const coOwnerSeasons = completedResults
+  .filter((result) => result.ownerIds.includes("ray-long") && result.ownerIds.includes("jeffrey-hudgins"))
+  .map((result) => result.season);
+assert.deepEqual(coOwnerSeasons, [2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]);
+assert.equal(resumes.find((resume) => resume.manager === "Ray Long")?.seasonsPlayed, 14);
+
+const expectedTopTen = ["Tommy Moore", "David Besedich", "Aaron Hawkins", "Keith Polarek", "Bryan Doane", "Gordie Gahagan", "JD Dowling", "Garet Prior", "Brian Stevens", "Wade Cameron"];
+assert.deepEqual(resumes.slice(0, 10).map((resume) => resume.manager), expectedTopTen);
+const legacyStats = calculateAllTimeStats();
+assert.equal(legacyStats.find((stat) => stat.manager === "David Besedich")?.wins, 1);
 
 assert.equal(getHistoricalPostseasonEra(2011), "Consolation Bracket era");
 assert.equal(getHistoricalPostseasonEra(2021), "Consolation Bracket era");
