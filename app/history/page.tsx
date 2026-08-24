@@ -1,7 +1,9 @@
 import Link from "next/link";
 import SiteShell from "@/components/SiteShell";
+import HallOfFameResumeExplorer from "./HallOfFameResumeExplorer";
 import { riverCityAuctionLeagueSettings } from "@/lib/auction/leagueSettings";
-import { ownerProfilesById } from "@/lib/managers/identityData";
+import { franchises, ownerProfilesById } from "@/lib/managers/identityData";
+import { FranchiseStatus } from "@/lib/managers/identityTypes";
 import {
   getCanonicalChampionNames,
   getCanonicalChampionshipResults,
@@ -18,7 +20,7 @@ const cardClass = "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm";
 const linkClass = "rounded-lg text-sm font-bold text-blue-800 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400";
 
 export default function HistoryPage() {
-  const rankings = getCanonicalHallOfFameResumes().slice(0, 5);
+  const rankings = getCanonicalHallOfFameResumes();
   const completedResults = getCompletedHistoryResults();
   const championshipResults = getCanonicalChampionshipResults();
   const completedSeasons = [...new Set(completedResults.map((result) => result.season))].sort((a, b) => b - a);
@@ -31,6 +33,30 @@ export default function HistoryPage() {
     };
   });
   const uniqueChampionCount = getCanonicalChampionNames().length;
+  const globalRows = rankings.map((stat, index) => ({
+    ...stat,
+    rank: index + 1,
+    status: ownerProfilesById[stat.ownerId]?.status === "active" ? "ACTIVE" as const : "FORMER" as const,
+  }));
+  const resumeByOwnerId = new Map(globalRows.map((stat) => [stat.ownerId, stat]));
+  const activeFranchises = franchises.filter((franchise) => franchise.status === FranchiseStatus.Active);
+  const activeOwnerIds = new Set(activeFranchises.flatMap((franchise) => franchise.activeOwnerIds));
+  const retiredOwnerIds = new Set(globalRows.filter((stat) => !activeOwnerIds.has(stat.ownerId) || stat.ownerId === "landon-elliott").map((stat) => stat.ownerId));
+  const resumeRows = activeFranchises.flatMap((franchise) => {
+    const primaryOwnerId = franchise.primaryOwnerIds[0] ?? franchise.activeOwnerIds[0];
+    const stat = resumeByOwnerId.get(primaryOwnerId);
+    if (!stat) return [];
+    const coOwnerIds = franchise.coOwnerIds.filter((ownerId) => ownerId !== primaryOwnerId);
+    return [{
+      ...stat,
+      status: "ACTIVE" as const,
+      coOwnerLabel: coOwnerIds.map((ownerId) => ownerProfilesById[ownerId]?.fullName ?? ownerId).join(" / ") || undefined,
+    }];
+  }).sort((first, second) => first.rank - second.rank);
+  const allTimeRows = globalRows.map((stat) => ({
+    ...stat,
+    status: retiredOwnerIds.has(stat.ownerId) ? "FORMER" as const : "ACTIVE" as const,
+  }));
 
   return (
     <SiteShell activePath="/league-info">
@@ -59,10 +85,9 @@ export default function HistoryPage() {
           </div>
         </section>
 
-        <section className="mt-10" aria-labelledby="hall-title">
-          <p className="text-xs font-black uppercase tracking-widest text-amber-700">Hall of Fame</p><h2 id="hall-title" className="mt-1 text-2xl font-black">All-Time Rankings</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">Career rankings across River City history.</p>
-          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="hidden overflow-x-auto md:block"><table className="w-full text-left text-sm"><caption className="sr-only">Hall of Fame preview</caption><thead className="bg-slate-50 text-xs uppercase tracking-widest text-slate-500"><tr><th className="px-5 py-3">Rank</th><th className="px-5 py-3">Manager</th><th className="px-5 py-3">Titles</th><th className="px-5 py-3">Avg Finish</th><th className="px-5 py-3">Seasons</th></tr></thead><tbody>{rankings.map((stat, index) => <tr key={stat.ownerId} className="border-t border-slate-100"><td className="px-5 py-3 font-bold">{index + 1}</td><td className="px-5 py-3 font-bold">{stat.manager}</td><td className="px-5 py-3">{stat.championships}</td><td className="px-5 py-3">{stat.averageFinish.toFixed(2)}</td><td className="px-5 py-3">{stat.seasonsPlayed}</td></tr>)}</tbody></table></div><div className="grid gap-3 p-4 md:hidden">{rankings.map((stat, index) => <article key={stat.ownerId} className="rounded-xl bg-slate-50 p-4"><div className="flex justify-between gap-3"><h3 className="font-black">{index + 1}. {stat.manager}</h3><span className="text-xs font-bold text-slate-500">{stat.seasonsPlayed} seasons</span></div><p className="mt-2 text-sm text-slate-600">{stat.championships} titles · {stat.averageFinish.toFixed(2)} average finish</p></article>)}</div></div>
-        </section>
+        <section className="mt-10" aria-labelledby="hall-title"><HallOfFameResumeExplorer rankings={resumeRows} allTimeRankings={allTimeRows} championCount={uniqueChampionCount} completedSeasonCount={completedSeasons.length} activeFranchiseCount={activeFranchises.length} /></section>
+
+        <section className="mt-10" aria-labelledby="club-title"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-widest text-amber-700">The honor roll</p><h2 id="club-title" className="mt-1 text-2xl font-black">Champions Club</h2></div><p className="text-sm text-slate-600">{uniqueChampionCount} managers with canonical titles</p></div><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{rankings.filter((stat) => stat.championships > 0).map((stat) => <article key={stat.ownerId} className={cardClass}><h3 className="font-black text-slate-950">{stat.manager}</h3><p className="mt-2 text-xs font-black uppercase tracking-widest text-orange-700">{stat.championships} {stat.championships === 1 ? "title" : "titles"}</p><p className="mt-2 text-sm font-semibold text-slate-600">{stat.championshipYears.join(" · ")}</p></article>)}</div></section>
 
         <section className="mt-10" aria-labelledby="eras-title"><h2 id="eras-title" className="text-2xl font-black">League eras</h2><div className="mt-4 grid gap-4 md:grid-cols-2"><div className={cardClass}><h3 className="font-black">2011–2021</h3><p className="mt-2 text-sm leading-6 text-slate-600">{getHistoricalPostseasonEra(2011).toUpperCase()}</p></div><div className={cardClass}><h3 className="font-black">2022–Present</h3><p className="mt-2 text-sm leading-6 text-slate-600">{getHistoricalPostseasonEra(2022).toUpperCase()}</p></div></div><div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-5"><p className="text-xs font-black uppercase tracking-widest text-slate-500">Historical data coverage</p><p className="mt-2 text-sm leading-6 text-slate-600">{getHistoryMatchupCoverageNote()} Final standings and championship history are available back to 2011.</p></div></section>
 

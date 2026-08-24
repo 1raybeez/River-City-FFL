@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const page = fs.readFileSync('app/history/page.tsx', 'utf8');
+const explorer = fs.readFileSync('app/history/HallOfFameResumeExplorer.tsx', 'utf8');
 
 assert.match(page, /<SiteShell activePath="\/league-info">/);
 assert.match(page, /River City History/);
@@ -16,8 +17,8 @@ assert.match(page, /Unique champions/);
 assert.match(page, /Recent champions/);
 assert.match(page, /CO-CHAMPIONS/);
 assert.doesNotMatch(page, /Damar Hamlin/);
-assert.match(page, /Hall of Fame/);
-assert.match(page, /All-Time Rankings/);
+assert.match(explorer, /Hall of Fame/);
+assert.match(explorer, /All-Time Résumés/);
 assert.doesNotMatch(page, /Contextual preview|canonical authority|reviewed standings source above/);
 assert.match(page, /getCanonicalHallOfFameResumes\(\)/);
 assert.match(page, /League eras/);
@@ -30,7 +31,7 @@ assert.match(page, /Explore more history/);
 for (const href of ['/league-info/rivalries', '/league-info/draft', '/league-info/legislative', '/league-info/payouts', '/history/version-history']) {
   assert.match(page, new RegExp(href.replaceAll('/', '\\/')));
 }
-assert.match(page, /md:hidden/);
+assert.match(explorer, /md:hidden/);
 assert.match(page, /Return to Home/);
 assert.match(page, /focus-visible:ring/);
 
