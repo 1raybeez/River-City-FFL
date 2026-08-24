@@ -3876,6 +3876,19 @@ const importPrepWarnings = [
   'Review before import',
 ];
 
+export type AuctionWarRoomMockBudgetRow = {
+  teamId: string;
+  teamName: string;
+  managerName: string;
+  teamBudget: number;
+  keeperCost: number;
+  totalSpent: number;
+  remainingBudget: number;
+  rosterSpotsRemaining: number;
+  maxBid: number;
+  averageDollarsPerOpenSlot: number;
+};
+
 export default function AuctionWarRoomClient({
   access,
   initialValueSource,
@@ -3886,6 +3899,7 @@ export default function AuctionWarRoomClient({
   initialPurchaseDecisions,
   initialWarRoomLiveState,
   initialWarRoomBudget,
+  initialMockBudgetRows,
   initialKeeperAuthority,
   initialGlobalNomination,
 }: {
@@ -3898,6 +3912,7 @@ export default function AuctionWarRoomClient({
   initialPurchaseDecisions?: AuctionWarRoomInitialPurchaseDecision[];
   initialWarRoomLiveState?: AuctionWarRoomInitialLiveState | null;
   initialWarRoomBudget?: AuctionWarRoomInitialBudget | null;
+  initialMockBudgetRows: AuctionWarRoomMockBudgetRow[];
   initialKeeperAuthority: KeeperAuthority;
   initialGlobalNomination: GlobalNominationReadResult;
 }) {
@@ -10808,71 +10823,85 @@ export default function AuctionWarRoomClient({
 
                   {draftUtilityOpenSection === 'budgets' && (
                     <div className="grid gap-2 rounded-2xl bg-black/[0.025] p-3 dark:bg-white/[0.04]" style={{ animation: 'draftDrawerIn 220ms ease-out' }}>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">
-                        💰 Budgets
-                      </p>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
-                        {purchaseSourceDetail}
-                      </p>
-	                      <div className="max-h-[54vh] overflow-y-auto rounded-xl border border-black/10 dark:border-white/10">
-	                        <table className="w-full table-fixed text-left">
-                            <colgroup>
-                              <col className="w-[34%]" />
-                              <col className="w-[14%]" />
-                              <col className="w-[18%]" />
-                              <col className="w-[14%]" />
-                              <col className="w-[20%]" />
-                            </colgroup>
-	                          <thead>
-	                            <tr className="sticky top-0 z-10 border-b border-black/10 bg-white text-[9px] font-black uppercase tracking-widest text-gray-400 dark:border-white/10 dark:bg-[#121212]">
-	                              <th className="px-1.5 py-2">Owner</th>
-	                              <th className="px-1.5 py-2 text-right">Spent</th>
-	                              <th className="px-1.5 py-2 text-right">Remain</th>
-	                              <th className="px-1.5 py-2 text-right">Players</th>
-	                              <th className="px-1.5 py-2 text-right">Legal Max</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-black/5 dark:divide-white/10">
-                            {budgetRows.map((row) => {
-                              const teamIntelligence = teamIntelligenceById.get(row.team.id);
-                              const pressure = teamIntelligence?.pressure ?? 'Low';
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                            💰 Team Budgets
+                          </p>
+                          <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                            Calculated · read-only · mock data
+                          </p>
+                        </div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+                          {purchaseSourceDetail}
+                        </p>
+                      </div>
 
-                              return (
-                                <tr
-                                  key={row.team.id}
-                                  className={`text-xs ${guidanceTeam?.id === row.team.id ? 'bg-orange-600/10 ring-1 ring-inset ring-orange-600/25' : ''}`}
-                                >
-	                                  <td className="break-words px-1.5 py-2">
-	                                    <p className="font-black">{row.team.managerName}{guidanceTeam?.id === row.team.id ? ' | Ray/Jeffrey' : ''}</p>
-                                    <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
-                                      {row.team.teamName}
-                                    </p>
-                                    {row.budgetIsIncomplete && (
-                                      <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">
-                                        Budget incomplete: {row.missingKeeperPriceCount} keeper price missing
-                                      </p>
-                                    )}
-                                  </td>
-	                                  <td className="whitespace-nowrap px-1.5 py-2 text-right font-black">{formatMoney(row.totalSpent)}</td>
-	                                  <td className="whitespace-nowrap px-1.5 py-2 text-right font-black text-emerald-600">
-	                                    {row.budgetIsIncomplete ? 'Incomplete' : formatMoney(row.remainingBudget)}
-	                                  </td>
-	                                  <td className="whitespace-nowrap px-1.5 py-2 text-right font-black">
-	                                    {Math.max(0, row.team.rosterSlots.total - row.rosterSpotsRemaining)}/{row.team.rosterSlots.total}
-	                                  </td>
-	                                  <td className="px-1.5 py-2 text-right">
-	                                    <p className="font-black text-orange-600">
-	                                      {row.budgetIsIncomplete ? 'Incomplete' : formatMoney(row.maxBid)}
-	                                    </p>
-	                                    <span className={`mt-1 inline-flex rounded-full border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest ${getBudgetPressureClass(pressure)}`}>
-                                      {pressure}
-                                    </span>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                      <div className="max-h-[54vh] space-y-2 overflow-y-auto pr-1">
+                        {budgetRows.map((row) => {
+                          const teamIntelligence = teamIntelligenceById.get(row.team.id);
+                          const pressure = teamIntelligence?.pressure ?? 'Low';
+                          const isGuidanceTeam = guidanceTeam?.id === row.team.id;
+
+                          return (
+                            <article
+                              key={row.team.id}
+                              className={`rounded-xl border bg-white p-3 dark:bg-black/25 ${isGuidanceTeam ? 'border-orange-600/35 ring-1 ring-inset ring-orange-600/20' : 'border-black/10 dark:border-white/10'}`}
+                            >
+                              <div className="flex min-w-0 items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="break-words text-sm font-black uppercase italic leading-tight">
+                                    {row.team.teamName}
+                                  </p>
+                                  <p className="mt-1 break-words text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                                    {row.team.managerName}
+                                  </p>
+                                </div>
+                                <span className={`shrink-0 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-widest ${getBudgetPressureClass(pressure)}`}>
+                                  {pressure}
+                                </span>
+                              </div>
+
+                              <div className="mt-3 grid grid-cols-3 gap-1.5">
+                                <div className="min-w-0 rounded-lg bg-emerald-600/10 px-2 py-2">
+                                  <p className="text-[8px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+                                    Left
+                                  </p>
+                                  <p className="mt-1 truncate text-lg font-black text-emerald-700 dark:text-emerald-300">
+                                    {row.budgetIsIncomplete ? '—' : formatMoney(row.remainingBudget)}
+                                  </p>
+                                </div>
+                                <div className="min-w-0 rounded-lg bg-orange-600/10 px-2 py-2">
+                                  <p className="text-[8px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">
+                                    Max bid
+                                  </p>
+                                  <p className="mt-1 truncate text-lg font-black text-orange-700 dark:text-orange-300">
+                                    {row.budgetIsIncomplete ? '—' : formatMoney(row.maxBid)}
+                                  </p>
+                                </div>
+                                <div className="min-w-0 rounded-lg bg-black/[0.04] px-2 py-2 dark:bg-white/[0.06]">
+                                  <p className="text-[8px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                                    Open
+                                  </p>
+                                  <p className="mt-1 truncate text-lg font-black">
+                                    {row.rosterSpotsRemaining}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <p className="mt-2 truncate text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                                Spent {row.budgetIsIncomplete ? '—' : formatMoney(row.totalSpent)} · Keepers {row.budgetIsIncomplete ? '—' : formatMoney(row.keeperCost)} · Avg/Open {row.budgetIsIncomplete ? '—' : formatMoneyPerSlot(row.averageDollarsPerOpenSlot)}
+                              </p>
+
+                              {row.budgetIsIncomplete && (
+                                <p className="mt-2 flex items-start gap-1 text-[9px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">
+                                  <span aria-hidden="true">⚠</span>
+                                  <span>{row.missingKeeperPriceCount} keeper price missing; budget totals unavailable</span>
+                                </p>
+                              )}
+                            </article>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -12759,12 +12788,11 @@ export default function AuctionWarRoomClient({
 
           <SectionShell
             title="Team Budgets"
-            eyebrow={purchaseSourceLabel}
+            eyebrow="Mock data · calculated"
             icon={Users}
-            className="hidden"
           >
             <p className="mb-4 text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
-              Read-only budget math is using {purchaseSourceLabel.toLowerCase()} with live keeper, purchase, and manual-local rows.
+              Read-only mock data only. Budget fields below are calculated with the auction calculation helpers.
             </p>
             <div className="overflow-x-auto rounded-2xl border border-black/10 dark:border-white/10">
               <table className="w-full min-w-[1040px] text-left">
@@ -12782,28 +12810,22 @@ export default function AuctionWarRoomClient({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-black/5 dark:divide-white/10">
-                  {budgetRows.map((row) => {
-                    const { team } = row;
+                  {initialMockBudgetRows.map((row) => {
                     return (
-                      <tr key={team.id} className="text-sm">
+                      <tr key={row.teamId} className="text-sm">
                         <td className="py-3 pr-4 font-black">
-                          {team.teamName}
-                          {row.budgetIsIncomplete && (
-                            <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">
-                              Budget incomplete: {row.missingKeeperPriceCount} keeper price missing
-                            </p>
-                          )}
+                          {row.teamName}
                         </td>
-                        <td className="py-3 pr-4 font-bold text-gray-500 dark:text-gray-400">{team.managerName}</td>
-                        <td className="py-3 pr-4 font-black">{formatMoney(team.teamBudget)}</td>
+                        <td className="py-3 pr-4 font-bold text-gray-500 dark:text-gray-400">{row.managerName}</td>
+                        <td className="py-3 pr-4 font-black">{formatMoney(row.teamBudget)}</td>
                         <td className="py-3 pr-4 font-black">{formatMoney(row.keeperCost)}</td>
                         <td className="py-3 pr-4 font-black">{formatMoney(row.totalSpent)}</td>
                         <td className="py-3 pr-4 font-black text-emerald-600">
-                          {row.budgetIsIncomplete ? 'Incomplete' : formatMoney(row.remainingBudget)}
+                          {formatMoney(row.remainingBudget)}
                         </td>
                         <td className="py-3 pr-4 font-black">{row.rosterSpotsRemaining}</td>
                         <td className="py-3 pr-4 font-black text-orange-600">
-                          {row.budgetIsIncomplete ? 'Incomplete' : formatMoney(row.maxBid)}
+                          {formatMoney(row.maxBid)}
                         </td>
                         <td className="py-3 pr-4 font-bold text-gray-500 dark:text-gray-400">
                           {formatMoneyPerSlot(row.averageDollarsPerOpenSlot)}
