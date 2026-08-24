@@ -15,7 +15,7 @@ export async function GET() {
     duesCollected: formatMoney(presentation.duesCollectedCents),
     duesOutstanding: formatMoney(presentation.duesOutstandingCents),
     paidCount: presentation.paidCount,
-    notPaidCount: presentation.notPaidCount,
+    owedCount: presentation.owedCount,
     championshipAllocation: formatMoney(presentation.championshipAllocationCents),
     projectedChampionCash: formatMoney(presentation.projectedChampionCashCents),
   });

@@ -15,7 +15,7 @@ const nextConfig = {
       },
     ],
   },
-  serverExternalPackages: ["firebase-admin"],
+  transpilePackages: ["firebase-admin"],
 };
 
 module.exports = nextConfig;

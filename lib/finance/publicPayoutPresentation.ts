@@ -2,13 +2,13 @@ import type { PublicOperationalFinancePresentation } from "@/lib/finance/publicO
 import type { FinancialHistoryPresentation } from "@/lib/managers/financialHistoryPresentation";
 
 export type PublicPayoutAward = Readonly<{
-  awardId: string;
   label: string;
+  recipient?: string;
   amountCents: number;
+  status?: "PENDING" | "APPROVED" | "PAID";
 }>;
 
 export type PublicPayoutExpense = Readonly<{
-  expenseId: string;
   label: string;
   amountCents: number;
   funding: string;
@@ -18,12 +18,14 @@ export type PublicPayoutCurrentSeason = Readonly<{
   season: 2026;
   statusLabel: PublicOperationalFinancePresentation["statusLabel"];
   operationalStatus: string;
+  leagueDuesCents: number;
+  ownerCount: number;
   duesPoolCents: number;
   duesAssessedCents: number;
   duesCollectedCents: number;
   duesOutstandingCents: number;
   paidCount: number;
-  notPaidCount: number;
+  owedCount: number;
   expectedPrizeStructure: readonly Readonly<{ label: string; amountCents: number }>[];
   expectedPrizeTotalCents: number;
   approvedAwards: readonly PublicPayoutAward[];
@@ -32,6 +34,7 @@ export type PublicPayoutCurrentSeason = Readonly<{
   approvedRingExpenseCents: number | null;
   projectedChampionCashCents: number | null;
   reconciliationStatus: string;
+  fundLocationSummary: readonly string[];
 }>;
 
 export type PublicPayoutSeason = Readonly<{
@@ -59,21 +62,23 @@ export function buildPublicPayoutCurrentSeason(
     season: presentation.season,
     statusLabel: presentation.statusLabel,
     operationalStatus: presentation.operationalStatus,
+    leagueDuesCents: presentation.leagueDuesCents,
+    ownerCount: presentation.ownerCount,
     duesPoolCents: presentation.duesPoolCents,
     duesAssessedCents: presentation.duesAssessedCents,
     duesCollectedCents: presentation.duesCollectedCents,
     duesOutstandingCents: presentation.duesOutstandingCents,
     paidCount: presentation.paidCount,
-    notPaidCount: presentation.notPaidCount,
+    owedCount: presentation.owedCount,
     expectedPrizeStructure: presentation.expectedPrizeStructure,
     expectedPrizeTotalCents: presentation.expectedPrizeStructure.reduce((sum, item) => sum + item.amountCents, 0),
-    approvedAwards: presentation.approvedAwards.map(({ awardId, label, amountCents }) => ({
-      awardId,
+    approvedAwards: presentation.approvedAwards.map(({ label, recipient, amountCents, status }) => ({
       label,
+      recipient,
       amountCents,
+      status,
     })),
-    approvedExpenses: presentation.approvedExpenses.map(({ expenseId, label, amountCents, funding }) => ({
-      expenseId,
+    approvedExpenses: presentation.approvedExpenses.map(({ label, amountCents, funding }) => ({
       label,
       amountCents,
       funding,
@@ -82,6 +87,7 @@ export function buildPublicPayoutCurrentSeason(
     approvedRingExpenseCents: presentation.approvedRingExpenseCents,
     projectedChampionCashCents: presentation.projectedChampionCashCents,
     reconciliationStatus: presentation.reconciliationStatus,
+    fundLocationSummary: presentation.fundLocationSummary,
   };
 }
 
@@ -97,17 +103,14 @@ export function buildPublicPayoutHistory(
       reconciliationState: season.reconciliationState,
       summary: season.summary,
       seasonAwards: season.seasonAwards.map((award) => ({
-        awardId: award.transactionKey,
         label: award.category,
         amountCents: Math.round(award.amount * 100),
       })),
       weeklyAwards: season.weeklyAwards.map((award) => ({
-        awardId: award.transactionKey,
         label: "Weekly high-score award",
         amountCents: Math.round(award.amount * 100),
       })),
-      expenses: season.expenses.map(({ transactionKey, category, amount, funding }) => ({
-        expenseId: transactionKey,
+      expenses: season.expenses.map(({ category, amount, funding }) => ({
         label: category,
         amountCents: Math.round(amount * 100),
         funding,

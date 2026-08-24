@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { apply2026OpeningDuesMigration, recordSettlement } from "../lib/finance/operationalFinanceLedger";
+import { apply2026OpeningDuesMigration, recordSettlement, reverseSettlement } from "../lib/finance/operationalFinanceLedger";
 import { InMemoryOperationalFinanceLedgerRepository } from "../lib/finance/operationalFinanceLedgerMemory";
 import { createOperationalFinanceExpense } from "../lib/finance/operationalFinanceExpenses";
 import { buildPublicOperationalFinancePresentation } from "../lib/finance/publicOperationalFinancePresentation";
@@ -21,7 +21,7 @@ async function main() {
 
   const opening = await repository.getSnapshot();
   const stan = opening.obligations.find((entry) => entry.category === "dues-assessment" && entry.financialOwnerId === "stan-schoppe")!;
-  await recordSettlement(repository, {
+  const stanSettlement = await recordSettlement(repository, {
     season: 2026,
     obligationId: stan.obligationId,
     direction: "incoming-dues",
@@ -45,9 +45,15 @@ async function main() {
   assert.equal(publicPresentation.duesCollectedCents, 30_000);
   assert.equal(publicPresentation.duesOutstandingCents, 30_000);
   assert.equal(publicPresentation.paidCount, 6);
-  assert.equal(publicPresentation.notPaidCount, 6);
-  const publicStan = publicPresentation.duesRows.find((row) => row.financialOwnerId === "stan-schoppe")!;
-  assert.equal(publicStan.status, "PAID");
+  assert.equal(publicPresentation.owedCount, 6);
+  assert.equal("duesRows" in publicPresentation, false);
+
+  await reverseSettlement(repository, 2026, stanSettlement.value.settlementId, "Fixture payment reversal", actor, "public-live:reverse:stan", recordedAt);
+  const reversedPresentation = buildPublicOperationalFinancePresentation(await repository.getSnapshot());
+  assert.equal(reversedPresentation.duesCollectedCents, 25_000);
+  assert.equal(reversedPresentation.paidCount, 5);
+  assert.equal(reversedPresentation.owedCount, 7);
+  assert.equal("duesRows" in reversedPresentation, false);
   assert.equal(publicPresentation.approvedRingExpenseCents, 1_377);
   assert.equal(publicPresentation.projectedChampionCashCents, 22_123);
   assert.equal(publicPresentation.approvedAwards.length, 0);
@@ -56,7 +62,8 @@ async function main() {
   assert.equal(publicPresentation.approvedExpenses[0].funding, "Dues funded");
 
   const serialized = JSON.stringify(publicPresentation);
-  assert.doesNotMatch(serialized, /venmo|actualPaidAt|externalReference|commissionerNote|idempotency|audit|contact/i);
+  assert.doesNotMatch(serialized, /duesRows|Stan Schoppe|Shake-N-Bakers|ownerName|franchiseName/i);
+  assert.doesNotMatch(serialized, /paymentMethod|actualPaidAt|externalReference|commissionerNote|idempotency|audit|contact|paymentHandle|transactionReference/i);
 
   const client = readFileSync("components/league-info/FinancialHistoryClient.tsx", "utf8");
   const formatPublicMoney = (cents: number) => new Intl.NumberFormat("en-US", {

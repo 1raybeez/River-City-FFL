@@ -3,6 +3,10 @@ import { readFileSync } from "node:fs";
 
 const page = readFileSync("app/matchups/page.tsx", "utf8");
 const route = readFileSync("app/api/matchups/history/route.ts", "utf8");
+const opponentRoute = readFileSync(
+  "app/managers/owners/[owner]/opponents/[opponent]/page.tsx",
+  "utf8"
+);
 
 const approvedHistoryFixture = {
   supported: true,
@@ -36,6 +40,9 @@ assert.match(route, /competitiveMetrics/);
 assert.match(route, /allMeetingMetrics/);
 assert.match(route, /seriesContext\.latestMeeting/);
 assert.match(route, /supported: false/);
+assert.match(opponentRoute, /dynamic = "force-dynamic"/);
+assert.doesNotMatch(opponentRoute, /generateStaticParams|loadOwnerHeadToHeadStaticParams/);
+assert.match(opponentRoute, /loadOwnerHeadToHeadPresentation/);
 assert.equal(approvedHistoryFixture.competitiveRecord, "7-4");
 assert.equal(approvedHistoryFixture.completedMeetings, "12");
 assert.equal(approvedHistoryFixture.latestMeeting.season, 2025);

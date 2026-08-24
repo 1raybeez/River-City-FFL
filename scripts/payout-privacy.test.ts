@@ -40,11 +40,14 @@ async function main() {
 assert.match(page, /buildPublicPayoutCurrentSeason/);
 assert.match(page, /buildPublicPayoutHistory/);
 assert.match(client, /River City Payouts/);
-assert.match(client, /League payout structure/);
-assert.doesNotMatch(client, /duesRows|financialOwnerName|coOwnerContext|paymentStatus|ownerName|leaderboard|cashPaid/i);
-assert.doesNotMatch(serialized, /financialOwnerId|financialOwnerName|coOwnerContext|paymentStatus|recipient|ownerName|ownerId|rosterId|warRoomId|email|venmo|paymentReference/i);
+assert.match(client, /Current season summary/);
+assert.match(client, /Paid \/ owed/);
+assert.doesNotMatch(client, /Who has paid|Owner dues status|duesRows|franchiseName|ownerName/);
+assert.match(client, /Where league funds are held/);
+assert.doesNotMatch(serialized, /financialOwnerId|financialOwnerName|coOwnerContext|paymentStatus|ownerId|rosterId|warRoomId|email|paymentReference|idempotencyKey|externalReference|commissionerNote/i);
 assert.match(currentRoute, /duesCollected/);
 assert.doesNotMatch(currentRoute, /duesRows|financialOwnerName|paymentStatus|recipient|ownerId|email/i);
+assert.doesNotMatch(serialized, /duesRows|franchiseName|ownerName|Stan Schoppe|Ray Long/i);
 assert.match(financeLayout, /requireOperationalFinanceCommissioner/);
 assert.match(legislative, /member\/login\?returnTo=%2Fleague-info%2Flegislative%2Fnew/);
 assert.match(legislative, /member\/login\?returnTo=%2Fleague-info%2Flegislative/);

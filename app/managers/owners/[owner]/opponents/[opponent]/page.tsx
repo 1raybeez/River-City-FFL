@@ -1,9 +1,8 @@
 import { notFound } from "next/navigation";
 import OwnerHeadToHeadPage from "@/components/managers/OwnerHeadToHeadPage";
-import {
-  loadOwnerHeadToHeadPresentation,
-  loadOwnerHeadToHeadStaticParams,
-} from "@/lib/managers/ownerHeadToHeadLoader";
+import { loadOwnerHeadToHeadPresentation } from "@/lib/managers/ownerHeadToHeadLoader";
+
+export const dynamic = "force-dynamic";
 
 type OwnerHeadToHeadRouteProps = Readonly<{
   params: Promise<{
@@ -11,10 +10,6 @@ type OwnerHeadToHeadRouteProps = Readonly<{
     opponent: string;
   }>;
 }>;
-
-export async function generateStaticParams() {
-  return [...(await loadOwnerHeadToHeadStaticParams())];
-}
 
 export default async function OwnerHeadToHeadRoute({
   params,

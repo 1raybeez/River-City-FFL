@@ -228,7 +228,8 @@ assert.equal(
   "Presentation data must not carry workbook-cell detail to mobile clients."
 );
 assert.equal(JSON.stringify(presentation).includes("sourceWorkbook"), false);
-assert.doesNotMatch(clientSource, /duesRows|financialOwnerName|coOwnerContext|paymentStatus|ownerName|leaderboard|cashPaid/);
+assert.doesNotMatch(clientSource, /Who has paid|Owner dues status|duesRows/);
+assert.doesNotMatch(clientSource, /financialOwnerId|financialOwnerName|coOwnerContext|paymentStatus|leaderboard|cashPaid/);
 assert.match(clientSource, /<select/);
 assert.match(clientSource, /grid-cols-1/);
 assert.match(clientSource, /overflow-x-clip/);
