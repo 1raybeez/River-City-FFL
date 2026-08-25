@@ -16,6 +16,7 @@
     "auction:recommended-now:diagnostic:test": "tsx scripts/recommended-now-diagnostic.test.ts",
     "auction:recommended-now:best-value:test": "tsx scripts/recommended-now-best-value-eligibility.test.ts",
     "auction:recommended-now:personalization:test": "tsx scripts/recommended-now-personalization.test.ts",
+    "auction:freshness:test": "tsx scripts/auction-freshness-contract.test.ts",
     "auction:target-state-selection:test": "tsx scripts/target-state-selection.test.ts",
     "auction:private-entry-cap:test": "tsx scripts/private-entry-cap.test.ts",
     "auction:nomination-advisor:test": "tsx scripts/nomination-advisor.test.ts",
