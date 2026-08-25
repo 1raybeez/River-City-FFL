@@ -3,12 +3,12 @@ import fs from 'node:fs';
 import { getCanonicalChampionshipResults, getCanonicalHallOfFameResumes, getCompletedHistoryResults } from '../lib/history/historyAuthority';
 import { ownerProfilesById } from '../lib/managers/identityData';
 
-const page = fs.readFileSync('app/league-info/trophy-room/page.tsx', 'utf8');
+const page = fs.readFileSync('app/history/TrophyRoomExplorer.tsx', 'utf8');
+const redirectPage = fs.readFileSync('app/league-info/trophy-room/page.tsx', 'utf8');
 const shell = fs.readFileSync('components/SiteShell.tsx', 'utf8');
 
-assert.match(page, /<SiteShell activePath="\/league-info">/);
 assert.match(page, /River City Trophy Room/);
-assert.match(page, /href="\/league-info"/);
+assert.match(redirectPage, /redirect\('\/history\?view=trophy-room'\)/);
 assert.match(page, /role="tablist"/);
 assert.match(page, /aria-selected=\{activeTab === 'champions'\}/);
 assert.match(page, /setActiveTab\('leaderboard'\)/);
