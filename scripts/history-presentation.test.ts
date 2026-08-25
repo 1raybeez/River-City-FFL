@@ -28,6 +28,19 @@ assert.doesNotMatch(page, /2018–2025/);
 assert.match(page, /getHistoricalPostseasonEra\(2011\)/);
 assert.match(page, /getHistoricalPostseasonEra\(2022\)/);
 assert.match(page, /Explore more history/);
+assert.match(page, /Trophy Room/);
+assert.match(page, /Explore the Trophy Room/);
+assert.match(page, /Every River City champion by season, career podium finishes, and league infamy/);
+assert.match(page, /Visit the Trophy Room/);
+assert.match(page, /href="\/league-info\/trophy-room"/);
+const championsClubIndex = page.indexOf('Champions Club');
+const trophyRoomIndex = page.indexOf('href="/league-info/trophy-room"');
+const leagueErasIndex = page.indexOf('League eras');
+assert.ok(championsClubIndex >= 0 && championsClubIndex < trophyRoomIndex, 'Trophy Room must follow Champions Club');
+assert.ok(trophyRoomIndex < leagueErasIndex, 'Trophy Room must precede League eras');
+const exploreMoreIndex = page.indexOf('Explore more history');
+assert.ok(trophyRoomIndex < exploreMoreIndex, 'Trophy Room must not be placed in Explore more history');
+assert.doesNotMatch(page, /role="tablist"/);
 for (const href of ['/league-info/rivalries', '/league-info/draft', '/league-info/legislative', '/league-info/payouts', '/history/version-history']) {
   assert.match(page, new RegExp(href.replaceAll('/', '\\/')));
 }

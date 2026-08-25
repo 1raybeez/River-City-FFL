@@ -7,63 +7,62 @@ import {
   Trophy, ArrowLeft
 } from 'lucide-react';
 import SiteShell from '@/components/SiteShell';
+import {
+  getCanonicalChampionshipResults,
+  getCanonicalHallOfFameResumes,
+  getCompletedHistoryResults,
+} from '@/lib/history/historyAuthority';
+import { ownerProfilesById } from '@/lib/managers/identityData';
 
 /**
- * DATA: Verified Historical Champions (2011-2025)
+ * Canonical Champions and Podiums. These are derived from completed historical
+ * results; the Shame tab is derived from canonical final placement below.
  */
-const CHAMPIONS = [
-  { year: 2025, name: "Aaron Hawkins", team: "Nudas Priest", avatar: "/managers/Aaron.png", league: "River City FFL" },
-  { year: 2024, name: "Jordan Maslyn", team: "Get.Your.Guy", avatar: "/managers/Jordan.jpg", league: "River City FFL" },
-  { year: 2023, name: "Tommy Moore", team: "The Ship of Theseus", avatar: "/managers/Tommy.png", league: "River City FFL" },
-  { year: 2022, name: "Tommy Moore", team: "The Hellfire Club", avatar: "/managers/Tommy.png", league: "River City FFL" },
-  { year: 2021, name: "David Besedich", team: "The Schmendricks", avatar: "/managers/Dave.png", league: "River City FFL" },
-  { year: 2020, name: "JD Dowling", team: "F U Minshew", avatar: "/managers/JD.png", league: "River City FFL" },
-  { year: 2019, name: "Wade Cameron", team: "Witchdoctors", avatar: "/managers/Wade.png", league: "River City FFL" },
-  { year: 2018, name: "Brian Stevens", team: "kerryon my wayward son", avatar: "/managers/Brian.png", league: "Area 10 FFL" },
-  { year: 2017, name: "Tommy Moore", team: "Deez Lutz", avatar: "/managers/Tommy.png", league: "Area 10 FFL" },
-  { year: 2016, name: "Tommy Moore", team: "Breesus Take the Wheel", avatar: "/managers/Tommy.png", league: "Area 10 FFL" },
-  { year: 2015, name: "Keith Polarek", team: "Team Polarek", avatar: "/managers/Keith.png", league: "Area 10 FFL" },
-  { year: 2014, name: "Garet Prior", team: "McCowen Town", avatar: "/managers/Garet.png", league: "Area 10 FFL" },
-  { year: 2013, name: "Tommy Moore", team: "The Not That Great CornJulio", avatar: "/managers/Tommy.png", league: "Area 10 FFL" },
-  { year: 2012, name: "Bryan Doane", team: "Drinkin' Irish", avatar: "/managers/Bryan.png", league: "Area 10 FFL" },
-  { year: 2011, name: "Gordie Gahagan", team: "Freakshow Freaks", avatar: "/managers/Gordie.png", league: "Area 10 FFL" },
-];
+const CHAMPIONS = getCanonicalChampionshipResults().flatMap((result) =>
+  result.ownerIds.map((ownerId) => ({
+    year: result.season,
+    name: ownerProfilesById[ownerId]?.fullName ?? ownerId,
+    team: result.rawTeamName,
+    avatar: ownerProfilesById[ownerId]?.photo ?? null,
+    league: "River City FFL",
+  }))
+);
 
-const PODIUMS = [
-  { rank: 1, name: "Tommy Moore", avatar: "/managers/Tommy.png", gold: 5, silver: 1, bronze: 1, total: 7 },
-  { rank: 2, name: "JD Dowling", avatar: "/managers/JD.png", gold: 1, silver: 3, bronze: 1, total: 5 },
-  { rank: 3, name: "Brian Stevens", avatar: "/managers/Brian.png", gold: 1, silver: 1, bronze: 2, total: 4 },
-  { rank: 4, name: "Travis Miller", avatar: "/managers/Travis.png", gold: 0, silver: 3, bronze: 0, total: 3 },
-  { rank: 5, name: "Wade Cameron", avatar: "/managers/Wade.png", gold: 1, silver: 2, bronze: 0, total: 3 },
-  { rank: 6, name: "David Besedich", avatar: "/managers/Dave.png", gold: 1, silver: 1, bronze: 1, total: 3 },
-  { rank: 7, name: "Ray Long", avatar: "/managers/Ray.png", gold: 0, silver: 0, bronze: 3, total: 3 },
-  { rank: 8, name: "James Minnix", avatar: "/managers/James.png", gold: 0, silver: 2, bronze: 1, total: 3 },
-  { rank: 9, name: "Keith Polarek", avatar: "/managers/Keith.png", gold: 1, silver: 0, bronze: 1, total: 2 },
-  { rank: 10, name: "Gordie Gahagan", avatar: "/managers/Gordie.png", gold: 1, silver: 1, bronze: 0, total: 2 },
-  { rank: 11, name: "Bryan Doane", avatar: "/managers/Bryan.png", gold: 1, silver: 0, bronze: 1, total: 2 },
-  { rank: 12, name: "Aaron Hawkins", avatar: "/managers/Aaron.png", gold: 1, silver: 0, bronze: 0, total: 1 },
-  { rank: 13, name: "Jordan Maslyn", avatar: "/managers/Jordan.jpg", gold: 1, silver: 0, bronze: 0, total: 1 },
-  { rank: 14, name: "Garet Prior", avatar: "/managers/Garet.png", gold: 1, silver: 0, bronze: 0, total: 1 },
-  { rank: 15, name: "Doug Fordham", avatar: "/managers/Doug.jpg", gold: 0, silver: 0, bronze: 1, total: 1 },
-];
+const PODIUMS = getCanonicalHallOfFameResumes()
+  .filter((resume) => resume.podiumFinishes > 0)
+  .sort(
+    (first, second) =>
+      second.championships - first.championships ||
+      second.runnerUpFinishes - first.runnerUpFinishes ||
+      second.thirdPlaceFinishes - first.thirdPlaceFinishes ||
+      first.manager.localeCompare(second.manager)
+  )
+  .map((resume, index) => ({
+    rank: index + 1,
+    name: resume.manager,
+    avatar: ownerProfilesById[resume.ownerId]?.photo ?? null,
+    gold: resume.championships,
+    silver: resume.runnerUpFinishes,
+    bronze: resume.thirdPlaceFinishes,
+    total:
+      resume.championships +
+      resume.runnerUpFinishes +
+      resume.thirdPlaceFinishes,
+  }));
 
-const LOSERS = [
-  { year: 2025, name: "Ray Long", avatar: "/managers/Ray.png" },
-  { year: 2024, name: "Rashad Gresham", avatar: "/managers/Rashad.png" },
-  { year: 2023, name: "Landon Elliott", avatar: "/managers/Landon.png" },
-  { year: 2022, name: "JD Dowling", avatar: "/managers/JD.png" },
-  { year: 2021, name: "Jordan Maslyn", avatar: "/managers/Jordan.jpg" },
-  { year: 2020, name: "Tommy Moore", avatar: "/managers/Tommy.png" },
-  { year: 2019, name: "Tommy Moore", avatar: "/managers/Tommy.png" },
-  { year: 2018, name: "Wade Cameron", avatar: "/managers/Wade.png" },
-  { year: 2017, name: "Brian Stevens", avatar: "/managers/Brian.png" },
-  { year: 2016, name: "Wade Cameron", avatar: "/managers/Wade.png" },
-  { year: 2015, name: "Travis Miller", avatar: "/managers/Travis.png" },
-  { year: 2014, name: "Landon Elliott", avatar: "/managers/Landon.png" },
-  { year: 2013, name: "Travis Miller", avatar: "/managers/Travis.png" },
-  { year: 2012, name: "Zach Woolard", avatar: "/managers/Zach.png" },
-  { year: 2011, name: "Darren Kusaj", avatar: null },
-];
+const SHAME = getCompletedHistoryResults()
+  .filter((result) => result.finalPlacement === result.teamCount)
+  .map((result) => {
+    const names = result.ownerIds.map(
+      (ownerId) => ownerProfilesById[ownerId]?.fullName ?? ownerId
+    );
+    return {
+      year: result.season,
+      name: names.join(" / "),
+      avatar: ownerProfilesById[result.ownerIds[0]]?.photo ?? null,
+    };
+  })
+  .sort((first, second) => second.year - first.year);
 
 export default function TrophyRoomPage() {
   const [activeTab, setActiveTab] = useState<'champions' | 'leaderboard' | 'shame'>('champions');
@@ -148,7 +147,7 @@ export default function TrophyRoomPage() {
                             
                             <div className="flex flex-col gap-1 items-center">
                               <div className="text-[10px] font-black opacity-60 uppercase tracking-widest bg-black/5 dark:bg-white/5 py-2 px-4 rounded-full border border-black/5 dark:border-white/5 truncate max-w-full italic">
-                                {champ.team}
+                                {champ.team ?? "Historical team name unavailable"}
                               </div>
                               <span className="text-[8px] font-black opacity-30 uppercase tracking-[0.2em] mt-1">{champ.league}</span>
                             </div>
@@ -201,8 +200,10 @@ export default function TrophyRoomPage() {
         )}
 
         {activeTab === 'shame' && (
-            <div role="tabpanel" aria-labelledby="trophy-tab-shame" className="grid grid-cols-1 gap-5 text-center animate-in fade-in duration-500 min-[420px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-                {LOSERS.map((loser) => (
+            <div role="tabpanel" aria-labelledby="trophy-tab-shame" className="animate-in fade-in duration-500">
+                <p className="mb-5 text-center text-sm leading-6 text-slate-600">The final last-place finisher from each completed River City season.</p>
+                <div className="grid grid-cols-1 gap-5 text-center min-[420px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+                {SHAME.map((loser) => (
                     <div key={loser.year} className="group bg-black/5 dark:bg-white/5 rounded-[2.5rem] border border-black/5 dark:border-white/10 p-8 flex flex-col items-center hover:border-red-600 transition-all shadow-xl">
                         <div className="w-20 h-20 rounded-full bg-black/20 mb-6 relative overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-700 border-2 border-black/5 dark:border-white/10">
                             {loser.avatar ? (
@@ -213,9 +214,10 @@ export default function TrophyRoomPage() {
                             <div className="absolute bottom-0 right-0 bg-red-600 text-white text-[10px] w-7 h-7 flex items-center justify-center rounded-full border-2 border-white dark:border-[#0a0a0a] shadow-lg">💩</div>
                         </div>
                         <h3 className="text-3xl font-black italic tracking-tighter leading-none mb-2">{loser.year}</h3>
-                        <p className="text-[10px] font-black opacity-40 uppercase tracking-widest truncate w-full px-2">{loser.name}</p>
+                        <p className="w-full break-words px-2 text-[10px] font-black uppercase leading-5 tracking-widest opacity-40">{loser.name}</p>
                     </div>
                 ))}
+                </div>
             </div>
         )}
 
