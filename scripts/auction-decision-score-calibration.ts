@@ -15,6 +15,13 @@ import {
   type CalibrationPlayer,
   type CalibrationRow,
 } from "../lib/auction/decisionScoreCalibration";
+import {
+  compareShadowToRecommendedNow,
+  DECISION_SCORE_SHADOW_POLICY,
+  rankShadowDecisionScores,
+  type ShadowDecisionState,
+} from "../lib/auction/decisionScore";
+import { buildRecommendedNow } from "../lib/auction/recommendedNow";
 
 type Masterview = { rows: Array<Record<string, unknown>> };
 type AdpFile = { rows: Array<Record<string, unknown>> };
@@ -168,6 +175,19 @@ const modifiers = [
   { name: "Barely affordable target", base: 80, rosterFit: 8, scarcity: 3, budgetFit: -5 },
 ];
 const liveExamples = [[60, 45], [60, 50], [60, 55], [60, 60], [60, 63], [60, 65], [60, 70]] as const;
+const shadowState: ShadowDecisionState = { roster: [], remainingBudget: 150, rosterSlotsRemaining: 16 };
+const shadowResults = rankShadowDecisionScores(players, shadowState);
+const currentRecommended = buildRecommendedNow({
+  values: players.map((player) => ({ playerId: player.playerId, playerName: player.playerName, position: player.position, nflTeam: player.nflTeam, auctionConsensus: player.auctionConsensus, auctionLow: player.auctionLow, auctionHigh: player.auctionHigh, auctionSourceCount: player.auctionSourceCount })),
+  adp: players.map((player) => ({ playerId: player.playerId, adp: player.adp, sourceCount: player.adpSourceCount })),
+  preferences: new Map(),
+  purchases: [],
+  teams: [{ rosterId: 1, remainingBudget: 150, rosterSlotsRemaining: 16 }],
+  rayRosterId: 1,
+  rayBudget: { teamBudget: 150, keeperCostTotal: 0, spentBudget: 0, rosterSlotsTotal: 16 },
+  generatedAt: "2026-08-26T00:00:00.000Z",
+});
+const shadowComparison = compareShadowToRecommendedNow(shadowResults, currentRecommended.recommendations.map((recommendation) => ({ playerId: recommendation.playerId, playerName: recommendation.playerName, category: recommendation.category })));
 
 const lines: string[] = [];
 lines.push("# 2026 Auction War Room Decision Score Calibration");
@@ -250,6 +270,12 @@ lines.push("", "### Live opportunity matrix", "", "Live opportunity remains sepa
 for (const consensus of [5, 10, 15, 20, 30, 40, 50, 60, 80]) lines.push(`| $${consensus} | ${[consensus - 15, consensus - 10, consensus - 5, consensus, consensus + 5].map((bid) => `$${Math.max(1, bid)}`).join(", ")} | Discount percentage should be normalized with an absolute-dollar floor; no threshold is approved |`);
 lines.push("", "Hybrid band proposal for later review only: use normalized percentage as the primary signal, require a minimum absolute-dollar difference before calling a discount meaningful, and label near-consensus/overpay states separately. The bands must not enter Recommended Now until explicitly selected and implemented in a later task.");
 lines.push("", "### Independence proof", "", "Market Score is independent of current bid, roster fit, scarcity, budget fit, and owner preferences. Ray Fit/modifiers are independent of current bid. Live opportunity is independent of the market ranking and is evaluated as a separate event-time signal. The focused regression asserts these boundaries and confirms no production recommendation path was changed.");
+lines.push("", "## PHASE 4 — SHADOW ENGINE", "", "> SHADOW ONLY — NOT USED BY PRODUCTION RECOMMENDED NOW — NOT DISPLAYED IN PRODUCTION UI — no Firestore writes, deployment, or production JSON.", "", `Policy version: **decision-score-shadow-v1** (${DECISION_SCORE_SHADOW_POLICY}). The isolated engine reuses the calibration normalization, roster guidance, canonical max-bid calculation, and affordability labels; it adds only bounded System B roster/scarcity modifiers. Decision Score is Market Score plus Ray modifier, clamped to 0–100. NOT_REALISTIC results remain auditable but are excluded from acquire-now ranking.`, "", "The Phase 4 comparison uses synthetic/reference roster states and does not constitute production validation. Real-state shadow evaluation is still required; existing Recommended Now remains authoritative in production.", "", "### Shadow comparison: empty-roster reference state", "", `Agreement: **${shadowComparison.agreementCount}/${shadowComparison.currentSelections.length}** current Recommended Now selections appear in the shadow ranked set. This comparison is descriptive, not a correctness verdict.`, "", "#### Shadow top 20", "", "| Rank | Player | Market Score | Ray modifier | Decision Score | Affordability |", "|---:|---|---:|---:|---:|---|");
+for (const [index, result] of shadowComparison.shadowTop20.entries()) lines.push(`| ${index + 1} | ${result.playerName} | ${result.marketScore.toFixed(1)} | ${result.rayModifier >= 0 ? "+" : ""}${result.rayModifier} | ${result.decisionScore.toFixed(1)} | ${result.affordability} |`);
+lines.push("", "#### Current selections and shadow ranks", "", "| Category | Player | Shadow rank |", "|---|---|---:|");
+for (const selection of shadowComparison.currentSelections) lines.push(`| ${selection.category} | ${selection.playerName} | ${selection.shadowRank ?? "omitted"} |`);
+lines.push("", "#### Shadow players omitted by current Recommended Now", "", shadowComparison.shadowOmittedByRecommendedNow.slice(0, 10).map((result) => `- ${result.playerName}: Market ${result.marketScore.toFixed(1)}, Ray ${result.rayModifier >= 0 ? "+" : ""}${result.rayModifier}, Decision ${result.decisionScore.toFixed(1)}; ${result.affordability}.`).join("\n") || "- None.", "", "Disagreement explanation is intentionally component-level: market-score difference is the objective 60/30/10 baseline; roster/FLEX and scarcity are bounded System B nudges; affordability can hard-gate; Recommended Now also selects distinct categories and applies availability/private-preference behavior that Shadow v1 does not.");
+lines.push("", "### Shadow implementation boundaries", "", "The pure shadow engine has no current-bid parameter and no private target/watch/fade bonus. The server-only adapter accepts an already assembled War Room state and performs no reads or writes itself. The live-opportunity classifier is separate and never changes Market Score, Ray Fit, or Decision Score. No production import depends on the shadow module.", "", "Score saturation near 100 remains an open evaluation item. No compression or rescaling policy has been approved. Phase 5 must test saturation using real War Room state before any production UI exposure.");
 lines.push("", "## Approved for SHADOW V1", "", "The commissioner-approved shadow policy is recorded here without implementing it in production Recommended Now:", "", "- Base Market Score: 60% Auction + 30% ADP + 10% Market Quality.", "- Missing ADP: proportional reweighting of available components; no neutral ADP 50.", "- Quality: 10% evidence quality only, using Auction coverage, Auction confidence, and ADP source coverage.", "- Roster/FLEX: starter need, depth need, and FLEX opportunity; roster modifier maximum ±5.", "- Scarcity: maximum ±2.", "- Budget: no numeric score modifier; feasibility gate with affordability/stretch labels; NOT_REALISTIC is a hard gate.", "- Combined Ray-specific modifier: System B, maximum ±7.", "- Live Opportunity: entirely separate from Market Score and Ray Fit.", "", "### Shadow live-value bands", "", "| Band | Below/above consensus | Absolute-dollar floor |", "|---|---:|---:|", "| SMASH VALUE | ≥25% below | ≥$5 below |", "| STRONG VALUE | ≥15% below | ≥$4 below |", "| VALUE | ≥7.5% below | ≥$2 below |", "| FAIR | no value/overpay threshold crossed | — |", "| STRETCH | ≥7.5% above | ≥$2 above |", "| OVERPAY | ≥15% above | ≥$4 above |", "| HEAVY OVERPAY | ≥25% above | ≥$5 above |", "", "These bands are shadow-test policy only. They are NOT YET APPROVED FOR PRODUCTION RECOMMENDED NOW.");
 lines.push("", "## Controls and caveats", "", "The Auction control is the Auction component alone. The ADP control is ADP-only where present. The current BEST OVERALL approximation uses only its market-related Auction/ADP weights; actual production BEST OVERALL additionally uses roster fit, scarcity, affordability, private preference, and league pressure. This report does not reproduce the production recommendation.");
 writeFileSync("docs/auction-decision-score-calibration-2026.md", `${lines.join("\n")}\n`, "utf8");

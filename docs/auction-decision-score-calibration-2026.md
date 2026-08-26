@@ -680,6 +680,74 @@ Hybrid band proposal for later review only: use normalized percentage as the pri
 
 Market Score is independent of current bid, roster fit, scarcity, budget fit, and owner preferences. Ray Fit/modifiers are independent of current bid. Live opportunity is independent of the market ranking and is evaluated as a separate event-time signal. The focused regression asserts these boundaries and confirms no production recommendation path was changed.
 
+## PHASE 4 — SHADOW ENGINE
+
+> SHADOW ONLY — NOT USED BY PRODUCTION RECOMMENDED NOW — NOT DISPLAYED IN PRODUCTION UI — no Firestore writes, deployment, or production JSON.
+
+Policy version: **decision-score-shadow-v1** (60/30/10-market-quality-system-b). The isolated engine reuses the calibration normalization, roster guidance, canonical max-bid calculation, and affordability labels; it adds only bounded System B roster/scarcity modifiers. Decision Score is Market Score plus Ray modifier, clamped to 0–100. NOT_REALISTIC results remain auditable but are excluded from acquire-now ranking.
+
+The Phase 4 comparison uses synthetic/reference roster states and does not constitute production validation. Real-state shadow evaluation is still required; existing Recommended Now remains authoritative in production.
+
+### Shadow comparison: empty-roster reference state
+
+Agreement: **5/5** current Recommended Now selections appear in the shadow ranked set. This comparison is descriptive, not a correctness verdict.
+
+#### Shadow top 20
+
+| Rank | Player | Market Score | Ray modifier | Decision Score | Affordability |
+|---:|---|---:|---:|---:|---|
+| 1 | A.J. Brown | 96.7 | +4 | 100.0 | AFFORDABLE |
+| 2 | Amon-Ra St. Brown | 98.6 | +5 | 100.0 | AFFORDABLE |
+| 3 | Ashton Jeanty | 96.0 | +5 | 100.0 | AFFORDABLE |
+| 4 | Bijan Robinson | 99.3 | +6 | 100.0 | AFFORDABLE |
+| 5 | Brock Bowers | 96.5 | +6 | 100.0 | AFFORDABLE |
+| 6 | CeeDee Lamb | 98.0 | +4 | 100.0 | AFFORDABLE |
+| 7 | Chase Brown | 96.1 | +5 | 100.0 | AFFORDABLE |
+| 8 | Christian McCaffrey | 98.6 | +5 | 100.0 | AFFORDABLE |
+| 9 | De'Von Achane | 97.4 | +5 | 100.0 | AFFORDABLE |
+| 10 | Derrick Henry | 96.4 | +5 | 100.0 | AFFORDABLE |
+| 11 | Drake London | 97.1 | +4 | 100.0 | AFFORDABLE |
+| 12 | Ja'Marr Chase | 99.5 | +5 | 100.0 | AFFORDABLE |
+| 13 | Jahmyr Gibbs | 99.5 | +6 | 100.0 | AFFORDABLE |
+| 14 | James Cook | 97.6 | +5 | 100.0 | AFFORDABLE |
+| 15 | Jaxon Smith-Njigba | 98.1 | +5 | 100.0 | AFFORDABLE |
+| 16 | Jonathan Taylor | 97.8 | +5 | 100.0 | AFFORDABLE |
+| 17 | Josh Allen | 96.7 | +7 | 100.0 | AFFORDABLE |
+| 18 | Justin Jefferson | 97.8 | +4 | 100.0 | AFFORDABLE |
+| 19 | Kenneth Walker | 95.8 | +5 | 100.0 | AFFORDABLE |
+| 20 | Lamar Jackson | 93.2 | +7 | 100.0 | AFFORDABLE |
+
+#### Current selections and shadow ranks
+
+| Category | Player | Shadow rank |
+|---|---|---:|
+| BEST OVERALL | Josh Allen | 17 |
+| BEST VALUE | Rashod Bateman | 182 |
+| ROSTER FIT | Jahmyr Gibbs | 13 |
+| SCARCITY PLAY | Lamar Jackson | 20 |
+| BUDGET PLAY | John Metchie | 184 |
+
+#### Shadow players omitted by current Recommended Now
+
+- A.J. Brown: Market 96.7, Ray +4, Decision 100.0; AFFORDABLE.
+- Amon-Ra St. Brown: Market 98.6, Ray +5, Decision 100.0; AFFORDABLE.
+- Ashton Jeanty: Market 96.0, Ray +5, Decision 100.0; AFFORDABLE.
+- Bijan Robinson: Market 99.3, Ray +6, Decision 100.0; AFFORDABLE.
+- Brock Bowers: Market 96.5, Ray +6, Decision 100.0; AFFORDABLE.
+- CeeDee Lamb: Market 98.0, Ray +4, Decision 100.0; AFFORDABLE.
+- Chase Brown: Market 96.1, Ray +5, Decision 100.0; AFFORDABLE.
+- Christian McCaffrey: Market 98.6, Ray +5, Decision 100.0; AFFORDABLE.
+- De'Von Achane: Market 97.4, Ray +5, Decision 100.0; AFFORDABLE.
+- Derrick Henry: Market 96.4, Ray +5, Decision 100.0; AFFORDABLE.
+
+Disagreement explanation is intentionally component-level: market-score difference is the objective 60/30/10 baseline; roster/FLEX and scarcity are bounded System B nudges; affordability can hard-gate; Recommended Now also selects distinct categories and applies availability/private-preference behavior that Shadow v1 does not.
+
+### Shadow implementation boundaries
+
+The pure shadow engine has no current-bid parameter and no private target/watch/fade bonus. The server-only adapter accepts an already assembled War Room state and performs no reads or writes itself. The live-opportunity classifier is separate and never changes Market Score, Ray Fit, or Decision Score. No production import depends on the shadow module.
+
+Score saturation near 100 remains an open evaluation item. No compression or rescaling policy has been approved. Phase 5 must test saturation using real War Room state before any production UI exposure.
+
 ## Approved for SHADOW V1
 
 The commissioner-approved shadow policy is recorded here without implementing it in production Recommended Now:

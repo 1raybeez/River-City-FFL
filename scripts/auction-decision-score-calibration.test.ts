@@ -12,6 +12,11 @@ import {
   scoreCalibrationModel,
   scoreWithWeights,
 } from "../lib/auction/decisionScoreCalibration";
+import {
+  calculateShadowDecisionScore,
+  compareShadowToRecommendedNow,
+  rankShadowDecisionScores,
+} from "../lib/auction/decisionScore";
 
 const players = [
   { playerId: "a", playerName: "Auction Strong", position: "RB", nflTeam: "RIV", auctionConsensus: 60, auctionSourceCount: 5, auctionConfidenceScore: 90, auctionLow: 55, auctionHigh: 65, adp: 20, adpSourceCount: 5 },
@@ -62,5 +67,49 @@ assert.equal(classifyShadowLiveOpportunity(20, 24), "OVERPAY");
 assert.equal(classifyShadowLiveOpportunity(20, 26), "HEAVY OVERPAY");
 const bidChanged = scoreCalibrationModel(players, "MODEL C");
 assert.deepEqual(scoreCalibrationModel(players, "MODEL C"), bidChanged);
+
+const emptyState = { roster: [], remainingBudget: 150, rosterSlotsRemaining: 16 } as const;
+const filledRbState = { roster: [{ playerId: "rb1", playerName: "Keeper RB 1", position: "RB", price: 20 }, { playerId: "rb2", playerName: "Keeper RB 2", position: "RB", price: 20 }], remainingBudget: 110, rosterSlotsRemaining: 14 } as const;
+const shadowEmpty = calculateShadowDecisionScore({ player: players[0], marketPlayers: players, state: emptyState });
+const shadowFilled = calculateShadowDecisionScore({ player: players[0], marketPlayers: players, state: filledRbState });
+assert.equal(shadowEmpty.marketScore, shadowFilled.marketScore);
+assert.equal(shadowEmpty.policyVersion, "decision-score-shadow-v1");
+assert.ok(shadowEmpty.marketScore >= 0 && shadowEmpty.marketScore <= 100);
+assert.ok(shadowEmpty.decisionScore >= 0 && shadowEmpty.decisionScore <= 100);
+assert.ok(shadowEmpty.explanations.some((explanation) => explanation.includes("Market Score")));
+assert.equal(shadowEmpty.missingAdpReweighted, false);
+assert.equal(calculateShadowDecisionScore({ player: players[2], marketPlayers: players, state: emptyState }).missingAdpReweighted, true);
+assert.notEqual(shadowEmpty.rosterFitModifier, shadowFilled.rosterFitModifier);
+assert.equal(shadowEmpty.affordability, "AFFORDABLE");
+const hardGated = calculateShadowDecisionScore({ player: players[0], marketPlayers: players, state: { roster: [], remainingBudget: 10, rosterSlotsRemaining: 16 } });
+assert.equal(hardGated.affordability, "NOT_REALISTIC");
+assert.equal(hardGated.eligibleForAcquireNow, false);
+assert.ok(hardGated.hardGateReason);
+assert.ok(hardGated.rayModifier >= -7 && hardGated.rayModifier <= 7);
+assert.equal(hardGated.decisionScore, hardGated.marketScore);
+const ranked = rankShadowDecisionScores(players, emptyState);
+assert.equal(ranked.length, players.length);
+const comparison = compareShadowToRecommendedNow(ranked, [{ playerId: "a", playerName: "Auction Strong", category: "BEST OVERALL" }]);
+assert.equal(comparison.currentSelections[0].shadowRank, ranked.findIndex((row) => row.sleeperPlayerId === "a") + 1);
+assert.equal(comparison.agreementCount, 1);
+
+const representativeStates = [
+  emptyState,
+  filledRbState,
+  { roster: [{ playerId: "rb1", playerName: "RB 1", position: "RB", price: 20 }, { playerId: "rb2", playerName: "RB 2", position: "RB", price: 20 }], remainingBudget: 110, rosterSlotsRemaining: 14 },
+  { roster: [{ playerId: "wr1", playerName: "WR 1", position: "WR", price: 20 }, { playerId: "wr2", playerName: "WR 2", position: "WR", price: 20 }, { playerId: "wr3", playerName: "WR 3", position: "WR", price: 20 }], remainingBudget: 90, rosterSlotsRemaining: 13 },
+  { roster: [{ playerId: "qb", playerName: "QB", position: "QB", price: 20 }], remainingBudget: 130, rosterSlotsRemaining: 15 },
+  { roster: [{ playerId: "te", playerName: "TE", position: "TE", price: 10 }], remainingBudget: 140, rosterSlotsRemaining: 15 },
+  { roster: [{ playerId: "rb1", playerName: "RB 1", position: "RB", price: 20 }, { playerId: "wr1", playerName: "WR 1", position: "WR", price: 15 }], remainingBudget: 35, rosterSlotsRemaining: 10 },
+  { roster: [], remainingBudget: 180, rosterSlotsRemaining: 16 },
+  { roster: [], remainingBudget: 160, rosterSlotsRemaining: 16 },
+  { roster: [{ playerId: "qb", playerName: "QB", position: "QB", price: 15 }, { playerId: "rb1", playerName: "RB 1", position: "RB", price: 20 }, { playerId: "wr1", playerName: "WR 1", position: "WR", price: 20 }, { playerId: "te", playerName: "TE", position: "TE", price: 10 }], remainingBudget: 42, rosterSlotsRemaining: 8 },
+] as const;
+for (const state of representativeStates) {
+  const result = calculateShadowDecisionScore({ player: players[0], marketPlayers: players, state });
+  assert.ok(result.rosterFitModifier >= -5 && result.rosterFitModifier <= 5);
+  assert.ok(result.scarcityModifier >= -2 && result.scarcityModifier <= 2);
+  assert.ok(result.rayModifier >= -7 && result.rayModifier <= 7);
+}
 
 console.log("Decision score calibration checks passed.");
