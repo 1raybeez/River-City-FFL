@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   getDuesStatus,
   recordObligation,
@@ -16,6 +18,15 @@ const at = "2026-08-26T18:00:00.000Z";
 const commissioner: OperationalFinanceActor = { actorId: "commissioner:ray-long", role: "commissioner" };
 const member: OperationalFinanceActor = { actorId: "member:brian-stevens", role: "system" };
 
+const dashboardClientSource = readFileSync(
+  resolve(process.cwd(), "app/commish/finance/2026/OperationalFinanceDashboardClient.tsx"),
+  "utf8"
+);
+const reversalRouteSource = readFileSync(
+  resolve(process.cwd(), "app/api/commish/finance/[season]/dues/[obligationId]/settlements/[settlementId]/reverse/route.ts"),
+  "utf8"
+);
+
 function dues(ownerId: string, franchiseId: string): RecordObligationInput {
   return {
     obligationId: `operational-finance-obligation:2026:dues:${franchiseId}`,
@@ -32,6 +43,13 @@ function dues(ownerId: string, franchiseId: string): RecordObligationInput {
 }
 
 async function main() {
+  assert.match(dashboardClientSource, /type="button"[\s\S]*Reverse Payment/);
+  assert.match(dashboardClientSource, /event\.preventDefault\(\)/);
+  assert.match(dashboardClientSource, /event\.stopPropagation\(\)/);
+  assert.match(dashboardClientSource, /setDashboard\(payload\.dashboard\)/);
+  assert.doesNotMatch(dashboardClientSource, /router\.(push|replace|refresh)\(|window\.location/);
+  assert.doesNotMatch(reversalRouteSource, /redirect\(/);
+
   const repository = new InMemoryOperationalFinanceLedgerRepository();
   await repository.runTransaction(async (transaction) => {
     await transaction.putSeason({

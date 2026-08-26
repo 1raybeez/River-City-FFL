@@ -196,6 +196,16 @@ export default function OperationalFinanceDashboardClient({
     }
   };
 
+  const handleReversePaymentClick = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    row: OperationalFinanceDashboardDuesRow,
+    settlement: OperationalFinanceDashboardDuesRow["settlements"][number]
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    void reversePayment(row, settlement);
+  };
+
   const summaryCards = [
     ["Assessed", dashboard.summary.duesAssessedCents],
     ["Collected", dashboard.summary.duesCollectedCents],
@@ -319,7 +329,7 @@ export default function OperationalFinanceDashboardClient({
                             {settlement.canReverse && (
                               <button
                                 type="button"
-                                onClick={() => void reversePayment(row, settlement)}
+                                onClick={(event) => handleReversePaymentClick(event, row, settlement)}
                                 disabled={pending}
                                 className="min-h-9 rounded-lg border border-red-600/40 px-3 text-[10px] font-black uppercase tracking-wider text-red-700 transition hover:bg-red-600/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:text-red-300"
                               >
