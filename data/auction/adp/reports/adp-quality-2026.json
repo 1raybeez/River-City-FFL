@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-08-16T04:25:24.511Z",
+  "generatedAt": "2026-08-25T22:32:16.251Z",
   "season": 2026,
   "sources": [
     {
       "sourceKey": "fantasypros-adp",
       "sourceName": "FantasyPros ADP",
-      "rows": 346,
-      "matched": 345,
+      "rows": 355,
+      "matched": 354,
       "unmatched": 1,
       "warnings": 1,
       "errors": 0
@@ -14,17 +14,17 @@
     {
       "sourceKey": "rotowire-adp",
       "sourceName": "RotoWire ADP",
-      "rows": 635,
-      "matched": 628,
-      "unmatched": 7,
-      "warnings": 7,
+      "rows": 816,
+      "matched": 792,
+      "unmatched": 24,
+      "warnings": 24,
       "errors": 0
     },
     {
       "sourceKey": "lineupexperts-adp",
       "sourceName": "Lineup Experts ADP",
-      "rows": 279,
-      "matched": 277,
+      "rows": 275,
+      "matched": 273,
       "unmatched": 2,
       "warnings": 2,
       "errors": 0
@@ -32,37 +32,37 @@
     {
       "sourceKey": "draftsharks-adp",
       "sourceName": "Draft Sharks ADP",
-      "rows": 332,
-      "matched": 297,
-      "unmatched": 35,
-      "warnings": 35,
+      "rows": 340,
+      "matched": 289,
+      "unmatched": 51,
+      "warnings": 51,
       "errors": 0
     },
     {
       "sourceKey": "fantasyfootballers-adp",
       "sourceName": "Fantasy Footballers ADP",
-      "rows": 306,
-      "matched": 305,
+      "rows": 309,
+      "matched": 308,
       "unmatched": 1,
       "warnings": 1,
       "errors": 0
     }
   ],
   "consensus": {
-    "players": 654,
-    "sourceValues": 1898,
-    "skippedSourceValues": 46,
+    "players": 731,
+    "sourceValues": 1915,
+    "skippedSourceValues": 257,
     "demandTiers": {
-      "ELITE": 93,
-      "VERY HIGH": 70,
-      "HIGH": 116,
-      "MEDIUM": 112,
-      "LOW": 133,
-      "VERY LOW": 130
+      "ELITE": 95,
+      "VERY HIGH": 69,
+      "HIGH": 120,
+      "MEDIUM": 155,
+      "LOW": 158,
+      "VERY LOW": 134
     },
     "warnings": {
-      "ADP sources disagree widely.": 234,
-      "Only one ADP source supports this player.": 251
+      "ADP sources disagree widely.": 228,
+      "Only one ADP source supports this player.": 378
     }
   }
 }

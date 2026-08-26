@@ -1,307 +1,310 @@
-﻿player,position,team,adp_round_pick,adp_overall,source,source_date,risk,upside
-Josh Allen,QB,BUF,2.11,23,Fantasy Footballers UDK,2026-08-15,2.6,9.7
-Lamar Jackson,QB,BAL,3.12,36,Fantasy Footballers UDK,2026-08-15,5.5,9.0
-Jayden Daniels,QB,WAS,6.05,65,Fantasy Footballers UDK,2026-08-15,4.7,6.2
-Jalen Hurts,QB,PHI,6.06,66,Fantasy Footballers UDK,2026-08-15,3.8,5.8
-Joe Burrow,QB,CIN,5.08,56,Fantasy Footballers UDK,2026-08-15,5.5,8.9
-Drake Maye,QB,NE,5.05,53,Fantasy Footballers UDK,2026-08-15,4.1,8.2
-Jaxson Dart,QB,NYG,8.11,95,Fantasy Footballers UDK,2026-08-15,5.7,8.2
-Trevor Lawrence,QB,JAX,9.01,97,Fantasy Footballers UDK,2026-08-15,4.9,7.7
-Caleb Williams,QB,CHI,7.08,80,Fantasy Footballers UDK,2026-08-15,5.8,7.8
-Dak Prescott,QB,DAL,8.06,90,Fantasy Footballers UDK,2026-08-15,4.1,7.7
-Justin Herbert,QB,LAC,7.09,81,Fantasy Footballers UDK,2026-08-15,4.8,7.8
-Bo Nix,QB,DEN,10.09,117,Fantasy Footballers UDK,2026-08-15,4.6,6.8
-Brock Purdy,QB,SF,10.07,115,Fantasy Footballers UDK,2026-08-15,4.2,7.5
-Jared Goff,QB,DET,11.08,128,Fantasy Footballers UDK,2026-08-15,2.8,7.2
-Tyler Shough,QB,NO,14.10,166,Fantasy Footballers UDK,2026-08-15,4.3,7.3
-Matthew Stafford,QB,LAR,10.03,111,Fantasy Footballers UDK,2026-08-15,4.4,5.1
-Baker Mayfield,QB,TB,13.11,155,Fantasy Footballers UDK,2026-08-15,4.1,6.8
-Patrick Mahomes,QB,KC,9.09,105,Fantasy Footballers UDK,2026-08-15,5.3,8.2
-Kyler Murray,QB,MIN,14.05,161,Fantasy Footballers UDK,2026-08-15,7.5,7.5
-Malik Willis,QB,MIA,16.07,187,Fantasy Footballers UDK,2026-08-15,5.3,8.0
-Jordan Love,QB,GB,13.06,150,Fantasy Footballers UDK,2026-08-15,3.3,5.2
-C.J. Stroud,QB,HOU,16.11,191,Fantasy Footballers UDK,2026-08-15,4.2,6.1
-Cam Ward,QB,TEN,17.05,197,Fantasy Footballers UDK,2026-08-15,4.6,6.0
-Sam Darnold,QB,SEA,15.01,169,Fantasy Footballers UDK,2026-08-15,4.0,6.2
-Daniel Jones,QB,IND,17.06,198,Fantasy Footballers UDK,2026-08-15,7.5,6.3
-Bryce Young,QB,CAR,19.08,224,Fantasy Footballers UDK,2026-08-15,4.0,5.4
-Aaron Rodgers,QB,PIT,20.05,233,Fantasy Footballers UDK,2026-08-15,7.0,3.8
-Geno Smith,QB,NYJ,22.09,261,Fantasy Footballers UDK,2026-08-15,4.9,3.9
-Jacoby Brissett,QB,ARI,21.01,241,Fantasy Footballers UDK,2026-08-15,4.7,6.0
-Shedeur Sanders,QB,CLE,22.03,255,Fantasy Footballers UDK,2026-08-15,8.1,5.8
-Tua Tagovailoa,QB,ATL,23.01,265,Fantasy Footballers UDK,2026-08-15,5.5,4.3
-Kirk Cousins,QB,LV,39.07,463,Fantasy Footballers UDK,2026-08-15,8.1,4.8
-Fernando Mendoza,QB,LV,17.07,199,Fantasy Footballers UDK,2026-08-15,8.8,6.7
-Michael Penix Jr.,QB,ATL,46.12,552,Fantasy Footballers UDK,2026-08-15,5.3,4.7
-Carson Beck,QB,ARI,37.11,443,Fantasy Footballers UDK,2026-08-15,8.5,5.8
-Deshaun Watson,QB,CLE,43.07,511,Fantasy Footballers UDK,2026-08-15,6.3,4.3
-Jahmyr Gibbs,RB,DET,1.01,1,Fantasy Footballers UDK,2026-08-15,2.0,9.8
-Bijan Robinson,RB,ATL,1.03,3,Fantasy Footballers UDK,2026-08-15,1.3,10.0
-Christian McCaffrey,RB,SF,1.06,6,Fantasy Footballers UDK,2026-08-15,5.6,9.3
-Jonathan Taylor,RB,IND,1.07,7,Fantasy Footballers UDK,2026-08-15,3.9,9.0
-James Cook III,RB,BUF,1.08,8,Fantasy Footballers UDK,2026-08-15,2.5,8.4
-De'Von Achane,RB,MIA,2.03,15,Fantasy Footballers UDK,2026-08-15,3.8,9.1
-Kenneth Walker,RB,KC,2.06,18,Fantasy Footballers UDK,2026-08-15,5.0,8.2
-Ashton Jeanty,RB,LV,1.12,12,Fantasy Footballers UDK,2026-08-15,5.7,8.7
-Derrick Henry,RB,BAL,2.05,17,Fantasy Footballers UDK,2026-08-15,5.3,8.6
-Chase Brown,RB,CIN,2.04,16,Fantasy Footballers UDK,2026-08-15,4.8,8.4
-Omarion Hampton,RB,LAC,2.04,16,Fantasy Footballers UDK,2026-08-15,4.7,8.7
-Saquon Barkley,RB,PHI,2.02,14,Fantasy Footballers UDK,2026-08-15,4.9,8.3
-Josh Jacobs,RB,GB,3.06,30,Fantasy Footballers UDK,2026-08-15,8.5,7.4
-Jeremiyah Love,RB,ARI,3.01,25,Fantasy Footballers UDK,2026-08-15,5.2,8.5
-Kyren Williams,RB,LAR,3.02,26,Fantasy Footballers UDK,2026-08-15,5.5,8.0
-Cam Skattebo,RB,NYG,4.02,38,Fantasy Footballers UDK,2026-08-15,6.3,7.5
-Breece Hall,RB,NYJ,3.06,30,Fantasy Footballers UDK,2026-08-15,5.3,8.1
-Javonte Williams,RB,DAL,3.10,34,Fantasy Footballers UDK,2026-08-15,4.3,7.7
-Bucky Irving,RB,TB,4.08,44,Fantasy Footballers UDK,2026-08-15,5.8,7.7
-D'Andre Swift,RB,CHI,5.06,54,Fantasy Footballers UDK,2026-08-15,5.3,6.8
-TreVeyon Henderson,RB,NE,4.11,47,Fantasy Footballers UDK,2026-08-15,5.1,8.2
-Bhayshul Tuten,RB,JAX,5.11,59,Fantasy Footballers UDK,2026-08-15,6.4,7.7
-Travis Etienne Jr.,RB,NO,4.07,43,Fantasy Footballers UDK,2026-08-15,4.6,7.6
-Quinshon Judkins,RB,CLE,4.11,47,Fantasy Footballers UDK,2026-08-15,5.0,7.6
-David Montgomery,RB,HOU,5.01,49,Fantasy Footballers UDK,2026-08-15,4.1,6.8
-Jadarian Price,RB,SEA,6.02,62,Fantasy Footballers UDK,2026-08-15,5.8,7.1
-Rico Dowdle,RB,PIT,8.01,85,Fantasy Footballers UDK,2026-08-15,4.5,4.0
-Jacory Croskey-Merritt,RB,WAS,9.04,100,Fantasy Footballers UDK,2026-08-15,6.3,5.9
-Chuba Hubbard,RB,CAR,7.02,74,Fantasy Footballers UDK,2026-08-15,3.9,6.7
-Rhamondre Stevenson,RB,NE,7.06,78,Fantasy Footballers UDK,2026-08-15,4.8,5.6
-J.K. Dobbins,RB,DEN,8.03,87,Fantasy Footballers UDK,2026-08-15,7.5,6.2
-Jaylen Warren,RB,PIT,6.09,69,Fantasy Footballers UDK,2026-08-15,4.4,6.2
-Tony Pollard,RB,TEN,7.11,83,Fantasy Footballers UDK,2026-08-15,5.6,5.9
-Kenny Gainwell,RB,TB,10.02,110,Fantasy Footballers UDK,2026-08-15,4.4,5.6
-Kyle Monangai,RB,CHI,8.01,85,Fantasy Footballers UDK,2026-08-15,5.8,5.7
-Jordan Mason,RB,MIN,10.02,110,Fantasy Footballers UDK,2026-08-15,4.0,6.4
-Blake Corum,RB,LAR,8.07,91,Fantasy Footballers UDK,2026-08-15,4.6,6.8
-RJ Harvey,RB,DEN,7.09,81,Fantasy Footballers UDK,2026-08-15,6.2,5.5
-Rachaad White,RB,WAS,10.08,116,Fantasy Footballers UDK,2026-08-15,4.6,5.6
-Tyrone Tracy Jr.,RB,NYG,11.09,129,Fantasy Footballers UDK,2026-08-15,4.6,5.4
-Aaron Jones Sr.,RB,MIN,9.10,106,Fantasy Footballers UDK,2026-08-15,4.3,5.3
-Jonathon Brooks,RB,CAR,8.08,92,Fantasy Footballers UDK,2026-08-15,7.2,6.0
-Tyjae Spears,RB,TEN,14.04,160,Fantasy Footballers UDK,2026-08-15,4.6,4.7
-Chris Rodriguez Jr.,RB,JAX,12.09,141,Fantasy Footballers UDK,2026-08-15,5.1,5.2
-Woody Marks,RB,HOU,13.02,146,Fantasy Footballers UDK,2026-08-15,4.3,5.4
-Isiah Pacheco,RB,DET,15.10,178,Fantasy Footballers UDK,2026-08-15,5.0,5.2
-Zach Charbonnet,RB,SEA,11.05,125,Fantasy Footballers UDK,2026-08-15,7.0,5.2
-Keaton Mitchell,RB,LAC,14.05,161,Fantasy Footballers UDK,2026-08-15,4.7,4.9
-Tank Bigsby,RB,PHI,15.04,172,Fantasy Footballers UDK,2026-08-15,4.6,6.0
-Dylan Sampson,RB,CLE,15.11,179,Fantasy Footballers UDK,2026-08-15,3.7,4.9
-Jonah Coleman,RB,DEN,12.07,139,Fantasy Footballers UDK,2026-08-15,5.3,5.8
-Alvin Kamara,RB,NO,13.09,153,Fantasy Footballers UDK,2026-08-15,6.5,4.2
-Brian Robinson,RB,ATL,14.03,159,Fantasy Footballers UDK,2026-08-15,3.7,4.3
-Tyler Allgeier,RB,ARI,11.08,128,Fantasy Footballers UDK,2026-08-15,4.0,3.5
-Jordan James,RB,SF,22.05,257,Fantasy Footballers UDK,2026-08-15,4.8,4.2
-Kimani Vidal,RB,LAC,20.02,230,Fantasy Footballers UDK,2026-08-15,4.4,3.9
-Emmett Johnson,RB,KC,17.03,195,Fantasy Footballers UDK,2026-08-15,4.8,4.5
-Justice Hill,RB,BAL,22.02,254,Fantasy Footballers UDK,2026-08-15,3.7,4.0
-Nicholas Singleton,RB,TEN,16.12,192,Fantasy Footballers UDK,2026-08-15,5.4,5.7
-Samaje Perine,RB,CIN,44.09,525,Fantasy Footballers UDK,2026-08-15,4.1,3.1
-Mike Washington Jr.,RB,LV,17.06,198,Fantasy Footballers UDK,2026-08-15,5.1,4.2
-MarShawn Lloyd,RB,GB,18.11,215,Fantasy Footballers UDK,2026-08-15,8.6,6.0
-Ty Johnson,RB,BUF,40.11,479,Fantasy Footballers UDK,2026-08-15,3.5,3.8
-James Conner,RB,ARI,17.10,202,Fantasy Footballers UDK,2026-08-15,4.3,3.3
-Braelon Allen,RB,NYJ,18.02,206,Fantasy Footballers UDK,2026-08-15,5.0,5.1
-Chris Brooks,RB,GB,42.08,500,Fantasy Footballers UDK,2026-08-15,4.6,2.7
-Ja'Marr Chase,WR,CIN,1.04,4,Fantasy Footballers UDK,2026-08-15,3.2,9.7
-Puka Nacua,WR,LAR,1.04,4,Fantasy Footballers UDK,2026-08-15,6.3,9.6
-Jaxon Smith-Njigba,WR,SEA,1.08,8,Fantasy Footballers UDK,2026-08-15,2.0,9.7
-Amon-Ra St. Brown,WR,DET,1.08,8,Fantasy Footballers UDK,2026-08-15,1.0,9.7
-CeeDee Lamb,WR,DAL,1.10,10,Fantasy Footballers UDK,2026-08-15,2.6,9.3
-Drake London,WR,ATL,2.08,20,Fantasy Footballers UDK,2026-08-15,3.7,9.1
-Justin Jefferson,WR,MIN,1.12,12,Fantasy Footballers UDK,2026-08-15,4.7,9.5
-A.J. Brown,WR,NE,2.09,21,Fantasy Footballers UDK,2026-08-15,5.3,8.0
-George Pickens,WR,DAL,3.03,27,Fantasy Footballers UDK,2026-08-15,5.0,8.9
-Nico Collins,WR,HOU,2.12,24,Fantasy Footballers UDK,2026-08-15,4.6,8.9
-Chris Olave,WR,NO,3.07,31,Fantasy Footballers UDK,2026-08-15,6.8,8.8
-Malik Nabers,WR,NYG,3.08,32,Fantasy Footballers UDK,2026-08-15,6.3,9.0
-Rashee Rice,WR,KC,3.05,29,Fantasy Footballers UDK,2026-08-15,9.5,8.3
-Garrett Wilson,WR,NYJ,4.05,41,Fantasy Footballers UDK,2026-08-15,4.9,8.1
-Zay Flowers,WR,BAL,4.07,43,Fantasy Footballers UDK,2026-08-15,4.3,7.5
-Emeka Egbuka,WR,TB,4.04,40,Fantasy Footballers UDK,2026-08-15,5.5,8.1
-Jaylen Waddle,WR,DEN,5.01,49,Fantasy Footballers UDK,2026-08-15,5.0,7.7
-DeVonta Smith,WR,PHI,3.11,35,Fantasy Footballers UDK,2026-08-15,3.4,7.6
-Tetairoa McMillan,WR,CAR,3.11,35,Fantasy Footballers UDK,2026-08-15,4.0,8.2
-Tee Higgins,WR,CIN,4.02,38,Fantasy Footballers UDK,2026-08-15,6.1,8.3
-Carnell Tate,WR,TEN,6.02,62,Fantasy Footballers UDK,2026-08-15,5.9,6.8
-Ladd McConkey,WR,LAC,4.04,40,Fantasy Footballers UDK,2026-08-15,4.7,6.8
-Christian Watson,WR,GB,6.07,67,Fantasy Footballers UDK,2026-08-15,6.6,8.1
-Jameson Williams,WR,DET,5.09,57,Fantasy Footballers UDK,2026-08-15,5.3,7.7
-Luther Burden III,WR,CHI,5.06,54,Fantasy Footballers UDK,2026-08-15,5.4,7.8
-Alec Pierce,WR,IND,8.06,90,Fantasy Footballers UDK,2026-08-15,5.8,6.9
-DJ Moore,WR,BUF,5.09,57,Fantasy Footballers UDK,2026-08-15,4.2,7.1
-Terry McLaurin,WR,WAS,5.03,51,Fantasy Footballers UDK,2026-08-15,4.4,6.8
-Parker Washington,WR,JAX,7.06,78,Fantasy Footballers UDK,2026-08-15,4.3,6.2
-Mike Evans,WR,SF,5.12,60,Fantasy Footballers UDK,2026-08-15,6.5,7.5
-Davante Adams,WR,LAR,5.10,58,Fantasy Footballers UDK,2026-08-15,5.2,7.8
-Rome Odunze,WR,CHI,6.03,63,Fantasy Footballers UDK,2026-08-15,3.5,7.3
-DK Metcalf,WR,PIT,7.04,76,Fantasy Footballers UDK,2026-08-15,4.4,7.1
-Brian Thomas Jr.,WR,JAX,6.10,70,Fantasy Footballers UDK,2026-08-15,6.5,7.5
-Marvin Harrison Jr.,WR,ARI,7.02,74,Fantasy Footballers UDK,2026-08-15,6.2,7.3
-Quentin Johnston,WR,LAC,9.07,103,Fantasy Footballers UDK,2026-08-15,6.3,6.4
-Jordyn Tyson,WR,NO,7.03,75,Fantasy Footballers UDK,2026-08-15,5.4,7.2
-Michael Pittman Jr.,WR,PIT,9.03,99,Fantasy Footballers UDK,2026-08-15,3.5,4.9
-Chris Godwin Jr.,WR,TB,9.01,97,Fantasy Footballers UDK,2026-08-15,4.5,6.4
-Michael Wilson,WR,ARI,8.04,88,Fantasy Footballers UDK,2026-08-15,3.8,6.6
-Jordan Addison,WR,MIN,9.02,98,Fantasy Footballers UDK,2026-08-15,3.7,7.2
-Courtland Sutton,WR,DEN,8.03,87,Fantasy Footballers UDK,2026-08-15,5.0,6.0
-Josh Downs,WR,IND,10.05,113,Fantasy Footballers UDK,2026-08-15,4.2,7.3
-Wan'Dale Robinson,WR,TEN,9.12,108,Fantasy Footballers UDK,2026-08-15,4.6,4.7
-Stefon Diggs,WR,WAS,11.04,124,Fantasy Footballers UDK,2026-08-15,5.3,5.0
-Jayden Higgins,WR,HOU,11.05,125,Fantasy Footballers UDK,2026-08-15,3.9,6.0
-Jayden Reed,WR,GB,9.08,104,Fantasy Footballers UDK,2026-08-15,4.2,4.7
-Makai Lemon,WR,PHI,7.11,83,Fantasy Footballers UDK,2026-08-15,5.6,6.9
-Xavier Worthy,WR,KC,11.02,122,Fantasy Footballers UDK,2026-08-15,6.2,6.0
-Romeo Doubs,WR,NE,11.03,123,Fantasy Footballers UDK,2026-08-15,3.9,6.0
-Jakobi Meyers,WR,JAX,9.07,103,Fantasy Footballers UDK,2026-08-15,2.7,5.2
-Rashid Shaheed,WR,SEA,13.07,151,Fantasy Footballers UDK,2026-08-15,4.4,5.3
-Khalil Shakir,WR,BUF,11.11,131,Fantasy Footballers UDK,2026-08-15,2.8,5.1
-Jalen Coker,WR,CAR,12.12,144,Fantasy Footballers UDK,2026-08-15,3.7,5.8
-Matthew Golden,WR,GB,11.06,126,Fantasy Footballers UDK,2026-08-15,5.2,6.8
-Malik Washington,WR,MIA,19.04,220,Fantasy Footballers UDK,2026-08-15,4.6,5.1
-De'Zhaun Stribling,WR,SF,13.04,148,Fantasy Footballers UDK,2026-08-15,4.7,4.8
-KC Concepcion,WR,CLE,10.06,114,Fantasy Footballers UDK,2026-08-15,5.9,6.7
-Tre Tucker,WR,LV,17.10,202,Fantasy Footballers UDK,2026-08-15,4.5,4.6
-Deebo Samuel Sr.,WR,SF,12.11,143,Fantasy Footballers UDK,2026-08-15,6.3,4.3
-Jauan Jennings,WR,MIN,15.11,179,Fantasy Footballers UDK,2026-08-15,6.4,5.3
-Omar Cooper Jr.,WR,NYJ,14.11,167,Fantasy Footballers UDK,2026-08-15,6.7,5.9
-Jalen Nailor,WR,LV,16.06,186,Fantasy Footballers UDK,2026-08-15,4.9,3.9
-Denzel Boston,WR,CLE,14.01,157,Fantasy Footballers UDK,2026-08-15,4.7,4.9
-Jerry Jeudy,WR,CLE,17.08,200,Fantasy Footballers UDK,2026-08-15,5.5,5.5
-Travis Hunter,WR,JAX,15.02,170,Fantasy Footballers UDK,2026-08-15,8.3,6.3
-Brock Bowers,TE,LV,2.10,22,Fantasy Footballers UDK,2026-08-15,2.5,9.8
-Trey McBride,TE,ARI,2.11,23,Fantasy Footballers UDK,2026-08-15,4.2,8.3
-Colston Loveland,TE,CHI,4.08,44,Fantasy Footballers UDK,2026-08-15,4.2,9.2
-Tyler Warren,TE,IND,5.03,51,Fantasy Footballers UDK,2026-08-15,3.4,8.8
-Harold Fannin Jr.,TE,CLE,6.12,72,Fantasy Footballers UDK,2026-08-15,4.1,8.6
-Tucker Kraft,TE,GB,6.08,68,Fantasy Footballers UDK,2026-08-15,5.5,8.2
-George Kittle,TE,SF,8.10,94,Fantasy Footballers UDK,2026-08-15,8.0,8.4
-Sam LaPorta,TE,DET,6.08,68,Fantasy Footballers UDK,2026-08-15,4.4,6.2
-Kyle Pitts Sr.,TE,ATL,6.11,71,Fantasy Footballers UDK,2026-08-15,5.8,6.3
-Travis Kelce,TE,KC,9.05,101,Fantasy Footballers UDK,2026-08-15,4.8,5.5
-Dalton Kincaid,TE,BUF,8.11,95,Fantasy Footballers UDK,2026-08-15,5.8,7.7
-Brenton Strange,TE,JAX,13.06,150,Fantasy Footballers UDK,2026-08-15,3.6,5.5
-Jake Ferguson,TE,DAL,9.12,108,Fantasy Footballers UDK,2026-08-15,5.3,6.4
-Dallas Goedert,TE,PHI,10.12,120,Fantasy Footballers UDK,2026-08-15,5.1,6.3
-Isaiah Likely,TE,NYG,10.09,117,Fantasy Footballers UDK,2026-08-15,3.8,5.8
-Mark Andrews,TE,BAL,10.10,118,Fantasy Footballers UDK,2026-08-15,4.0,5.5
-Hunter Henry,TE,NE,12.10,142,Fantasy Footballers UDK,2026-08-15,3.4,5.9
-Dalton Schultz,TE,HOU,16.08,188,Fantasy Footballers UDK,2026-08-15,3.1,4.8
-Chig Okonkwo,TE,WAS,15.05,173,Fantasy Footballers UDK,2026-08-15,3.8,5.2
-Juwan Johnson,TE,NO,15.08,176,Fantasy Footballers UDK,2026-08-15,3.8,5.2
-Greg Dulcich,TE,MIA,20.07,235,Fantasy Footballers UDK,2026-08-15,4.8,5.8
-Pat Freiermuth,TE,PIT,20.09,237,Fantasy Footballers UDK,2026-08-15,4.2,3.8
-Kenyon Sadiq,TE,NYJ,13.11,155,Fantasy Footballers UDK,2026-08-15,4.6,5.4
-T.J. Hockenson,TE,MIN,16.05,185,Fantasy Footballers UDK,2026-08-15,4.1,5.2
-Oronde Gadsden,TE,LAC,10.12,120,Fantasy Footballers UDK,2026-08-15,4.5,6.8
-Cade Otton,TE,TB,19.08,224,Fantasy Footballers UDK,2026-08-15,3.8,3.8
-AJ Barner,TE,SEA,14.10,166,Fantasy Footballers UDK,2026-08-15,3.9,4.2
-Colby Parkinson,TE,LAR,23.06,270,Fantasy Footballers UDK,2026-08-15,4.1,4.8
-Darren Waller,TE,CAR,32.06,378,Fantasy Footballers UDK,2026-08-15,8.0,4.0
-Mike Gesicki,TE,CIN,23.04,268,Fantasy Footballers UDK,2026-08-15,3.6,5.6
-David Njoku,TE,LAC,20.05,233,Fantasy Footballers UDK,2026-08-15,5.3,3.9
-Cole Kmet,TE,CHI,49.09,585,Fantasy Footballers UDK,2026-08-15,3.5,3.7
-Gunnar Helm,TE,TEN,19.05,221,Fantasy Footballers UDK,2026-08-15,4.2,4.3
-Evan Engram,TE,DEN,47.10,562,Fantasy Footballers UDK,2026-08-15,4.7,2.8
-Terrance Ferguson,TE,LAR,18.02,206,Fantasy Footballers UDK,2026-08-15,5.1,4.4
-Dawson Knox,TE,BUF,38.10,454,Fantasy Footballers UDK,2026-08-15,2.5,2.8
-Mason Taylor,TE,NYJ,41.05,485,Fantasy Footballers UDK,2026-08-15,4.1,3.6
-Michael Mayer,TE,LV,47.12,564,Fantasy Footballers UDK,2026-08-15,4.8,2.5
-Eli Stowers,TE,PHI,20.10,238,Fantasy Footballers UDK,2026-08-15,6.3,5.3
-Charlie Kolar,TE,LAC,47.05,557,Fantasy Footballers UDK,2026-08-15,4.3,2.7
-Luke Musgrave,TE,GB,39.10,466,Fantasy Footballers UDK,2026-08-15,4.7,3.8
-Theo Johnson,TE,NYG,21.05,245,Fantasy Footballers UDK,2026-08-15,4.2,4.8
-Ja'Tavion Sanders,TE,CAR,43.02,506,Fantasy Footballers UDK,2026-08-15,4.0,3.9
-Noah Gray,TE,KC,50.01,589,Fantasy Footballers UDK,2026-08-15,4.3,2.3
-Elijah Arroyo,TE,SEA,38.03,447,Fantasy Footballers UDK,2026-08-15,4.5,4.4
-Darnell Washington,TE,PIT,41.10,490,Fantasy Footballers UDK,2026-08-15,4.6,3.1
-Max Klare,TE,LAR,45.06,534,Fantasy Footballers UDK,2026-08-15,5.4,4.6
-Jake Tonges,TE,SF,21.04,244,Fantasy Footballers UDK,2026-08-15,4.0,2.5
-Ben Sinnott,TE,WAS,54.01,637,Fantasy Footballers UDK,2026-08-15,8.0,5.9
-Justin Joly,TE,DEN,49.03,579,Fantasy Footballers UDK,2026-08-15,3.0,2.0
-Nate Boerkircher,TE,JAX,34.07,403,Fantasy Footballers UDK,2026-08-15,1.0,1.0
-Oscar Delp,TE,NO,45.12,540,Fantasy Footballers UDK,2026-08-15,6.9,3.8
-George Holani,RB,SEA,41.09,489,Fantasy Footballers UDK,2026-08-15,4.5,2.0
-DJ Giddens,RB,IND,43.12,516,Fantasy Footballers UDK,2026-08-15,5.1,3.8
-Kaelon Black,RB,SF,20.01,229,Fantasy Footballers UDK,2026-08-15,5.7,4.9
-Isaiah Davis,RB,NYJ,50.06,594,Fantasy Footballers UDK,2026-08-15,5.2,3.3
-Ray Davis,RB,BUF,18.02,206,Fantasy Footballers UDK,2026-08-15,3.8,4.7
-Jaylen Wright,RB,MIA,20.08,236,Fantasy Footballers UDK,2026-08-15,5.0,4.8
-Jerome Ford,RB,WAS,49.08,584,Fantasy Footballers UDK,2026-08-15,4.8,2.3
-Sean Tucker,RB,TB,21.02,242,Fantasy Footballers UDK,2026-08-15,4.8,3.2
-Devin Neal,RB,NO,44.10,526,Fantasy Footballers UDK,2026-08-15,4.8,2.7
-LeQuint Allen Jr.,RB,JAX,46.05,545,Fantasy Footballers UDK,2026-08-15,3.9,3.2
-Brashard Smith,RB,KC,45.05,533,Fantasy Footballers UDK,2026-08-15,4.8,3.0
-Devin Singletary,RB,NYG,48.09,573,Fantasy Footballers UDK,2026-08-15,4.9,2.9
-Jaydon Blue,RB,DAL,19.07,223,Fantasy Footballers UDK,2026-08-15,5.0,4.1
-Emanuel Wilson,RB,SEA,23.02,266,Fantasy Footballers UDK,2026-08-15,4.9,3.2
-Kaytron Allen,RB,WAS,20.04,232,Fantasy Footballers UDK,2026-08-15,5.3,3.5
-Demond Claiborne,RB,MIN,19.12,228,Fantasy Footballers UDK,2026-08-15,5.3,4.8
-Emari Demercado,RB,KC,40.05,473,Fantasy Footballers UDK,2026-08-15,5.3,2.0
-Trevor Etienne,RB,CAR,33.10,394,Fantasy Footballers UDK,2026-08-15,4.3,3.8
-Ollie Gordon II,RB,MIA,39.07,463,Fantasy Footballers UDK,2026-08-15,5.1,2.9
-AJ Dillon,RB,CAR,52.08,620,Fantasy Footballers UDK,2026-08-15,3.3,2.0
-Kaleb Johnson,RB,PIT,23.08,272,Fantasy Footballers UDK,2026-08-15,5.2,3.1
-Will Shipley,RB,PHI,32.03,375,Fantasy Footballers UDK,2026-08-15,4.6,2.0
-Adam Randall,RB,BAL,37.03,435,Fantasy Footballers UDK,2026-08-15,4.7,3.8
-Tahj Brooks,RB,CIN,41.12,492,Fantasy Footballers UDK,2026-08-15,4.2,3.6
-Audric Estimé,RB,NO,48.05,569,Fantasy Footballers UDK,2026-08-15,1.0,1.0
-Pat Bryant,WR,DEN,18.11,215,Fantasy Footballers UDK,2026-08-15,4.0,4.7
-Cooper Kupp,WR,SEA,20.02,230,Fantasy Footballers UDK,2026-08-15,5.3,3.5
-Adonai Mitchell,WR,NYJ,18.07,211,Fantasy Footballers UDK,2026-08-15,4.6,4.5
-Germie Bernard,WR,PIT,20.11,239,Fantasy Footballers UDK,2026-08-15,5.4,4.1
-Calvin Ridley,WR,TEN,20.12,240,Fantasy Footballers UDK,2026-08-15,5.2,4.7
-Ja'Kobi Lane,WR,BAL,16.03,183,Fantasy Footballers UDK,2026-08-15,5.3,4.8
-Keon Coleman,WR,BUF,22.11,263,Fantasy Footballers UDK,2026-08-15,5.4,5.3
-Ryan Flournoy,WR,DAL,20.03,231,Fantasy Footballers UDK,2026-08-15,4.3,4.8
-Tre' Harris,WR,LAC,18.06,210,Fantasy Footballers UDK,2026-08-15,4.3,5.1
-Zachariah Branch,WR,ATL,17.02,194,Fantasy Footballers UDK,2026-08-15,4.3,5.2
-DeMario Douglas,WR,NE,47.07,559,Fantasy Footballers UDK,2026-08-15,4.8,4.1
-Dontayvion Wicks,WR,PHI,19.10,226,Fantasy Footballers UDK,2026-08-15,5.3,3.3
-Jalen McMillan,WR,TB,16.11,191,Fantasy Footballers UDK,2026-08-15,3.5,4.0
-Caleb Douglas,WR,MIA,21.08,248,Fantasy Footballers UDK,2026-08-15,5.3,4.4
-Tank Dell,WR,HOU,17.02,194,Fantasy Footballers UDK,2026-08-15,8.5,6.3
-Kayshon Boutte,WR,NE,18.08,212,Fantasy Footballers UDK,2026-08-15,4.1,5.4
-Darius Slayton,WR,NYG,46.02,542,Fantasy Footballers UDK,2026-08-15,4.9,3.9
-Ted Hurst III,WR,TB,19.08,224,Fantasy Footballers UDK,2026-08-15,5.3,4.3
-Cyrus Allen,WR,KC,18.11,215,Fantasy Footballers UDK,2026-08-15,5.3,4.7
-Isaac TeSlaa,WR,DET,17.11,203,Fantasy Footballers UDK,2026-08-15,7.8,6.3
-Darnell Mooney,WR,NYG,21.02,242,Fantasy Footballers UDK,2026-08-15,4.8,3.8
-Rashod Bateman,WR,BAL,22.10,262,Fantasy Footballers UDK,2026-08-15,5.2,3.8
-Devaughn Vele,WR,NO,46.11,551,Fantasy Footballers UDK,2026-08-15,4.8,4.3
-Tory Horton,WR,SEA,23.02,266,Fantasy Footballers UDK,2026-08-15,5.1,4.0
-Jalen Tolbert,WR,MIA,39.09,465,Fantasy Footballers UDK,2026-08-15,4.4,3.1
-Antonio Williams,WR,WAS,18.05,209,Fantasy Footballers UDK,2026-08-15,5.3,5.2
-Jack Bech,WR,LV,45.02,530,Fantasy Footballers UDK,2026-08-15,4.6,5.2
-Troy Franklin,WR,DEN,23.04,268,Fantasy Footballers UDK,2026-08-15,4.0,3.7
-Chris Bell,WR,MIA,19.03,219,Fantasy Footballers UDK,2026-08-15,6.3,5.6
-Tyquan Thornton,WR,KC,45.08,536,Fantasy Footballers UDK,2026-08-15,4.8,3.7
-Andrei Iosivas,WR,CIN,49.04,580,Fantasy Footballers UDK,2026-08-15,3.7,3.9
-Elic Ayomanor,WR,TEN,47.05,557,Fantasy Footballers UDK,2026-08-15,4.7,4.1
-Christian Kirk,WR,SF,47.02,554,Fantasy Footballers UDK,2026-08-15,5.8,3.9
-Tez Johnson,WR,TB,44.06,522,Fantasy Footballers UDK,2026-08-15,4.6,3.6
-Malachi Fields,WR,NYG,22.06,258,Fantasy Footballers UDK,2026-08-15,5.4,3.7
-Chimere Dike,WR,TEN,41.01,481,Fantasy Footballers UDK,2026-08-15,5.1,3.7
-Kyle Williams,WR,NE,48.02,566,Fantasy Footballers UDK,2026-08-15,5.0,5.7
-Jahan Dotson,WR,ATL,47.09,561,Fantasy Footballers UDK,2026-08-15,3.5,2.5
-Jaylin Noel,WR,HOU,22.05,257,Fantasy Footballers UDK,2026-08-15,4.2,3.5
-Malik Benson,WR,LV,36.10,430,Fantasy Footballers UDK,2026-08-15,5.5,3.5
-Bryce Lance,WR,NO,37.09,441,Fantasy Footballers UDK,2026-08-15,8.0,6.0
-Kendrick Bourne,WR,ARI,35.07,415,Fantasy Footballers UDK,2026-08-15,3.7,2.7
-Roman Wilson,WR,PIT,49.12,588,Fantasy Footballers UDK,2026-08-15,5.1,2.7
-Kalif Raymond,WR,CHI,36.06,426,Fantasy Footballers UDK,2026-08-15,4.7,3.3
-Marvin Mims Jr.,WR,DEN,44.03,519,Fantasy Footballers UDK,2026-08-15,4.7,2.3
-Mack Hollins,WR,NE,51.12,612,Fantasy Footballers UDK,2026-08-15,5.3,3.4
-Treylon Burks,WR,WAS,33.08,392,Fantasy Footballers UDK,2026-08-15,5.7,3.6
-Olamide Zaccheaus,WR,ATL,36.03,423,Fantasy Footballers UDK,2026-08-15,2.5,2.5
-Jordan Whittington,WR,LAR,51.06,606,Fantasy Footballers UDK,2026-08-15,4.7,3.3
-Dont'e Thornton Jr.,WR,LV,49.01,577,Fantasy Footballers UDK,2026-08-15,5.6,3.5
-Brenen Thompson,WR,LAC,40.09,477,Fantasy Footballers UDK,2026-08-15,5.6,3.8
-Xavier Legette,WR,CAR,46.07,547,Fantasy Footballers UDK,2026-08-15,4.7,4.2
-Elijah Sarratt,WR,BAL,22.08,260,Fantasy Footballers UDK,2026-08-15,4.5,4.3
-Skyler Bell,WR,BUF,43.09,513,Fantasy Footballers UDK,2026-08-15,3.5,3.0
-Devontez Walker,WR,BAL,33.10,394,Fantasy Footballers UDK,2026-08-15,4.3,3.0
-Tutu Atwell,WR,MIA,49.06,582,Fantasy Footballers UDK,2026-08-15,5.0,2.9
-Calvin Austin III,WR,NYG,49.11,587,Fantasy Footballers UDK,2026-08-15,5.0,2.9
-Jaylin Lane,WR,WAS,38.02,446,Fantasy Footballers UDK,2026-08-15,4.0,3.0
-Hollywood Brown,WR,PHI,41.03,483,Fantasy Footballers UDK,2026-08-15,5.1,3.7
-Chris Brazzell II,WR,CAR,42.01,493,Fantasy Footballers UDK,2026-08-15,7.0,2.8
-Zavion Thomas,WR,CHI,43.03,507,Fantasy Footballers UDK,2026-08-15,6.3,4.3
+"Rank","Name","Team","Pos","Pos","Avg","Sleeper","ESPN","Yahoo","Underdog"
+"[object Object]","Jahmyr Gibbs","DET","RB","RB","1.01","1.02","1.01","1.01","1.01"
+"[object Object]","Bijan Robinson","ATL","RB","RB","1.02","1.02","1.02","1.02","1.02"
+"[object Object]","Ja'Marr Chase","CIN","WR","WR","1.04","1.04","1.04","1.03","1.03"
+"[object Object]","Puka Nacua","LAR","WR","WR","1.05","1.05","1.05","1.05","1.04"
+"[object Object]","Christian McCaffrey","SF","RB","RB","1.06","1.05","1.07","1.06","1.06"
+"[object Object]","Jaxon Smith-Njigba","SEA","WR","WR","1.06","1.07","1.06","1.07","1.06"
+"[object Object]","Jonathan Taylor","IND","RB","RB","1.07","1.07","1.08","1.07","1.08"
+"[object Object]","Amon-Ra St. Brown","DET","WR","WR","1.08","1.08","1.08","1.08","1.07"
+"[object Object]","CeeDee Lamb","DAL","WR","WR","1.10","1.11","1.11","1.10","1.10"
+"[object Object]","James Cook III","BUF","RB","RB","1.10","1.10","1.12","1.10","1.10"
+"[object Object]","Justin Jefferson","MIN","WR","WR","1.12","2.01","1.12","2.01","1.11"
+"[object Object]","Saquon Barkley","PHI","RB","RB","2.01","1.12","2.04","1.12","2.01"
+"[object Object]","De'Von Achane","MIA","RB","RB","2.02","2.02","1.12","2.04","2.05"
+"[object Object]","Ashton Jeanty","LV","RB","RB","2.03","2.02","2.05","2.02","2.04"
+"[object Object]","Derrick Henry","BAL","RB","RB","2.06","2.04","2.07","2.06","2.05"
+"[object Object]","Kenneth Walker","KC","RB","RB","2.06","2.07","2.10","2.04","2.02"
+"[object Object]","Chase Brown","CIN","RB","RB","2.06","2.06","2.10","2.04","2.02"
+"[object Object]","Omarion Hampton","LAC","RB","RB","2.07","2.03","3.02","2.07","2.04"
+"[object Object]","Drake London","ATL","WR","WR","2.08","2.08","2.07","2.07","2.10"
+"[object Object]","Brock Bowers","LV","TE","TE","2.10","2.11","2.12","2.09","2.08"
+"[object Object]","A.J. Brown","NE","WR","WR","2.10","2.08","3.03","3.01","2.06"
+"[object Object]","Nico Collins","HOU","WR","WR","2.12","2.11","3.03","2.10","2.10"
+"[object Object]","Josh Allen","BUF","QB","QB","3.01","2.09","2.10","2.08","4.01"
+"[object Object]","Trey McBride","ARI","TE","TE","3.01","2.12","2.09","3.02","3.05"
+"[object Object]","George Pickens","DAL","WR","WR","3.01","3.01","3.07","2.10","2.12"
+"[object Object]","Jeremiyah Love","ARI","RB","RB","3.03","3.03","2.11","3.04","3.06"
+"[object Object]","Rashee Rice","KC","WR","WR","3.04","3.05","2.10","3.11","3.03"
+"[object Object]","Malik Nabers","NYG","WR","WR","3.06","3.06","3.10","3.08","2.11"
+"[object Object]","Chris Olave","NO","WR","WR","3.06","3.07","3.07","3.09","3.02"
+"[object Object]","Kyren Williams","LAR","RB","RB","3.08","3.03","4.06","3.05","3.06"
+"[object Object]","DeVonta Smith","PHI","WR","WR","3.09","3.10","4.05","3.06","3.04"
+"[object Object]","Breece Hall","NYJ","RB","RB","3.09","3.09","3.10","3.11","3.08"
+"[object Object]","Javonte Williams","DAL","RB","RB","3.10","3.10","3.12","3.11","3.10"
+"[object Object]","Josh Jacobs","GB","RB","RB","3.11","3.03","4.01","3.09","4.06"
+"[object Object]","Zay Flowers","BAL","WR","WR","4.01","4.05","4.05","3.12","3.07"
+"[object Object]","Tetairoa McMillan","CAR","WR","WR","4.04","3.12","4.06","4.06","4.05"
+"[object Object]","Tee Higgins","CIN","WR","WR","4.05","4.02","5.08","3.10","3.11"
+"[object Object]","Lamar Jackson","BAL","QB","QB","4.06","3.10","4.03","4.02","5.08"
+"[object Object]","Emeka Egbuka","TB","WR","WR","4.06","4.04","4.12","4.08","3.12"
+"[object Object]","Ladd McConkey","LAC","WR","WR","4.06","4.03","5.03","4.10","3.09"
+"[object Object]","Travis Etienne Jr.","NO","RB","RB","4.06","4.06","4.08","4.07","4.04"
+"[object Object]","Garrett Wilson","NYJ","WR","WR","4.06","4.08","3.12","5.01","4.03"
+"[object Object]","Cam Skattebo","NYG","RB","RB","4.06","4.01","4.08","4.06","4.11"
+"[object Object]","Colston Loveland","CHI","TE","TE","4.07","4.07","4.09","4.04","4.08"
+"[object Object]","Jaylen Waddle","DEN","WR","WR","4.10","4.11","5.09","4.06","4.01"
+"[object Object]","D'Andre Swift","CHI","RB","RB","5.03","5.01","6.05","4.11","4.08"
+"[object Object]","Davante Adams","LAR","WR","WR","5.04","5.07","4.10","5.06","5.04"
+"[object Object]","Bucky Irving","TB","RB","RB","5.04","4.09","5.06","5.07","5.06"
+"[object Object]","Quinshon Judkins","CLE","RB","RB","5.05","4.12","5.07","5.05","5.06"
+"[object Object]","Tyler Warren","IND","TE","TE","5.05","5.03","5.02","4.11","6.03"
+"[object Object]","Drake Maye","NE","QB","QB","5.05","5.04","4.11","4.11","6.07"
+"[object Object]","Terry McLaurin","WAS","WR","WR","5.06","5.05","5.12","5.06","5.01"
+"[object Object]","David Montgomery","HOU","RB","RB","5.06","4.11","6.10","5.04","4.11"
+"[object Object]","Joe Burrow","CIN","QB","QB","5.10","5.07","5.11","5.01","6.08"
+"[object Object]","DJ Moore","BUF","WR","WR","5.10","5.07","6.03","6.02","5.05"
+"[object Object]","Luther Burden III","CHI","WR","WR","5.12","5.10","7.05","5.11","4.09"
+"[object Object]","Jayden Daniels","WAS","QB","QB","5.12","6.05","5.03","5.06","6.09"
+"[object Object]","Jameson Williams","DET","WR","WR","5.12","5.10","6.07","6.06","5.03"
+"[object Object]","Jalen Hurts","PHI","QB","QB","6.01","6.03","5.03","5.09","6.12"
+"[object Object]","Bhayshul Tuten","JAX","RB","RB","6.01","6.01","7.01","6.03","5.02"
+"[object Object]","TreVeyon Henderson","NE","RB","RB","6.03","5.03","7.06","6.03","5.12"
+"[object Object]","Rome Odunze","CHI","WR","WR","6.03","6.02","6.05","6.08","5.10"
+"[object Object]","Jadarian Price","SEA","RB","RB","6.05","5.11","7.05","6.06","5.12"
+"[object Object]","Mike Evans","SF","WR","WR","6.08","6.02","8.10","6.07","5.03"
+"[object Object]","Carnell Tate","TEN","WR","WR","6.12","6.08","7.06","7.08","6.03"
+"[object Object]","Christian Watson","GB","WR","WR","6.12","6.08","8.12","6.08","5.09"
+"[object Object]","Sam LaPorta","DET","TE","TE","7.01","6.04","6.11","6.03","8.09"
+"[object Object]","Tucker Kraft","GB","TE","TE","7.02","6.06","8.06","6.01","7.05"
+"[object Object]","Marvin Harrison Jr.","ARI","WR","WR","7.04","7.02","8.02","7.07","6.07"
+"[object Object]","Parker Washington","JAX","WR","WR","7.05","6.12","8.11","7.10","5.09"
+"[object Object]","Kyle Pitts Sr.","ATL","TE","TE","7.05","6.10","6.05","7.01","9.05"
+"[object Object]","Caleb Williams","CHI","QB","QB","7.05","7.03","8.08","6.08","7.01"
+"[object Object]","Rhamondre Stevenson","NE","RB","RB","7.06","7.04","7.12","7.08","6.09"
+"[object Object]","Jaylen Warren","PIT","RB","RB","7.07","6.09","9.03","7.05","6.10"
+"[object Object]","Brian Thomas Jr.","JAX","WR","WR","7.09","6.11","9.07","7.12","6.05"
+"[object Object]","Dak Prescott","DAL","QB","QB","7.09","7.12","8.01","7.02","7.08"
+"[object Object]","DK Metcalf","PIT","WR","WR","7.09","7.07","8.03","8.02","7.02"
+"[object Object]","Harold Fannin Jr.","CLE","TE","TE","7.10","7.03","7.03","6.11","9.09"
+"[object Object]","Justin Herbert","LAC","QB","QB","8.01","7.09","9.11","6.10","7.12"
+"[object Object]","Courtland Sutton","DEN","WR","WR","8.03","7.11","7.08","9.07","7.11"
+"[object Object]","Tony Pollard","TEN","RB","RB","8.03","7.08","9.11","8.02","7.06"
+"[object Object]","Rico Dowdle","PIT","RB","RB","8.06","7.11","9.08","8.03","7.12"
+"[object Object]","Trevor Lawrence","JAX","QB","QB","8.06","9.02","8.09","8.01","8.02"
+"[object Object]","Jaxson Dart","NYG","QB","QB","8.08","9.05","7.04","8.04","9.08"
+"[object Object]","Jonathon Brooks","CAR","RB","RB","8.11","8.05","10.09","9.01","7.04"
+"[object Object]","Chuba Hubbard","CAR","RB","RB","8.11","7.05","11.02","7.12","9.02"
+"[object Object]","George Kittle","SF","TE","TE","8.11","8.04","8.11","8.03","10.04"
+"[object Object]","Alec Pierce","IND","WR","WR","8.12","9.01","9.06","8.08","8.12"
+"[object Object]","Michael Wilson","ARI","WR","WR","9.01","8.05","9.08","9.07","8.07"
+"[object Object]","J.K. Dobbins","DEN","RB","RB","9.03","8.01","10.09","9.01","8.12"
+"[object Object]","Matthew Stafford","LAR","QB","QB","9.03","9.10","7.08","9.05","10.03"
+"[object Object]","Travis Kelce","KC","TE","TE","9.06","8.11","9.01","8.10","11.03"
+"[object Object]","Bo Nix","DEN","QB","QB","9.07","10.11","8.03","9.04","9.10"
+"[object Object]","RJ Harvey","DEN","RB","RB","9.07","7.10","12.07","9.08","8.04"
+"[object Object]","Patrick Mahomes","KC","QB","QB","9.08","10.02","9.11","9.04","9.01"
+"[object Object]","Michael Pittman Jr.","PIT","WR","WR","9.08","9.09","8.07","10.12","9.05"
+"[object Object]","Blake Corum","LAR","RB","RB","9.08","8.10","12.05","9.04","8.03"
+"[object Object]","Chris Godwin Jr.","TB","WR","WR","9.09","8.11","12.11","9.02","8.01"
+"[object Object]","Jordan Addison","MIN","WR","WR","9.09","9.04","10.07","10.09","8.05"
+"[object Object]","Brock Purdy","SF","QB","QB","9.10","11.01","9.07","9.02","9.06"
+"[object Object]","Jayden Reed","GB","WR","WR","9.11","9.08","11.06","10.11","7.06"
+"[object Object]","Quentin Johnston","LAC","WR","WR","9.11","9.09","12.06","10.02","7.04"
+"[object Object]","Kyle Monangai","CHI","RB","RB","9.12","8.06","11.08","9.08","10.01"
+"[object Object]","Josh Downs","IND","WR","WR","9.12","9.12","12.02","10.01","7.11"
+"[object Object]","Jacory Croskey-Merritt","WAS","RB","RB","10.02","9.01","11.12","10.03","9.04"
+"[object Object]","Jordyn Tyson","NO","WR","WR","10.03","8.06","14.08","8.10","8.10"
+"[object Object]","Dalton Kincaid","BUF","TE","TE","10.03","8.09","11.12","9.03","11.01"
+"[object Object]","Stefon Diggs","WAS","WR","WR","10.03","10.09","11.07","9.12","8.10"
+"[object Object]","Makai Lemon","PHI","WR","WR","10.04","-","12.11","10.04","7.09"
+"[object Object]","Jordan Mason","MIN","RB","RB","10.05","9.03","12.08","10.08","9.02"
+"[object Object]","Kenny Gainwell","TB","RB","RB","10.06","10.02","10.10","10.10","10.01"
+"[object Object]","Matthew Golden","GB","WR","WR","10.06","11.03","9.07","11.08","9.05"
+"[object Object]","Dallas Goedert","PHI","TE","TE","10.08","11.05","9.02","9.10","12.01"
+"[object Object]","Jake Ferguson","DAL","TE","TE","10.10","9.12","10.03","10.08","12.04"
+"[object Object]","Wan'Dale Robinson","TEN","WR","WR","10.10","10.07","10.06","11.11","10.05"
+"[object Object]","Isaiah Likely","NYG","TE","TE","10.11","10.06","11.08","10.01","11.07"
+"[object Object]","Jakobi Meyers","JAX","WR","WR","10.12","10.11","10.05","11.09","10.11"
+"[object Object]","Xavier Worthy","KC","WR","WR","11.02","11.08","11.04","11.09","9.11"
+"[object Object]","Mark Andrews","BAL","TE","TE","11.03","11.02","11.01","10.05","12.01"
+"[object Object]","Aaron Jones Sr.","MIN","RB","RB","11.04","10.03","12.01","11.03","11.08"
+"[object Object]","Rachaad White","WAS","RB","RB","11.04","10.12","12.04","11.02","10.10"
+"[object Object]","KC Concepcion","CLE","WR","WR","11.05","10.07","13.01","11.08","10.04"
+"[object Object]","Jared Goff","DET","QB","QB","11.06","12.08","12.05","10.07","10.04"
+"[object Object]","De'Zhaun Stribling","SF","WR","WR","11.06","11.05","13.07","10.07","10.04"
+"[object Object]","Deebo Samuel Sr.","SF","WR","WR","11.09","11.11","11.11","11.08","11.07"
+"[object Object]","Kyler Murray","MIN","QB","QB","11.10","13.03","13.03","10.04","10.07"
+"[object Object]","Romeo Doubs","NE","WR","WR","12.01","11.08","13.07","11.12","10.11"
+"[object Object]","Khalil Shakir","BUF","WR","WR","12.01","13.02","11.04","11.11","11.11"
+"[object Object]","Baker Mayfield","TB","QB","QB","12.05","13.08","13.04","11.06","11.03"
+"[object Object]","Chris Rodriguez Jr.","JAX","RB","RB","12.06","11.09","14.10","11.12","11.04"
+"[object Object]","Woody Marks","HOU","RB","RB","12.08","12.10","13.05","11.11","12.05"
+"[object Object]","MarShawn Lloyd","GB","RB","RB","12.09","-","-","11.11","13.07"
+"[object Object]","Jordan Love","GB","QB","QB","12.10","14.12","14.02","11.04","10.09"
+"[object Object]","Rashid Shaheed","SEA","WR","WR","12.10","13.06","13.11","11.08","12.03"
+"[object Object]","Tyler Allgeier","ARI","RB","RB","12.10","12.01","14.08","11.10","12.09"
+"[object Object]","Jalen Coker","CAR","WR","WR","12.10","13.02","14.04","12.01","11.09"
+"[object Object]","Hunter Henry","NE","TE","TE","12.11","13.05","12.11","11.08","13.09"
+"[object Object]","Zach Charbonnet","SEA","RB","RB","13.01","12.01","14.01","11.10","14.06"
+"[object Object]","Tyrone Tracy Jr.","NYG","RB","RB","13.02","12.03","15.01","11.11","13.07"
+"[object Object]","Tyler Shough","NO","QB","QB","13.03","15.07","13.12","11.10","11.06"
+"[object Object]","Jonah Coleman","DEN","RB","RB","13.03","12.12","15.02","11.10","12.12"
+"[object Object]","Keaton Mitchell","LAC","RB","RB","13.04","14.07","15.01","11.12","11.10"
+"[object Object]","Jalen Nailor","LV","WR","WR","13.05","14.09","-","11.10","13.06"
+"[object Object]","Sam Darnold","SEA","QB","QB","13.05","14.12","14.06","11.03","12.10"
+"[object Object]","Mike Washington Jr.","LV","RB","RB","13.05","14.03","14.09","11.02","-"
+"[object Object]","Denzel Boston","CLE","WR","WR","13.05","14.02","14.10","11.11","12.09"
+"[object Object]","Brenton Strange","JAX","TE","TE","13.07","13.11","14.12","11.09","13.07"
+"[object Object]","Travis Hunter","JAX","WR","WR","13.07","15.10","11.01","-","13.12"
+"[object Object]","Oronde Gadsden","LAC","TE","TE","13.08","13.01","-","11.07","16.04"
+"[object Object]","Ja'Kobi Lane","BAL","WR","WR","13.08","14.05","14.11","11.06","13.10"
+"[object Object]","Tank Bigsby","PHI","RB","RB","13.11","14.11","15.01","11.11","13.08"
+"[object Object]","T.J. Hockenson","MIN","TE","TE","13.11","16.07","12.01","11.09","15.02"
+"[object Object]","Malik Willis","MIA","QB","QB","13.11","17.03","14.11","11.05","12.01"
+"[object Object]","Juwan Johnson","NO","TE","TE","13.11","16.07","14.07","11.07","12.10"
+"[object Object]","Alvin Kamara","NO","RB","RB","13.11","13.10","14.04","11.06","16.01"
+"[object Object]","Tyjae Spears","TEN","RB","RB","13.12","15.04","14.05","12.01","14.01"
+"[object Object]","Aaron Rodgers","PIT","QB","QB","14.01","-","15.01","10.09","16.04"
+"[object Object]","Kenyon Sadiq","NYJ","TE","TE","14.02","15.07","13.03","11.10","16.02"
+"[object Object]","Omar Cooper Jr.","NYJ","WR","WR","14.03","15.10","-","11.10","14.12"
+"[object Object]","Chig Okonkwo","WAS","TE","TE","14.04","17.04","15.02","11.06","13.04"
+"[object Object]","Greg Dulcich","MIA","TE","TE","14.04","-","-","11.12","16.08"
+"[object Object]","Dontayvion Wicks","PHI","WR","WR","14.05","-","-","-","14.05"
+"[object Object]","Brian Robinson","ATL","RB","RB","14.05","15.03","14.09","11.02","16.06"
+"[object Object]","Daniel Jones","IND","QB","QB","14.05","18.10","14.02","11.07","12.12"
+"[object Object]","C.J. Stroud","HOU","QB","QB","14.05","18.04","14.09","11.06","13.03"
+"[object Object]","Isiah Pacheco","DET","RB","RB","14.06","15.05","14.08","11.06","16.05"
+"[object Object]","Keenan Allen","IND","WR","WR","14.08","17.11","14.11","11.05","14.04"
+"[object Object]","Jalen McMillan","TB","WR","WR","14.08","17.07","15.01","11.09","14.02"
+"[object Object]","Pat Freiermuth","PIT","TE","TE","14.08","-","15.01","11.05","17.07"
+"[object Object]","Terrance Ferguson","LAR","TE","TE","14.09","18.04","14.09","11.07","14.04"
+"[object Object]","Fernando Mendoza","LV","QB","QB","14.10","16.08","14.12","10.12","16.07"
+"[object Object]","Jauan Jennings","MIN","WR","WR","14.10","17.09","-","11.07","15.02"
+"[object Object]","AJ Barner","SEA","TE","TE","14.10","16.12","15.01","11.06","15.09"
+"[object Object]","Cam Ward","TEN","QB","QB","14.11","18.12","15.01","11.05","14.01"
+"[object Object]","Dalton Schultz","HOU","TE","TE","14.11","18.05","14.12","11.08","14.06"
+"[object Object]","Cyrus Allen","KC","WR","WR","14.11","-","15.01","-","14.09"
+"[object Object]","Tre Tucker","LV","WR","WR","15.03","16.10","14.12","-","13.09"
+"[object Object]","Bryce Young","CAR","QB","QB","15.04","20.05","15.01","11.02","14.10"
+"[object Object]","Tank Dell","HOU","WR","WR","15.05","16.04","14.01","-","15.09"
+"[object Object]","Malik Washington","MIA","WR","WR","15.05","-","-","-","15.05"
+"[object Object]","Caleb Douglas","MIA","WR","WR","15.07","-","15.01","-","15.12"
+"[object Object]","Cooper Kupp","SEA","WR","WR","15.09","18.01","15.01","11.01","18.08"
+"[object Object]","Isaac TeSlaa","DET","WR","WR","16.01","19.03","-","11.05","17.06"
+"[object Object]","Dylan Sampson","CLE","RB","RB","16.01","16.11","-","-","15.04"
+"[object Object]","David Njoku","LAC","TE","TE","16.04","20.02","15.02","11.05","18.07"
+"[object Object]","James Conner","ARI","RB","RB","16.08","19.07","-","11.06","18.11"
+"[object Object]","Tre' Harris","LAC","WR","WR","16.10","19.03","-","-","14.05"
+"[object Object]","Braelon Allen","NYJ","RB","RB","16.10","17.01","-","-","16.07"
+"[object Object]","Geno Smith","NYJ","QB","QB","16.11","-","-","-","16.11"
+"[object Object]","Pat Bryant","DEN","WR","WR","16.12","18.08","-","-","15.04"
+"[object Object]","Darnell Washington","PIT","TE","TE","17.01","-","15.02","-","18.12"
+"[object Object]","Carson Beck","ARI","QB","QB","17.01","-","15.02","-","18.11"
+"[object Object]","Kirk Cousins","LV","QB","QB","17.01","-","15.02","-","18.11"
+"[object Object]","Dawson Knox","BUF","TE","TE","17.01","-","15.02","-","18.12"
+"[object Object]","Cole Kmet","CHI","TE","TE","17.01","-","15.02","-","18.12"
+"[object Object]","Elijah Arroyo","SEA","TE","TE","17.01","-","15.02","-","18.12"
+"[object Object]","Zavion Thomas","CHI","WR","WR","17.01","-","15.02","-","18.12"
+"[object Object]","Noah Gray","KC","TE","TE","17.01","-","15.02","-","18.12"
+"[object Object]","Ja'Tavion Sanders","CAR","TE","TE","17.01","-","15.02","-","18.12"
+"[object Object]","Mack Hollins","NE","WR","WR","17.01","-","15.02","-","18.12"
+"[object Object]","Tommy Tremble","CAR","TE","TE","17.01","-","15.02","-","18.12"
+"[object Object]","Luke Musgrave","GB","TE","TE","17.01","-","15.02","-","18.12"
+"[object Object]","Jordan Whittington","LAR","WR","WR","17.01","-","15.02","-","18.12"
+"[object Object]","Jerry Jeudy","CLE","WR","WR","17.03","19.01","14.10","-","17.10"
+"[object Object]","Kaelon Black","SF","RB","RB","17.04","-","-","-","17.04"
+"[object Object]","Adonai Mitchell","NYJ","WR","WR","17.04","19.05","-","-","15.03"
+"[object Object]","Emmett Johnson","KC","RB","RB","17.04","17.07","-","-","17.01"
+"[object Object]","Jaydon Blue","DAL","RB","RB","17.04","18.10","-","-","15.09"
+"[object Object]","Malachi Fields","NYG","WR","WR","17.06","19.12","15.02","-","17.03"
+"[object Object]","Ray Davis","BUF","RB","RB","17.07","18.05","-","-","16.08"
+"[object Object]","Nicholas Singleton","TEN","RB","RB","17.12","17.05","-","-","18.07"
+"[object Object]","Zachariah Branch","ATL","WR","WR","18.01","18.11","-","-","17.02"
+"[object Object]","Ryan Flournoy","DAL","WR","WR","18.02","21.01","-","-","15.02"
+"[object Object]","Calvin Ridley","TEN","WR","WR","18.03","21.11","14.12","-","17.11"
+"[object Object]","Darren Waller","CAR","TE","TE","18.04","-","-","-","18.04"
+"[object Object]","Eli Stowers","PHI","TE","TE","18.07","21.09","15.02","-","18.11"
+"[object Object]","Charlie Kolar","LAC","TE","TE","18.07","-","-","-","18.07"
+"[object Object]","Evan Engram","DEN","TE","TE","18.10","-","-","-","18.10"
+"[object Object]","Justice Hill","BAL","RB","RB","18.10","-","-","-","18.10"
+"[object Object]","George Holani","SEA","RB","RB","18.10","-","-","-","18.10"
+"[object Object]","Jordan James","SF","RB","RB","18.10","-","-","-","18.10"
+"[object Object]","Xavier Hutchinson","HOU","WR","WR","18.10","-","-","-","18.10"
+"[object Object]","Mike Gesicki","CIN","TE","TE","18.11","-","-","-","18.11"
+"[object Object]","Samaje Perine","CIN","RB","RB","18.11","-","-","-","18.11"
+"[object Object]","Michael Mayer","LV","TE","TE","18.11","-","-","-","18.11"
+"[object Object]","Tyquan Thornton","KC","WR","WR","18.11","-","-","-","18.11"
+"[object Object]","Deshaun Watson","CLE","QB","QB","18.11","-","-","-","18.11"
+"[object Object]","DeMario Douglas","NE","WR","WR","18.11","-","-","-","18.11"
+"[object Object]","Bryce Lance","NO","WR","WR","18.11","-","-","-","18.11"
+"[object Object]","Andrei Iosivas","CIN","WR","WR","18.12","-","-","-","18.12"
+"[object Object]","Xavier Legette","CAR","WR","WR","18.12","-","-","-","18.12"
+"[object Object]","Malik Benson","LV","WR","WR","18.12","-","-","-","18.12"
+"[object Object]","Darius Slayton","NYG","WR","WR","18.12","-","-","-","18.12"
+"[object Object]","Jahan Dotson","ATL","WR","WR","18.12","-","-","-","18.12"
+"[object Object]","Adam Randall","BAL","RB","RB","18.12","-","-","-","18.12"
+"[object Object]","Kalif Raymond","CHI","WR","WR","18.12","-","-","-","18.12"
+"[object Object]","Kendrick Bourne","ARI","WR","WR","18.12","-","-","-","18.12"
+"[object Object]","Devin Singletary","NYG","RB","RB","18.12","-","-","-","18.12"
+"[object Object]","Hollywood Brown","PHI","WR","WR","18.12","-","-","-","18.12"
+"[object Object]","Jalen Tolbert","MIA","WR","WR","18.12","-","-","-","18.12"
+"[object Object]","DJ Giddens","IND","RB","RB","18.12","-","-","-","18.12"
+"[object Object]","Ollie Gordon II","MIA","RB","RB","18.12","-","-","-","18.12"
+"[object Object]","LeQuint Allen Jr.","JAX","RB","RB","18.12","-","-","-","18.12"
+"[object Object]","Skyler Bell","BUF","WR","WR","18.12","-","-","-","18.12"
+"[object Object]","Brenen Thompson","LAC","WR","WR","18.12","-","-","-","18.12"
+"[object Object]","Noah Fant","NO","TE","TE","18.12","-","-","-","18.12"
+"[object Object]","Ty Johnson","BUF","RB","RB","18.12","-","-","-","18.12"
+"[object Object]","Olamide Zaccheaus","ATL","WR","WR","18.12","-","-","-","18.12"
+"[object Object]","AJ Dillon","CAR","RB","RB","18.12","-","-","-","18.12"
+"[object Object]","Calvin Austin III","NYG","WR","WR","18.12","-","-","-","18.12"
+"[object Object]","Tutu Atwell","MIA","WR","WR","18.12","-","-","-","18.12"
+"[object Object]","Treylon Burks","WAS","WR","WR","18.12","-","-","-","18.12"
+"[object Object]","Chris Brooks","GB","RB","RB","18.12","-","-","-","18.12"
+"[object Object]","Jerome Ford","","RB","RB","18.12","-","-","-","18.12"
+"[object Object]","Cedric Tillman","CLE","WR","WR","18.12","-","-","-","18.12"
+"[object Object]","Emari Demercado","KC","RB","RB","18.12","-","-","-","18.12"
+"[object Object]","Devontez Walker","BAL","WR","WR","18.12","-","-","-","18.12"
+"[object Object]","Ben Sinnott","WAS","TE","TE","18.12","-","-","-","18.12"
+"[object Object]","Roman Wilson","PIT","WR","WR","18.12","-","-","-","18.12"
+"[object Object]","Isaiah Davis","NYJ","RB","RB","18.12","-","-","-","18.12"
+"[object Object]","Will Shipley","PHI","RB","RB","18.12","-","-","-","18.12"
+"[object Object]","Tez Johnson","TB","WR","WR","18.12","-","-","-","18.12"
+"[object Object]","Trevor Etienne","CAR","RB","RB","18.12","-","-","-","18.12"
+"[object Object]","Tahj Brooks","CIN","RB","RB","18.12","-","-","-","18.12"
+"[object Object]","Oscar Delp","NO","TE","TE","18.12","-","-","-","18.12"
+"[object Object]","Jaylin Lane","WAS","WR","WR","18.12","-","-","-","18.12"
+"[object Object]","Justin Joly","DEN","TE","TE","18.12","-","-","-","18.12"
+"[object Object]","Nate Boerkircher","JAX","TE","TE","18.12","-","-","-","18.12"
+"[object Object]","Gunnar Helm","TEN","TE","TE","19.01","20.09","-","-","17.04"
+"[object Object]","Kayshon Boutte","HOU","WR","WR","19.03","20.10","-","-","17.08"
+"[object Object]","Ted Hurst III","TB","WR","WR","19.04","20.09","-","-","17.10"
+"[object Object]","Cade Otton","TB","TE","TE","19.05","21.07","-","-","17.03"
+"[object Object]","Kaytron Allen","WAS","RB","RB","19.08","20.07","-","-","18.10"
+"[object Object]","Chris Bell","MIA","WR","WR","19.09","21.02","-","-","18.03"
+"[object Object]","Kimani Vidal","LAC","RB","RB","19.09","20.12","-","-","18.07"
+"[object Object]","Jacoby Brissett","ARI","QB","QB","19.09","21.11","-","-","17.08"
+"[object Object]","Germie Bernard","PIT","WR","WR","19.10","21.05","-","-","18.03"
+"[object Object]","Keon Coleman","BUF","WR","WR","19.11","21.02","-","-","18.08"
+"[object Object]","Sean Tucker","TB","RB","RB","19.12","21.10","-","-","18.02"
+"[object Object]","Demond Claiborne","MIN","RB","RB","19.12","21.01","-","-","18.11"
+"[object Object]","Jaylen Wright","MIA","RB","RB","20.02","21.04","-","-","18.12"
+"[object Object]","Antonio Williams","WAS","WR","WR","20.03","21.07","-","-","18.11"
+"[object Object]","Jake Tonges","SF","TE","TE","20.06","22.01","-","-","18.12"
+"[object Object]","Tua Tagovailoa","ATL","QB","QB","20.08","22.06","-","-","18.09"
+"[object Object]","Darnell Mooney","NYG","WR","WR","20.09","22.07","-","-","18.11"
+"[object Object]","Colby Parkinson","LAR","TE","TE","20.10","22.10","-","-","18.09"
+"[object Object]","Tory Horton","SEA","WR","WR","20.10","22.08","-","-","18.12"
+"[object Object]","Theo Johnson","NYG","TE","TE","20.11","22.11","-","-","18.12"
+"[object Object]","Troy Franklin","DEN","WR","WR","20.11","22.12","-","-","18.11"
+"[object Object]","Emanuel Wilson","SEA","RB","RB","21.01","23.02","-","-","18.12"
+"[object Object]","Shedeur Sanders","CLE","QB","QB","30.07","57.10","15.02","-","18.10"
+"[object Object]","Kyle Williams","NE","WR","WR","30.08","57.12","15.02","-","18.12"
+"[object Object]","Christian Kirk","SF","WR","WR","30.12","58.09","15.02","-","18.12"
+"[object Object]","Jaylin Noel","HOU","WR","WR","36.11","56.04","-","-","17.05"
+"[object Object]","Devaughn Vele","NO","WR","WR","37.02","57.08","-","-","16.09"
+"[object Object]","Chimere Dike","TEN","WR","WR","37.05","55.10","-","-","18.12"
+"[object Object]","Mason Taylor","NYJ","TE","TE","37.10","56.08","-","-","18.12"
+"[object Object]","Brashard Smith","KC","RB","RB","37.11","56.09","-","-","18.12"
+"[object Object]","Jack Bech","LV","WR","WR","38.02","57.05","-","-","18.11"
+"[object Object]","Devin Neal","NO","RB","RB","38.07","58.02","-","-","18.12"
+"[object Object]","Chris Brazzell II","CAR","WR","WR","38.09","58.05","-","-","18.12"
+"[object Object]","Audric Estimé","NO","RB","RB","38.10","58.09","-","-","18.12"
+"[object Object]","Kaleb Johnson","PIT","RB","RB","38.10","58.09","-","-","18.12"
+"[object Object]","Michael Penix Jr.","ATL","QB","QB","38.11","58.11","-","-","18.11"
+"[object Object]","Max Klare","LAR","TE","TE","38.11","58.10","-","-","18.12"
+"[object Object]","Elijah Sarratt","BAL","WR","WR","38.12","58.12","-","-","18.11"
+"[object Object]","Rashod Bateman","BAL","WR","WR","38.12","59.05","-","-","18.08"
+"[object Object]","Elic Ayomanor","TEN","WR","WR","39.02","59.03","-","-","18.12"
+"[object Object]","Marvin Mims Jr.","DEN","WR","WR","39.02","59.05","-","-","18.12"

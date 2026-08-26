@@ -1042,16 +1042,24 @@ function buildFantasyFootballersCsvRecords(
   const rows = parseCsv(text);
   const headerRowIndex = rows.findIndex((row) => {
     const headers = row.map(normalizeHeader);
-    return headers.includes("player") && headers.includes("auction_value");
+    const hasDollarValue = row.some((header) => header.trim() === "$");
+    return (
+      (headers.includes("player") || headers.includes("name")) &&
+      (headers.includes("auction_value") || hasDollarValue)
+    );
   });
 
   if (headerRowIndex === -1) return buildFlatCsvInput(sourceFilename, text);
 
-  const headers = rows[headerRowIndex].map(normalizeHeader);
-  const playerIndex = findColumnIndex(headers, ["player"]);
+  const sourceHeaders = rows[headerRowIndex] ?? [];
+  const headers = sourceHeaders.map(normalizeHeader);
+  const playerIndex = findColumnIndex(headers, ["player", "name"]);
   const positionIndex = findColumnIndex(headers, ["position"]);
   const teamIndex = findColumnIndex(headers, ["team"]);
-  const valueIndex = findColumnIndex(headers, ["auction_value"]);
+  const valueIndex =
+    findColumnIndex(headers, ["auction_value"]) >= 0
+      ? findColumnIndex(headers, ["auction_value"])
+      : sourceHeaders.findIndex((header) => header.trim() === "$");
   const sourceDateIndex = findColumnIndex(headers, ["source_date"]);
   const budgetIndex = findColumnIndex(headers, ["budget"]);
   const riskIndex = findColumnIndex(headers, ["risk"]);

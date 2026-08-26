@@ -4,6 +4,7 @@ import type {
   AuctionAdpMatchType,
   AuctionAdpSourceKey,
   AuctionAdpSourceRow,
+  AuctionAdpSentinelReason,
   AuctionAdpSourceValuesFile,
   AuctionUnmatchedReviewCandidate,
 } from "./adpTypes";
@@ -47,6 +48,8 @@ type ParsedAdpRecord = {
   playerId: string | null;
   warnings: string[];
   errors: string[];
+  rawOverallAdp?: string | null;
+  sentinelReason?: AuctionAdpSentinelReason | null;
 };
 
 const FANTASYPROS_ADP_HEADER_ALIASES = {
@@ -184,14 +187,6 @@ function getCell(row: readonly string[], index: number) {
   return index >= 0 ? row[index] ?? "" : "";
 }
 
-function findHeaderIndex(rows: readonly string[][], requiredHeaders: string[]) {
-  return rows.findIndex((row) => {
-    const normalizedHeaders = row.map(normalizeHeader);
-
-    return requiredHeaders.every((header) => normalizedHeaders.includes(header));
-  });
-}
-
 function findHeaderAliasIndex(
   headers: readonly string[],
   aliases: readonly string[]
@@ -317,18 +312,27 @@ function parseFantasyProsRows(rows: readonly string[][]): ParsedAdpRecord[] {
 }
 
 function parseRotoWireRows(rows: readonly string[][]): ParsedAdpRecord[] {
-  const headerIndex = findHeaderIndex(rows, ["rank", "name", "team", "pos"]);
+  const headerIndex = rows.findIndex((row) => {
+    const headers = row.map(normalizeHeader);
+    return (
+      (headers.includes("rank") || headers.includes("adp")) &&
+      headers.includes("name") &&
+      headers.includes("team") &&
+      headers.includes("pos")
+    );
+  });
   if (headerIndex < 0) {
-    throw new Error("RotoWire ADP CSV is missing rank/name/team/position headers.");
+    throw new Error("RotoWire ADP CSV is missing rank/ADP/name/team/position headers.");
   }
 
   const headers = rows[headerIndex].map(normalizeHeader);
-  const rankIndex = headers.indexOf("rank");
+  const rankIndex = headers.includes("rank") ? headers.indexOf("rank") : headers.indexOf("adp");
   const playerIndex = headers.indexOf("name");
   const teamIndex = headers.indexOf("team");
   const positionIndex = headers.indexOf("pos");
   const underdogIndex = headers.indexOf("underdog");
   const sleeperIndex = headers.indexOf("sleeper");
+  const averageIndex = headers.indexOf("average");
 
   return rows.slice(headerIndex + 1).map((row, index) => {
     const underdogAdp = parseFiniteNumber(getCell(row, underdogIndex));
@@ -344,6 +348,10 @@ function parseRotoWireRows(rows: readonly string[][]): ParsedAdpRecord[] {
     const position = normalizeAdpPosition(getCell(row, positionIndex));
     const errors: string[] = [];
     const warnings: string[] = [];
+    const isUnderdogBoundarySentinel =
+      underdogAdp === 216 &&
+      sleeperAdp === null &&
+      parseFiniteNumber(getCell(row, averageIndex)) === 216;
 
     if (!playerName) errors.push("Missing player name.");
     if (!position) errors.push("Missing position.");
@@ -360,6 +368,10 @@ function parseRotoWireRows(rows: readonly string[][]): ParsedAdpRecord[] {
       playerId: null,
       warnings,
       errors,
+      rawOverallAdp: getCell(row, underdogIndex),
+      sentinelReason: isUnderdogBoundarySentinel
+        ? "rotowire-underdog-boundary"
+        : null,
     };
   });
 }
@@ -467,28 +479,50 @@ function parseFantasyFootballersRows(rows: readonly string[][]): ParsedAdpRecord
   const headerIndex = rows.findIndex((row) => {
     const headers = row.map(normalizeHeader);
     return (
-      headers.includes("player") &&
-      headers.includes("position") &&
+      (headers.includes("player") || headers.includes("name")) &&
+      (headers.includes("position") || headers.includes("pos")) &&
       headers.includes("team") &&
-      headers.includes("adp_overall")
+      (headers.includes("adp_overall") || headers.includes("avg"))
     );
   });
-  if (headerIndex < 0) throw new Error("Fantasy Footballers ADP CSV is missing explicit overall ADP headers.");
+  if (headerIndex < 0) {
+    throw new Error("Fantasy Footballers ADP CSV is missing player identity and consensus ADP headers.");
+  }
 
   const headers = rows[headerIndex].map(normalizeHeader);
-  const playerIndex = findNormalizedHeaderIndex(headers, ["player"]);
+  const playerIndex = findNormalizedHeaderIndex(headers, ["player", "name"]);
   const teamIndex = findNormalizedHeaderIndex(headers, ["team"]);
-  const positionIndex = findNormalizedHeaderIndex(headers, ["position"]);
-  const adpIndex = findNormalizedHeaderIndex(headers, ["adp_overall"]);
+  const positionIndex = findNormalizedHeaderIndex(headers, ["position", "pos"]);
+  const explicitAdpIndex = findNormalizedHeaderIndex(headers, ["adp_overall"]);
+  const averageAdpIndex = findNormalizedHeaderIndex(headers, ["avg"]);
+  const adpIndex = explicitAdpIndex >= 0 ? explicitAdpIndex : averageAdpIndex;
+  const usesRoundPickAverage = explicitAdpIndex < 0;
+  const sleeperIndex = findNormalizedHeaderIndex(headers, ["sleeper"]);
+  const espnIndex = findNormalizedHeaderIndex(headers, ["espn"]);
+  const yahooIndex = findNormalizedHeaderIndex(headers, ["yahoo"]);
+  const underdogIndex = findNormalizedHeaderIndex(headers, ["underdog"]);
+
+  function isMissingPlatformValue(value: string) {
+    return value.trim() === "" || value.trim() === "-";
+  }
 
   return rows.slice(headerIndex + 1).map((row, index) => {
     const playerName = normalizeText(row[playerIndex] ?? "");
     const position = normalizeAdpPosition(row[positionIndex]);
-    const overallAdp = parseFiniteNumber(row[adpIndex]);
+    const overallAdp = usesRoundPickAverage
+      ? parseRoundPickOverallAdp(row[adpIndex])
+      : parseFiniteNumber(row[adpIndex]);
     const errors: string[] = [];
     if (!playerName) errors.push("Missing player name.");
     if (!position) errors.push("Missing position.");
     if (overallAdp === null) errors.push("Missing overall ADP.");
+    const isUnderdogBoundarySentinel =
+      usesRoundPickAverage &&
+      normalizeText(row[adpIndex]) === "18.12" &&
+      normalizeText(row[underdogIndex]) === "18.12" &&
+      [sleeperIndex, espnIndex, yahooIndex].every((index) =>
+        isMissingPlatformValue(row[index] ?? "")
+      );
     return {
       rowNumber: headerIndex + index + 2,
       playerName,
@@ -499,6 +533,10 @@ function parseFantasyFootballersRows(rows: readonly string[][]): ParsedAdpRecord
       playerId: null,
       warnings: [],
       errors,
+      rawOverallAdp: row[adpIndex] ?? null,
+      sentinelReason: isUnderdogBoundarySentinel
+        ? "fantasyfootballers-underdog-boundary"
+        : null,
     };
   });
 }
@@ -674,6 +712,8 @@ export async function importAuctionAdpSourceText({
         importedAt: generatedAt,
         warnings,
         errors,
+        rawOverallAdp: record.rawOverallAdp ?? null,
+        sentinelReason: record.sentinelReason ?? null,
       };
 
       if (matchCandidates && matchCandidates.length > 0) {
@@ -704,6 +744,7 @@ export async function importAuctionAdpSourceText({
     ).length,
     warningCount: rows.reduce((sum, row) => sum + row.warnings.length, 0),
     errorCount: rows.reduce((sum, row) => sum + row.errors.length, 0),
+    sentinelCount: rows.filter((row) => row.sentinelReason).length,
     rows,
   };
 

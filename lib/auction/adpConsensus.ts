@@ -111,6 +111,10 @@ export function generateAuctionAdpConsensus({
     if (seenSourceKeys.has(sourceFile.sourceKey)) continue;
     seenSourceKeys.add(sourceFile.sourceKey);
     for (const row of sourceFile.rows) {
+      if (row.sentinelReason) {
+        skippedSourceValueCount += 1;
+        continue;
+      }
       const hasValidAdp = Number.isFinite(row.overallAdp) && row.overallAdp > 0;
       const hasMatch =
         row.playerId !== null &&
@@ -203,7 +207,8 @@ export function generateAuctionAdpConsensus({
     sourceFiles: sourceFiles.map((sourceFile) => sourceFile.sourceKey),
     rowCount: rows.length,
     sourceValueCount: sourceFiles.reduce(
-      (sum, sourceFile) => sum + sourceFile.rowCount,
+      (sum, sourceFile) =>
+        sum + sourceFile.rows.filter((row) => !row.sentinelReason).length,
       0
     ),
     skippedSourceValueCount,

@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-08-16T04:25:20.068Z",
+  "generatedAt": "2026-08-25T21:58:27.846Z",
   "sourceKey": "lineupexperts",
   "seasonYear": 2026,
   "sourceValuesFile": "data/auction/source-values/lineupexperts-2026.json",
   "playerAliasesFile": "data/auction/player-aliases.json",
   "sleeperPlayersUrl": "https://api.sleeper.app/v1/players/nfl",
-  "rowCount": 241,
-  "matchedRowCount": 239,
+  "rowCount": 239,
+  "matchedRowCount": 237,
   "probableMatchRowCount": 0,
   "ambiguousRowCount": 0,
   "unmatchedRowCount": 2,
@@ -4848,40 +4848,6 @@
       "errors": []
     },
     {
-      "id": "lineupexperts:2026:lineupexperts-2026-csv:row-140:review",
-      "seasonYear": 2026,
-      "sourceId": "lineupexperts:2026:lineupexperts-2026-csv",
-      "sourceRowId": "lineupexperts:2026:lineupexperts-2026-csv:row-140",
-      "sourceFilename": "lineupexperts-2026.csv",
-      "rowNumber": 140,
-      "playerNameFromSource": "Jayden Higgins",
-      "normalizedPlayerName": "jayden higgins",
-      "matchedSearchName": "Jayden Higgins",
-      "appliedAlias": null,
-      "position": "WR",
-      "nflTeam": "HOU",
-      "auctionValue": 6,
-      "matchedSleeperId": "12484",
-      "matchedSleeperName": "Jayden Higgins",
-      "matchStatus": "matched",
-      "matchMethod": "exact-normalized-name-position-team",
-      "matchConfidence": 94,
-      "candidates": [
-        {
-          "sleeperPlayerId": "12484",
-          "sleeperName": "Jayden Higgins",
-          "position": "WR",
-          "nflTeam": "HOU",
-          "active": true,
-          "status": "Active"
-        }
-      ],
-      "aliasSuggestion": null,
-      "reviewStatus": "accepted",
-      "warnings": [],
-      "errors": []
-    },
-    {
       "id": "lineupexperts:2026:lineupexperts-2026-csv:row-141:review",
       "seasonYear": 2026,
       "sourceId": "lineupexperts:2026:lineupexperts-2026-csv",
@@ -6881,40 +6847,6 @@
           "nflTeam": "BUF",
           "active": true,
           "status": null
-        }
-      ],
-      "aliasSuggestion": null,
-      "reviewStatus": "accepted",
-      "warnings": [],
-      "errors": []
-    },
-    {
-      "id": "lineupexperts:2026:lineupexperts-2026-csv:row-200:review",
-      "seasonYear": 2026,
-      "sourceId": "lineupexperts:2026:lineupexperts-2026-csv",
-      "sourceRowId": "lineupexperts:2026:lineupexperts-2026-csv:row-200",
-      "sourceFilename": "lineupexperts-2026.csv",
-      "rowNumber": 200,
-      "playerNameFromSource": "Zane Gonzalez",
-      "normalizedPlayerName": "zane gonzalez",
-      "matchedSearchName": "Zane Gonzalez",
-      "appliedAlias": null,
-      "position": "K",
-      "nflTeam": "MIA",
-      "auctionValue": 0,
-      "matchedSleeperId": "4233",
-      "matchedSleeperName": "Zane Gonzalez",
-      "matchStatus": "matched",
-      "matchMethod": "exact-normalized-name-position-team",
-      "matchConfidence": 94,
-      "candidates": [
-        {
-          "sleeperPlayerId": "4233",
-          "sleeperName": "Zane Gonzalez",
-          "position": "K",
-          "nflTeam": "MIA",
-          "active": true,
-          "status": "Inactive"
         }
       ],
       "aliasSuggestion": null,

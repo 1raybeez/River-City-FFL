@@ -68,6 +68,16 @@ try {
   assert.equal(auctionFiles[4].rows[0]?.auctionValue, 28, "Footballers uses auction_value.");
   assert.equal(auctionFiles[4].rows[0]?.raw["raw:risk"], "1");
 
+  const currentFootballersAuction = await importAuction(
+    "fantasyfootballers",
+    "Name,Position,Team,Rank,$,Points\nJosh Allen,QB,BUF,1,$41 ,367.2\n"
+  );
+  assert.equal(
+    currentFootballersAuction.rows[0]?.auctionValue,
+    41,
+    "Current Footballers exports use the $ column for auction dollars."
+  );
+
   const lineupexpertsArtifact = await importAuction(
     "lineupexperts",
     '"Player","$ Value","Team","Pos"\n"","7","",""\n"Josh Allen","24","BUF","QB"\n'
@@ -120,11 +130,53 @@ try {
 
   const adpFiles = await Promise.all([
     importAdp("fantasypros-adp", "Rank,Player (Bye),POS,AVG\n23,Josh Allen BUF (7),QB1,23\n"),
-    importAdp("rotowire-adp", "Rank,Name,Team,Pos,Average,Underdog,Sleeper\n23,Josh Allen,BUF,QB,23,22,24\n"),
+    importAdp("rotowire-adp", "ADP,Name,Team,Pos,Consensus,Underdog,Sleeper\n23,Josh Allen,BUF,QB,23,22,24\n"),
     importAdp("lineupexperts-adp", 'Rk,,Player,Team,Position,ADP\n23,,Josh Allen,BUF,QB,"23.0"\n'),
     importAdp("draftsharks-adp", '"Player Name","Player Team","Player Position","Consensus: Redraft 0.5 PPR ADP"\nJosh Allen,BUF,QB,2.11\n'),
     importAdp("fantasyfootballers-adp", "player,position,team,adp_round_pick,adp_overall\nJosh Allen,QB,BUF,2.11,23\n"),
   ]);
+  const currentFootballersAdp = await importAdp(
+    "fantasyfootballers-adp",
+    '"Rank","Name","Team","Pos","Pos","Avg","Sleeper","ESPN","Yahoo","Underdog"\n"[object Object]","Josh Allen","BUF","QB","QB","2.03","2.03","2.04","2.03","2.03"\n'
+  );
+  assert.equal(
+    currentFootballersAdp.rows[0]?.overallAdp,
+    15,
+    "Current Footballers Avg round/pick is the consensus overall ADP."
+  );
+  const footballersBoundary = await importAdp(
+    "fantasyfootballers-adp",
+    '"Rank","Name","Team","Pos","Pos","Avg","Sleeper","ESPN","Yahoo","Underdog"\n"[object Object]","Josh Allen","BUF","QB","QB","18.12","-","-","-","18.12"\n'
+  );
+  assert.equal(
+    footballersBoundary.rows[0]?.sentinelReason,
+    "fantasyfootballers-underdog-boundary"
+  );
+  const footballersLegitimate216 = await importAdp(
+    "fantasyfootballers-adp",
+    '"Rank","Name","Team","Pos","Pos","Avg","Sleeper","ESPN","Yahoo","Underdog"\n"216","Josh Allen","BUF","QB","QB","18.12","18.12","18.12","18.12","18.12"\n'
+  );
+  assert.equal(footballersLegitimate216.rows[0]?.overallAdp, 216);
+  assert.equal(footballersLegitimate216.rows[0]?.sentinelReason, null);
+  const rotoBoundary = await importAdp(
+    "rotowire-adp",
+    "ADP,Name,Team,Pos,Consensus,Ian,Jagger,Jim,Average,Underdog,Sleeper,Sleeper,Status,Injury\nT278,Josh Allen,BUF,QB,,,,,216.00,216.00,-,216.00,,\n"
+  );
+  assert.equal(rotoBoundary.rows[0]?.overallAdp, 216);
+  assert.equal(rotoBoundary.rows[0]?.sentinelReason, "rotowire-underdog-boundary");
+  const rotoLegitimate216 = await importAdp(
+    "rotowire-adp",
+    "ADP,Name,Team,Pos,Consensus,Ian,Jagger,Jim,Average,Underdog,Sleeper,Sleeper,Status,Injury\n216,Josh Allen,BUF,QB,,,,,216.00,216.00,216.00,216.00,,\n"
+  );
+  assert.equal(rotoLegitimate216.rows[0]?.overallAdp, 216);
+  assert.equal(rotoLegitimate216.rows[0]?.sentinelReason, null);
+  const repairedConsensus = generateAuctionAdpConsensus({
+    sourceFiles: [footballersBoundary, rotoLegitimate216],
+    generatedAt: "2026-08-25T00:00:00.000Z",
+  });
+  assert.equal(repairedConsensus.rows[0]?.consensusOverallAdp, 216);
+  assert.equal(repairedConsensus.sourceValueCount, 1);
+  assert.equal(repairedConsensus.skippedSourceValueCount, 1);
   assert.equal(adpFiles[2].rows[0]?.overallAdp, 23, "Lineup Experts ADP is an overall-pick value.");
   assert.equal(adpFiles[3].rows[0]?.overallAdp, 23, "DraftSharks round.pick converts using 12 teams.");
   assert.equal(adpFiles[4].rows[0]?.overallAdp, 23, "Footballers uses explicit overall ADP once.");

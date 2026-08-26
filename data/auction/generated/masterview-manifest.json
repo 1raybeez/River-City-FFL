@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-16T04:25:21.836Z",
+  "generatedAt": "2026-08-25T21:58:29.767Z",
   "sourceDirectory": "data/auction/source-values",
   "outputDirectory": "data/auction/generated",
   "seasonsProcessed": [
@@ -16,17 +16,17 @@
     {
       "season": 2026,
       "outputFile": "data/auction/generated/masterview-2026.json",
-      "rowCount": 403,
-      "sourceValueCount": 1382,
+      "rowCount": 567,
+      "sourceValueCount": 1653,
       "skippedSourceValueCount": 0,
-      "warningCount": 150
+      "warningCount": 280
     }
   ],
   "totals": {
     "seasons": 1,
-    "rows": 403,
-    "sourceValues": 1382,
+    "rows": 567,
+    "sourceValues": 1653,
     "skippedSourceValues": 0,
-    "warnings": 150
+    "warnings": 280
   }
 }

@@ -46,6 +46,10 @@ export type AuctionAdpWaitRisk =
 
 export type AuctionAdpConfidence = "HIGH" | "MEDIUM" | "LOW";
 
+export type AuctionAdpSentinelReason =
+  | "fantasyfootballers-underdog-boundary"
+  | "rotowire-underdog-boundary";
+
 export type AuctionUnmatchedPlayerReason =
   | "no-sleeper-match"
   | "ambiguous-name-position"
@@ -118,6 +122,8 @@ export type AuctionAdpSourceRow = {
   importedAt: string;
   warnings: string[];
   errors: string[];
+  rawOverallAdp?: string | null;
+  sentinelReason?: AuctionAdpSentinelReason | null;
 };
 
 export type AuctionAdpSourceValuesFile = {
@@ -131,6 +137,7 @@ export type AuctionAdpSourceValuesFile = {
   unmatchedRowCount: number;
   warningCount: number;
   errorCount: number;
+  sentinelCount?: number;
   rows: AuctionAdpSourceRow[];
 };
 
