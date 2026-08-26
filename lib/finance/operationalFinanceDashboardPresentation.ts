@@ -22,6 +22,8 @@ export type OperationalFinanceDashboardSettlement = Readonly<{
   actualPaidAtLabel: string;
   recordedAt: string;
   commissionerNote: string | null;
+  reversed: boolean;
+  canReverse: boolean;
 }>;
 
 export type OperationalFinanceDashboardDuesRow = Readonly<{
@@ -127,7 +129,8 @@ function formatRecordedDate(value: string | null) {
 }
 
 function settlementPresentation(
-  settlement: OperationalFinanceSettlement
+  settlement: OperationalFinanceSettlement,
+  reversed: boolean
 ): OperationalFinanceDashboardSettlement {
   return {
     settlementId: settlement.settlementId,
@@ -138,6 +141,8 @@ function settlementPresentation(
     actualPaidAtLabel: formatRecordedDate(settlement.actualPaidAt),
     recordedAt: settlement.recordedAt,
     commissionerNote: settlement.commissionerNote,
+    reversed,
+    canReverse: !reversed && settlement.direction === "incoming-dues",
   };
 }
 
@@ -220,11 +225,12 @@ export function buildOperationalFinanceDashboardPresentation(
         .filter(
           (entry) =>
             entry.obligationId === status.obligationId &&
-            entry.direction === "incoming-dues" &&
-            !reversedSettlements.has(entry.settlementId)
+            entry.direction === "incoming-dues"
         )
         .sort((first, second) => first.recordedAt.localeCompare(second.recordedAt))
-        .map(settlementPresentation);
+        .map((settlement) =>
+          settlementPresentation(settlement, reversedSettlements.has(settlement.settlementId))
+        );
       return {
         obligationId: status.obligationId,
         financialOwnerId: status.financialOwnerId,

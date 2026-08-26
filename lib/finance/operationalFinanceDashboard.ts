@@ -2,7 +2,7 @@ import {
   buildOperationalFinanceDashboardPresentation,
   type OperationalFinanceDashboardPresentation,
 } from "@/lib/finance/operationalFinanceDashboardPresentation";
-import { deriveDuesStatus, recordSettlement } from "@/lib/finance/operationalFinanceLedger";
+import { deriveDuesStatus, recordSettlement, reverseSettlement } from "@/lib/finance/operationalFinanceLedger";
 import type {
   OperationalFinanceActor,
   OperationalFinanceLedgerRepository,
@@ -23,11 +23,31 @@ export type CommissionerDuesPaymentResult = Readonly<{
   dashboard: OperationalFinanceDashboardPresentation;
 }>;
 
+export type CommissionerDuesPaymentReversalRequest = Readonly<{
+  obligationId: string;
+  settlementId: string;
+  reason: string;
+  idempotencyKey: string;
+}>;
+
+export type CommissionerDuesPaymentReversalResult = Readonly<{
+  created: boolean;
+  reversalId: string;
+  dashboard: OperationalFinanceDashboardPresentation;
+}>;
+
 const ALLOWED_PAYMENT_FIELDS = new Set([
   "obligationId",
   "amountCents",
   "actualPaidAt",
   "commissionerNote",
+  "idempotencyKey",
+]);
+
+const ALLOWED_PAYMENT_REVERSAL_FIELDS = new Set([
+  "obligationId",
+  "settlementId",
+  "reason",
   "idempotencyKey",
 ]);
 
@@ -96,6 +116,37 @@ export function assertCommissionerFinanceActor(actor: OperationalFinanceActor) {
   if (actor.role !== "commissioner" || !actor.actorId.trim()) {
     throw new Error("Commissioner authorization is required.");
   }
+}
+
+export function parseCommissionerDuesPaymentReversalRequest(
+  input: unknown
+): CommissionerDuesPaymentReversalRequest {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    throw new Error("A payment reversal request object is required.");
+  }
+  const record = input as Record<string, unknown>;
+  const unsupported = Object.keys(record).filter(
+    (key) => !ALLOWED_PAYMENT_REVERSAL_FIELDS.has(key)
+  );
+  if (unsupported.length > 0) {
+    throw new Error(`Unsupported payment reversal field: ${unsupported[0]}.`);
+  }
+  for (const field of ["obligationId", "settlementId", "reason", "idempotencyKey"] as const) {
+    if (typeof record[field] !== "string" || !record[field].trim()) {
+      throw new Error(`${field} is required.`);
+    }
+  }
+  const reason = (record.reason as string).trim();
+  if (reason.length > 500) throw new Error("Reversal reason must be 500 characters or fewer.");
+  if (!/^[a-zA-Z0-9:._-]{8,240}$/.test(record.idempotencyKey as string)) {
+    throw new Error("A valid payment reversal idempotency key is required.");
+  }
+  return {
+    obligationId: (record.obligationId as string).trim(),
+    settlementId: (record.settlementId as string).trim(),
+    reason,
+    idempotencyKey: record.idempotencyKey as string,
+  };
 }
 
 export async function loadOperationalFinanceDashboard(
@@ -176,6 +227,50 @@ export async function recordCommissionerDuesPayment(
   return {
     created: mutation.created,
     settlement: mutation.value,
+    dashboard: await loadOperationalFinanceDashboard(repository, season),
+  };
+}
+
+export async function reverseCommissionerDuesPayment(
+  repository: OperationalFinanceLedgerRepository,
+  season: number,
+  rawRequest: unknown,
+  actor: OperationalFinanceActor,
+  recordedAt: string
+): Promise<CommissionerDuesPaymentReversalResult> {
+  assertCommissionerFinanceActor(actor);
+  if (season !== 2026) {
+    throw new Error("Dues payment reversals currently support 2026 only.");
+  }
+  const request = parseCommissionerDuesPaymentReversalRequest(rawRequest);
+  const snapshot = await repository.getSnapshot();
+  const obligation = snapshot.obligations.find(
+    (entry) => entry.obligationId === request.obligationId && entry.season === season
+  );
+  if (!obligation || obligation.category !== "dues-assessment") {
+    throw new Error("Dues obligation was not found.");
+  }
+  const settlement = snapshot.settlements.find(
+    (entry) =>
+      entry.settlementId === request.settlementId &&
+      entry.season === season &&
+      entry.obligationId === obligation.obligationId &&
+      entry.direction === "incoming-dues"
+  );
+  if (!settlement) throw new Error("Dues payment was not found for this obligation.");
+
+  const mutation = await reverseSettlement(
+    repository,
+    season,
+    settlement.settlementId,
+    request.reason,
+    actor,
+    request.idempotencyKey,
+    recordedAt
+  );
+  return {
+    created: mutation.created,
+    reversalId: mutation.value.reversalId,
     dashboard: await loadOperationalFinanceDashboard(repository, season),
   };
 }

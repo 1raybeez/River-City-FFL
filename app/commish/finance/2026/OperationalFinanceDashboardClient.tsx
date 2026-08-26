@@ -155,6 +155,47 @@ export default function OperationalFinanceDashboardClient({
     }
   };
 
+  const reversePayment = async (
+    row: OperationalFinanceDashboardDuesRow,
+    settlement: OperationalFinanceDashboardDuesRow["settlements"][number]
+  ) => {
+    if (pending || settlement.reversed || !settlement.canReverse) return;
+    const paidDate = settlement.actualPaidAtLabel;
+    const confirmed = window.confirm(
+      `Reverse ${row.financialOwnerName}'s ${formatCurrency(settlement.amountCents)} ${settlement.paymentMethodLabel} payment?\n\n` +
+      `Paid date: ${paidDate}\n\n` +
+      "This restores the outstanding dues balance and preserves the reversal in the audit history."
+    );
+    if (!confirmed) return;
+    setPending(true);
+    setError(null);
+    setConfirmation(null);
+    try {
+      const response = await fetch(
+        `/api/commish/finance/2026/dues/${encodeURIComponent(row.obligationId)}/settlements/${encodeURIComponent(settlement.settlementId)}/reverse`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reason: `Payment recorded in error for ${row.financialOwnerName}.`,
+            idempotencyKey: `commissioner-reverse-dues-${crypto.randomUUID()}`,
+          }),
+        }
+      );
+      const payload = (await response.json()) as {
+        dashboard?: OperationalFinanceCommissionerDashboardPresentation;
+        error?: string;
+      };
+      if (!response.ok || !payload.dashboard) throw new Error(payload.error || "Payment reversal failed.");
+      setDashboard(payload.dashboard);
+      setConfirmation(`Payment reversed for ${row.financialOwnerName}; the original payment remains in the ledger history.`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Payment reversal failed.");
+    } finally {
+      setPending(false);
+    }
+  };
+
   const summaryCards = [
     ["Assessed", dashboard.summary.duesAssessedCents],
     ["Collected", dashboard.summary.duesCollectedCents],
@@ -270,8 +311,21 @@ export default function OperationalFinanceDashboardClient({
                       <p className="text-[9px] font-black uppercase tracking-widest text-gray-500">Recorded Payments</p>
                       <ul className="mt-2 space-y-2">
                         {row.settlements.map((settlement) => (
-                          <li key={settlement.settlementId} className="text-xs font-semibold text-gray-600 dark:text-gray-300">
-                            {formatCurrency(settlement.amountCents)} · {settlement.paymentMethodLabel} · Paid date: {settlement.actualPaidAtLabel}
+                          <li key={settlement.settlementId} className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                            <span className={settlement.reversed ? "line-through opacity-60" : ""}>
+                              {formatCurrency(settlement.amountCents)} · {settlement.paymentMethodLabel} · Paid date: {settlement.actualPaidAtLabel}
+                              {settlement.reversed ? " · REVERSED" : ""}
+                            </span>
+                            {settlement.canReverse && (
+                              <button
+                                type="button"
+                                onClick={() => void reversePayment(row, settlement)}
+                                disabled={pending}
+                                className="min-h-9 rounded-lg border border-red-600/40 px-3 text-[10px] font-black uppercase tracking-wider text-red-700 transition hover:bg-red-600/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:text-red-300"
+                              >
+                                Reverse Payment
+                              </button>
+                            )}
                           </li>
                         ))}
                       </ul>
@@ -322,7 +376,7 @@ export default function OperationalFinanceDashboardClient({
               );
             })}
           </div>
-          <p className="mt-4 text-xs font-semibold text-gray-500 dark:text-gray-400">Existing payments are append-only. Corrections require a future protected reversal workflow; no payment can be edited or deleted here.</p>
+          <p className="mt-4 text-xs font-semibold text-gray-500 dark:text-gray-400">Payments are append-only. Reversal preserves the original record and adds a protected audit event; payments cannot be edited or deleted.</p>
         </section>
 
         <OperationalFinanceAwardReviewSection
