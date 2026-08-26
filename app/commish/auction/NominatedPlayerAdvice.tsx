@@ -38,6 +38,7 @@ export default function NominatedPlayerAdvice({ advice }: { advice: NominatedPla
         <span>ADP {advice.adp === null ? '—' : advice.adp.toFixed(1)}</span>
         <span>{advice.recommendationCategory ? `${advice.recommendationCategory}${advice.recommendationRank ? ` #${advice.recommendationRank}` : ''}` : 'No category card'}</span>
       </div>
+      {advice.liveOpportunity ? <p className="mt-3 text-[10px] font-black uppercase tracking-widest">Live Opportunity <strong className="ml-1">{advice.liveOpportunity.label}</strong> · {advice.liveOpportunity.absoluteDifference >= 0 ? 'Below' : 'Above'} consensus by {money(Math.abs(advice.liveOpportunity.absoluteDifference))} ({Math.abs(advice.liveOpportunity.percentageDifference ?? 0).toFixed(1)}%)</p> : null}
       {advice.reasons.length > 0 ? <p className="mt-3 text-[10px] font-medium leading-4"><span className="font-black uppercase tracking-widest opacity-60">Why: </span>{advice.reasons.join(' ')}</p> : null}
       {advice.warnings.length > 0 ? <p className="mt-2 text-[10px] font-bold leading-4 opacity-80">{advice.warnings.join(' ')}</p> : null}
     </div>

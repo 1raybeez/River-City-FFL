@@ -1,5 +1,6 @@
 import { recommendRayJeffreyMaxBid } from "@/lib/auction/bidRecommendations";
 import type { RecommendedNowEvaluation } from "@/lib/auction/recommendedNow";
+import { calculateLiveOpportunity, classifyShadowLiveOpportunity, type ShadowLiveOpportunityBand } from "@/lib/auction/decisionScoreCalibration";
 
 export const NOMINATION_ADVISOR_VERSION = "wr-m12b-nomination-advisor-v1";
 
@@ -25,6 +26,7 @@ export type NominatedPlayerAdvice = {
     nflTeam: string | null;
   };
   currentBid: number | null;
+  liveOpportunity: { label: ShadowLiveOpportunityBand; absoluteDifference: number; percentageDifference: number | null } | null;
   recommendationState: NominationAdviceState;
   targetLow: number | null;
   targetHigh: number | null;
@@ -66,6 +68,7 @@ function buildUnavailable(
         }
       : { playerId: "", playerName: "", position: null, nflTeam: null },
     currentBid: nomination?.currentBid ?? null,
+    liveOpportunity: null,
     recommendationState: "UNAVAILABLE",
     targetLow: null,
     targetHigh: null,
@@ -155,6 +158,9 @@ export function buildNominatedPlayerAdvice({
     version: NOMINATION_ADVISOR_VERSION,
     player,
     currentBid: nomination.currentBid,
+    liveOpportunity: nomination.currentBid === null || evaluation.auctionConsensus === null
+      ? null
+      : { label: classifyShadowLiveOpportunity(evaluation.auctionConsensus, nomination.currentBid), ...calculateLiveOpportunity(evaluation.auctionConsensus, nomination.currentBid) },
     targetLow: evaluation.targetLow,
     targetHigh: evaluation.targetHigh,
     privateMax,

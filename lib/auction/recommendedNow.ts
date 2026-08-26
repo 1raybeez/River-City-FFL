@@ -66,6 +66,38 @@ export type RecommendedNowResult = {
   };
   diagnostic?: RecommendedNowDiagnostic;
   evaluation?: RecommendedNowEvaluation | null;
+  decisionRanking?: DecisionRankingResult;
+};
+
+export type DecisionRankingPlayer = {
+  rank: number;
+  sleeperPlayerId: string;
+  playerName: string;
+  position: string | null;
+  nflTeam: string | null;
+  rawDecisionScore: number;
+  displayDecisionScore: number;
+  marketScore: number;
+  auctionComponent: number;
+  adpComponent: number | null;
+  qualityComponent: number;
+  rosterFitModifier: number;
+  scarcityModifier: number;
+  rayModifier: number;
+  affordability: RecommendedNowAffordability;
+  auctionConsensus: number;
+  adp: number | null;
+  auctionSourceCount: number;
+  adpSourceCount: number;
+  explanation: string;
+};
+
+export type DecisionRankingResult = {
+  status: "ready" | "unavailable";
+  policyVersion: string;
+  players: DecisionRankingPlayer[];
+  decisionByPlayer?: Record<string, DecisionRankingPlayer>;
+  error?: string;
 };
 
 export type RecommendedNowEvaluation = {

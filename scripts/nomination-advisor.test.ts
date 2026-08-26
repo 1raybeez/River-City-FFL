@@ -64,6 +64,9 @@ assert.equal(advice(12, { preferenceTag: "fade" }).recommendationState, "PASS");
 assert.match(advice(12, { preferenceTag: "fade" }).reasons[0] ?? "", /private fade/i);
 assert.equal(advice(20, { preferenceTag: "target", targetLow: 10, targetHigh: 22 }).recommendationState, "STRETCH");
 assert.equal(advice(24, { preferenceTag: "watch" }).recommendationState, "PASS");
+assert.equal(advice(5).liveOpportunity?.label, "SMASH VALUE");
+assert.equal(advice(20).liveOpportunity?.label, "FAIR");
+assert.equal(advice(22).liveOpportunity?.label, "STRETCH");
 assert.equal(buildNominatedPlayerAdvice({ nomination: nomination(10), evaluation: null, recommendationRank: null }).recommendationState, "UNAVAILABLE");
 assert.equal(advice(10, { budgetSafeMax: 0 }).recommendationState, "UNAVAILABLE");
 assert.equal(buildNominatedPlayerAdvice({ nomination: nomination(null), evaluation: evaluation(), recommendationRank: null }).recommendationState, "UNAVAILABLE");
@@ -92,6 +95,7 @@ assert.match(advisor, /BUY|STRETCH|PASS|UNAVAILABLE/);
 assert.match(advisor, /budgetSafeMax/);
 assert.match(hud, /api\/auction\/nomination-advice/);
 assert.match(adviceUi, /River City Advice/);
+assert.match(adviceUi, /Live Opportunity/);
 assert.match(hud, /Waiting for next nomination/);
 
 console.log(`nomination advisor ${NOMINATION_ADVISOR_VERSION}: PASS`);

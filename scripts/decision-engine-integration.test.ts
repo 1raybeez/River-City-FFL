@@ -1,0 +1,37 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { calculateShadowDecisionScore, rankShadowDecisionScores } from "../lib/auction/decisionScore";
+
+const player = { playerId: "p", playerName: "Player", position: "QB", nflTeam: "RIV", auctionConsensus: 80, auctionSourceCount: 5, auctionConfidenceScore: 90, auctionLow: 75, auctionHigh: 85, adp: 10, adpSourceCount: 5 } as const;
+const result = calculateShadowDecisionScore({ player, marketPlayers: [player], state: { roster: [], remainingBudget: 150, rosterSlotsRemaining: 16 } });
+assert.equal(result.rawDecisionScore, result.marketScore + result.rayModifier);
+assert.equal(result.displayDecisionScore, Math.round(Math.min(Math.max(result.rawDecisionScore * 100 / 107, 0), 100) * 10) / 10);
+assert.ok(result.displayDecisionScore >= 0 && result.displayDecisionScore <= 100);
+assert.equal(rankShadowDecisionScores([player], { roster: [], remainingBudget: 150, rosterSlotsRemaining: 16 })[0].sleeperPlayerId, "p");
+
+const server = readFileSync("lib/auction/recommendedNowServer.ts", "utf8");
+const route = readFileSync("app/api/auction/recommended-now/route.ts", "utf8");
+const hud = readFileSync("app/commish/auction/AuctionWarRoomClient.tsx", "utf8");
+const quickPicks = readFileSync("app/commish/auction/RecommendedNow.tsx", "utf8");
+assert.match(server, /decisionRanking/);
+assert.match(server, /rankShadowDecisionScores/);
+assert.match(server, /eligibleForAcquireNow/);
+assert.match(server, /decisionByPlayer/);
+assert.match(server, /allResults/);
+assert.match(route, /requireAuctionWarRoomAccess/);
+assert.match(hud, /decisionScoresByPlayerId/);
+assert.match(hud, /decisionDisplayScoresByPlayerId/);
+assert.match(hud, /decisionByPlayer/);
+assert.match(hud, /Decision Score/);
+assert.match(hud, /Full Player Detail/);
+assert.match(hud, /manualSaleValidationAttempted/);
+assert.match(hud, /min-\[680px\]:grid-cols-\[minmax\(0,1\.5fr\)_minmax\(260px,1fr\)\]/);
+const selectionFlow = hud.slice(hud.indexOf("const selectManualSalePlayer"), hud.indexOf("const selectRecommendedNowPlayer"));
+assert.doesNotMatch(selectionFlow, /setIsPlayerDetailDrawerOpen\(true\)/);
+assert.doesNotMatch(selectionFlow, /focusManualSalePriceInput\(\)/);
+assert.doesNotMatch(selectionFlow, /setPlayerPoolSearch\(/);
+assert.doesNotMatch(selectionFlow, /scrollIntoView/);
+assert.match(quickPicks, /Quick Picks/);
+assert.match(quickPicks, /onSelectPlayer/);
+assert.doesNotMatch(hud, /<DecisionRanking\s/);
+console.log("Decision Engine integration checks passed.");

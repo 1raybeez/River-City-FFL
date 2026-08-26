@@ -20,6 +20,10 @@ import {
   type RecommendedNowValueRow,
 } from "@/lib/auction/recommendedNow";
 import type { AuctionAccessSession } from "@/lib/auth/auctionAccess";
+import { rankShadowDecisionScores, type ShadowDecisionState } from "@/lib/auction/decisionScore";
+import { DECISION_SCORE_SHADOW_VERSION } from "@/lib/auction/decisionScore";
+import type { CalibrationPlayer } from "@/lib/auction/decisionScoreCalibration";
+import type { DecisionRankingPlayer, DecisionRankingResult } from "@/lib/auction/recommendedNow";
 
 async function readAuctionValues() {
   try {
@@ -56,6 +60,28 @@ function toValueRows(rows: Awaited<ReturnType<typeof readAuctionValues>>): Recom
 
 function toAdpRows(rows: Awaited<ReturnType<typeof readAdpConsensus>>): RecommendedNowAdpRow[] {
   return rows.map((row) => ({ playerId: row.playerId, adp: row.consensusOverallAdp ?? null, sourceCount: row.sourceCount ?? 0 }));
+}
+
+function buildDecisionPlayers(
+  values: Awaited<ReturnType<typeof readAuctionValues>>,
+  adp: Awaited<ReturnType<typeof readAdpConsensus>>,
+  purchases: readonly RecommendedNowPurchase[],
+  rosterId: number,
+  ownerBudget: { remainingBudget: number; rosterSlotsRemaining: number },
+): DecisionRankingResult {
+  const adpById = new Map(adp.map((row) => [row.playerId, row]));
+  const purchasedIds = new Set(purchases.map((purchase) => purchase.playerId).filter((id): id is string => Boolean(id)));
+  const players: CalibrationPlayer[] = values.flatMap((row) => {
+    if (!row.sleeperPlayerId || row.averageValue == null || purchasedIds.has(row.sleeperPlayerId)) return [];
+    const adpRow = adpById.get(row.sleeperPlayerId);
+    return [{ playerId: row.sleeperPlayerId, playerName: row.playerName, position: row.position ?? null, nflTeam: row.nflTeam ?? null, auctionConsensus: row.averageValue, auctionSourceCount: row.sourceCount ?? 0, auctionConfidenceScore: typeof row.confidenceScore === "number" ? row.confidenceScore : null, auctionLow: row.lowValue ?? null, auctionHigh: row.highValue ?? null, adp: adpRow?.consensusOverallAdp ?? null, adpSourceCount: adpRow?.sourceCount ?? 0 }];
+  });
+  const state: ShadowDecisionState = { roster: purchases.filter((purchase) => purchase.rosterId === rosterId).map((purchase) => ({ playerId: purchase.playerId, playerName: purchase.playerName, position: purchase.position, price: purchase.price })), remainingBudget: ownerBudget.remainingBudget, rosterSlotsRemaining: ownerBudget.rosterSlotsRemaining };
+  const allResults = rankShadowDecisionScores(players, state);
+  const toClientPlayer = (result: ReturnType<typeof rankShadowDecisionScores>[number], rank: number): DecisionRankingPlayer => ({ rank, sleeperPlayerId: result.sleeperPlayerId, playerName: result.playerName, position: result.position, nflTeam: result.nflTeam, rawDecisionScore: result.rawDecisionScore, displayDecisionScore: result.displayDecisionScore, marketScore: result.marketScore, auctionComponent: result.auctionComponent, adpComponent: result.adpComponent, qualityComponent: result.qualityComponent, rosterFitModifier: result.rosterFitModifier, scarcityModifier: result.scarcityModifier, rayModifier: result.rayModifier, affordability: result.affordability, auctionConsensus: players.find((player) => player.playerId === result.sleeperPlayerId)?.auctionConsensus ?? 0, adp: players.find((player) => player.playerId === result.sleeperPlayerId)?.adp ?? null, auctionSourceCount: result.qualityInputs.auctionSourceCount, adpSourceCount: result.qualityInputs.adpSourceCount, explanation: result.explanations.slice(1, 3).join(" ") });
+  const decisionByPlayer = Object.fromEntries(allResults.map((result, index) => [result.sleeperPlayerId, toClientPlayer(result, index + 1)]));
+  const playersForClient = allResults.filter((result) => result.eligibleForAcquireNow).slice(0, 5).map((result) => decisionByPlayer[result.sleeperPlayerId]);
+  return { status: "ready", policyVersion: DECISION_SCORE_SHADOW_VERSION, players: playersForClient, decisionByPlayer };
 }
 
 function toPurchases(snapshot: {
@@ -130,5 +156,11 @@ export async function readRecommendedNowForActor(
   const result = buildRecommendedNow({ values: toValueRows(values), adp: toAdpRows(adp), preferences: new Map(preferences.map((preference) => [preference.sleeperPlayerId, { tag: preference.tag, preferredEntry: preference.preferredEntry, plannedCap: preference.plannedCap }])), purchases: allPurchases, teams: teamStates, rayRosterId: rosterId, rayBudget: { teamBudget: riverCityAuctionLeagueSettings.auctionBudgetPerTeam, keeperCostTotal: ownerBudget.keeperCostTotal, spentBudget: ownerBudget.spentBudget, rosterSlotsTotal: 16 }, generatedAt: new Date().toISOString() }, { diagnostic: options.diagnostic ?? false, evaluationPlayerId: options.evaluationPlayerId });
   if (reconciliation.conflicts.length > 0) { result.status = "partial"; result.warnings.push(...reconciliation.conflicts.map((conflict) => conflict.message)); }
   if (result.diagnostic) result.diagnostic.reconciliation = { activePurchaseCount: reconciliation.activePurchases.length, voidedPurchaseCount: reconciliation.voidedPurchases.length, sleeperPurchaseCount: reconciliation.sourceCounts.sleeperPurchaseCount, operationalPurchaseCount: reconciliation.sourceCounts.operationalPurchaseCount, warRoomPurchaseCount: reconciliation.sourceCounts.warRoomPurchaseCount, deduplicatedPurchaseCount: reconciliation.records.length, conflicts: reconciliation.conflicts.map((conflict) => conflict.message), rayPurchases: reconciliation.records.filter((purchase) => purchase.rosterId === rosterId).map((purchase) => ({ playerId: purchase.playerId, playerName: purchase.playerName, status: purchase.status, source: purchase.source, amount: purchase.amount })) };
+  try {
+    result.decisionRanking = buildDecisionPlayers(values, adp, allPurchases, rosterId, { remainingBudget: ownerBudget.keeperCostTotal + ownerBudget.spentBudget > riverCityAuctionLeagueSettings.auctionBudgetPerTeam ? 0 : riverCityAuctionLeagueSettings.auctionBudgetPerTeam - ownerBudget.keeperCostTotal - ownerBudget.spentBudget, rosterSlotsRemaining: Math.max(0, 16 - allPurchases.filter((purchase) => purchase.rosterId === rosterId).length) });
+  } catch (error) {
+    console.warn("[recommended-now] Decision ranking unavailable", error);
+    result.decisionRanking = { status: "unavailable", policyVersion: DECISION_SCORE_SHADOW_VERSION, players: [], error: "Decision Ranking is temporarily unavailable." };
+  }
   return result;
 }

@@ -172,7 +172,7 @@ import {
   type RosterGuidanceWarning,
 } from '@/lib/auction/rosterGuidance';
 import type { AuctionTeamId } from '@/lib/auction/types';
-import type { RecommendedNowResult } from '@/lib/auction/recommendedNow';
+import type { DecisionRankingPlayer, RecommendedNowResult } from '@/lib/auction/recommendedNow';
 
 const statusStyles: Record<string, string> = {
   active: 'border-emerald-600/20 bg-emerald-600/10 text-emerald-600',
@@ -402,6 +402,7 @@ export type AuctionWarRoomInitialLiveState = WarRoomLiveAuctionState;
 export type AuctionWarRoomInitialBudget = DerivedWarRoomBudgetState;
 
 type PlayerPoolSortKey =
+  | 'decisionScore'
   | 'averageValue'
   | 'highValue'
   | 'adp'
@@ -857,6 +858,7 @@ function fetchSharedSleeperAutoSnapshotPayload() {
 }
 
 const playerPoolSortOptions: Array<{ label: string; value: PlayerPoolSortKey }> = [
+  { label: 'Decision Score', value: 'decisionScore' },
   { label: 'Average Value', value: 'averageValue' },
   { label: 'High Value', value: 'highValue' },
   { label: 'ADP', value: 'adp' },
@@ -1544,9 +1546,36 @@ function formatAdp(value: number | null | undefined) {
 function sortPlayerPoolRows(
   players: ProcessedPlayerValueRow[],
   sortKey: PlayerPoolSortKey,
-  preferencesByPlayerId?: DraftPlanPreferenceMap
+  preferencesByPlayerId?: DraftPlanPreferenceMap,
+  decisionScoresByPlayerId?: ReadonlyMap<string, Pick<DecisionRankingPlayer, 'rawDecisionScore' | 'marketScore' | 'auctionConsensus' | 'adp'>>
 ) {
   return [...players].sort((firstPlayer, secondPlayer) => {
+    if (sortKey === 'decisionScore') {
+      const first = decisionScoresByPlayerId?.get(firstPlayer.sleeperPlayerId ?? '');
+      const second = decisionScoresByPlayerId?.get(secondPlayer.sleeperPlayerId ?? '');
+      if (first && !second) return -1;
+      if (!first && second) return 1;
+      if (first && second) {
+        const rawDifference = second.rawDecisionScore - first.rawDecisionScore;
+        if (rawDifference !== 0) return rawDifference;
+        const marketDifference = second.marketScore - first.marketScore;
+        if (marketDifference !== 0) return marketDifference;
+        const auctionDifference = second.auctionConsensus - first.auctionConsensus;
+        if (auctionDifference !== 0) return auctionDifference;
+        if (first.adp !== null && second.adp !== null && first.adp !== second.adp) return first.adp - second.adp;
+        if (first.adp === null && second.adp !== null) return 1;
+        if (first.adp !== null && second.adp === null) return -1;
+      }
+
+      if (!first && !second) {
+        const auctionDifference = getSortableNumber(secondPlayer.averageValue) - getSortableNumber(firstPlayer.averageValue);
+        if (auctionDifference !== 0) return auctionDifference;
+        const firstAdp = getAdpForPlayer(firstPlayer)?.consensusOverallAdp ?? Number.POSITIVE_INFINITY;
+        const secondAdp = getAdpForPlayer(secondPlayer)?.consensusOverallAdp ?? Number.POSITIVE_INFINITY;
+        if (firstAdp !== secondAdp) return firstAdp - secondAdp;
+      }
+    }
+
     if (sortKey === 'averageValue') {
       const valueDifference =
         getSortableNumber(secondPlayer.averageValue) -
@@ -3921,7 +3950,6 @@ export default function AuctionWarRoomClient({
 
   const masterPlayerSearchInputRef = useRef<HTMLInputElement | null>(null);
   const manualSalePriceInputRef = useRef<HTMLInputElement | null>(null);
-  const currentNominationSectionRef = useRef<HTMLElement | null>(null);
   const myBoardResultsScrollRef = useRef<HTMLDivElement | null>(null);
   const draftPlanSyncedPlayerIdRef = useRef<string | null>(null);
   const syncedSleeperTeamNameRef = useRef<string | null>(null);
@@ -3944,6 +3972,29 @@ export default function AuctionWarRoomClient({
   const [recommendedNow, setRecommendedNow] = useState<RecommendedNowResult | null>(null);
   const [recommendedNowStatus, setRecommendedNowStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [recommendedNowError, setRecommendedNowError] = useState<string | null>(null);
+  const decisionScoresByPlayerId = useMemo(
+    () => new Map(
+      Object.values(recommendedNow?.decisionRanking?.decisionByPlayer ?? {}).map((player) => [
+        player.sleeperPlayerId,
+        {
+          rawDecisionScore: player.rawDecisionScore,
+          marketScore: player.marketScore,
+          auctionConsensus: player.auctionConsensus,
+          adp: player.adp,
+        },
+      ])
+    ),
+    [recommendedNow]
+  );
+  const decisionDisplayScoresByPlayerId = useMemo(
+    () => new Map(
+      Object.values(recommendedNow?.decisionRanking?.decisionByPlayer ?? {}).map((player) => [
+        player.sleeperPlayerId,
+        player.displayDecisionScore,
+      ])
+    ),
+    [recommendedNow]
+  );
   const [sleeperLastAttemptedRefreshAt, setSleeperLastAttemptedRefreshAt] =
     useState<string | null>(null);
   const [sleeperLastSuccessfulRefreshAt, setSleeperLastSuccessfulRefreshAt] =
@@ -3957,7 +4008,7 @@ export default function AuctionWarRoomClient({
   const [playerPoolPreferenceFilter, setPlayerPoolPreferenceFilter] =
     useState<PlayerPoolPreferenceFilter>('all');
   const [myBoardFilter, setMyBoardFilter] = useState<MyBoardFilter>('available');
-  const [playerPoolSort, setPlayerPoolSort] = useState<PlayerPoolSortKey>('averageValue');
+  const [playerPoolSort, setPlayerPoolSort] = useState<PlayerPoolSortKey>('decisionScore');
   const [historyAuditSearch, setHistoryAuditSearch] = useState('');
   const [historyAuditFilter, setHistoryAuditFilter] =
     useState<HistoryAuditFilter>('all');
@@ -4075,6 +4126,7 @@ export default function AuctionWarRoomClient({
   const [manualSaleHighlightedMatchIndex, setManualSaleHighlightedMatchIndex] =
     useState(0);
   const [manualSalePriceInput, setManualSalePriceInput] = useState('');
+  const [manualSaleValidationAttempted, setManualSaleValidationAttempted] = useState(false);
   const [manualSaleBuyerTeamId, setManualSaleBuyerTeamId] = useState<
     AuctionTeamId | ''
   >(
@@ -4526,17 +4578,19 @@ export default function AuctionWarRoomClient({
         );
   const manualSaleValidationMessage =
     manualSaleError ??
-    (!access.canRecordSales
-      ? 'Manual sale controls are commissioner-only.'
-      : !manualSaleSelectedPlayer
-      ? 'Use the master search or My Board to select a player before finishing a sale.'
-      : !isManualSalePriceValid
-        ? 'Enter a whole-dollar sale price of at least $1.'
-        : !manualSaleBuyerTeam
-          ? 'Choose a buying team.'
-          : manualSalePlayerAlreadyTaken
-            ? `${manualSaleSelectedPlayer.originalPlayerName} is already marked taken by ${formatPurchaseSourceLabel(manualSalePlayerAlreadyTaken.source)}.`
-          : null);
+    (manualSaleValidationAttempted || manualSalePriceInput.trim() !== ''
+      ? !access.canRecordSales
+        ? 'Manual sale controls are commissioner-only.'
+        : !manualSaleSelectedPlayer
+          ? 'Use the master search or My Board to select a player before finishing a sale.'
+          : !isManualSalePriceValid
+            ? 'Enter a whole-dollar sale price of at least $1.'
+            : !manualSaleBuyerTeam
+              ? 'Choose a buying team.'
+              : manualSalePlayerAlreadyTaken
+                ? `${manualSaleSelectedPlayer.originalPlayerName} is already marked taken by ${formatPurchaseSourceLabel(manualSalePlayerAlreadyTaken.source)}.`
+                : null
+      : null);
   const hasManualAuctionSales = manualAuctionSales.length > 0;
   const rayKDefStrategyMessages = getRayKDefStrategyMessages(activePurchaseRows);
   const manualSalePlayerStrategyMessage =
@@ -4824,7 +4878,8 @@ export default function AuctionWarRoomClient({
     return sortPlayerPoolRows(
       filteredRows,
       playerPoolSort,
-      draftPlanPreferencesByPlayerId
+      draftPlanPreferencesByPlayerId,
+      decisionScoresByPlayerId
     );
   }, [
     activePurchaseRows,
@@ -4838,6 +4893,7 @@ export default function AuctionWarRoomClient({
     playerPoolSearch,
     playerPoolSort,
     playerPoolStatusFilter,
+    decisionScoresByPlayerId,
   ]);
 
   const hasActivePlayerPoolFilters =
@@ -4901,7 +4957,8 @@ export default function AuctionWarRoomClient({
     return sortPlayerPoolRows(
       filteredRows,
       playerPoolSort,
-      draftPlanPreferencesByPlayerId
+      draftPlanPreferencesByPlayerId,
+      decisionScoresByPlayerId
     );
   }, [
     activePurchaseRows,
@@ -4913,6 +4970,7 @@ export default function AuctionWarRoomClient({
     playerPoolSearch,
     playerPoolSort,
     playerPoolStatusFilter,
+    decisionScoresByPlayerId,
   ]);
   const hasActiveMyBoardFilters =
     playerPoolSearch.trim() !== '' ||
@@ -5062,6 +5120,9 @@ export default function AuctionWarRoomClient({
     manualSaleSelectedPlayer?.rowNumber === selectedPlayer.rowNumber
       ? manualSalePriceValue
       : null;
+  const selectedDecisionResult = selectedPlayer?.sleeperPlayerId
+    ? recommendedNow?.decisionRanking?.decisionByPlayer?.[selectedPlayer.sleeperPlayerId] ?? null
+    : null;
   const selectedPlayerKDefStrategyMax = selectedPlayer
     ? getRayKDefStrategyMax(selectedPlayer.position)
     : null;
@@ -6011,7 +6072,7 @@ export default function AuctionWarRoomClient({
     setPlayerPoolPreferenceFilter('all');
     setMyBoardFilter('available');
     setPlayerPoolStatusFilter('all');
-    setPlayerPoolSort('averageValue');
+    setPlayerPoolSort('decisionScore');
   };
   const focusManualSalePlayerSearch = () => {
     window.requestAnimationFrame(() => {
@@ -6026,19 +6087,11 @@ export default function AuctionWarRoomClient({
   };
   const selectManualSalePlayer = (player: ProcessedPlayerValueRow) => {
     setSelectedPlayerRowNumber(player.rowNumber);
-    setIsPlayerDetailDrawerOpen(true);
     setManualSaleSelectedPlayerRowNumber(player.rowNumber);
-    setPlayerPoolSearch(player.originalPlayerName);
     setManualSalePlayerSearchOpen(false);
     setManualSaleHighlightedMatchIndex(0);
     setManualSaleError(null);
-    focusManualSalePriceInput();
-    window.requestAnimationFrame(() => {
-      currentNominationSectionRef.current?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest',
-      });
-    });
+    setManualSaleValidationAttempted(false);
   };
 
   const selectRecommendedNowPlayer = (playerId: string) => {
@@ -6056,6 +6109,7 @@ export default function AuctionWarRoomClient({
     setManualSalePlayerSearchOpen(false);
     setManualSaleHighlightedMatchIndex(0);
     setManualSaleError(null);
+    setManualSaleValidationAttempted(false);
   };
   const closePlayerDetailDrawer = () => {
     setIsPlayerDetailDrawerOpen(false);
@@ -6261,6 +6315,7 @@ export default function AuctionWarRoomClient({
     priceInput: string;
     keepPlayerSelected: boolean;
   }) => {
+    setManualSaleValidationAttempted(true);
     const team = getTeam(buyerTeamId || null);
     const salePrice = getManualSalePriceValue(priceInput);
 
@@ -8618,7 +8673,7 @@ export default function AuctionWarRoomClient({
   return (
     <div className="min-h-screen overflow-x-hidden bg-white pb-4 font-sans text-black selection:bg-orange-600 transition-colors duration-300 dark:bg-[#0a0a0a] dark:text-white">
       <header className="sticky top-0 z-50 border-b border-black/10 bg-white/95 backdrop-blur-md dark:border-white/10 dark:bg-[#0a0a0a]/95">
-        <div className="mx-auto grid max-w-[1800px] gap-2 px-3 py-2 sm:px-4 xl:grid-cols-[minmax(320px,0.95fr)_minmax(360px,1.45fr)_minmax(290px,0.9fr)] xl:items-center">
+        <div className="mx-auto grid max-w-[1800px] gap-1.5 px-2 py-1.5 sm:px-4 lg:grid-cols-[minmax(190px,0.9fr)_minmax(250px,1.2fr)_auto] lg:items-center xl:grid-cols-[minmax(320px,0.95fr)_minmax(360px,1.45fr)_minmax(290px,0.9fr)] xl:gap-2 xl:py-2">
           <div className="flex min-w-0 items-center gap-3">
             <Link
               href="/commish"
@@ -8633,7 +8688,7 @@ export default function AuctionWarRoomClient({
                 alt={`${draftBoardTitle} logo`}
                 width={52}
                 height={52}
-                className="h-11 w-11 shrink-0 rounded-xl border border-black/10 bg-white object-cover p-0 dark:border-white/10 sm:h-[52px] sm:w-[52px]"
+                className="h-9 w-9 shrink-0 rounded-xl border border-black/10 bg-white object-cover p-0 dark:border-white/10 sm:h-11 sm:w-11 xl:h-[52px] xl:w-[52px]"
                 unoptimized
                 onError={(event) => {
                   event.currentTarget.src = riverCityLogoUrl;
@@ -8641,19 +8696,19 @@ export default function AuctionWarRoomClient({
               />
               <div className="min-w-[13rem] flex-1">
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <h1 className="min-w-0 break-words text-xl font-black uppercase italic leading-none tracking-tight sm:text-2xl">
+                  <h1 className="min-w-0 break-words text-lg font-black uppercase italic leading-none tracking-tight sm:text-xl xl:text-2xl">
                     {ownerBoardTeamName ?? 'My Franchise'}
                   </h1>
                   <span className="shrink-0 text-[9px] font-black uppercase tracking-[0.22em] text-gray-400">
                     Draft Board
                   </span>
                 </div>
-                <span className="inline-flex w-fit rounded-full border border-orange-600/20 bg-orange-600/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">
+                <span className="inline-flex w-fit rounded-full border border-orange-600/20 bg-orange-600/10 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300 xl:px-3 xl:py-1.5 xl:text-[9px]">
                   {getOwnerRoleLabel(access)}
                 </span>
                 {!access.canRecordSales ? <MockBadge /> : null}
               </div>
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <div className="hidden min-w-0 flex-wrap items-center gap-2 xl:flex">
                 <p className="min-w-0 flex-1 truncate text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">
                   {ownerIdentityLabel ? `${ownerIdentityLabel} | ` : ''}
                   {riverCityAuctionLeagueSettings.leagueName} | {riverCityAuctionLeagueSettings.season}
@@ -8664,11 +8719,11 @@ export default function AuctionWarRoomClient({
           </div>
 
           <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] sm:items-center">
-	            <div className="min-w-0 rounded-xl border border-orange-600/20 bg-orange-600/10 px-3 py-2 text-orange-700 dark:text-orange-300">
+            <div className="min-w-0 rounded-xl border border-orange-600/20 bg-orange-600/10 px-2 py-1.5 text-orange-700 dark:text-orange-300 xl:px-3 xl:py-2">
 	              <p className="truncate text-[9px] font-black uppercase tracking-[0.22em]">
 	                {purchaseSourceLabel}
 	              </p>
-	              <div className="mt-1 flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-widest">
+              <div className="mt-0.5 flex min-w-0 flex-wrap gap-x-2 gap-y-0.5 text-[9px] font-bold uppercase tracking-widest xl:mt-1 xl:gap-x-3 xl:gap-y-1 xl:text-[10px]">
 	                <span className="min-w-0 max-w-full truncate">
 	                  {purchaseSourceDetail}
 	                </span>
@@ -8913,7 +8968,7 @@ export default function AuctionWarRoomClient({
 	          <div
 		            className={
 		              activeWorkspace === 'draft'
-			                ? 'grid min-h-0 gap-3 xl:grid-cols-[minmax(620px,1.25fr)_minmax(520px,1fr)] xl:items-start 2xl:grid-cols-[minmax(580px,1.1fr)_minmax(480px,1fr)_minmax(320px,0.62fr)]'
+			                ? 'grid min-h-0 gap-3 min-[680px]:grid-cols-[minmax(0,1.5fr)_minmax(260px,1fr)] min-[680px]:items-start'
 		                : 'grid min-h-0 gap-3 lg:grid-cols-2 lg:items-start'
 		            }
 		          >
@@ -8925,7 +8980,7 @@ export default function AuctionWarRoomClient({
                 icon={DollarSign}
                 className="min-h-0 lg:flex lg:flex-col"
               >
-                <div className="mb-3 rounded-2xl bg-black/[0.025] p-3 dark:bg-white/[0.04]">
+                <div className="mb-3 hidden rounded-2xl bg-black/[0.025] p-3 dark:bg-white/[0.04] xl:block">
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <p className="text-[9px] font-black uppercase tracking-[0.22em] text-gray-400">
                       NEXT TARGETS
@@ -9073,13 +9128,12 @@ export default function AuctionWarRoomClient({
 	                  aria-label="My Draft Board player results"
 	                  className="min-h-[360px] max-h-[70vh] overflow-x-hidden overflow-y-auto rounded-xl border border-black/10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-orange-600 dark:border-white/10 sm:min-h-[380px] lg:min-h-[320px] lg:max-h-[min(52vh,620px)]"
 	                >
-	                  <div className="grid gap-2 p-2 md:hidden">
+	                  <div className="grid gap-0 p-0 md:hidden">
 	                    {visibleMyBoardRows.length > 0 ? (
 	                      visibleMyBoardRows.map((player) => {
 	                        const preferenceTags = getEffectivePreferenceTags(player);
 	                        const draftPlanPreference =
 	                          getSavedDraftPlanPreference(player);
-	                        const byeWeek = getByeWeekForNflTeam(player.nflTeam);
 	                        const purchaseMatch = getPlayerPoolPurchaseMatch(
 	                          player,
 	                          activePurchaseRows
@@ -9096,6 +9150,7 @@ export default function AuctionWarRoomClient({
 	                          bidRecommendationContext
 	                        );
 	                        const playerAdp = getAdpForPlayer(player);
+                          const decision = decisionDisplayScoresByPlayerId.get(player.sleeperPlayerId ?? '');
 	                        const isSelected =
 	                          selectedPlayerRowNumber === player.rowNumber;
 	                        const displayStatusLabel = getMyBoardStatusLabel({
@@ -9110,19 +9165,19 @@ export default function AuctionWarRoomClient({
 	                            type="button"
 	                            aria-pressed={isSelected}
 	                            onClick={() => selectManualSalePlayer(player)}
-	                            className={`rounded-xl px-3 py-3 text-left text-xs transition focus:outline-none focus:ring-2 focus:ring-inset focus:ring-orange-600 ${getMyBoardCategoryClass({
+	                            className={`min-h-[64px] rounded-none border-b border-black/5 px-2 py-2 text-left text-xs transition focus:outline-none focus:ring-2 focus:ring-inset focus:ring-orange-600 dark:border-white/10 ${getMyBoardCategoryClass({
 	                              isDrafted,
 	                              isSelected,
 	                              preferenceTags,
 	                            })}`}
 	                          >
-	                            <div className="flex items-start justify-between gap-3">
+	                            <div className="flex items-center justify-between gap-2">
 	                              <div className="min-w-0">
 	                                <p className={`truncate text-sm font-black uppercase italic ${isDrafted ? 'line-through' : ''}`}>
 	                                  {player.originalPlayerName}
 	                                </p>
-	                                <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">
-	                                  {player.position ?? 'N/A'} · {player.nflTeam ?? 'N/A'} · Bye {formatByeWeek(byeWeek)}
+	                                <p className="mt-0.5 truncate text-[9px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">
+	                                  {player.position ?? 'N/A'} · {player.nflTeam ?? 'N/A'} · ADP {playerAdp ? formatAdp(playerAdp.consensusOverallAdp) : '—'}
 	                                </p>
 	                              </div>
 	                              <span
@@ -9149,7 +9204,7 @@ export default function AuctionWarRoomClient({
 	                              </span>
 	                            </div>
 
-	                            <div className="mt-2 flex flex-wrap gap-1">
+	                            <div className="mt-1 flex max-h-5 min-w-0 flex-wrap gap-1 overflow-hidden">
 	                              <DraftPlanChips
 	                                preference={draftPlanPreference}
 	                                preferenceTags={preferenceTags}
@@ -9161,14 +9216,18 @@ export default function AuctionWarRoomClient({
 	                              ) : null}
 	                            </div>
 
-	                            <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] font-black uppercase tracking-widest">
+	                            <div className="mt-1 grid grid-cols-3 gap-2 text-[9px] font-black uppercase tracking-widest">
+	                              <div>
+	                                <p className="text-gray-400">Decision</p>
+	                                <p className="mt-0.5 text-xs text-blue-600">{decision === undefined ? '—' : decision.toFixed(1)}</p>
+	                              </div>
 	                              <div>
 	                                <p className="text-gray-400">Market</p>
-	                                <p className="mt-0.5 text-sm text-orange-600">{formatMoney(player.averageValue ?? null)}</p>
+	                                <p className="mt-0.5 text-xs text-orange-600">{formatMoney(player.averageValue ?? null)}</p>
 	                              </div>
 	                              <div className="text-right">
 	                                <p className="text-gray-400">Rec Max</p>
-	                                <p className="mt-0.5 text-sm">{formatMoney(bidRecommendation.recommendedMaxBid)}</p>
+	                                <p className="mt-0.5 text-xs">{formatMoney(bidRecommendation.recommendedMaxBid)}</p>
 	                              </div>
 	                            </div>
 
@@ -9198,23 +9257,24 @@ export default function AuctionWarRoomClient({
 
 	                  <table className="hidden w-full table-fixed text-left md:table">
 	                    <colgroup>
-	                      <col className="w-[38%]" />
 	                      <col className="w-[7%]" />
-	                      <col className="w-[8%]" />
-	                      <col className="w-[7%]" />
+	                      <col className="w-[27%]" />
 	                      <col className="w-[11%]" />
+	                      <col className="w-[12%]" />
 	                      <col className="w-[13%]" />
-	                      <col className="w-[16%]" />
+	                      <col className="w-[12%]" />
+	                      <col className="w-[14%]" />
+
 	                    </colgroup>
 	                    <thead className="sticky top-0 z-20 bg-white dark:bg-[#121212]">
 	                      <tr className="border-b border-black/10 text-[9px] font-black uppercase tracking-widest text-gray-400 dark:border-white/10">
+	                        <th className="px-2 py-1.5">#</th>
 	                        <th className="px-2 py-1.5">Player</th>
 	                        <th className="px-2 py-1.5">Pos</th>
-	                        <th className="px-2 py-1.5">Team</th>
-	                        <th className="px-2 py-1.5">Bye</th>
+	                        <th className="hidden px-2 py-1.5 xl:table-cell">Team</th>
+	                        <th className="px-2 py-1.5 text-right">Decision</th>
 	                        <th className="px-2 py-1.5 text-right">Market</th>
 	                        <th className="px-2 py-1.5 text-right">Rec Max</th>
-	                        <th className="px-2 py-1.5">Status</th>
 	                      </tr>
 	                    </thead>
                     <tbody className="divide-y divide-black/5 dark:divide-white/10">
@@ -9223,11 +9283,6 @@ export default function AuctionWarRoomClient({
                           const preferenceTags = getEffectivePreferenceTags(player);
                           const draftPlanPreference =
                             getSavedDraftPlanPreference(player);
-                          const byeWeek = getByeWeekForNflTeam(player.nflTeam);
-                          const purchaseMatch = getPlayerPoolPurchaseMatch(
-                            player,
-                            activePurchaseRows
-                          );
                           const playerStatus = getPlayerPoolDisplayStatus(
                             player,
                             activePurchaseRows,
@@ -9240,19 +9295,15 @@ export default function AuctionWarRoomClient({
                             bidRecommendationContext
                           );
 	                          const playerAdp = getAdpForPlayer(player);
+	                          const decision = decisionDisplayScoresByPlayerId.get(player.sleeperPlayerId ?? '');
+                          const decisionRank = recommendedNow?.decisionRanking?.decisionByPlayer?.[player.sleeperPlayerId ?? '']?.rank;
 	                          const isSelected =
 	                            selectedPlayerRowNumber === player.rowNumber;
-	                          const displayStatusLabel = getMyBoardStatusLabel({
-	                            isDrafted,
-	                            playerStatus,
-	                            preferenceTags,
-	                          });
-
-	                          return (
+                          return (
                             <tr
                               key={player.rowNumber}
                               aria-pressed={isSelected}
-                              className={`cursor-pointer text-[11px] transition focus:outline-none focus:ring-2 focus:ring-inset focus:ring-orange-600 ${getMyBoardCategoryClass({
+                              className={`h-[58px] cursor-pointer text-[11px] transition focus:outline-none focus:ring-2 focus:ring-inset focus:ring-orange-600 ${getMyBoardCategoryClass({
                                 isDrafted,
                                 isSelected,
                                 preferenceTags,
@@ -9267,6 +9318,7 @@ export default function AuctionWarRoomClient({
                                 }
                               }}
                             >
+	                              <td className="px-2 py-1 text-center font-black text-gray-400">{decisionRank ?? '—'}</td>
 	                              <td className="px-2 py-1">
 	                                <div className="flex min-w-0 items-center gap-1.5">
 	                                  <span
@@ -9305,22 +9357,10 @@ export default function AuctionWarRoomClient({
 	                                </div>
 	                              </td>
 	                              <td className="px-2 py-1 font-bold text-gray-500 dark:text-gray-400">{player.position ?? 'N/A'}</td>
-	                              <td className="px-2 py-1 font-bold text-gray-500 dark:text-gray-400">{player.nflTeam ?? 'N/A'}</td>
-	                              <td className="px-2 py-1 font-black">{formatByeWeek(byeWeek)}</td>
+	                              <td className="hidden px-2 py-1 font-bold text-gray-500 dark:text-gray-400 xl:table-cell">{player.nflTeam ?? 'N/A'}</td>
+	                              <td className="whitespace-nowrap px-2 py-1 text-right font-black text-blue-600">{decision === undefined ? '—' : decision.toFixed(1)}</td>
 	                              <td className="whitespace-nowrap px-2 py-1 text-right font-black text-orange-600">{formatMoney(player.averageValue ?? null)}</td>
 	                              <td className="whitespace-nowrap px-2 py-1 text-right font-black">{formatMoney(bidRecommendation.recommendedMaxBid)}</td>
-	                              <td className="px-2 py-1">
-	                                <div className="flex flex-col gap-1">
-	                                  <span className={`w-fit rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest ${getMyBoardStatusClass(displayStatusLabel)}`}>
-	                                    {displayStatusLabel}
-	                                  </span>
-	                                  {purchaseMatch && (
-	                                    <span className="truncate text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
-	                                      {getTeam(purchaseMatch.teamId)?.teamName ?? `Roster ${purchaseMatch.rosterId ?? 'N/A'}`} | {formatMoney(purchaseMatch.purchasePrice)}
-	                                    </span>
-	                                  )}
-                                </div>
-                              </td>
                             </tr>
                           );
                         })
@@ -9360,7 +9400,7 @@ export default function AuctionWarRoomClient({
             >
               {activeWorkspace === 'draft' && (
               <>
-                  <section ref={currentNominationSectionRef} className={`${selectedPlayer ? 'rounded-3xl p-4' : 'rounded-2xl p-3'} bg-white shadow-lg shadow-black/5 dark:bg-[#121212]`}>
+                  <section className={`${selectedPlayer ? 'rounded-3xl p-4' : 'rounded-2xl p-3'} bg-white shadow-lg shadow-black/5 dark:bg-[#121212]`}>
 	                <div className={`grid ${selectedPlayer ? 'gap-4' : 'gap-1'}`}>
                   <div className="rounded-2xl border border-orange-600/25 bg-orange-600/10 px-4 py-3">
                     <p className="text-[9px] font-black uppercase tracking-[0.25em] text-orange-700 dark:text-orange-300">
@@ -9435,7 +9475,37 @@ export default function AuctionWarRoomClient({
 	                        </p>
 	                      )}
                     </div>
+                    {selectedPlayer ? (
+                      <button
+                        type="button"
+                        onClick={() => setIsPlayerDetailDrawerOpen(true)}
+                        className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-xl border border-black/10 bg-black/[0.03] px-3 text-[9px] font-black uppercase tracking-widest text-gray-600 transition hover:border-orange-600/30 hover:bg-orange-600/10 hover:text-orange-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300"
+                      >
+                        Full Player Detail
+                      </button>
+                    ) : null}
                   </div>
+
+                  {selectedPlayer && selectedDecisionResult ? (
+                    <div className="grid grid-cols-2 gap-2 rounded-2xl border border-blue-600/20 bg-blue-600/10 p-3 sm:grid-cols-4">
+                      <div>
+                        <p className="text-[8px] font-black uppercase tracking-widest text-blue-700/70 dark:text-blue-300/70">Decision</p>
+                        <p className="mt-1 text-2xl font-black text-blue-800 dark:text-blue-200">{selectedDecisionResult.displayDecisionScore.toFixed(1)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[8px] font-black uppercase tracking-widest text-blue-700/70 dark:text-blue-300/70">Market</p>
+                        <p className="mt-2 text-lg font-black text-blue-800 dark:text-blue-200">{formatMoney(selectedPlayer.averageValue ?? null)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[8px] font-black uppercase tracking-widest text-blue-700/70 dark:text-blue-300/70">Expected Sale</p>
+                        <p className="mt-2 text-lg font-black text-blue-800 dark:text-blue-200">{formatMoney(currentNominationDraftIntelligence?.predictedWinningBid ?? null)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[8px] font-black uppercase tracking-widest text-blue-700/70 dark:text-blue-300/70">Recommended Max</p>
+                        <p className="mt-2 text-lg font-black text-blue-800 dark:text-blue-200">{formatMoney(selectedPlayerRecommendation?.recommendedMaxBid ?? null)}</p>
+                      </div>
+                    </div>
+                  ) : null}
 
                   {selectedPlayerSoldState ? (
                     <div className="grid gap-3">
@@ -9514,7 +9584,7 @@ export default function AuctionWarRoomClient({
                             </p>
                           </div>
 
-                          <div className={`rounded-2xl border px-4 py-4 ${getHudMoneyClass(currentNominationBidCeilingState)}`}>
+                          <div className={`hidden rounded-2xl border px-4 py-4 lg:block ${getHudMoneyClass(currentNominationBidCeilingState)}`}>
                             <p className="text-[9px] font-black uppercase tracking-[0.22em] opacity-60">
                               Recommended Max
                             </p>
@@ -9526,7 +9596,7 @@ export default function AuctionWarRoomClient({
                             </p>
                           </div>
 
-                          <div className="rounded-2xl bg-black/[0.025] px-4 py-4 text-gray-800 dark:bg-white/[0.04] dark:text-gray-100">
+                          <div className="hidden rounded-2xl bg-black/[0.025] px-4 py-4 text-gray-800 dark:bg-white/[0.04] dark:text-gray-100 lg:block">
                             <p className="text-[9px] font-black uppercase tracking-[0.22em] text-gray-400">
                               Predicted Sale
                             </p>
