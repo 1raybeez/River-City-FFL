@@ -778,3 +778,379 @@ These bands are shadow-test policy only. They are NOT YET APPROVED FOR PRODUCTIO
 ## Controls and caveats
 
 The Auction control is the Auction component alone. The ADP control is ADP-only where present. The current BEST OVERALL approximation uses only its market-related Auction/ADP weights; actual production BEST OVERALL additionally uses roster fit, scarcity, affordability, private preference, and league pressure. This report does not reproduce the production recommendation.
+
+
+
+
+
+
+
+
+
+## PHASE 5 — REAL WAR ROOM SHADOW EVALUATION
+
+> READ-ONLY REAL-STATE EVALUATION — NOT PRODUCTION RECOMMENDATION LOGIC. No writes or deployment occurred.
+
+- Keeper players: Chris Olave, Cam Skattebo.
+- Purchased players: None.
+- Starter needs: QB 1, RB 1, WR 1, TE 1, K 1, DEF 1, FLEX 1.
+- Bench/depth needs: QB 2, RB 4, WR 4, TE 2, K 1, DEF 1.
+### Real-state snapshot
+Keepers 2; roster/purchases 2; available players 538; current nomination NO CURRENT NOMINATION; current bid —.
+
+### Shadow universe
+Candidates 538; eligible 538; NOT_REALISTIC 0; missing ADP 119.
+Market statistics {"buckets":{"100":0,"99–99.9":4,"97.5–98.9":9,"95–97.4":12,"90–94.9":28,"80–89.9":53,"70–79.9":42,"60–69.9":14,"below 60":376},"minimum":4.3,"median":29.3,"mean":44.136988847583524,"p75":72.2,"p90":89.2,"p95":94.4,"p99":98.4,"maximum":99.5,"standardDeviation":27.40506811192428}
+Decision statistics {"buckets":{"100":0,"99–99.9":1,"97.5–98.9":5,"95–97.4":14,"90–94.9":30,"80–89.9":57,"70–79.9":43,"60–69.9":12,"below 60":376},"minimum":8.7,"median":33,"mean":46.33866171003702,"p75":72.6,"p90":89.4,"p95":93.6,"p99":96.9,"maximum":99.5,"standardDeviation":25.911320595676994}
+
+### Top 30 Decision Scores
+1. Bijan Robinson (RB, ATL) — Market 99.5, Auction 100.0, ADP 100.0, Quality 94.8, Fit +5, Scarcity +2, Ray +7, Decision 99.5, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 99.5 = Auction 100 × 60% + ADP 100 × 30% + Quality 94.8 × 10%. Starter need contributes +5. critical RB inventory (1 strong players remain) maps to +2. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +7.
+2. Puka Nacua (WR, LAR) — Market 99.3, Auction 99.8, ADP 99.8, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 98.4, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 99.3 = Auction 99.8 × 60% + ADP 99.8 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin WR inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+3. Amon-Ra St. Brown (WR, DET) — Market 99.0, Auction 99.6, ADP 99.3, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 98.1, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 99 = Auction 99.6 × 60% + ADP 99.3 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin WR inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+4. Christian McCaffrey (RB, SF) — Market 99.0, Auction 99.4, ADP 99.5, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 98.1, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 99 = Auction 99.4 × 60% + ADP 99.5 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+5. Josh Allen (QB, BUF) — Market 97.8, Auction 98.9, ADP 96.7, Quality 94.8, Fit +5, Scarcity +2, Ray +7, Decision 97.9, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 97.8 = Auction 98.9 × 60% + ADP 96.7 × 30% + Quality 94.8 × 10%. Starter need contributes +5. critical QB inventory (1 strong players remain) maps to +2. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +7.
+6. James Cook (RB, BUF) — Market 98.4, Auction 98.7, ADP 99.0, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 97.6, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 98.4 = Auction 98.7 × 60% + ADP 99 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+7. CeeDee Lamb (WR, DAL) — Market 98.7, Auction 99.3, ADP 98.8, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 96.9, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 98.7 = Auction 99.3 × 60% + ADP 98.8 × 30% + Quality 94.8 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +5.
+8. Saquon Barkley (RB, PHI) — Market 97.7, Auction 97.8, ADP 98.3, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 96.9, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 97.7 = Auction 97.8 × 60% + ADP 98.3 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+9. Brock Bowers (TE, LV) — Market 97.5, Auction 98.3, ADP 96.9, Quality 94.5, Fit +5, Scarcity +1, Ray +6, Decision 96.7, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 97.5 = Auction 98.3 × 60% + ADP 96.9 × 30% + Quality 94.5 × 10%. Starter need contributes +5. thin TE inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+10. Derrick Henry (RB, BAL) — Market 97.5, Auction 98.0, ADP 97.4, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 96.7, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 97.5 = Auction 98 × 60% + ADP 97.4 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+11. Justin Jefferson (WR, MIN) — Market 98.5, Auction 99.1, ADP 98.6, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 96.7, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 98.5 = Auction 99.1 × 60% + ADP 98.6 × 30% + Quality 94.8 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +5.
+12. Trey McBride (TE, ARI) — Market 97.5, Auction 98.5, ADP 96.4, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 96.7, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 97.5 = Auction 98.5 × 60% + ADP 96.4 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin TE inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+13. Ashton Jeanty (RB, LV) — Market 97.4, Auction 97.4, ADP 98.3, Quality 94.5, Fit +5, Scarcity +1, Ray +6, Decision 96.6, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 97.4 = Auction 97.4 × 60% + ADP 98.3 × 30% + Quality 94.5 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+14. Kenneth Walker (RB, KC) — Market 97.3, Auction 97.6, ADP 97.6, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 96.5, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 97.3 = Auction 97.6 × 60% + ADP 97.6 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+15. Omarion Hampton (RB, LAC) — Market 97.1, Auction 97.2, ADP 97.8, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 96.4, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 97.1 = Auction 97.2 × 60% + ADP 97.8 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+16. A.J. Brown (WR, NE) — Market 97.8, Auction 98.1, ADP 97.1, Quality 98.5, Fit +5, Scarcity +0, Ray +5, Decision 96.1, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 97.8 = Auction 98.1 × 60% + ADP 97.1 × 30% + Quality 98.5 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +5.
+17. Jeremiyah Love (RB, ARI) — Market 96.4, Auction 96.8, ADP 96.2, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 95.7, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 96.4 = Auction 96.8 × 60% + ADP 96.2 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+18. Lamar Jackson (QB, BAL) — Market 95.3, Auction 96.3, ADP 93.5, Quality 94.8, Fit +5, Scarcity +2, Ray +7, Decision 95.6, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 95.3 = Auction 96.3 × 60% + ADP 93.5 × 30% + Quality 94.8 × 10%. Starter need contributes +5. critical QB inventory (1 strong players remain) maps to +2. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +7.
+19. Breece Hall (RB, NYJ) — Market 96.0, Auction 96.5, ADP 95.5, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 95.3, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 96 = Auction 96.5 × 60% + ADP 95.5 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+20. Josh Jacobs (RB, GB) — Market 95.6, Auction 95.9, ADP 95.2, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 95.0, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 95.6 = Auction 95.9 × 60% + ADP 95.2 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+21. Kyren Williams (RB, LAR) — Market 95.5, Auction 95.5, ADP 95.7, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 94.9, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 95.5 = Auction 95.5 × 60% + ADP 95.7 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+22. Malik Nabers (WR, NYG) — Market 96.5, Auction 97.0, ADP 95.9, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 94.9, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 96.5 = Auction 97 × 60% + ADP 95.9 × 30% + Quality 94.8 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +5.
+23. Drake Maye (QB, NE) — Market 94.2, Auction 95.7, ADP 90.9, Quality 94.8, Fit +5, Scarcity +2, Ray +7, Decision 94.6, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 94.2 = Auction 95.7 × 60% + ADP 90.9 × 30% + Quality 94.8 × 10%. Starter need contributes +5. critical QB inventory (1 strong players remain) maps to +2. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +7.
+24. Zay Flowers (WR, BAL) — Market 95.9, Auction 96.6, ADP 95.0, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 94.3, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 95.9 = Auction 96.6 × 60% + ADP 95 × 30% + Quality 94.8 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +5.
+25. Colston Loveland (TE, CHI) — Market 94.4, Auction 94.8, ADP 93.3, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 93.8, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 94.4 = Auction 94.8 × 60% + ADP 93.3 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin TE inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+26. Tee Higgins (WR, CIN) — Market 95.4, Auction 95.3, ADP 94.7, Quality 98.5, Fit +5, Scarcity +0, Ray +5, Decision 93.8, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 95.4 = Auction 95.3 × 60% + ADP 94.7 × 30% + Quality 98.5 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +5.
+27. Garrett Wilson (WR, NYJ) — Market 95.3, Auction 96.1, ADP 93.8, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 93.7, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 95.3 = Auction 96.1 × 60% + ADP 93.8 × 30% + Quality 94.8 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +5.
+28. Joe Burrow (QB, CIN) — Market 93.2, Auction 94.4, ADP 90.4, Quality 94.8, Fit +5, Scarcity +2, Ray +7, Decision 93.6, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 93.2 = Auction 94.4 × 60% + ADP 90.4 × 30% + Quality 94.8 × 10%. Starter need contributes +5. critical QB inventory (1 strong players remain) maps to +2. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +7.
+29. Jalen Hurts (QB, PHI) — Market 92.9, Auction 94.6, ADP 89.0, Quality 94.8, Fit +5, Scarcity +2, Ray +7, Decision 93.4, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 92.9 = Auction 94.6 × 60% + ADP 89 × 30% + Quality 94.8 × 10%. Starter need contributes +5. critical QB inventory (1 strong players remain) maps to +2. Budget feasibility: AFFORDABLE. Decision Score 99.9 = Market Score + bounded Ray modifier +7.
+30. Tetairoa McMillan (WR, CAR) — Market 94.9, Auction 95.2, ADP 94.3, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 93.4, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 94.9 = Auction 95.2 × 60% + ADP 94.3 × 30% + Quality 94.8 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 99.9 = Market Score + bounded Ray modifier +5.
+
+### Recommended Now
+- BEST OVERALL: Bijan Robinson (current score 85.0); shadow Market 99.5, Ray 7, Decision 99.5, rank 1, AFFORDABLE.
+- BEST VALUE: Rashod Bateman (current score 70.9); shadow Market 60.3, Ray 5, Decision 61.0, rank 162, AFFORDABLE.
+- ROSTER FIT: Brock Bowers (current score 72.3); shadow Market 97.5, Ray 6, Decision 96.7, rank 9, AFFORDABLE.
+- SCARCITY PLAY: Josh Allen (current score 99.7); shadow Market 97.8, Ray 7, Decision 97.9, rank 5, AFFORDABLE.
+- BUDGET PLAY: Matthew Golden (current score 86.9); shadow Market 79.9, Ray 5, Decision 79.3, rank 109, AFFORDABLE.
+
+### Agreement and limitations
+The comparison is real-state and read-only. Existing Recommended Now remains authoritative. Score saturation is recorded as a production-readiness warning; no formula change is made.
+
+### Live Opportunity
+NO CURRENT NOMINATION; none invented.
+
+### QB leaders
+1. Josh Allen (QB, BUF) — Market 97.8, Auction 98.9, ADP 96.7, Quality 94.8, Fit +5, Scarcity +2, Ray +7, Decision 97.9, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 97.8 = Auction 98.9 × 60% + ADP 96.7 × 30% + Quality 94.8 × 10%. Starter need contributes +5. critical QB inventory (1 strong players remain) maps to +2. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +7.
+2. Lamar Jackson (QB, BAL) — Market 95.3, Auction 96.3, ADP 93.5, Quality 94.8, Fit +5, Scarcity +2, Ray +7, Decision 95.6, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 95.3 = Auction 96.3 × 60% + ADP 93.5 × 30% + Quality 94.8 × 10%. Starter need contributes +5. critical QB inventory (1 strong players remain) maps to +2. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +7.
+3. Drake Maye (QB, NE) — Market 94.2, Auction 95.7, ADP 90.9, Quality 94.8, Fit +5, Scarcity +2, Ray +7, Decision 94.6, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 94.2 = Auction 95.7 × 60% + ADP 90.9 × 30% + Quality 94.8 × 10%. Starter need contributes +5. critical QB inventory (1 strong players remain) maps to +2. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +7.
+4. Joe Burrow (QB, CIN) — Market 93.2, Auction 94.4, ADP 90.4, Quality 94.8, Fit +5, Scarcity +2, Ray +7, Decision 93.6, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 93.2 = Auction 94.4 × 60% + ADP 90.4 × 30% + Quality 94.8 × 10%. Starter need contributes +5. critical QB inventory (1 strong players remain) maps to +2. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +7.
+5. Jalen Hurts (QB, PHI) — Market 92.9, Auction 94.6, ADP 89.0, Quality 94.8, Fit +5, Scarcity +2, Ray +7, Decision 93.4, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 92.9 = Auction 94.6 × 60% + ADP 89 × 30% + Quality 94.8 × 10%. Starter need contributes +5. critical QB inventory (1 strong players remain) maps to +2. Budget feasibility: AFFORDABLE. Decision Score 99.9 = Market Score + bounded Ray modifier +7.
+6. Jayden Daniels (QB, WSH) — Market 92.7, Auction 94.0, ADP 89.5, Quality 94.8, Fit +5, Scarcity +2, Ray +7, Decision 93.2, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 92.7 = Auction 94 × 60% + ADP 89.5 × 30% + Quality 94.8 × 10%. Starter need contributes +5. critical QB inventory (1 strong players remain) maps to +2. Budget feasibility: AFFORDABLE. Decision Score 99.7 = Market Score + bounded Ray modifier +7.
+7. Dak Prescott (QB, DAL) — Market 90.3, Auction 91.2, ADP 85.9, Quality 98.5, Fit +5, Scarcity +2, Ray +7, Decision 90.9, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 90.3 = Auction 91.2 × 60% + ADP 85.9 × 30% + Quality 98.5 × 10%. Starter need contributes +5. critical QB inventory (1 strong players remain) maps to +2. Budget feasibility: AFFORDABLE. Decision Score 97.3 = Market Score + bounded Ray modifier +7.
+8. Caleb Williams (QB, CHI) — Market 90.2, Auction 90.9, ADP 87.3, Quality 94.8, Fit +5, Scarcity +2, Ray +7, Decision 90.8, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 90.2 = Auction 90.9 × 60% + ADP 87.3 × 30% + Quality 94.8 × 10%. Starter need contributes +5. critical QB inventory (1 strong players remain) maps to +2. Budget feasibility: AFFORDABLE. Decision Score 97.2 = Market Score + bounded Ray modifier +7.
+9. Justin Herbert (QB, LAC) — Market 89.0, Auction 89.2, ADP 85.4, Quality 98.5, Fit +5, Scarcity +2, Ray +7, Decision 89.7, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 89 = Auction 89.2 × 60% + ADP 85.4 × 30% + Quality 98.5 × 10%. Starter need contributes +5. critical QB inventory (1 strong players remain) maps to +2. Budget feasibility: AFFORDABLE. Decision Score 96 = Market Score + bounded Ray modifier +7.
+10. Trevor Lawrence (QB, JAC) — Market 88.8, Auction 89.9, ADP 84.7, Quality 94.8, Fit +5, Scarcity +2, Ray +7, Decision 89.5, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 88.8 = Auction 89.9 × 60% + ADP 84.7 × 30% + Quality 94.8 × 10%. Starter need contributes +5. critical QB inventory (1 strong players remain) maps to +2. Budget feasibility: AFFORDABLE. Decision Score 95.8 = Market Score + bounded Ray modifier +7.
+
+### RB leaders
+1. Bijan Robinson (RB, ATL) — Market 99.5, Auction 100.0, ADP 100.0, Quality 94.8, Fit +5, Scarcity +2, Ray +7, Decision 99.5, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 99.5 = Auction 100 × 60% + ADP 100 × 30% + Quality 94.8 × 10%. Starter need contributes +5. critical RB inventory (1 strong players remain) maps to +2. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +7.
+2. Christian McCaffrey (RB, SF) — Market 99.0, Auction 99.4, ADP 99.5, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 98.1, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 99 = Auction 99.4 × 60% + ADP 99.5 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+3. James Cook (RB, BUF) — Market 98.4, Auction 98.7, ADP 99.0, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 97.6, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 98.4 = Auction 98.7 × 60% + ADP 99 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+4. Saquon Barkley (RB, PHI) — Market 97.7, Auction 97.8, ADP 98.3, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 96.9, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 97.7 = Auction 97.8 × 60% + ADP 98.3 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+5. Derrick Henry (RB, BAL) — Market 97.5, Auction 98.0, ADP 97.4, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 96.7, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 97.5 = Auction 98 × 60% + ADP 97.4 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+6. Ashton Jeanty (RB, LV) — Market 97.4, Auction 97.4, ADP 98.3, Quality 94.5, Fit +5, Scarcity +1, Ray +6, Decision 96.6, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 97.4 = Auction 97.4 × 60% + ADP 98.3 × 30% + Quality 94.5 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+7. Kenneth Walker (RB, KC) — Market 97.3, Auction 97.6, ADP 97.6, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 96.5, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 97.3 = Auction 97.6 × 60% + ADP 97.6 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+8. Omarion Hampton (RB, LAC) — Market 97.1, Auction 97.2, ADP 97.8, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 96.4, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 97.1 = Auction 97.2 × 60% + ADP 97.8 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+9. Jeremiyah Love (RB, ARI) — Market 96.4, Auction 96.8, ADP 96.2, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 95.7, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 96.4 = Auction 96.8 × 60% + ADP 96.2 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+10. Breece Hall (RB, NYJ) — Market 96.0, Auction 96.5, ADP 95.5, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 95.3, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 96 = Auction 96.5 × 60% + ADP 95.5 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+11. Josh Jacobs (RB, GB) — Market 95.6, Auction 95.9, ADP 95.2, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 95.0, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 95.6 = Auction 95.9 × 60% + ADP 95.2 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+12. Kyren Williams (RB, LAR) — Market 95.5, Auction 95.5, ADP 95.7, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 94.9, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 95.5 = Auction 95.5 × 60% + ADP 95.7 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+13. Bucky Irving (RB, TB) — Market 93.5, Auction 93.7, ADP 92.8, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 93.0, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 93.5 = Auction 93.7 × 60% + ADP 92.8 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 99.5 = Market Score + bounded Ray modifier +6.
+14. D'Andre Swift (RB, CHI) — Market 93.5, Auction 93.5, ADP 93.1, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 93.0, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 93.5 = Auction 93.5 × 60% + ADP 93.1 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 99.5 = Market Score + bounded Ray modifier +6.
+15. Quinshon Judkins (RB, CLE) — Market 92.9, Auction 92.9, ADP 92.3, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 92.4, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 92.9 = Auction 92.9 × 60% + ADP 92.3 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 98.9 = Market Score + bounded Ray modifier +6.
+16. David Montgomery (RB, HOU) — Market 92.2, Auction 91.6, ADP 92.6, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 91.8, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 92.2 = Auction 91.6 × 60% + ADP 92.6 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 98.2 = Market Score + bounded Ray modifier +6.
+17. Bhayshul Tuten (RB, JAC) — Market 91.5, Auction 91.2, ADP 91.1, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 91.1, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 91.5 = Auction 91.2 × 60% + ADP 91.1 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 97.5 = Market Score + bounded Ray modifier +6.
+18. Jadarian Price (RB, SEA) — Market 90.7, Auction 90.5, ADP 89.7, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 90.4, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 90.7 = Auction 90.5 × 60% + ADP 89.7 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 96.7 = Market Score + bounded Ray modifier +6.
+19. Rhamondre Stevenson (RB, NE) — Market 89.0, Auction 88.6, ADP 88.0, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 88.8, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 89 = Auction 88.6 × 60% + ADP 88 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 95 = Market Score + bounded Ray modifier +6.
+20. Jaylen Warren (RB, PIT) — Market 88.8, Auction 88.1, ADP 88.3, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 88.6, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 88.8 = Auction 88.1 × 60% + ADP 88.3 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin RB inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 94.8 = Market Score + bounded Ray modifier +6.
+
+### WR leaders
+1. Puka Nacua (WR, LAR) — Market 99.3, Auction 99.8, ADP 99.8, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 98.4, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 99.3 = Auction 99.8 × 60% + ADP 99.8 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin WR inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+2. Amon-Ra St. Brown (WR, DET) — Market 99.0, Auction 99.6, ADP 99.3, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 98.1, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 99 = Auction 99.6 × 60% + ADP 99.3 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin WR inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+3. CeeDee Lamb (WR, DAL) — Market 98.7, Auction 99.3, ADP 98.8, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 96.9, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 98.7 = Auction 99.3 × 60% + ADP 98.8 × 30% + Quality 94.8 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +5.
+4. Justin Jefferson (WR, MIN) — Market 98.5, Auction 99.1, ADP 98.6, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 96.7, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 98.5 = Auction 99.1 × 60% + ADP 98.6 × 30% + Quality 94.8 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +5.
+5. A.J. Brown (WR, NE) — Market 97.8, Auction 98.1, ADP 97.1, Quality 98.5, Fit +5, Scarcity +0, Ray +5, Decision 96.1, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 97.8 = Auction 98.1 × 60% + ADP 97.1 × 30% + Quality 98.5 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +5.
+6. Malik Nabers (WR, NYG) — Market 96.5, Auction 97.0, ADP 95.9, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 94.9, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 96.5 = Auction 97 × 60% + ADP 95.9 × 30% + Quality 94.8 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +5.
+7. Zay Flowers (WR, BAL) — Market 95.9, Auction 96.6, ADP 95.0, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 94.3, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 95.9 = Auction 96.6 × 60% + ADP 95 × 30% + Quality 94.8 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +5.
+8. Tee Higgins (WR, CIN) — Market 95.4, Auction 95.3, ADP 94.7, Quality 98.5, Fit +5, Scarcity +0, Ray +5, Decision 93.8, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 95.4 = Auction 95.3 × 60% + ADP 94.7 × 30% + Quality 98.5 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +5.
+9. Garrett Wilson (WR, NYJ) — Market 95.3, Auction 96.1, ADP 93.8, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 93.7, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 95.3 = Auction 96.1 × 60% + ADP 93.8 × 30% + Quality 94.8 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +5.
+10. Tetairoa McMillan (WR, CAR) — Market 94.9, Auction 95.2, ADP 94.3, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 93.4, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 94.9 = Auction 95.2 × 60% + ADP 94.3 × 30% + Quality 94.8 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 99.9 = Market Score + bounded Ray modifier +5.
+11. Emeka Egbuka (WR, TB) — Market 94.7, Auction 95.0, ADP 94.0, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 93.2, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 94.7 = Auction 95 × 60% + ADP 94 × 30% + Quality 94.8 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 99.7 = Market Score + bounded Ray modifier +5.
+12. Ladd McConkey (WR, LAC) — Market 94.2, Auction 93.9, ADP 94.5, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 92.7, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 94.2 = Auction 93.9 × 60% + ADP 94.5 × 30% + Quality 94.8 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 99.2 = Market Score + bounded Ray modifier +5.
+13. Davante Adams (WR, LAR) — Market 93.4, Auction 94.2, ADP 91.4, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 92.0, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 93.4 = Auction 94.2 × 60% + ADP 91.4 × 30% + Quality 94.8 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 98.4 = Market Score + bounded Ray modifier +5.
+14. Jameson Williams (WR, DET) — Market 92.7, Auction 93.3, ADP 90.7, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 91.3, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 92.7 = Auction 93.3 × 60% + ADP 90.7 × 30% + Quality 94.8 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 97.7 = Market Score + bounded Ray modifier +5.
+15. Luther Burden (WR, CHI) — Market 92.7, Auction 92.7, ADP 92.1, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 91.3, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 92.7 = Auction 92.7 × 60% + ADP 92.1 × 30% + Quality 94.8 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 97.7 = Market Score + bounded Ray modifier +5.
+16. Terry McLaurin (WR, WSH) — Market 92.7, Auction 92.9, ADP 91.6, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 91.3, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 92.7 = Auction 92.9 × 60% + ADP 91.6 × 30% + Quality 94.8 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 97.7 = Market Score + bounded Ray modifier +5.
+17. DJ Moore (WR, BUF) — Market 92.3, Auction 92.0, ADP 91.9, Quality 95.0, Fit +5, Scarcity +0, Ray +5, Decision 90.9, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 92.3 = Auction 92 × 60% + ADP 91.9 × 30% + Quality 95 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 97.3 = Market Score + bounded Ray modifier +5.
+18. Mike Evans (WR, SF) — Market 92.0, Auction 92.4, ADP 90.2, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 90.7, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 92 = Auction 92.4 × 60% + ADP 90.2 × 30% + Quality 94.8 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 97 = Market Score + bounded Ray modifier +5.
+19. Christian Watson (WR, GB) — Market 91.8, Auction 92.6, ADP 89.2, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 90.5, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 91.8 = Auction 92.6 × 60% + ADP 89.2 × 30% + Quality 94.8 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 96.8 = Market Score + bounded Ray modifier +5.
+20. Rome Odunze (WR, CHI) — Market 91.8, Auction 92.2, ADP 90.0, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 90.5, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 91.8 = Auction 92.2 × 60% + ADP 90 × 30% + Quality 94.8 × 10%. Starter need contributes +5. normal WR inventory (4 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 96.8 = Market Score + bounded Ray modifier +5.
+
+### TE leaders
+1. Brock Bowers (TE, LV) — Market 97.5, Auction 98.3, ADP 96.9, Quality 94.5, Fit +5, Scarcity +1, Ray +6, Decision 96.7, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 97.5 = Auction 98.3 × 60% + ADP 96.9 × 30% + Quality 94.5 × 10%. Starter need contributes +5. thin TE inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+2. Trey McBride (TE, ARI) — Market 97.5, Auction 98.5, ADP 96.4, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 96.7, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 97.5 = Auction 98.5 × 60% + ADP 96.4 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin TE inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+3. Colston Loveland (TE, CHI) — Market 94.4, Auction 94.8, ADP 93.3, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 93.8, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 94.4 = Auction 94.8 × 60% + ADP 93.3 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin TE inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 100 = Market Score + bounded Ray modifier +6.
+4. Harold Fannin (TE, CLE) — Market 90.5, Auction 91.8, ADP 86.4, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 90.2, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 90.5 = Auction 91.8 × 60% + ADP 86.4 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin TE inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 96.5 = Market Score + bounded Ray modifier +6.
+5. Sam LaPorta (TE, DET) — Market 90.0, Auction 90.7, ADP 87.1, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 89.7, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 90 = Auction 90.7 × 60% + ADP 87.1 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin TE inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 96 = Market Score + bounded Ray modifier +6.
+6. George Kittle (TE, SF) — Market 88.1, Auction 89.2, ADP 82.3, Quality 98.5, Fit +5, Scarcity +1, Ray +6, Decision 87.9, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 88.1 = Auction 89.2 × 60% + ADP 82.3 × 30% + Quality 98.5 × 10%. Starter need contributes +5. thin TE inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 94.1 = Market Score + bounded Ray modifier +6.
+7. Travis Kelce (TE, KC) — Market 84.8, Auction 85.5, ADP 79.9, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 84.9, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 84.8 = Auction 85.5 × 60% + ADP 79.9 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin TE inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 90.8 = Market Score + bounded Ray modifier +6.
+8. Dalton Kincaid (TE, BUF) — Market 83.7, Auction 83.2, ADP 79.7, Quality 98.5, Fit +5, Scarcity +1, Ray +6, Decision 83.8, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 83.7 = Auction 83.2 × 60% + ADP 79.7 × 30% + Quality 98.5 × 10%. Starter need contributes +5. thin TE inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 89.7 = Market Score + bounded Ray modifier +6.
+9. Dallas Goedert (TE, PHI) — Market 82.4, Auction 83.2, ADP 76.6, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 82.6, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 82.4 = Auction 83.2 × 60% + ADP 76.6 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin TE inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 88.4 = Market Score + bounded Ray modifier +6.
+10. Mark Andrews (TE, BAL) — Market 82.1, Auction 82.9, ADP 76.3, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 82.3, AFFORDABLE, Auc src 5, ADP src 5
+   Market Score 82.1 = Auction 82.9 × 60% + ADP 76.3 × 30% + Quality 94.8 × 10%. Starter need contributes +5. thin TE inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 88.1 = Market Score + bounded Ray modifier +6.
+
+### K leaders
+1. Brandon Aubrey (K, DAL) — Market 70.1, Auction 72.3, ADP 62.9, Quality 78.5, Fit +5, Scarcity +2, Ray +7, Decision 72.1, AFFORDABLE, Auc src 5, ADP src 3
+   Market Score 70.1 = Auction 72.3 × 60% + ADP 62.9 × 30% + Quality 78.5 × 10%. Starter need contributes +5. critical K inventory (1 strong players remain) maps to +2. Budget feasibility: AFFORDABLE. Decision Score 77.1 = Market Score + bounded Ray modifier +7.
+2. Cameron Dicker (K, LAC) — Market 68.2, Auction 71.1, ADP 59.1, Quality 78.5, Fit +5, Scarcity +1, Ray +6, Decision 69.3, AFFORDABLE, Auc src 5, ADP src 3
+   Market Score 68.2 = Auction 71.1 × 60% + ADP 59.1 × 30% + Quality 78.5 × 10%. Starter need contributes +5. thin K inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 74.2 = Market Score + bounded Ray modifier +6.
+3. Jason Myers (K, SEA) — Market 40.7, Auction 26.3, ADP 56.9, Quality 78.5, Fit +5, Scarcity +1, Ray +6, Decision 43.6, AFFORDABLE, Auc src 5, ADP src 3
+   Market Score 40.7 = Auction 26.3 × 60% + ADP 56.9 × 30% + Quality 78.5 × 10%. Starter need contributes +5. thin K inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 46.7 = Market Score + bounded Ray modifier +6.
+4. Ka'imi Fairbairn (K, HOU) — Market 40.6, Auction 26.3, ADP 56.5, Quality 78.5, Fit +5, Scarcity +1, Ray +6, Decision 43.6, AFFORDABLE, Auc src 5, ADP src 3
+   Market Score 40.6 = Auction 26.3 × 60% + ADP 56.5 × 30% + Quality 78.5 × 10%. Starter need contributes +5. thin K inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 46.6 = Market Score + bounded Ray modifier +6.
+5. Harrison Mevis (K, LAR) — Market 37.8, Auction 25.0, ADP 49.8, Quality 78.5, Fit +5, Scarcity +1, Ray +6, Decision 40.9, AFFORDABLE, Auc src 5, ADP src 3
+   Market Score 37.8 = Auction 25 × 60% + ADP 49.8 × 30% + Quality 78.5 × 10%. Starter need contributes +5. thin K inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 43.8 = Market Score + bounded Ray modifier +6.
+6. Jake Bates (K, DET) — Market 37.8, Auction 26.3, ADP 49.0, Quality 73.5, Fit +5, Scarcity +1, Ray +6, Decision 40.9, AFFORDABLE, Auc src 4, ADP src 3
+   Market Score 37.8 = Auction 26.3 × 60% + ADP 49 × 30% + Quality 73.5 × 10%. Starter need contributes +5. thin K inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 43.8 = Market Score + bounded Ray modifier +6.
+7. Cam Little (K, JAC) — Market 36.2, Auction 20.9, ADP 54.3, Quality 73.5, Fit +5, Scarcity +1, Ray +6, Decision 39.4, AFFORDABLE, Auc src 4, ADP src 3
+   Market Score 36.2 = Auction 20.9 × 60% + ADP 54.3 × 30% + Quality 73.5 × 10%. Starter need contributes +5. thin K inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 42.2 = Market Score + bounded Ray modifier +6.
+8. Tyler Loop (K, BAL) — Market 36.1, Auction 26.3, ADP 43.1, Quality 73.5, Fit +5, Scarcity +1, Ray +6, Decision 39.3, AFFORDABLE, Auc src 4, ADP src 3
+   Market Score 36.1 = Auction 26.3 × 60% + ADP 43.1 × 30% + Quality 73.5 × 10%. Starter need contributes +5. thin K inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 42.1 = Market Score + bounded Ray modifier +6.
+9. Eddy Pineiro (K, SF) — Market 35.6, Auction 26.3, ADP 41.6, Quality 73.5, Fit +5, Scarcity +1, Ray +6, Decision 38.9, AFFORDABLE, Auc src 4, ADP src 3
+   Market Score 35.6 = Auction 26.3 × 60% + ADP 41.6 × 30% + Quality 73.5 × 10%. Starter need contributes +5. thin K inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 41.6 = Market Score + bounded Ray modifier +6.
+10. Harrison Butker (K, KC) — Market 35.0, Auction 20.9, ADP 53.8, Quality 63.5, Fit +5, Scarcity +1, Ray +6, Decision 38.3, AFFORDABLE, Auc src 4, ADP src 2
+   Market Score 35 = Auction 20.9 × 60% + ADP 53.8 × 30% + Quality 63.5 × 10%. Starter need contributes +5. thin K inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 41 = Market Score + bounded Ray modifier +6.
+
+### DEF leaders
+1. Houston Texans (DEF, HOU) — Market 71.2, Auction 73.0, ADP 72.0, Quality 58.0, Fit +5, Scarcity +1, Ray +6, Decision 72.1, AFFORDABLE, Auc src 3, ADP src 2
+   Market Score 71.2 = Auction 73 × 60% + ADP 72 × 30% + Quality 58 × 10%. Starter need contributes +5. thin DEF inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 77.2 = Market Score + bounded Ray modifier +6.
+2. Seattle Seahawks (DEF, SEA) — Market 71.2, Auction 71.7, ADP 71.3, Quality 68.0, Fit +5, Scarcity +0, Ray +5, Decision 71.2, AFFORDABLE, Auc src 3, ADP src 3
+   Market Score 71.2 = Auction 71.7 × 60% + ADP 71.3 × 30% + Quality 68 × 10%. Starter need contributes +5. normal DEF inventory (3 strong players remain) maps to +0. Budget feasibility: AFFORDABLE. Decision Score 76.2 = Market Score + bounded Ray modifier +5.
+3. Denver Broncos (DEF, DEN) — Market 69.8, Auction 73.0, ADP 67.2, Quality 58.0, Fit +5, Scarcity +1, Ray +6, Decision 70.8, AFFORDABLE, Auc src 3, ADP src 2
+   Market Score 69.8 = Auction 73 × 60% + ADP 67.2 × 30% + Quality 58 × 10%. Starter need contributes +5. thin DEF inventory (2 strong players remain) maps to +1. Budget feasibility: AFFORDABLE. Decision Score 75.8 = Market Score + bounded Ray modifier +6.
+4. Los Angeles Rams (DEF, LAR) — Market 71.6, Auction 70.4, ADP 75.1, Quality 68.0, Fit +5, Scarcity -1, Ray +4, Decision 70.7, AFFORDABLE, Auc src 3, ADP src 3
+   Market Score 71.6 = Auction 70.4 × 60% + ADP 75.1 × 30% + Quality 68 × 10%. Starter need contributes +5. plentiful DEF inventory (7 strong players remain) maps to -1. Budget feasibility: AFFORDABLE. Decision Score 75.6 = Market Score + bounded Ray modifier +4.
+5. Philadelphia Eagles (DEF, PHI) — Market 69.4, Auction 70.4, ADP 67.7, Quality 68.0, Fit +5, Scarcity -1, Ray +4, Decision 68.6, AFFORDABLE, Auc src 3, ADP src 3
+   Market Score 69.4 = Auction 70.4 × 60% + ADP 67.7 × 30% + Quality 68 × 10%. Starter need contributes +5. plentiful DEF inventory (7 strong players remain) maps to -1. Budget feasibility: AFFORDABLE. Decision Score 73.4 = Market Score + bounded Ray modifier +4.
+6. Minnesota Vikings (DEF, MIN) — Market 67.4, Auction 70.4, ADP 61.2, Quality 68.0, Fit +5, Scarcity -1, Ray +4, Decision 66.7, AFFORDABLE, Auc src 3, ADP src 3
+   Market Score 67.4 = Auction 70.4 × 60% + ADP 61.2 × 30% + Quality 68 × 10%. Starter need contributes +5. plentiful DEF inventory (7 strong players remain) maps to -1. Budget feasibility: AFFORDABLE. Decision Score 71.4 = Market Score + bounded Ray modifier +4.
+7. Pittsburgh Steelers (DEF, PIT) — Market 65.9, Auction 70.4, ADP 56.2, Quality 68.0, Fit +5, Scarcity -1, Ray +4, Decision 65.3, AFFORDABLE, Auc src 3, ADP src 3
+   Market Score 65.9 = Auction 70.4 × 60% + ADP 56.2 × 30% + Quality 68 × 10%. Starter need contributes +5. plentiful DEF inventory (7 strong players remain) maps to -1. Budget feasibility: AFFORDABLE. Decision Score 69.9 = Market Score + bounded Ray modifier +4.
+8. Baltimore Ravens (DEF, BAL) — Market 40.5, Auction 26.3, ADP 59.6, Quality 68.0, Fit +5, Scarcity -1, Ray +4, Decision 41.6, AFFORDABLE, Auc src 3, ADP src 3
+   Market Score 40.5 = Auction 26.3 × 60% + ADP 59.6 × 30% + Quality 68 × 10%. Starter need contributes +5. plentiful DEF inventory (7 strong players remain) maps to -1. Budget feasibility: AFFORDABLE. Decision Score 44.5 = Market Score + bounded Ray modifier +4.
+9. Detroit Lions (DEF, DET) — Market 37.0, Auction 26.3, ADP 48.1, Quality 68.0, Fit +5, Scarcity -1, Ray +4, Decision 38.3, AFFORDABLE, Auc src 3, ADP src 3
+   Market Score 37 = Auction 26.3 × 60% + ADP 48.1 × 30% + Quality 68 × 10%. Starter need contributes +5. plentiful DEF inventory (7 strong players remain) maps to -1. Budget feasibility: AFFORDABLE. Decision Score 41 = Market Score + bounded Ray modifier +4.
+10. New England Patriots (DEF, NE) — Market 33.2, Auction 11.5, ADP 65.1, Quality 68.0, Fit +5, Scarcity -1, Ray +4, Decision 34.8, AFFORDABLE, Auc src 3, ADP src 3
+   Market Score 33.2 = Auction 11.5 × 60% + ADP 65.1 × 30% + Quality 68 × 10%. Starter need contributes +5. plentiful DEF inventory (7 strong players remain) maps to -1. Budget feasibility: AFFORDABLE. Decision Score 37.2 = Market Score + bounded Ray modifier +4.
+
+### Detailed comparison
+Selections in shadow top 10/20/30/50: 3/3/3/3.
+Shadow-high/current-omitted: Puka Nacua (WR, LAR) — Market 99.3, Auction 99.8, ADP 99.8, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 98.4, AFFORDABLE, Auc src 5, ADP src 5 | Amon-Ra St. Brown (WR, DET) — Market 99.0, Auction 99.6, ADP 99.3, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 98.1, AFFORDABLE, Auc src 5, ADP src 5 | Christian McCaffrey (RB, SF) — Market 99.0, Auction 99.4, ADP 99.5, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 98.1, AFFORDABLE, Auc src 5, ADP src 5 | James Cook (RB, BUF) — Market 98.4, Auction 98.7, ADP 99.0, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 97.6, AFFORDABLE, Auc src 5, ADP src 5 | CeeDee Lamb (WR, DAL) — Market 98.7, Auction 99.3, ADP 98.8, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 96.9, AFFORDABLE, Auc src 5, ADP src 5 | Saquon Barkley (RB, PHI) — Market 97.7, Auction 97.8, ADP 98.3, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 96.9, AFFORDABLE, Auc src 5, ADP src 5 | Derrick Henry (RB, BAL) — Market 97.5, Auction 98.0, ADP 97.4, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 96.7, AFFORDABLE, Auc src 5, ADP src 5 | Justin Jefferson (WR, MIN) — Market 98.5, Auction 99.1, ADP 98.6, Quality 94.8, Fit +5, Scarcity +0, Ray +5, Decision 96.7, AFFORDABLE, Auc src 5, ADP src 5 | Trey McBride (TE, ARI) — Market 97.5, Auction 98.5, ADP 96.4, Quality 94.8, Fit +5, Scarcity +1, Ray +6, Decision 96.7, AFFORDABLE, Auc src 5, ADP src 5 | Ashton Jeanty (RB, LV) — Market 97.4, Auction 97.4, ADP 98.3, Quality 94.5, Fit +5, Scarcity +1, Ray +6, Decision 96.6, AFFORDABLE, Auc src 5, ADP src 5.
+Current-selected below shadow top 150: Rashod Bateman (BEST VALUE).
+Preference context: 4 target, 0 watch, 0 fade, 0 open; preferences remain intentionally outside Shadow v1.
+Top roster boosts: Bijan Robinson +5, Puka Nacua +5, Amon-Ra St. Brown +5, Christian McCaffrey +5, Josh Allen +5, James Cook +5, CeeDee Lamb +5, Saquon Barkley +5, Brock Bowers +5, Derrick Henry +5.
+Top roster penalties: Los Angeles Chargers -2, Atlanta Falcons -2, Jacksonville Jaguars -2, Dallas Cowboys -2, Kansas City Chiefs -2, Chicago Bears -2, San Francisco 49ers -2, New York Giants -2, Tampa Bay Buccaneers -2, Tennessee Titans -2.
+Scarcity range -1 to 2; the ±2 limit is a nudge.
+Budget counts: AFFORDABLE 538; STRETCH 0; NOT_REALISTIC 0.
+Important gated players: None.
+
+### Saturation alternatives — analysis only
+A keep additive score preserves policy and auditability but retains compression; B percentile-ranks the final score but changes score meaning; C compresses Market Score but changes calibrated semantics; D uses an uncapped internal score plus display transform but adds complexity; E applies simple post-score scaling but risks unexplained math. No alternative is selected.
+
+### Findings
+Decision Engine most favors Bijan Robinson; greatest current need is QB. Existing Recommended Now category diversity remains useful; showing both systems would require explicit labeling. Real-state validation does not justify production integration yet.
+
+### Agreement and score gaps
+Current selections in shadow top 10/20/30/50: 3/3/3/3.
+Eligible score gaps: #1/#2 1.1; #1/#5 1.6; #1/#10 2.8; #5/#10 1.2; #10/#20 1.7; #20/#30 1.6.
+Median/mean adjacent gap approximated by mean for top 10/top 25/top 50: 0.31 / 0.24 / 0.19.
+
+Budget state: remaining $167.0; roster slots 14; legal max bid $154.0.
+
+## PHASE 6 — SCORE SEPARATION / SATURATION
+
+> OFFLINE CALIBRATION — NO PRODUCTION INTEGRATION. Recommended Now remains authoritative. No Firestore writes or deployment occurred.
+
+### Baseline policy
+Raw Decision Score = Market Score + Ray Modifier; no clamp for calibration. Auction/ADP normalization, 60/30/10 Market Score, Quality, missing-ADP handling, roster/FLEX ±5, scarcity ±2, combined ±7, budget gate, and separate live opportunity are unchanged.
+
+### Raw Decision Score
+Distribution {"minimum":9.3,"median":35.3,"mean":49.57936802973963,"p75":77.7,"p90":95.7,"p95":100.2,"p99":103.7,"maximum":106.5,"standardDeviation":27.7286044309813,"above100":28,"exactly100":0,"from95to99_9":29,"from90to94_9":28,"below90":453}.
+Raw >100: 28; exactly 100: 0; 95–99.9: 29; 90–94.9: 28; below 90: 453.
+Raw score preserves useful ordering and exposes the full Ray modifier, but its unbounded range is not a commissioner-facing 0–100 display.
+
+### Options A–F
+Option A — current clamp: display clamp(raw, 0, 100). This preserves the current semantics but leaves the elite cluster tied at 100.
+Option B — raw ranking with clamped display: internal ranking uses raw score; display remains clamped. This makes hidden ordering deterministic but leaves identical visible 100s and is confusing unless explicitly disclosed.
+Option C — percentile display: monotonic rank percentile over the eligible pool. Distribution {"minimum":0.4,"median":50.3,"mean":50.62992565055752,"p75":74.9,"p90":90.1,"p95":95,"p99":98.9,"maximum":100,"standardDeviation":28.772088918567707,"above100":0,"exactly100":1,"from95to99_9":27,"from90to94_9":27,"below90":483}; pool test 538: Bijan Robinson E 99.5, C 100.0; 300: Bijan Robinson E 99.5, C 100.0; 150: Bijan Robinson E 99.5, C 100.0; 75: Bijan Robinson E 99.5, C 100.0. It separates the top ranks, but scores change when unrelated players leave the pool.
+Option D — fixed market headroom variants tested at factors 0.90, 0.93, 0.95, and 0.97. The 0.93 variant is the best tested separation, but it changes the meaning of Market Score by compressing the approved 0–100 market scale.
+Option E — fixed monotonic display transform tested with policy range 0–107: display = raw × 100 / 107. It preserves raw ordering, is deterministic, and provides visible headroom without roster- or pool-dependent normalization.
+Option F — headroom-aware positive modifier tested by scaling positive Ray influence by (1 − Market Score / 100). It reduces saturation, but weakens roster relevance most for elite players and makes the approved modifier semantics harder to explain.
+
+### Rank preservation
+Spearman correlation versus raw: A 1, B 1, C 1, D 1, E 1, F 1.
+Top-10 membership versus raw: A 10/10, B 10/10, C 10/10, D 10/10, E 10/10, F 10/10; top-25: A 25/25, B 25/25, C 25/25, D 25/25, E 25/25, F 25/25; top-50: A 50/50, B 50/50, C 50/50, D 50/50, E 50/50, F 50/50.
+Ordering reversals versus raw: A 0, B 0, C 0, D 30, E 0, F 416.
+Display tie counts: A 248, B 248, C 228, D 226, E 240, F 241. Option E has no practical top-30 display ties; Option C has no ties except equal raw values; A/B retain the current elite ties.
+
+### Real top-30 side-by-side
+1. Bijan Robinson | M 99.5 | Ray +7 | Raw 106.5 | A 100.0 | B #1/100.0 | C 100.0 | D 99.5 | E 99.5 | F 99.5
+2. Puka Nacua | M 99.3 | Ray +6 | Raw 105.3 | A 100.0 | B #2/100.0 | C 99.8 | D 98.3 | E 98.4 | F 99.3
+3. Amon-Ra St. Brown | M 99.0 | Ray +6 | Raw 105.0 | A 100.0 | B #3/100.0 | C 99.6 | D 98.1 | E 98.1 | F 99.1
+4. Christian McCaffrey | M 99.0 | Ray +6 | Raw 105.0 | A 100.0 | B #4/100.0 | C 99.6 | D 98.1 | E 98.1 | F 99.1
+5. Josh Allen | M 97.8 | Ray +7 | Raw 104.8 | A 100.0 | B #5/100.0 | C 99.3 | D 98.0 | E 97.9 | F 98.0
+6. James Cook | M 98.4 | Ray +6 | Raw 104.4 | A 100.0 | B #6/100.0 | C 99.1 | D 97.5 | E 97.6 | F 98.5
+7. CeeDee Lamb | M 98.7 | Ray +5 | Raw 103.7 | A 100.0 | B #7/100.0 | C 98.9 | D 96.8 | E 96.9 | F 98.8
+8. Saquon Barkley | M 97.7 | Ray +6 | Raw 103.7 | A 100.0 | B #8/100.0 | C 98.9 | D 96.9 | E 96.9 | F 97.8
+9. Brock Bowers | M 97.5 | Ray +6 | Raw 103.5 | A 100.0 | B #9/100.0 | C 98.5 | D 96.7 | E 96.7 | F 97.7
+10. Derrick Henry | M 97.5 | Ray +6 | Raw 103.5 | A 100.0 | B #10/100.0 | C 98.5 | D 96.7 | E 96.7 | F 97.7
+11. Justin Jefferson | M 98.5 | Ray +5 | Raw 103.5 | A 100.0 | B #11/100.0 | C 98.5 | D 96.6 | E 96.7 | F 98.6
+12. Trey McBride | M 97.5 | Ray +6 | Raw 103.5 | A 100.0 | B #12/100.0 | C 98.5 | D 96.7 | E 96.7 | F 97.7
+13. Ashton Jeanty | M 97.4 | Ray +6 | Raw 103.4 | A 100.0 | B #13/100.0 | C 97.8 | D 96.6 | E 96.6 | F 97.6
+14. Kenneth Walker | M 97.3 | Ray +6 | Raw 103.3 | A 100.0 | B #14/100.0 | C 97.6 | D 96.5 | E 96.5 | F 97.5
+15. Omarion Hampton | M 97.1 | Ray +6 | Raw 103.1 | A 100.0 | B #15/100.0 | C 97.4 | D 96.3 | E 96.4 | F 97.3
+16. A.J. Brown | M 97.8 | Ray +5 | Raw 102.8 | A 100.0 | B #16/100.0 | C 97.2 | D 96.0 | E 96.1 | F 97.9
+17. Jeremiyah Love | M 96.4 | Ray +6 | Raw 102.4 | A 100.0 | B #17/100.0 | C 97.0 | D 95.7 | E 95.7 | F 96.6
+18. Lamar Jackson | M 95.3 | Ray +7 | Raw 102.3 | A 100.0 | B #18/100.0 | C 96.8 | D 95.6 | E 95.6 | F 95.6
+19. Breece Hall | M 96.0 | Ray +6 | Raw 102.0 | A 100.0 | B #19/100.0 | C 96.6 | D 95.3 | E 95.3 | F 96.2
+20. Josh Jacobs | M 95.6 | Ray +6 | Raw 101.6 | A 100.0 | B #20/100.0 | C 96.5 | D 94.9 | E 95.0 | F 95.9
+21. Kyren Williams | M 95.5 | Ray +6 | Raw 101.5 | A 100.0 | B #21/100.0 | C 96.3 | D 94.8 | E 94.9 | F 95.8
+22. Malik Nabers | M 96.5 | Ray +5 | Raw 101.5 | A 100.0 | B #22/100.0 | C 96.3 | D 94.7 | E 94.9 | F 96.7
+23. Drake Maye | M 94.2 | Ray +7 | Raw 101.2 | A 100.0 | B #23/100.0 | C 95.9 | D 94.6 | E 94.6 | F 94.6
+24. Zay Flowers | M 95.9 | Ray +5 | Raw 100.9 | A 100.0 | B #24/100.0 | C 95.7 | D 94.2 | E 94.3 | F 96.1
+25. Colston Loveland | M 94.4 | Ray +6 | Raw 100.4 | A 100.0 | B #25/100.0 | C 95.5 | D 93.8 | E 93.8 | F 94.7
+26. Tee Higgins | M 95.4 | Ray +5 | Raw 100.4 | A 100.0 | B #26/100.0 | C 95.5 | D 93.7 | E 93.8 | F 95.6
+27. Garrett Wilson | M 95.3 | Ray +5 | Raw 100.3 | A 100.0 | B #27/100.0 | C 95.2 | D 93.6 | E 93.7 | F 95.5
+28. Joe Burrow | M 93.2 | Ray +7 | Raw 100.2 | A 100.0 | B #28/100.0 | C 95.0 | D 93.7 | E 93.6 | F 93.7
+29. Jalen Hurts | M 92.9 | Ray +7 | Raw 99.9 | A 99.9 | B #29/99.9 | C 94.8 | D 93.4 | E 93.4 | F 93.4
+30. Tetairoa McMillan | M 94.9 | Ray +5 | Raw 99.9 | A 99.9 | B #30/99.9 | C 94.8 | D 93.3 | E 93.4 | F 95.2
+
+### Close-player cases
+Bijan Robinson/Puka Nacua: raw 106.5/105.3; A 100.0/100.0; C 100.0/99.8; D 99.5/98.3; E 99.5/98.4; F 99.5/99.3 | Puka Nacua/Amon-Ra St. Brown: raw 105.3/105.0; A 100.0/100.0; C 99.8/99.6; D 98.3/98.1; E 98.4/98.1; F 99.3/99.1 | Amon-Ra St. Brown/Christian McCaffrey: raw 105.0/105.0; A 100.0/100.0; C 99.6/99.6; D 98.1/98.1; E 98.1/98.1; F 99.1/99.1 | Christian McCaffrey/Josh Allen: raw 105.0/104.8; A 100.0/100.0; C 99.6/99.3; D 98.1/98.0; E 98.1/97.9; F 99.1/98.0 | Josh Allen/James Cook: raw 104.8/104.4; A 100.0/100.0; C 99.3/99.1; D 98.0/97.5; E 97.9/97.6; F 98.0/98.5 | James Cook/CeeDee Lamb: raw 104.4/103.7; A 100.0/100.0; C 99.1/98.9; D 97.5/96.8; E 97.6/96.9; F 98.5/98.8 | CeeDee Lamb/Saquon Barkley: raw 103.7/103.7; A 100.0/100.0; C 98.9/98.9; D 96.8/96.9; E 96.9/96.9; F 98.8/97.8 | Saquon Barkley/Brock Bowers: raw 103.7/103.5; A 100.0/100.0; C 98.9/98.5; D 96.9/96.7; E 96.9/96.7; F 97.8/97.7 | Brock Bowers/Derrick Henry: raw 103.5/103.5; A 100.0/100.0; C 98.5/98.5; D 96.7/96.7; E 96.7/96.7; F 97.7/97.7 | Derrick Henry/Justin Jefferson: raw 103.5/103.5; A 100.0/100.0; C 98.5/98.5; D 96.7/96.6; E 96.7/96.7; F 97.7/98.6 | Justin Jefferson/Trey McBride: raw 103.5/103.5; A 100.0/100.0; C 98.5/98.5; D 96.6/96.7; E 96.7/96.7; F 98.6/97.7 | Trey McBride/Ashton Jeanty: raw 103.5/103.4; A 100.0/100.0; C 98.5/97.8; D 96.7/96.6; E 96.7/96.6; F 97.7/97.6 | Ashton Jeanty/Kenneth Walker: raw 103.4/103.3; A 100.0/100.0; C 97.8/97.6; D 96.6/96.5; E 96.6/96.5; F 97.6/97.5 | Kenneth Walker/Omarion Hampton: raw 103.3/103.1; A 100.0/100.0; C 97.6/97.4; D 96.5/96.3; E 96.5/96.4; F 97.5/97.3 | Omarion Hampton/A.J. Brown: raw 103.1/102.8; A 100.0/100.0; C 97.4/97.2; D 96.3/96.0; E 96.4/96.1; F 97.3/97.9 | A.J. Brown/Jeremiyah Love: raw 102.8/102.4; A 100.0/100.0; C 97.2/97.0; D 96.0/95.7; E 96.1/95.7; F 97.9/96.6 | Jeremiyah Love/Lamar Jackson: raw 102.4/102.3; A 100.0/100.0; C 97.0/96.8; D 95.7/95.6; E 95.7/95.6; F 96.6/95.6 | Lamar Jackson/Breece Hall: raw 102.3/102.0; A 100.0/100.0; C 96.8/96.6; D 95.6/95.3; E 95.6/95.3; F 95.6/96.2 | Breece Hall/Josh Jacobs: raw 102.0/101.6; A 100.0/100.0; C 96.6/96.5; D 95.3/94.9; E 95.3/95.0; F 96.2/95.9 | Josh Jacobs/Kyren Williams: raw 101.6/101.5; A 100.0/100.0; C 96.5/96.3; D 94.9/94.8; E 95.0/94.9; F 95.9/95.8
+
+### Roster-state stability
+Representative empty, one-RB, two-RB, QB-filled, TE-filled, and FLEX/depth scenarios retain the same raw-to-Option-E mapping for identical raw input. Roster changes affect only the intended Ray modifier source, not the deterministic display transform. Option C has no roster-state dependency unless the eligible pool itself changes.
+
+### Shrinking-player-pool stability
+Pool test: 538: Bijan Robinson E 99.5, C 100.0; 300: Bijan Robinson E 99.5, C 100.0; 150: Bijan Robinson E 99.5, C 100.0; 75: Bijan Robinson E 99.5, C 100.0. Option E remains stable for a fixed raw score; Option C changes solely because the comparison population changes. That relative-percentile semantic cost is material during an auction. Options A, B, D, E, and F are pool-independent when player inputs are held fixed.
+
+### Interpretability
+A means clamped additive score; 95 is an absolute-ish score but is unreliable near the ceiling. B means raw internal rank with a clamped display; 95 still does not disclose rank separation. C means relative percentile; 95 means approximately the 95th percentile of the current pool, not fixed desirability. D means compressed Market Score plus Ray modifier; 95 is a transformed acquisition score, not the original Market Score. E means a fixed transformed raw acquisition score on a 0–100 display; 95 is comparable across states under the fixed policy range. F means a headroom-adjusted additive score; 95 is less transparent because modifier strength varies with Market Score.
+
+### Bateman and category coexistence
+Rashod Bateman remains BEST VALUE in Recommended Now while ranking 162 in the shadow overall Decision ranking. These can validly coexist: the former is a tactical value lens and the latter is an overall acquire-now ordering. Recommended Now category cards remain useful and are not being replaced.
+
+### Approved Decision Score v1 separation policy
+Option E is approved for future production-integration work, but is not yet consumed by production UI or Recommended Now.
+Exact policy: rawDecisionScore = marketScore + rayModifier; displayDecisionScore = clamp(rawDecisionScore × 100 / 107, 0, 100), using fixed policy range [0, 107]. Rank by the unrounded rawDecisionScore. Display values are rounded to one decimal place only after the clamp; display rounding never determines rank. The policy is deterministic, pool-independent, preserves the approved 60/30/10 and modifier caps, retains NOT_REALISTIC as a gate, and leaves Recommended Now tactical cards authoritative. Rashod Bateman remains a valid tactical BEST VALUE versus overall-ranking disagreement.
+Approved limitation: a raw score below zero displays as 0; the defensive upper clamp handles raw values above 107. This policy does not compress Market Score or weaken positive modifiers near 100.
+
+### Production boundary
+OFFLINE CALIBRATION. NO PRODUCTION INTEGRATION. RECOMMENDED NOW REMAINS AUTHORITATIVE.

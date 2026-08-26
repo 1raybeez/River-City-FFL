@@ -34,6 +34,8 @@ export type ShadowDecisionState = {
 export type ShadowDecisionResult = {
   sleeperPlayerId: string;
   playerName: string;
+  position: string | null;
+  nflTeam: string | null;
   marketScore: number;
   marketRank: number | null;
   auctionComponent: number;
@@ -49,6 +51,8 @@ export type ShadowDecisionResult = {
   scarcityModifier: number;
   rayModifier: number;
   rawRayModifier: number;
+  rawDecisionScore: number;
+  displayDecisionScore: number;
   decisionScore: number;
   affordability: ShadowAffordability;
   budgetSafeMax: number;
@@ -169,10 +173,14 @@ export function calculateShadowDecisionScore({
   });
   const rawRayModifier = roster.modifier + scarcity.modifier;
   const rayModifier = modifier?.total ?? clamp(rawRayModifier, -7, 7);
+  const rawDecisionScore = marketScore + rayModifier;
+  const displayDecisionScore = round(clamp((rawDecisionScore * 100) / 107, 0, 100));
   const eligibleForAcquireNow = affordability.affordability !== "NOT_REALISTIC";
   return {
     sleeperPlayerId: player.playerId,
     playerName: player.playerName,
+    position: player.position,
+    nflTeam: player.nflTeam,
     marketScore: round(marketScore),
     marketRank: row?.marketRank ?? null,
     auctionComponent: row?.components.auction ?? 0,
@@ -188,7 +196,9 @@ export function calculateShadowDecisionScore({
     scarcityModifier: scarcity.modifier,
     rayModifier,
     rawRayModifier,
-    decisionScore: round(modifier?.score ?? marketScore),
+    rawDecisionScore,
+    displayDecisionScore,
+    decisionScore: displayDecisionScore,
     affordability: affordability.affordability,
     budgetSafeMax: affordability.budgetSafeMax,
     eligibleForAcquireNow,
@@ -198,7 +208,7 @@ export function calculateShadowDecisionScore({
       roster.explanation,
       scarcity.explanation,
       affordability.affordability === "NOT_REALISTIC" ? `Hard gate: ${affordability.affordability}.` : `Budget feasibility: ${affordability.affordability}.`,
-      `Decision Score ${round(modifier?.score ?? marketScore)} = Market Score + bounded Ray modifier ${rayModifier >= 0 ? "+" : ""}${rayModifier}.`,
+      `Raw Decision Score ${rawDecisionScore} = Market Score + bounded Ray modifier ${rayModifier >= 0 ? "+" : ""}${rayModifier}; display Decision Score ${displayDecisionScore} = clamp(raw × 100 / 107, 0, 100).`,
     ],
     policyVersion: DECISION_SCORE_SHADOW_VERSION,
   };
@@ -207,7 +217,7 @@ export function calculateShadowDecisionScore({
 export function rankShadowDecisionScores(players: readonly CalibrationPlayer[], state: ShadowDecisionState) {
   return players
     .map((player) => calculateShadowDecisionScore({ player, marketPlayers: players, state }))
-    .sort((first, second) => Number(second.eligibleForAcquireNow) - Number(first.eligibleForAcquireNow) || second.decisionScore - first.decisionScore || first.playerName.localeCompare(second.playerName));
+    .sort((first, second) => Number(second.eligibleForAcquireNow) - Number(first.eligibleForAcquireNow) || second.rawDecisionScore - first.rawDecisionScore || first.playerName.localeCompare(second.playerName));
 }
 
 export function compareShadowToRecommendedNow(
