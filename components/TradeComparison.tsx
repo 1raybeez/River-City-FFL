@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Info, Plus, RotateCcw, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { TradeComparisonPosition } from "@/lib/tradeComparison/types";
+import type { SandboxMarketFairnessResult } from "@/lib/tradeComparison/sandboxMarketFairnessCalibration";
 
 type PlayerOption = {
   playerId: string;
@@ -48,7 +49,24 @@ type RoutingResult = {
     positionalAfter: Record<string, number>;
     market: { sent: MarketContext; received: MarketContext };
   }>;
+  sandboxMarketFairness: SandboxMarketFairnessResult | null;
 };
+
+function automaticDestination(
+  participants: Participant[],
+  participant: Participant,
+) {
+  if (participants.length !== 2) return "";
+  return participants.find(
+    (candidate) =>
+      candidate.participantId !== participant.participantId &&
+      candidate.franchiseId,
+  )?.franchiseId ?? "";
+}
+
+function teamLabel(index: number) {
+  return `Team ${String.fromCharCode(65 + index)}`;
+}
 
 const POSITION_ORDER: Array<TradeComparisonPosition | "UNKNOWN"> = [
   "QB",
@@ -183,11 +201,13 @@ function MarketCard({
           </span>
         </div>
       )}
-      <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-        {empty
-          ? "Auction N/A · ADP N/A"
-          : `Auction ${context.auctionCoverage} · ADP ${context.adpCoverage}`}
-      </p>
+      {(!empty &&
+        (context.auctionCoverage !== "COMPLETE" ||
+          context.adpCoverage !== "COMPLETE")) && (
+        <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-amber-700">
+          Limited market data · Auction {context.auctionCoverage} · ADP {context.adpCoverage}
+        </p>
+      )}
     </div>
   );
 }
@@ -201,6 +221,7 @@ function ParticipantPanel({
   allPlayers,
   usedPlayers,
   destinations,
+  allParticipants,
   setDestinations,
   onChangeFranchise,
   onToggle,
@@ -215,6 +236,7 @@ function ParticipantPanel({
   allPlayers: PlayerOption[];
   usedPlayers: Set<string>;
   destinations: Record<string, string>;
+  allParticipants: Participant[];
   setDestinations: (key: string, value: string) => void;
   onChangeFranchise: (value: string) => void;
   onToggle: (playerId: string) => void;
@@ -263,7 +285,7 @@ function ParticipantPanel({
           )}
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange-600">
-              Participant {index + 1}
+              {teamLabel(index)}
             </p>
             {franchise && (
               <h3
@@ -279,7 +301,7 @@ function ParticipantPanel({
           <button
             type="button"
             onClick={onRemove}
-            aria-label={`Remove ${franchise?.franchiseName ?? `participant ${index + 1}`}`}
+            aria-label={`Remove ${franchise?.franchiseName ?? teamLabel(index)}`}
             className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-200"
           >
             <X size={18} aria-hidden="true" />
@@ -353,7 +375,10 @@ function ParticipantPanel({
                           Destination
                           <select
                             aria-label={`Destination for ${playerName(player)}`}
-                            value={destinations[destinationKey] ?? ""}
+                            value={
+                              destinations[destinationKey] ??
+                              automaticDestination(allParticipants, participant)
+                            }
                             onChange={(event) =>
                               setDestinations(
                                 destinationKey,
@@ -366,8 +391,11 @@ function ParticipantPanel({
                             {franchises
                               .filter(
                                 (candidate) =>
-                                  candidate.franchiseId !==
-                                  participant.franchiseId,
+                                  allParticipants.some(
+                                    (selected) =>
+                                      selected.franchiseId === candidate.franchiseId,
+                                  ) &&
+                                  candidate.franchiseId !== participant.franchiseId,
                               )
                               .map((candidate) => (
                                 <option
@@ -404,11 +432,13 @@ function ParticipantPanel({
 function SearchPanel({
   players,
   usedPlayers,
+  participants,
   onAdd,
 }: {
   players: PlayerOption[];
   usedPlayers: Set<string>;
-  onAdd: (playerId: string) => void;
+  participants: Participant[];
+  onAdd: (playerId: string, participantId: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const results = useMemo(
@@ -452,14 +482,7 @@ function SearchPanel({
         <ul className="mt-3 grid gap-2 sm:grid-cols-2">
           {results.map((player) => (
             <li key={player.playerId}>
-              <button
-                type="button"
-                onClick={() => {
-                  onAdd(player.playerId);
-                  setQuery("");
-                }}
-                className="flex min-h-12 w-full items-center gap-2 rounded-lg border border-orange-100 bg-white p-2 text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-200"
-              >
+              <div className="flex min-h-12 w-full flex-wrap items-center gap-2 rounded-lg border border-orange-100 bg-white p-2 text-left">
                 <img
                   src={playerImage(player)}
                   alt=""
@@ -476,12 +499,25 @@ function SearchPanel({
                     {player.nflTeam ?? "NFL team unavailable"}
                   </span>
                 </span>
-                <Plus
-                  size={15}
-                  aria-hidden="true"
-                  className="shrink-0 text-orange-700"
-                />
-              </button>
+                <span className="flex shrink-0 gap-1">
+                  {participants
+                    .filter((participant) => participant.franchiseId)
+                    .map((participant, index) => (
+                      <button
+                        key={participant.participantId}
+                        type="button"
+                        aria-label={`Add ${playerName(player)} to ${teamLabel(index)}`}
+                        onClick={() => {
+                          onAdd(player.playerId, participant.participantId);
+                          setQuery("");
+                        }}
+                        className="inline-flex min-h-8 items-center gap-1 rounded-md bg-orange-600 px-2 text-[9px] font-black uppercase tracking-wider text-white hover:bg-orange-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
+                      >
+                        <Plus size={12} aria-hidden="true" /> {teamLabel(index)}
+                      </button>
+                    ))}
+                </span>
+              </div>
             </li>
           ))}
           {results.length === 0 && (
@@ -506,20 +542,6 @@ function formatAssetNames(
   return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
 }
 
-function coverageStates(
-  result: RoutingResult,
-  side: "sent" | "received",
-  field: "auctionCoverage" | "adpCoverage",
-) {
-  const states = result.participants.map((participant) => {
-    const assets = side === "sent" ? participant.sends : participant.receives;
-    return assets.length === 0
-      ? "NOT_APPLICABLE"
-      : participant.market[side][field];
-  });
-  return [...new Set(states)].join(" / ") || "NOT_APPLICABLE";
-}
-
 function ResultView({
   result,
   franchises,
@@ -533,20 +555,80 @@ function ResultView({
       franchise.franchiseName,
     ]),
   );
-  const summaryRows = result.participants.map((participant) => {
+  const summaryRows = result.participants.map((participant, index) => {
     const name = names.get(participant.franchiseId) ?? participant.franchiseId;
     const sends = formatAssetNames(participant.sends, "sent");
     const receives = formatAssetNames(participant.receives, "received");
-    return { participant, name, sends, receives };
+    return { participant, name, sends, receives, label: teamLabel(index) };
   });
-  const auctionCoverage = `${coverageStates(result, "sent", "auctionCoverage")} / received ${coverageStates(result, "received", "auctionCoverage")}`;
-  const adpCoverage = `${coverageStates(result, "sent", "adpCoverage")} / received ${coverageStates(result, "received", "adpCoverage")}`;
+  const hasIncompleteMarketData = result.participants.some((participant) =>
+    [participant.market.sent, participant.market.received].some(
+      (market, index) => {
+        const assets = index === 0 ? participant.sends : participant.receives;
+        return assets.length > 0 &&
+          (market.auctionCoverage !== "COMPLETE" || market.adpCoverage !== "COMPLETE");
+      },
+    ),
+  );
   return (
     <section
       aria-labelledby="trade-result-title"
       className="space-y-5"
       aria-live="polite"
     >
+      {result.mode === "SANDBOX" && result.participants.length === 2 && result.sandboxMarketFairness && (
+        <section
+          aria-labelledby="sandbox-market-fairness-title"
+          className="rounded-2xl border border-orange-200 bg-orange-50 p-5 shadow-sm sm:p-6"
+        >
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-700">
+            Sandbox analysis
+          </p>
+          <h2 id="sandbox-market-fairness-title" className="mt-1 text-2xl font-black uppercase tracking-tight text-slate-950">
+            Sandbox market fairness
+          </h2>
+          {result.sandboxMarketFairness.status === "READY" ? (
+            <>
+              <p className="mt-4 text-3xl font-black text-slate-950">
+                {result.sandboxMarketFairness.fairnessScore?.toFixed(1)} / 100
+              </p>
+              <p className="mt-1 text-sm font-black uppercase tracking-wider text-orange-700">
+                {result.sandboxMarketFairness.verdict}
+              </p>
+              <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-3">
+                <div>
+                  <dt className="text-[10px] font-black uppercase tracking-wider text-slate-500">Market value edge</dt>
+                  <dd className="mt-1 font-black text-slate-950">
+                    {result.sandboxMarketFairness.higherValuePackage === "EVEN"
+                      ? "Even"
+                      : teamLabel(result.sandboxMarketFairness.higherValuePackage === "A" ? 1 : 0)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] font-black uppercase tracking-wider text-slate-500">Evidence</dt>
+                  <dd className="mt-1 font-black text-slate-950">{result.sandboxMarketFairness.evidence}</dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] font-black uppercase tracking-wider text-slate-500">Current market value split</dt>
+                  <dd className="mt-1 font-black text-slate-950">
+                    Team A {result.sandboxMarketFairness.splitA?.toFixed(1)}% · Team B {result.sandboxMarketFairness.splitB?.toFixed(1)}%
+                  </dd>
+                </div>
+              </dl>
+              <p className="mt-4 text-sm leading-6 text-slate-700">
+                Fairness measures how closely the current market value of both packages matches. Market Value Edge identifies which team receives the package with slightly more current market value.
+              </p>
+              <p className="mt-2 text-xs leading-5 text-slate-700">
+                This Sandbox model evaluates current market value only. Actual River City acquisition costs, keeper economics, ownership, roster fit, team need, and future performance are not included.
+              </p>
+            </>
+          ) : (
+            <p className="mt-4 text-sm font-semibold leading-6 text-amber-900">
+              {result.sandboxMarketFairness.warning}
+            </p>
+          )}
+        </section>
+      )}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-600">
           Trade summary
@@ -558,9 +640,10 @@ function ResultView({
           {result.mode === "SANDBOX" ? "Hypothetical trade" : "League trade"}
         </h2>
         <div className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
-          {summaryRows.map(({ participant, name, sends, receives }) => (
+          {summaryRows.map(({ participant, name, sends, receives, label }) => (
             <p key={participant.participantId}>
-              <span className="font-black text-slate-950">{name}</span> sends{" "}
+              <span className="font-black text-slate-950">{label}</span>{" "}
+              <span className="text-slate-600">({name})</span> sends{" "}
               {sends}
               {participant.sends.length > 0 && " to "}
               {participant.sends.length > 0 &&
@@ -592,7 +675,7 @@ function ResultView({
           ))}
         </div>
       </div>
-      <section
+      {result.mode === "LEAGUE_TRADE" && <section
         aria-labelledby="river-analysis-title"
         className="rounded-2xl border border-orange-200 bg-orange-50 p-5"
       >
@@ -622,7 +705,7 @@ function ResultView({
           Model Edge; the historical two-team calibration does not apply to
           multi-team trades.
         </p>
-      </section>
+      </section>}
       <section aria-labelledby="package-details-title">
         <h3
           id="package-details-title"
@@ -637,7 +720,8 @@ function ResultView({
               className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
             >
               <h4 className="break-words text-base font-black uppercase text-slate-950">
-                {names.get(participant.franchiseId) ?? participant.franchiseId}
+                {teamLabel(result.participants.indexOf(participant))}{" "}
+                <span className="text-slate-600">· {names.get(participant.franchiseId) ?? participant.franchiseId}</span>
               </h4>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div>
@@ -713,7 +797,7 @@ function ResultView({
           ))}
         </div>
       </section>
-      <section aria-labelledby="roster-impact-title">
+      {result.mode === "LEAGUE_TRADE" && <section aria-labelledby="roster-impact-title">
         <h3
           id="roster-impact-title"
           className="text-sm font-black uppercase tracking-wider text-slate-700"
@@ -782,32 +866,21 @@ function ResultView({
             </article>
           ))}
         </div>
-      </section>
-      <section
-        aria-labelledby="data-coverage-title"
-        className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-      >
-        <h3
-          id="data-coverage-title"
-          className="text-sm font-black uppercase tracking-wider text-slate-700"
+      </section>}
+      {hasIncompleteMarketData && (
+        <section
+          aria-labelledby="data-warning-title"
+          className="rounded-2xl border border-amber-200 bg-amber-50 p-4"
         >
-          Data / coverage
-        </h3>
-        <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
-          <li>Routing: validated</li>
-          <li>Auction coverage: sends {auctionCoverage}</li>
-          <li>ADP coverage: sends {adpCoverage}</li>
-          <li>Acquisition costs: pending auction</li>
-          <li>
-            Fairness calibration: gated until post-auction activation
-            requirements pass
-          </li>
-        </ul>
-        <p className="mt-3 text-xs leading-5 text-slate-600">
-          Empty packages are marked not applicable; missing market data remains
-          unavailable and is never treated as zero.
-        </p>
-      </section>
+          <h3 id="data-warning-title" className="text-sm font-black uppercase tracking-wider text-amber-950">
+            Limited market data
+          </h3>
+          <p className="mt-1 text-sm font-semibold leading-6 text-amber-900">
+            Auction or ADP consensus is unavailable for one or more selected players.
+            Missing data is not treated as zero.
+          </p>
+        </section>
+      )}
     </section>
   );
 }
@@ -905,9 +978,31 @@ export default function TradeComparison() {
   const canAddTeam = participants.length < 4;
   const allSelectedHaveDestinations = participants.every((participant) =>
     participant.selected.every((playerId) =>
-      Boolean(destinations[`${participant.participantId}:${playerId}`]),
+      Boolean(
+        destinations[`${participant.participantId}:${playerId}`] ??
+          automaticDestination(participants, participant),
+      ),
     ),
   );
+  useEffect(() => {
+    if (participants.length !== 2) return;
+    setDestinationsState((current) => {
+      const next = { ...current };
+      let changed = false;
+      participants.forEach((participant) => {
+        const destination = automaticDestination(participants, participant);
+        if (!destination) return;
+        participant.selected.forEach((playerId) => {
+          const key = `${participant.participantId}:${playerId}`;
+          if (!next[key]) {
+            next[key] = destination;
+            changed = true;
+          }
+        });
+      });
+      return changed ? next : current;
+    });
+  }, [participants]);
   const canSubmit =
     memberState === "ready" &&
     participants.every(
@@ -939,17 +1034,23 @@ export default function TradeComparison() {
     setParticipants((current) =>
       current.map((participant) =>
         participant.participantId === participantId
-          ? { ...participant, franchiseId, selected: [] }
+          ? {
+              ...participant,
+              franchiseId,
+              selected: mode === "SANDBOX" ? participant.selected : [],
+            }
           : participant,
       ),
     );
-    setDestinationsState((current) =>
-      Object.fromEntries(
-        Object.entries(current).filter(
-          ([key]) => !key.startsWith(`${participantId}:`),
+    if (mode === "LEAGUE_TRADE") {
+      setDestinationsState((current) =>
+        Object.fromEntries(
+          Object.entries(current).filter(
+            ([key]) => !key.startsWith(`${participantId}:`),
+          ),
         ),
-      ),
-    );
+      );
+    }
   };
   const togglePlayer = (participantId: string, playerId: string) => {
     setResult(null);
@@ -1066,7 +1167,8 @@ export default function TradeComparison() {
           outgoing: participant.selected.map((playerId) => ({
             playerId,
             destinationFranchiseId:
-              destinations[`${participant.participantId}:${playerId}`],
+              destinations[`${participant.participantId}:${playerId}`] ??
+              automaticDestination(participants, participant),
           })),
         })),
       };
@@ -1263,9 +1365,9 @@ export default function TradeComparison() {
         <SearchPanel
           players={sandboxPlayers}
           usedPlayers={usedPlayers}
-          onAdd={(playerId) => {
-            const target = participants[0];
-            if (target) togglePlayer(target.participantId, playerId);
+          participants={participants}
+          onAdd={(playerId, participantId) => {
+            togglePlayer(participantId, playerId);
           }}
         />
       )}
@@ -1283,6 +1385,7 @@ export default function TradeComparison() {
             allPlayers={sandboxPlayers}
             usedPlayers={usedPlayers}
             destinations={destinations}
+            allParticipants={participants}
             setDestinations={setDestinations}
             onChangeFranchise={(value) =>
               changeFranchise(participant.participantId, value)

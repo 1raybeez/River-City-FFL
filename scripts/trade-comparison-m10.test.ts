@@ -27,6 +27,42 @@ assert.ok(validateMultiTeamTradeRequest({ ...threeTeam, participants: [{ ...thre
 assert.ok(validateMultiTeamTradeRequest({ ...threeTeam, participants: [{ ...threeTeam.participants[0], outgoing: [{ playerId: "y", destinationFranchiseId: "b" }] }, threeTeam.participants[1], threeTeam.participants[2]] }, context).some((error) => error.code === "PLAYER_NOT_ROSTERED"));
 const sandbox = { ...threeTeam, mode: "SANDBOX" as const, participants: [{ ...threeTeam.participants[0], outgoing: [{ playerId: "free", destinationFranchiseId: "b" }] }, threeTeam.participants[1], threeTeam.participants[2]] };
 assert.deepEqual(validateMultiTeamTradeRequest(sandbox, context), []);
+const sandboxRouting = buildMultiTeamRouting(sandbox, context);
+assert.equal(sandboxRouting.status, "READY");
+assert.deepEqual(sandboxRouting.participants.map((participant) => participant.positionalBefore), [{}, {}, {}]);
+const twoTeamSandbox = {
+  ...sandbox,
+  participants: sandbox.participants.slice(0, 2).map((participant, index) => ({
+    ...participant,
+    outgoing: participant.outgoing.map((asset) => ({ ...asset, destinationFranchiseId: index === 0 ? "b" : "a" })),
+  })),
+};
+const twoTeamSandboxRouting = buildMultiTeamRouting(twoTeamSandbox, context);
+assert.equal(twoTeamSandboxRouting.sandboxMarketFairness?.status, "READY");
+assert.ok(Math.abs((twoTeamSandboxRouting.sandboxMarketFairness?.fairnessScore ?? 0) - 91.66666666666667) < 0.000001);
+assert.equal(twoTeamSandboxRouting.sandboxMarketFairness?.evidence, "LOW");
+const alternateSandbox = {
+  ...sandbox,
+  participants: sandbox.participants.map((participant, index) => ({
+    ...participant,
+    franchiseId: ["d", "a", "b"][index],
+    outgoing: participant.outgoing.map((asset) => ({
+      ...asset,
+      destinationFranchiseId: ["a", "b", "d"][index],
+    })),
+  })),
+};
+const alternateContext = { ...context, rosters: [...context.rosters, ...["e", "f"].map((franchiseId, index) => ({ franchiseId, franchiseName: franchiseId.toUpperCase(), rosterId: index + 10, available: true, players: [] }))] };
+const alternateSandboxRouting = buildMultiTeamRouting(alternateSandbox, alternateContext);
+assert.equal(alternateSandboxRouting.status, "READY");
+assert.deepEqual(
+  sandboxRouting.participants.map((participant) => ({ sent: participant.market.sent, received: participant.market.received })),
+  alternateSandboxRouting.participants.map((participant) => ({ sent: participant.market.sent, received: participant.market.received })),
+);
+assert.deepEqual(
+  sandboxRouting.participants.map((participant) => participant.sends.map((asset) => asset.player.playerId)),
+  alternateSandboxRouting.participants.map((participant) => participant.sends.map((asset) => asset.player.playerId)),
+);
 assert.ok(validateMultiTeamTradeRequest({ ...sandbox, participants: [{ ...sandbox.participants[0], outgoing: [{ playerId: "free", destinationFranchiseId: "b", value: 99 }] }, sandbox.participants[1], sandbox.participants[2]] }, context).some((error) => error.code === "CLIENT_VALUATION_FORBIDDEN"));
 const model = buildMultiTeamModelSummary([
   { participantId: "one", playersSent: [{ playerId: "x", modelValue: 50, acquisitionCost: 10, acquisitionCostStatus: "KNOWN", acquisitionCostProvenance: "CURRENT_RIVER_CITY_COST_BASIS" }], playersReceived: [{ playerId: "z", modelValue: 30, acquisitionCost: 8, acquisitionCostStatus: "KNOWN", acquisitionCostProvenance: "CURRENT_RIVER_CITY_COST_BASIS" }] },

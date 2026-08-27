@@ -26,6 +26,7 @@ import {
 } from "./multiTeamTypes";
 import { RIVER_CITY_HISTORICAL_CALIBRATION, scoreHistoricalGap } from "./fairness/historicalCalibration";
 import type { TradeComparisonPlayer, TradeComparisonPositionCounts } from "./types";
+import { sandboxMarketFairness } from "./sandboxMarketFairnessCalibration";
 
 function invalid(code: MultiTeamValidationError["code"], message: string): MultiTeamValidationError {
   return { code, message };
@@ -94,8 +95,10 @@ export function validateMultiTeamTradeRequest(
     participantIds.add(participant.participantId);
     if (franchiseIds.has(participant.franchiseId)) errors.push(invalid("DUPLICATE_FRANCHISE", "A franchise may participate only once."));
     franchiseIds.add(participant.franchiseId);
-    const roster = context.rosters.find((candidate) => candidate.franchiseId === participant.franchiseId);
-    if (!roster) errors.push(invalid("UNKNOWN_FRANCHISE", "Every participant must use a canonical River City franchise."));
+    const roster = value.mode === "LEAGUE_TRADE"
+      ? context.rosters.find((candidate) => candidate.franchiseId === participant.franchiseId)
+      : undefined;
+    if (!context.rosters.some((candidate) => candidate.franchiseId === participant.franchiseId)) errors.push(invalid("UNKNOWN_FRANCHISE", "Every participant must use a canonical River City franchise."));
     if (participant.outgoing.length === 0) errors.push(invalid("EMPTY_PACKAGE", "Every participant must send at least one asset."));
     for (const asset of participant.outgoing as unknown[]) {
       if (!asset || typeof asset !== "object" || Array.isArray(asset)) {
@@ -133,21 +136,37 @@ export function buildMultiTeamRouting(
   const results: MultiTeamParticipantResult[] = participants.map((participant) => {
     const sends = sendsByParticipant.get(participant.franchiseId) ?? [];
     const receives = participants.flatMap((source) => sendsByParticipant.get(source.franchiseId) ?? []).filter((asset) => asset.destinationFranchiseId === participant.franchiseId);
-    const roster = context.rosters.find((candidate) => candidate.franchiseId === participant.franchiseId);
-    const after = participantRosterAfter(roster, sends, receives);
+    const roster = request.mode === "LEAGUE_TRADE"
+      ? context.rosters.find((candidate) => candidate.franchiseId === participant.franchiseId)
+      : undefined;
+    const after = request.mode === "LEAGUE_TRADE"
+      ? participantRosterAfter(roster, sends, receives)
+      : [];
     return {
       participantId: participant.participantId,
       franchiseId: participant.franchiseId,
       sends,
       receives,
       rosterContext: request.mode === "LEAGUE_TRADE" ? "CURRENT_FACT" : "HYPOTHETICAL_RESULT",
-      positionalBefore: countPositions(roster?.players ?? []),
-      positionalAfter: countPositions(after),
+      positionalBefore: request.mode === "LEAGUE_TRADE" ? countPositions(roster?.players ?? []) : {},
+      positionalAfter: request.mode === "LEAGUE_TRADE" ? countPositions(after) : {},
       market: { sent: packageMarket(sends, context.marketByPlayer), received: packageMarket(receives, context.marketByPlayer) },
       reasoning: [],
     };
   });
-  return { status: "READY", errors: [], mode: request.mode, participants: results };
+  const sandboxMarketResult = request.mode === "SANDBOX" && results.length === 2
+    ? sandboxMarketFairness(
+        results[0].sends.map((asset) => {
+          const market = context.marketByPlayer.get(asset.player.playerId);
+          return { playerId: asset.player.playerId, marketValue: market?.value ?? null, auctionConsensus: market?.value ?? null, medianAdp: market?.averageAdp ?? null, marketSourceCount: market?.sourceCount ?? 0, adpSourceCount: market?.adpSourceCount ?? 0, evidence: "LOW" as const };
+        }),
+        results[1].sends.map((asset) => {
+          const market = context.marketByPlayer.get(asset.player.playerId);
+          return { playerId: asset.player.playerId, marketValue: market?.value ?? null, auctionConsensus: market?.value ?? null, medianAdp: market?.averageAdp ?? null, marketSourceCount: market?.sourceCount ?? 0, adpSourceCount: market?.adpSourceCount ?? 0, evidence: "LOW" as const };
+        }),
+      )
+    : null;
+  return { status: "READY", errors: [], mode: request.mode, participants: results, sandboxMarketFairness: sandboxMarketResult };
 }
 
 function toFairnessPlayer(asset: MultiTeamModelAsset): FairnessPlayer | null {

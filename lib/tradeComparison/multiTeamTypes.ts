@@ -4,6 +4,7 @@ import type {
   TradeComparisonPlayer,
   TradeComparisonPositionCounts,
 } from "./types";
+import type { SandboxMarketFairnessResult } from "./sandboxMarketFairnessCalibration";
 
 export const MULTI_TEAM_CONTRACT_VERSION = "m10" as const;
 export const MULTI_TEAM_MIN_PARTICIPANTS = 2;
@@ -52,6 +53,7 @@ export type MultiTeamValidationError = {
 
 export type MultiTeamMarketEntry = PublishedAuctionValue & {
   averageAdp: number | null;
+  adpSourceCount?: number;
 };
 
 export type MultiTeamServerContext = {
@@ -80,8 +82,8 @@ export type MultiTeamParticipantResult = {
   sends: MultiTeamRoutedAsset[];
   receives: MultiTeamRoutedAsset[];
   rosterContext: "CURRENT_FACT" | "HYPOTHETICAL_RESULT";
-  positionalBefore: TradeComparisonPositionCounts;
-  positionalAfter: TradeComparisonPositionCounts;
+  positionalBefore: Partial<TradeComparisonPositionCounts>;
+  positionalAfter: Partial<TradeComparisonPositionCounts>;
   market: {
     sent: MultiTeamPackageMarketContext;
     received: MultiTeamPackageMarketContext;
@@ -94,6 +96,7 @@ export type MultiTeamRoutingResult = {
   errors: MultiTeamValidationError[];
   mode: MultiTeamTradeMode;
   participants: MultiTeamParticipantResult[];
+  sandboxMarketFairness?: SandboxMarketFairnessResult | null;
 };
 
 export type MultiTeamModelAsset = {

@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     if (!input) return NextResponse.json({ success: false, error: "Choose two to four participants and valid player destinations." }, { status: 400 });
     const context = await loadTradeComparisonContext();
     const routing = buildMultiTeamRouting(input, { rosters: context.rosters, playerDirectory: context.multiTeamPlayerDirectory, marketByPlayer: context.marketByPlayer });
-    return NextResponse.json({ success: routing.status === "READY", routing: { status: routing.status, mode: routing.mode, errors: routing.errors, participants: routing.participants.map((participant) => ({
+    return NextResponse.json({ success: routing.status === "READY", routing: { status: routing.status, mode: routing.mode, errors: routing.errors, sandboxMarketFairness: routing.sandboxMarketFairness ?? null, participants: routing.participants.map((participant) => ({
       participantId: participant.participantId,
       franchiseId: participant.franchiseId,
       sends: participant.sends.map((asset) => ({ player: asset.player, sourceFranchiseId: asset.sourceFranchiseId, destinationFranchiseId: asset.destinationFranchiseId })),

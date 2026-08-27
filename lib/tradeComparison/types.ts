@@ -29,6 +29,7 @@ export type PublishedAuctionValue = {
   value: number | null;
   season: number | null;
   sourceLabel: string | null;
+  sourceCount?: number;
 };
 
 export type TradeComparisonPlayerContext = TradeComparisonPlayer & { auctionValue: PublishedAuctionValue };

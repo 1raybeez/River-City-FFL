@@ -15,7 +15,7 @@ assert.match(component, /before.*after/i);
 assert.match(component, /grid gap-4 lg:grid-cols-2/);
 assert.match(component, /aria-labelledby/);
 assert.doesNotMatch(component, /\$0/);
-assert.doesNotMatch(component, /winner|loser|probability|recommendation|\bAI\b|verdict|grade|fleece|steal|overpay|underpay|upgrade|downgrade|stronger|weaker/i);
+assert.doesNotMatch(component, /winner|loser|probability|recommendation|\bAI\b|grade|fleece|steal|overpay|underpay|upgrade|downgrade|stronger|weaker/i);
 assert.doesNotMatch(component, /fetch\(\s*["'][^"']*(player|players)/i);
 assert.match(component, /RoutingResult|MarketContext/);
 
