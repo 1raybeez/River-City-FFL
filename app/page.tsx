@@ -34,6 +34,7 @@ export default async function HomePage() {
       draftId: null,
       draftStartAt: null,
       seasonStartAt: null,
+      openingEvent: null,
       timezone: "America/New_York",
       title: "DRAFT / SEASON DETAILS UNAVAILABLE",
       actions: {

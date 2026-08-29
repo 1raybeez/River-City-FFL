@@ -1,4 +1,4 @@
-import type { RiverCitySeasonConfig } from "@/lib/season/seasonConfig";
+import type { RiverCityOpeningEvent, RiverCitySeasonConfig } from "@/lib/season/seasonConfig";
 
 export type BoxOneStateName =
   | "DRAFT_UPCOMING"
@@ -31,6 +31,7 @@ export type BoxOneState = {
   draftId: string | null;
   draftStartAt: string | null;
   seasonStartAt: string | null;
+  openingEvent: RiverCityOpeningEvent | null;
   timezone: "America/New_York";
   title: string;
   actions: BoxOneActionMetadata;
@@ -74,14 +75,15 @@ function actionsFor(state: BoxOneStateName): BoxOneActionMetadata {
   return { showRsvp: false, showCalendarInvite: false, showMeet: false, showLocation: false, showDraftCountdown: false, showSeasonCountdown: false, primaryAction: "none" };
 }
 
-function buildState(input: BoxOneStateInput, state: BoxOneStateName, title: BoxOneState["title"], unavailableReason: BoxOneState["unavailableReason"], seasonStartAt: string | null): BoxOneState {
+function buildState(input: BoxOneStateInput, state: BoxOneStateName, title: BoxOneState["title"], unavailableReason: BoxOneState["unavailableReason"], openingEvent: RiverCityOpeningEvent | null): BoxOneState {
   return {
     state,
     season: input.season,
     draftStatus: input.draftStatus,
     draftId: input.draftId ?? null,
     draftStartAt: input.draftStartAt ?? null,
-    seasonStartAt,
+    seasonStartAt: openingEvent?.startsAt ?? null,
+    openingEvent,
     timezone: "America/New_York",
     title,
     actions: actionsFor(state),
@@ -94,13 +96,14 @@ export function resolveBoxOneState(input: BoxOneStateInput): BoxOneState {
   if (input.draftStatus === "pre_draft") return buildState(input, "DRAFT_UPCOMING", "DRAFT DAY", null, null);
   if (input.draftStatus === "drafting" || input.draftStatus === "paused") return buildState(input, "DRAFT_LIVE", "DRAFT IN PROGRESS", null, null);
 
-  const seasonStartAt = input.seasonConfig?.seasonStartAt ?? null;
+  const openingEvent = input.seasonConfig?.openingEvent ?? null;
+  const seasonStartAt = openingEvent?.startsAt ?? null;
   const seasonStart = seasonStartAt ? asDate(seasonStartAt) : null;
   const now = asDate(input.now);
-  if (!seasonStart || !now) return buildState(input, "DATA_UNAVAILABLE", "DRAFT DETAILS UNAVAILABLE", "season-config", null);
+  if (!openingEvent || !seasonStart || !now) return buildState(input, "DATA_UNAVAILABLE", "DRAFT DETAILS UNAVAILABLE", "season-config", null);
   return seasonStart.getTime() > now.getTime()
-    ? buildState(input, "POST_DRAFT_PRESEASON", `${input.season} SEASON STARTS`, null, seasonStartAt)
-    : buildState(input, "SEASON_LIVE", `${input.season} SEASON UNDERWAY`, null, seasonStartAt);
+    ? buildState(input, "POST_DRAFT_PRESEASON", openingEvent.title, null, openingEvent)
+    : buildState(input, "SEASON_LIVE", `${input.season} SEASON UNDERWAY`, null, openingEvent);
 }
 
 export function getCountdownParts(now: Date | string, target: Date | string): CountdownParts | null {

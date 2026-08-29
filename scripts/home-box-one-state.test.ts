@@ -5,6 +5,14 @@ import { getCountdownParts, resolveBoxOneState } from "../lib/home/boxOneState";
 
 const config = getRiverCitySeasonConfig(2026);
 assert.equal(config?.seasonStartAt, "2026-09-09T20:20:00-04:00");
+assert.deepEqual(config?.openingEvent, {
+  type: "NFL_KICKOFF",
+  title: "NFL Kickoff",
+  awayTeam: "New England Patriots",
+  homeTeam: "Seattle Seahawks",
+  matchupLabel: "Patriots at Seahawks",
+  startsAt: "2026-09-09T20:20:00-04:00",
+});
 assert.equal(config?.timezone, "America/New_York");
 assert.deepEqual(getConfiguredRiverCitySeasons(), [2026]);
 
@@ -13,10 +21,16 @@ assert.equal(resolveBoxOneState({ ...base, draftStatus: "pre_draft" }).state, "D
 assert.equal(resolveBoxOneState({ ...base, draftStatus: "drafting" }).state, "DRAFT_LIVE");
 assert.equal(resolveBoxOneState({ ...base, draftStatus: "paused" }).state, "DRAFT_LIVE");
 assert.equal(resolveBoxOneState({ ...base, draftStatus: "complete" }).state, "POST_DRAFT_PRESEASON");
+const postDraftState = resolveBoxOneState({ ...base, draftStatus: "complete" });
+assert.equal(postDraftState.title, "NFL Kickoff");
+assert.equal(postDraftState.openingEvent?.awayTeam, "New England Patriots");
+assert.equal(postDraftState.openingEvent?.homeTeam, "Seattle Seahawks");
+assert.equal(postDraftState.openingEvent?.matchupLabel, "Patriots at Seahawks");
+assert.equal(postDraftState.openingEvent?.startsAt, "2026-09-09T20:20:00-04:00");
 assert.equal(resolveBoxOneState({ ...base, draftStatus: "complete", now: "2026-09-09T20:20:00-04:00" }).state, "SEASON_LIVE");
 assert.equal(resolveBoxOneState({ ...base, draftStatus: "unknown" }).state, "DATA_UNAVAILABLE");
 assert.equal(resolveBoxOneState({ ...base, draftStatus: "complete", seasonConfig: null }).state, "DATA_UNAVAILABLE");
-assert.equal(resolveBoxOneState({ ...base, draftStatus: "complete", seasonConfig: { ...config!, seasonStartAt: "not-a-date" } }).state, "DATA_UNAVAILABLE");
+assert.equal(resolveBoxOneState({ ...base, draftStatus: "complete", seasonConfig: { ...config!, openingEvent: { ...config!.openingEvent, startsAt: "not-a-date" } } }).state, "DATA_UNAVAILABLE");
 
 assert.deepEqual(getCountdownParts("2026-09-09T19:00:00-04:00", "2026-09-09T20:20:00-04:00"), { days: 0, hours: 1, minutes: 20, reached: false });
 assert.deepEqual(getCountdownParts("2026-09-09T20:20:01-04:00", "2026-09-09T20:20:00-04:00"), { days: 0, hours: 0, minutes: 0, reached: true });
@@ -43,7 +57,9 @@ assert.match(home, /DRAFT_LIVE/);
 assert.match(home, /POST_DRAFT_PRESEASON/);
 assert.match(home, /SEASON_LIVE/);
 assert.match(home, /DATA_UNAVAILABLE/);
-assert.match(home, /state === "DRAFT_UPCOMING" \? state\.draftStartAt : state\.seasonStartAt/);
+assert.match(home, /state === "DRAFT_UPCOMING" \? state\.draftStartAt : state\.openingEvent\?\.startsAt/);
+assert.match(home, /NFL KICKOFF/);
+assert.match(home, /matchupLabel/);
 assert.match(home, /showRsvp \? onSnapshot/);
 assert.match(home, /event\.gCalLink/);
 assert.match(home, /View Matchups/);
