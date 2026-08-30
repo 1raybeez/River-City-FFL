@@ -70,5 +70,16 @@ assert.match(client, /guidanceBudgetRow\.remainingBudget/);
 assert.match(client, /guidanceBudgetRow\.totalSpent/);
 assert.match(client, /guidanceBudgetRow\.rosterSpotsRemaining/);
 assert.match(client, /guidanceBudgetRow\.maxBid/);
+assert.match(client, /Current Read/);
+assert.match(client, /Supporting Signals/);
+assert.match(client, /Strategy confirmations/);
+assert.match(client, /rayKDefStrategyMessages\.slice\(0, 3\)/);
+assert.match(client, /aria-expanded=\{isAdvisorSignalsExpanded\}/);
+assert.match(client, /setIsAdvisorSignalsExpanded/);
+assert.match(client, /advisorRosterIsComplete/);
+assert.match(client, /Market Watch \/ Post-Draft Reference/);
+assert.match(client, /No Bid Capacity · Market reference only/);
+assert.match(client, /strategyWarnings/);
+assert.match(client, /strategyNextActions/);
 
 console.log("Purchase integrity checks passed (fake state/seams only; no production writes).");

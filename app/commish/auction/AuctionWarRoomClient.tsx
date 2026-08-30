@@ -4039,6 +4039,8 @@ export default function AuctionWarRoomClient({
   });
   const [draftUtilityOpenSection, setDraftUtilityOpenSection] =
     useState<DraftUtilitySection | null>(null);
+  const [isAdvisorSignalsExpanded, setIsAdvisorSignalsExpanded] =
+    useState(false);
   const [localAdvisorChatMessages, setLocalAdvisorChatMessages] = useState<
     LocalAdvisorChatMessage[]
   >([]);
@@ -4583,6 +4585,9 @@ export default function AuctionWarRoomClient({
       : null);
   const hasManualAuctionSales = manualAuctionSales.length > 0;
   const rayKDefStrategyMessages = getRayKDefStrategyMessages(activePurchaseRows);
+  const advisorSupportingSignalExamples = isAdvisorSignalsExpanded
+    ? rayKDefStrategyMessages
+    : rayKDefStrategyMessages.slice(0, 3);
   const manualSalePlayerStrategyMessage =
     manualSaleSelectedPlayer && manualSalePriceValue !== null
       ? getRayKDefStrategyMessage(
@@ -6944,6 +6949,9 @@ export default function AuctionWarRoomClient({
       : guidanceBudgetRow
         ? 'complete'
         : 'unavailable';
+  const advisorRosterIsComplete =
+    guidanceBudgetRow?.budgetIsIncomplete === false &&
+    guidanceBudgetRow.rosterSpotsRemaining === 0;
   const strategyBudgetRead =
     strategyBudgetStatus === 'incomplete'
       ? `Budget incomplete: ${formatMissingKeeperPriceCount(guidanceBudgetRow?.missingKeeperPriceCount ?? 0)}. Legal max is hidden until keeper prices are confirmed.`
@@ -10615,16 +10623,37 @@ export default function AuctionWarRoomClient({
               </div>
 
               {rayKDefStrategyMessages.length > 0 && (
-                <div className="grid gap-2">
-                  {rayKDefStrategyMessages.map((message) => (
-                    <p
-                      key={message}
-                      className="rounded-xl border border-emerald-600/20 bg-emerald-600/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300"
-                    >
-                      {message}
-                    </p>
-                  ))}
-                </div>
+                <section className="rounded-xl border border-emerald-600/20 bg-emerald-600/10 p-3 text-emerald-700 dark:text-emerald-300">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-[0.25em]">
+                        Supporting Signals
+                      </p>
+                      <p className="mt-1 text-[10px] font-bold uppercase tracking-widest">
+                        Strategy confirmations · {rayKDefStrategyMessages.length} supporting purchases
+                      </p>
+                    </div>
+                    {rayKDefStrategyMessages.length > 3 && (
+                      <button
+                        type="button"
+                        aria-expanded={isAdvisorSignalsExpanded}
+                        onClick={() => setIsAdvisorSignalsExpanded((expanded) => !expanded)}
+                        className="rounded-lg border border-current/20 px-2 py-1 text-[9px] font-black uppercase tracking-widest transition hover:bg-white/30 dark:hover:bg-black/20"
+                      >
+                        {isAdvisorSignalsExpanded
+                          ? 'Hide Additional Signals'
+                          : `Show ${rayKDefStrategyMessages.length - 3} More`}
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-2 grid gap-1.5">
+                    {advisorSupportingSignalExamples.map((message) => (
+                      <p key={message} className="text-[10px] font-bold leading-relaxed">
+                        ✓ {message}
+                      </p>
+                    ))}
+                  </div>
+                </section>
               )}
 
               <div className="grid gap-2 md:grid-cols-5">
@@ -10677,12 +10706,14 @@ export default function AuctionWarRoomClient({
               </div>
 
               <p className="rounded-xl border border-black/10 bg-black/[0.03] px-3 py-2 text-xs font-bold leading-relaxed text-gray-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-300">
-                {strategyBudgetRead}
+                  {advisorRosterIsComplete
+                    ? 'Draft complete: no open roster slots remain. This section is now a market recap and roster-review reference.'
+                    : strategyBudgetRead}
               </p>
 
               <div className="rounded-xl border border-black/10 bg-black/[0.03] p-3 dark:border-white/10 dark:bg-white/[0.03]">
                 <p className="mb-2 text-[9px] font-black uppercase tracking-[0.25em] text-gray-400">
-                  Top Value Targets
+                  {advisorRosterIsComplete ? 'Market Watch / Post-Draft Reference' : 'Top Value Targets'}
                 </p>
                 <div className="space-y-2">
                   {bestRemainingValueRows.length > 0 ? (
@@ -10701,12 +10732,20 @@ export default function AuctionWarRoomClient({
                         </div>
                         <div className="flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-widest">
                           <span>Market {formatMoney(row.averageValue)}</span>
-                          <span className="text-orange-600">
-                            Recommended Max {formatMoney(row.recommendation.recommendedMaxBid)}
-                          </span>
-                          <span>
-                            Above Market {row.valueGap === null ? 'N/A' : formatSignedMoney(Math.round(row.valueGap))}
-                          </span>
+                          {advisorRosterIsComplete && row.recommendation.recommendedMaxBid === 0 ? (
+                            <span className="text-gray-500 dark:text-gray-400">
+                              No Bid Capacity · Market reference only
+                            </span>
+                          ) : (
+                            <>
+                              <span className="text-orange-600">
+                                Recommended Max {formatMoney(row.recommendation.recommendedMaxBid)}
+                              </span>
+                              <span>
+                                Above Market {row.valueGap === null ? 'N/A' : formatSignedMoney(Math.round(row.valueGap))}
+                              </span>
+                            </>
+                          )}
                         </div>
                         <div>
                           {row.preferenceTags.length > 0 ? (
