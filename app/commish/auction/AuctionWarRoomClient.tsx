@@ -6949,9 +6949,11 @@ export default function AuctionWarRoomClient({
       : guidanceBudgetRow
         ? 'complete'
         : 'unavailable';
-  const advisorRosterIsComplete =
-    guidanceBudgetRow?.budgetIsIncomplete === false &&
-    guidanceBudgetRow.rosterSpotsRemaining === 0;
+  const isCurrentFranchiseDraftComplete =
+    guidanceBudgetRow?.rosterSpotsRemaining === 0;
+  const currentFranchiseRosterFilledCount = guidanceBudgetRow
+    ? guidanceBudgetRow.team.rosterSlots.total - guidanceBudgetRow.rosterSpotsRemaining
+    : null;
   const strategyBudgetRead =
     strategyBudgetStatus === 'incomplete'
       ? `Budget incomplete: ${formatMissingKeeperPriceCount(guidanceBudgetRow?.missingKeeperPriceCount ?? 0)}. Legal max is hidden until keeper prices are confirmed.`
@@ -7021,7 +7023,7 @@ export default function AuctionWarRoomClient({
       ? buildAuctionAdvisorSleeperPurchases(sleeperPurchases)
       : [],
   });
-  const strategyWarnings = [
+  const liveStrategyWarnings = [
     ...(guidanceBudgetRow?.budgetIsIncomplete
       ? [
           {
@@ -7049,7 +7051,10 @@ export default function AuctionWarRoomClient({
       message: warning.message,
     })),
   ].slice(0, 3);
-  const strategyNextActions = [
+  const strategyWarnings = isCurrentFranchiseDraftComplete
+    ? []
+    : liveStrategyWarnings;
+  const liveStrategyNextActions = [
     topRosterNeedRows[0]
       ? `Prioritize ${topRosterNeedRows[0].label} while that roster need remains open.`
       : null,
@@ -7068,6 +7073,12 @@ export default function AuctionWarRoomClient({
   ]
     .filter((action): action is string => Boolean(action))
     .slice(0, 5);
+  const strategyNextActions = isCurrentFranchiseDraftComplete
+    ? [
+        'Review the completed roster and positional balance.',
+        'Use market trends as context for early-season waiver and trade decisions.',
+      ]
+    : liveStrategyNextActions;
   const localAdvisorChatContext: LocalAdvisorChatContext = {
     auctionAdvisorSummary,
     guidanceOpenStarterNeeds,
@@ -10615,10 +10626,14 @@ export default function AuctionWarRoomClient({
                   Current Read
                 </p>
                 <h3 className="mt-1 text-lg font-black uppercase italic tracking-tight">
-                  {formatWarRoomTerminology(auctionAdvisorSummary.headline)}
+                  {isCurrentFranchiseDraftComplete
+                    ? 'Draft complete — shift to post-draft review.'
+                    : formatWarRoomTerminology(auctionAdvisorSummary.headline)}
                 </h3>
                 <p className="mt-2 text-xs font-bold leading-relaxed">
-                  {formatWarRoomTerminology(auctionAdvisorSummary.currentStrategy)}
+                  {isCurrentFranchiseDraftComplete
+                    ? 'Your roster is full. Use the remaining market data to review value, roster construction, and league trends rather than chase additional auction purchases.'
+                    : formatWarRoomTerminology(auctionAdvisorSummary.currentStrategy)}
                 </p>
               </div>
 
@@ -10659,7 +10674,7 @@ export default function AuctionWarRoomClient({
               <div className="grid gap-2 md:grid-cols-5">
                 <div className="rounded-xl border border-black/10 bg-black/[0.03] px-3 py-2 dark:border-white/10 dark:bg-white/[0.03]">
                   <p className="text-[9px] font-black uppercase tracking-[0.25em] text-gray-400">
-                    Highest Need
+                    {isCurrentFranchiseDraftComplete ? 'Thinnest Area' : 'Highest Need'}
                   </p>
                   <p className="mt-2 text-xs font-black uppercase leading-tight">
                     {topRosterNeedRows[0]?.label ?? 'Value'}
@@ -10706,14 +10721,14 @@ export default function AuctionWarRoomClient({
               </div>
 
               <p className="rounded-xl border border-black/10 bg-black/[0.03] px-3 py-2 text-xs font-bold leading-relaxed text-gray-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-300">
-                  {advisorRosterIsComplete
+                  {isCurrentFranchiseDraftComplete
                     ? 'Draft complete: no open roster slots remain. This section is now a market recap and roster-review reference.'
                     : strategyBudgetRead}
               </p>
 
               <div className="rounded-xl border border-black/10 bg-black/[0.03] p-3 dark:border-white/10 dark:bg-white/[0.03]">
                 <p className="mb-2 text-[9px] font-black uppercase tracking-[0.25em] text-gray-400">
-                  {advisorRosterIsComplete ? 'Market Watch / Post-Draft Reference' : 'Top Value Targets'}
+                  {isCurrentFranchiseDraftComplete ? 'Market Watch / Post-Draft Reference' : 'Top Value Targets'}
                 </p>
                 <div className="space-y-2">
                   {bestRemainingValueRows.length > 0 ? (
@@ -10732,7 +10747,7 @@ export default function AuctionWarRoomClient({
                         </div>
                         <div className="flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-widest">
                           <span>Market {formatMoney(row.averageValue)}</span>
-                          {advisorRosterIsComplete && row.recommendation.recommendedMaxBid === 0 ? (
+                          {isCurrentFranchiseDraftComplete && row.recommendation.recommendedMaxBid === 0 ? (
                             <span className="text-gray-500 dark:text-gray-400">
                               No Bid Capacity · Market reference only
                             </span>
@@ -10776,8 +10791,8 @@ export default function AuctionWarRoomClient({
           </SectionShell>
 
           <SectionShell
-            title="Best Remaining Values"
-            eyebrow="Unsold Radar"
+            title={isCurrentFranchiseDraftComplete ? 'Market Watch' : 'Best Remaining Values'}
+            eyebrow={isCurrentFranchiseDraftComplete ? 'Post-Draft Reference' : 'Unsold Radar'}
             icon={DollarSign}
           >
             <div className="space-y-2">
@@ -10797,9 +10812,15 @@ export default function AuctionWarRoomClient({
                     </div>
                     <div className="flex gap-2 text-[10px] font-black uppercase tracking-widest">
                       <span>Market {formatMoney(row.averageValue)}</span>
-                      <span className="text-orange-600">
-                        Recommended Max {formatMoney(row.recommendation.recommendedMaxBid)}
-                      </span>
+                      {isCurrentFranchiseDraftComplete ? (
+                        <span className="text-gray-500 dark:text-gray-400">
+                          Market reference only
+                        </span>
+                      ) : (
+                        <span className="text-orange-600">
+                          Recommended Max {formatMoney(row.recommendation.recommendedMaxBid)}
+                        </span>
+                      )}
                     </div>
                     <span className={`w-fit rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-widest ${
                       (row.valueGap ?? 0) >= 0
@@ -10841,14 +10862,16 @@ export default function AuctionWarRoomClient({
                     One conversation across Draft, Strategy, League Intel, and History
                   </p>
                   <p className="mt-2 text-lg font-black uppercase italic tracking-tight">
-                    {selectedPlayer
-                      ? `Currently focused on ${selectedPlayer.originalPlayerName}`
-                      : 'Draft-level guidance is ready'}
+                    {isCurrentFranchiseDraftComplete
+                      ? 'Draft complete'
+                      : selectedPlayer
+                        ? `Currently focused on ${selectedPlayer.originalPlayerName}`
+                        : 'Draft-level guidance is ready'}
                   </p>
                   <p className="mt-2 max-w-3xl text-sm font-bold leading-relaxed">
-                    Use the floating robot for player-specific values, roster fit,
-                    budget pace, reasons, and warnings. The Strategy page no longer
-                    maintains a second competing chat.
+                    {isCurrentFranchiseDraftComplete
+                      ? 'Review the completed auction, roster construction, and market context with the coach. The Strategy page no longer maintains a second competing chat.'
+                      : 'Use the floating robot for player-specific values, roster fit, budget pace, reasons, and warnings. The Strategy page no longer maintains a second competing chat.'}
                   </p>
                 </div>
                 <button
@@ -10864,34 +10887,40 @@ export default function AuctionWarRoomClient({
               <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-xl border border-current/15 bg-white/45 p-3 dark:bg-black/20">
                   <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-65">
-                    Current Decision
+                    {isCurrentFranchiseDraftComplete ? 'Status' : 'Current Decision'}
                   </p>
                   <p className="mt-1 text-sm font-black uppercase italic">
-                    {draftCoachPreview.decision}
+                    {isCurrentFranchiseDraftComplete ? 'Draft Complete' : draftCoachPreview.decision}
                   </p>
                 </div>
                 <div className="rounded-xl border border-current/15 bg-white/45 p-3 dark:bg-black/20">
                   <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-65">
-                    Budget Pace
+                    {isCurrentFranchiseDraftComplete ? 'Roster' : 'Budget Pace'}
                   </p>
                   <p className="mt-1 text-sm font-black uppercase italic">
-                    {draftCoachPreview.budgetPace.label}
+                    {isCurrentFranchiseDraftComplete
+                      ? `${currentFranchiseRosterFilledCount ?? 0} / ${guidanceBudgetRow?.team.rosterSlots.total ?? 0}`
+                      : draftCoachPreview.budgetPace.label}
                   </p>
                 </div>
                 <div className="rounded-xl border border-current/15 bg-white/45 p-3 dark:bg-black/20">
                   <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-65">
-                    Must Reserve
+                    {isCurrentFranchiseDraftComplete ? 'Remaining' : 'Must Reserve'}
                   </p>
                   <p className="mt-1 text-sm font-black uppercase italic">
-                    {formatMoney(draftCoachPreview.spendGuidance.mustReserve)}
+                    {isCurrentFranchiseDraftComplete
+                      ? formatMoney(guidanceBudgetRow?.remainingBudget ?? null)
+                      : formatMoney(draftCoachPreview.spendGuidance.mustReserve)}
                   </p>
                 </div>
                 <div className="rounded-xl border border-current/15 bg-white/45 p-3 dark:bg-black/20">
                   <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-65">
-                    Conversation
+                    {isCurrentFranchiseDraftComplete ? 'Next' : 'Conversation'}
                   </p>
                   <p className="mt-1 text-sm font-black uppercase italic">
-                    {draftCoachChatMessages.length} message{draftCoachChatMessages.length === 1 ? '' : 's'}
+                    {isCurrentFranchiseDraftComplete
+                      ? 'Post-Draft Review'
+                      : `${draftCoachChatMessages.length} message${draftCoachChatMessages.length === 1 ? '' : 's'}`}
                   </p>
                 </div>
               </div>
@@ -11304,7 +11333,9 @@ export default function AuctionWarRoomClient({
                     ))
                   ) : (
                     <p className="rounded-lg border border-black/10 bg-black/[0.03] px-3 py-2 text-xs font-bold uppercase tracking-widest text-gray-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-400">
-                      No current advisor warnings.
+                      {isCurrentFranchiseDraftComplete
+                        ? 'No active auction warnings. Your roster is complete.'
+                        : 'No current advisor warnings.'}
                     </p>
                   )}
                 </div>
@@ -11317,7 +11348,8 @@ export default function AuctionWarRoomClient({
               >
                 <div className="space-y-2">
                   {strategyNextActions.length > 0 ? (
-                    strategyNextActions.map((action, index) => (
+                    <>
+                    {strategyNextActions.map((action, index) => (
                       <div
                         key={action}
                         className="grid grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-2 rounded-lg border border-black/10 bg-black/[0.03] px-2.5 py-2 dark:border-white/10 dark:bg-white/[0.03]"
@@ -11329,7 +11361,16 @@ export default function AuctionWarRoomClient({
                           {action}
                         </p>
                       </div>
-                    ))
+                    ))}
+                    {isCurrentFranchiseDraftComplete ? (
+                      <Link
+                        href="/commish/auction/report"
+                        className="inline-flex min-h-10 w-full items-center justify-center rounded-lg border border-orange-600/30 bg-orange-600/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-orange-700 transition hover:bg-orange-600/20 dark:text-orange-300"
+                      >
+                        View Post-Draft Report
+                      </Link>
+                    ) : null}
+                    </>
                   ) : (
                     <p className="rounded-lg border border-black/10 bg-black/[0.03] px-3 py-2 text-xs font-bold uppercase tracking-widest text-gray-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-400">
                       No live action is available until a roster, budget, or market input loads.
