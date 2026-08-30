@@ -1,5 +1,5 @@
 import "server-only";
-import { getLeagueRosters, getLeagueUsers, getSleeperPlayerIdentityDirectory } from "@/lib/sleeper";
+import { getLeagueInfo, getLeagueRosters, getLeagueUsers, getSleeperPlayerIdentityDirectory } from "@/lib/sleeper";
 import { canonicalAuctionTeams } from "@/lib/auction/canonicalTeamCatalog";
 import { readPublishedMasterviewFromFirestore } from "@/lib/auction/valueRefreshService";
 import { readPublishedAdpConsensusFromFirestore } from "@/lib/auction/adpRefreshService";
@@ -9,10 +9,11 @@ import type { PublishedAuctionValue, TradeComparisonInput } from "./types";
 import type { MultiTeamMarketEntry } from "./multiTeamTypes";
 
 export async function loadTradeComparisonContext() {
-  const [rosters, users, playerDirectory, publishedValues, publishedAdp, identities] = await Promise.all([getLeagueRosters(), getLeagueUsers(), getSleeperPlayerIdentityDirectory(), readPublishedMasterviewFromFirestore().catch(() => null), readPublishedAdpConsensusFromFirestore(2026).catch(() => null), getCurrentSeasonTeamIdentityMap()]);
+  const [league, rosters, users, playerDirectory, publishedValues, publishedAdp, identities] = await Promise.all([getLeagueInfo(), getLeagueRosters(), getLeagueUsers(), getSleeperPlayerIdentityDirectory(), readPublishedMasterviewFromFirestore().catch(() => null), readPublishedAdpConsensusFromFirestore(2026).catch(() => null), getCurrentSeasonTeamIdentityMap()]);
   const avatarsByUserId = new Map(users.map((user: { user_id?: string; avatar?: string | null }) => [user.user_id, user.avatar ?? null] as const));
   const teams: CanonicalTradeComparisonTeam[] = canonicalAuctionTeams.map((team) => ({ franchiseId: team.franchiseId, franchiseName: identities.get(team.franchiseId)?.currentTeamName ?? team.teamName, rosterId: team.rosterId, avatar: identities.get(team.franchiseId)?.avatar ?? avatarsByUserId.get(team.managerId) ?? null }));
-  const currentRosters = buildCurrentFranchiseRosters({ teams, rosters, playerDirectory });
+  const startingFaab = Number(league.settings?.waiver_budget);
+  const currentRosters = buildCurrentFranchiseRosters({ teams, rosters, playerDirectory, startingFaab: Number.isFinite(startingFaab) ? startingFaab : null });
   const auctionValues = new Map<string, PublishedAuctionValue>();
   publishedValues?.rows.forEach((row) => {
     if (!row.sleeperPlayerId) return;

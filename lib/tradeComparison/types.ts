@@ -22,6 +22,7 @@ export type CurrentFranchiseRoster = {
   available: boolean;
   players: TradeComparisonPlayer[];
   avatar?: string | null;
+  availableFaab?: number | null;
 };
 
 export type PublishedAuctionValue = {

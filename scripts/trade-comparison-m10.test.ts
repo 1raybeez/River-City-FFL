@@ -4,7 +4,7 @@ import type { CurrentFranchiseRoster, TradeComparisonPlayer } from "../lib/trade
 
 const player = (playerId: string, position: TradeComparisonPlayer["position"]): TradeComparisonPlayer => ({ playerId, name: playerId, position, nflTeam: "BUF" });
 const catalog = new Map(["x", "y", "z", "free"].map((id) => [id, player(id, id === "x" ? "QB" : "WR")]));
-const rosters: CurrentFranchiseRoster[] = ["a", "b", "c", "d"].map((franchiseId, index) => ({ franchiseId, franchiseName: franchiseId.toUpperCase(), rosterId: index + 1, available: true, players: [player(franchiseId === "a" ? "x" : franchiseId === "b" ? "y" : franchiseId === "c" ? "z" : "free", franchiseId === "a" ? "QB" : "WR")] }));
+const rosters: CurrentFranchiseRoster[] = ["a", "b", "c", "d"].map((franchiseId, index) => ({ franchiseId, franchiseName: franchiseId.toUpperCase(), rosterId: index + 1, available: true, availableFaab: franchiseId === "a" ? 35 : 20, players: [player(franchiseId === "a" ? "x" : franchiseId === "b" ? "y" : franchiseId === "c" ? "z" : "free", franchiseId === "a" ? "QB" : "WR")] }));
 const marketByPlayer = new Map([...catalog.keys()].map((playerId, index) => [playerId, { playerId, value: 10 + index, season: 2026, sourceLabel: "Published auction consensus", averageAdp: 10 + index }]));
 const context = { rosters, playerDirectory: catalog, marketByPlayer };
 const threeTeam = { version: "m10" as const, mode: "LEAGUE_TRADE" as const, season: 2026, participants: [{ participantId: "one", franchiseId: "a", outgoing: [{ playerId: "x", destinationFranchiseId: "b" }] }, { participantId: "two", franchiseId: "b", outgoing: [{ playerId: "y", destinationFranchiseId: "c" }] }, { participantId: "three", franchiseId: "c", outgoing: [{ playerId: "z", destinationFranchiseId: "a" }] }] };
@@ -41,6 +41,22 @@ const twoTeamSandboxRouting = buildMultiTeamRouting(twoTeamSandbox, context);
 assert.equal(twoTeamSandboxRouting.sandboxMarketFairness?.status, "READY");
 assert.ok(Math.abs((twoTeamSandboxRouting.sandboxMarketFairness?.fairnessScore ?? 0) - 91.66666666666667) < 0.000001);
 assert.equal(twoTeamSandboxRouting.sandboxMarketFairness?.evidence, "LOW");
+const sandboxWithFaab = { ...twoTeamSandbox, participants: twoTeamSandbox.participants.map((participant, index) => ({ ...participant, faab: { amount: index === 0 ? 5 : 0, destinationFranchiseId: index === 0 ? "b" : "" } })) };
+const sandboxWithFaabRouting = buildMultiTeamRouting(sandboxWithFaab, context);
+assert.equal(sandboxWithFaabRouting.status, "READY");
+assert.equal(sandboxWithFaabRouting.participants.find((participant) => participant.franchiseId === "a")?.faabSent?.amount, 5);
+assert.equal(sandboxWithFaabRouting.participants.find((participant) => participant.franchiseId === "b")?.faabReceived[0]?.amount, 5);
+assert.equal(sandboxWithFaabRouting.participants.find((participant) => participant.franchiseId === "a")?.faabSent?.receiverFranchiseId, "b");
+assert.equal(sandboxWithFaabRouting.participants.find((participant) => participant.franchiseId === "b")?.faabReceived[0]?.senderFranchiseId, "a");
+assert.equal(sandboxWithFaabRouting.sandboxMarketFairness?.fairnessScore, twoTeamSandboxRouting.sandboxMarketFairness?.fairnessScore);
+const leagueWithFaab = { ...twoTeamSandbox, mode: "LEAGUE_TRADE" as const, participants: twoTeamSandbox.participants.map((participant, index) => ({ ...participant, franchiseId: index === 0 ? "a" : "b", outgoing: [{ playerId: index === 0 ? "x" : "y", destinationFranchiseId: index === 0 ? "b" : "a" }], faab: { amount: index === 0 ? 35 : 0, destinationFranchiseId: index === 0 ? "b" : "" } })) };
+assert.deepEqual(validateMultiTeamTradeRequest(leagueWithFaab, context), []);
+assert.equal(buildMultiTeamRouting(leagueWithFaab, context).participants.find((participant) => participant.franchiseId === "a")?.faabSent?.amount, 35);
+assert.ok(validateMultiTeamTradeRequest({ ...leagueWithFaab, participants: leagueWithFaab.participants.map((participant) => participant.franchiseId === "a" ? { ...participant, faab: { amount: 36, destinationFranchiseId: "b" } } : participant) }, context).some((error) => error.code === "FAAB_BALANCE_EXCEEDED"));
+assert.ok(validateMultiTeamTradeRequest({ ...sandboxWithFaab, participants: sandboxWithFaab.participants.map((participant) => participant.franchiseId === "a" ? { ...participant, faab: { amount: -1, destinationFranchiseId: "b" } } : participant) }, context).some((error) => error.code === "INVALID_FAAB"));
+assert.ok(validateMultiTeamTradeRequest({ ...sandboxWithFaab, participants: sandboxWithFaab.participants.map((participant) => participant.franchiseId === "a" ? { ...participant, faab: { amount: 1.5, destinationFranchiseId: "b" } } : participant) }, context).some((error) => error.code === "INVALID_FAAB"));
+assert.ok(validateMultiTeamTradeRequest({ ...sandboxWithFaab, participants: sandboxWithFaab.participants.map((participant) => participant.franchiseId === "a" ? { ...participant, faab: { amount: 5, destinationFranchiseId: "a" } } : participant) }, context).some((error) => error.code === "INVALID_DESTINATION"));
+assert.ok(validateMultiTeamTradeRequest({ ...sandboxWithFaab, participants: sandboxWithFaab.participants.map((participant) => participant.franchiseId === "a" ? { ...participant, faab: { amount: 5, destinationFranchiseId: "c" } } : participant) }, context).some((error) => error.code === "DESTINATION_NOT_PARTICIPANT"));
 const alternateSandbox = {
   ...sandbox,
   participants: sandbox.participants.map((participant, index) => ({

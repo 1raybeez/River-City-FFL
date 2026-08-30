@@ -15,7 +15,8 @@ function parseRequest(value: unknown): MultiTeamTradeRequest | null {
   const participants = value.participants.map((item) => {
     if (!isRecord(item) || typeof item.participantId !== "string" || typeof item.franchiseId !== "string" || !Array.isArray(item.outgoing)) return null;
     const outgoing = item.outgoing.map((asset) => isRecord(asset) && typeof asset.playerId === "string" && typeof asset.destinationFranchiseId === "string" ? { playerId: asset.playerId, destinationFranchiseId: asset.destinationFranchiseId } : null);
-    return outgoing.every(Boolean) ? { participantId: item.participantId, franchiseId: item.franchiseId, outgoing: outgoing as { playerId: string; destinationFranchiseId: string }[] } : null;
+    const faab = item.faab === undefined || item.faab === null ? null : isRecord(item.faab) && typeof item.faab.amount === "number" && typeof item.faab.destinationFranchiseId === "string" ? { amount: item.faab.amount, destinationFranchiseId: item.faab.destinationFranchiseId } : undefined;
+    return outgoing.every(Boolean) && (item.faab === undefined || item.faab === null || faab !== undefined) ? { participantId: item.participantId, franchiseId: item.franchiseId, outgoing: outgoing as { playerId: string; destinationFranchiseId: string }[], faab: faab ?? null } : null;
   });
   return participants.every(Boolean) ? { version: "m10", mode: value.mode, season: 2026, participants: participants as MultiTeamTradeRequest["participants"] } : null;
 }
@@ -35,6 +36,8 @@ export async function POST(request: Request) {
       sends: participant.sends.map((asset) => ({ player: asset.player, sourceFranchiseId: asset.sourceFranchiseId, destinationFranchiseId: asset.destinationFranchiseId })),
       receives: participant.receives.map((asset) => ({ player: asset.player, sourceFranchiseId: asset.sourceFranchiseId, destinationFranchiseId: asset.destinationFranchiseId })),
       rosterContext: participant.rosterContext,
+      faabSent: participant.faabSent,
+      faabReceived: participant.faabReceived,
       positionalBefore: participant.positionalBefore,
       positionalAfter: participant.positionalAfter,
       market: participant.market,

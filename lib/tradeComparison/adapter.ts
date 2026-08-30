@@ -4,7 +4,7 @@ import { TRADE_COMPARISON_POSITIONS } from "./types";
 import { validateTradeComparisonInput } from "./validation";
 
 export type CanonicalTradeComparisonTeam = { franchiseId: string; franchiseName: string; rosterId: number | null; avatar?: string | null };
-type SleeperRosterLike = { roster_id?: number | string | null; players?: unknown };
+type SleeperRosterLike = { roster_id?: number | string | null; players?: unknown; settings?: { waiver_budget_used?: unknown } };
 
 function normalizePosition(value: string | null | undefined): TradeComparisonPosition | null {
   const position = value?.trim().toUpperCase();
@@ -22,7 +22,7 @@ function readPlayerIds(value: unknown) {
   return Array.isArray(value) ? value.map((playerId) => String(playerId).trim()).filter(Boolean) : [];
 }
 
-export function buildCurrentFranchiseRosters({ teams, rosters, playerDirectory }: { teams: readonly CanonicalTradeComparisonTeam[]; rosters: readonly SleeperRosterLike[]; playerDirectory: Readonly<Record<string, SleeperPlayerIdentity>> }): CurrentFranchiseRoster[] {
+export function buildCurrentFranchiseRosters({ teams, rosters, playerDirectory, startingFaab = null }: { teams: readonly CanonicalTradeComparisonTeam[]; rosters: readonly SleeperRosterLike[]; playerDirectory: Readonly<Record<string, SleeperPlayerIdentity>>; startingFaab?: number | null }): CurrentFranchiseRoster[] {
   const rostersById = new Map(rosters.flatMap((roster) => {
     const rosterId = Number(roster.roster_id);
     return Number.isFinite(rosterId) ? [[Math.floor(rosterId), roster] as const] : [];
@@ -33,7 +33,9 @@ export function buildCurrentFranchiseRosters({ teams, rosters, playerDirectory }
       const identity = playerDirectory[playerId];
       return { playerId, name: identity?.displayName ?? null, position: normalizePosition(identity?.position), nflTeam: identity?.nflTeam ?? null, injuryStatus: identity?.injuryStatus ?? null, avatar: identity?.avatar ?? null, byeWeek: null };
     });
-    return { franchiseId: team.franchiseId, franchiseName: team.franchiseName, rosterId: team.rosterId, avatar: team.avatar ?? null, available: roster !== null, players };
+    const usedFaab = Number(roster?.settings?.waiver_budget_used);
+    const availableFaab = roster !== null && Number.isFinite(startingFaab) && Number.isFinite(usedFaab) ? startingFaab! - usedFaab : null;
+    return { franchiseId: team.franchiseId, franchiseName: team.franchiseName, rosterId: team.rosterId, avatar: team.avatar ?? null, available: roster !== null, players, availableFaab: availableFaab !== null && availableFaab >= 0 ? availableFaab : null };
   });
 }
 

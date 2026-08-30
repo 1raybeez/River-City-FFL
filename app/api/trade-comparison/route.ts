@@ -43,6 +43,7 @@ export async function GET() {
         franchiseId: roster.franchiseId,
         franchiseName: roster.franchiseName,
         available: roster.available,
+        availableFaab: roster.availableFaab ?? null,
         avatar: roster.avatar ?? null,
         players: roster.players.map((player) => ({ playerId: player.playerId, name: player.name, position: player.position, nflTeam: player.nflTeam, injuryStatus: player.injuryStatus ?? null, avatar: player.avatar ?? null, byeWeek: player.byeWeek ?? null })),
       })),

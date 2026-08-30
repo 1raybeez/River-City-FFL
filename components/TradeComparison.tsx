@@ -22,11 +22,14 @@ type FranchiseOption = {
   available: boolean;
   avatar?: string | null;
   players: PlayerOption[];
+  availableFaab?: number | null;
 };
 type Participant = {
   participantId: string;
   franchiseId: string;
   selected: string[];
+  faabAmount: number;
+  faabDestination: string;
 };
 type MarketContext = {
   totalAuctionConsensus: number | null;
@@ -48,6 +51,8 @@ type RoutingResult = {
     positionalBefore: Record<string, number>;
     positionalAfter: Record<string, number>;
     market: { sent: MarketContext; received: MarketContext };
+    faabSent: { senderFranchiseId: string; receiverFranchiseId: string; amount: number } | null;
+    faabReceived: { senderFranchiseId: string; receiverFranchiseId: string; amount: number }[];
   }>;
   sandboxMarketFairness: SandboxMarketFairnessResult | null;
 };
@@ -101,6 +106,10 @@ function position(player: PlayerOption) {
 }
 function marketMoney(value: number | null) {
   return value === null ? "Unavailable" : `$${value.toFixed(1)}`;
+}
+
+function formatFaab(amount: number) {
+  return `$${amount} FAAB`;
 }
 
 function PositionBadge({ player }: { player: PlayerOption }) {
@@ -227,6 +236,7 @@ function ParticipantPanel({
   onToggle,
   onRemove,
   onClear,
+  onFaabChange,
 }: {
   participant: Participant;
   index: number;
@@ -242,6 +252,7 @@ function ParticipantPanel({
   onToggle: (playerId: string) => void;
   onRemove: () => void;
   onClear: () => void;
+  onFaabChange: (amount: number, destination: string) => void;
 }) {
   const franchise = franchises.find(
     (candidate) => candidate.franchiseId === participant.franchiseId,
@@ -352,6 +363,15 @@ function ParticipantPanel({
             )}
           </div>
           <div className="mt-3 space-y-4">
+            <div className="rounded-xl border border-orange-100 bg-orange-50 p-3">
+              <label htmlFor={`faab-${participant.participantId}`} className="block text-[10px] font-black uppercase tracking-wider text-slate-700">FAAB to send</label>
+              <div className="mt-2 flex items-center gap-2">
+                <span className="font-black text-slate-700">$</span>
+                <input id={`faab-${participant.participantId}`} aria-label={`${teamLabel(index)} FAAB to send`} type="number" inputMode="numeric" min="0" step="1" max={mode === "LEAGUE_TRADE" && franchise.availableFaab !== null && franchise.availableFaab !== undefined ? franchise.availableFaab : undefined} value={participant.faabAmount} onChange={(event) => onFaabChange(Math.max(0, Number(event.target.value) || 0), participant.faabDestination)} className="min-h-10 w-28 rounded-lg border border-slate-300 bg-white px-2 text-sm font-bold text-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-200" />
+                {allParticipants.length === 2 ? <span className="text-xs font-bold text-slate-600">→ {teamLabel(allParticipants.findIndex((candidate) => candidate.participantId !== participant.participantId))}</span> : participant.faabAmount > 0 ? <select aria-label={`${teamLabel(index)} FAAB destination`} value={participant.faabDestination} onChange={(event) => onFaabChange(participant.faabAmount, event.target.value)} className="min-h-10 min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-2 text-xs font-bold text-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-200"><option value="">Choose destination</option>{allParticipants.filter((candidate) => candidate.participantId !== participant.participantId && candidate.franchiseId).map((candidate) => <option key={candidate.participantId} value={candidate.franchiseId}>{teamLabel(allParticipants.indexOf(candidate))}</option>)}</select> : <span className="text-xs font-bold text-slate-500">No transfer</span>}
+              </div>
+              {mode === "LEAGUE_TRADE" ? <p className="mt-2 text-[10px] font-bold text-slate-600">Available: {franchise.availableFaab === null || franchise.availableFaab === undefined ? "Unavailable" : formatFaab(franchise.availableFaab)}</p> : <p className="mt-2 text-[10px] font-bold text-slate-600">Hypothetical FAAB · no real balance applied</p>}
+            </div>
             {groups.map(({ group, players }) => (
               <fieldset key={group} className="space-y-2">
                 <legend className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
@@ -559,8 +579,11 @@ function ResultView({
     const name = names.get(participant.franchiseId) ?? participant.franchiseId;
     const sends = formatAssetNames(participant.sends, "sent");
     const receives = formatAssetNames(participant.receives, "received");
-    return { participant, name, sends, receives, label: teamLabel(index) };
+    const faabSent = participant.faabSent ? ` + ${formatFaab(participant.faabSent.amount)}` : "";
+    const faabReceived = participant.faabReceived.length ? ` + ${participant.faabReceived.map((transfer) => formatFaab(transfer.amount)).join(" + ")}` : "";
+    return { participant, name, sends: `${sends}${faabSent}`, receives: `${receives}${faabReceived}`, label: teamLabel(index) };
   });
+  const hasFaab = result.participants.some((participant) => participant.faabSent !== null);
   const hasIncompleteMarketData = result.participants.some((participant) =>
     [participant.market.sent, participant.market.received].some(
       (market, index) => {
@@ -673,8 +696,9 @@ function ResultView({
               .
             </p>
           ))}
-        </div>
       </div>
+      {hasFaab && <p className="mt-4 rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs font-semibold leading-5 text-sky-900">FAAB is included in the trade package but is not currently assigned a market-value conversion in the fairness score.</p>}
+    </div>
       {result.mode === "LEAGUE_TRADE" && <section
         aria-labelledby="river-analysis-title"
         className="rounded-2xl border border-orange-200 bg-orange-50 p-5"
@@ -751,6 +775,12 @@ function ResultView({
                       ))}
                     </ul>
                   )}
+                  {participant.faabSent && participant.faabSent.amount > 0 && (
+                    <div className="mt-2 rounded-lg border border-orange-200 bg-orange-50 p-2 text-xs">
+                      <b className="block text-orange-900">{formatFaab(participant.faabSent.amount)}</b>
+                      <span className="text-orange-800">→ {names.get(participant.faabSent.receiverFranchiseId) ?? participant.faabSent.receiverFranchiseId}</span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">
@@ -779,6 +809,12 @@ function ResultView({
                       ))}
                     </ul>
                   )}
+                  {participant.faabReceived.filter((transfer) => transfer.amount > 0).map((transfer) => (
+                    <div key={`${transfer.senderFranchiseId}:${transfer.amount}`} className="mt-2 rounded-lg border border-orange-200 bg-orange-50 p-2 text-xs">
+                      <b className="block text-orange-900">{formatFaab(transfer.amount)}</b>
+                      <span className="text-orange-800">← {names.get(transfer.senderFranchiseId) ?? transfer.senderFranchiseId}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
               <div className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -894,8 +930,8 @@ export default function TradeComparison() {
   const [mode, setMode] = useState<"LEAGUE_TRADE" | "SANDBOX">("LEAGUE_TRADE");
   const [showSandboxHelp, setShowSandboxHelp] = useState(false);
   const [participants, setParticipants] = useState<Participant[]>([
-    { participantId: "participant-1", franchiseId: "", selected: [] },
-    { participantId: "participant-2", franchiseId: "", selected: [] },
+    { participantId: "participant-1", franchiseId: "", selected: [], faabAmount: 0, faabDestination: "" },
+    { participantId: "participant-2", franchiseId: "", selected: [], faabAmount: 0, faabDestination: "" },
   ]);
   const [destinations, setDestinationsState] = useState<Record<string, string>>(
     {},
@@ -984,6 +1020,7 @@ export default function TradeComparison() {
       ),
     ),
   );
+  const allFaabHaveDestinations = participants.every((participant) => participant.faabAmount === 0 || Boolean(participant.faabDestination || automaticDestination(participants, participant)));
   useEffect(() => {
     if (participants.length !== 2) return;
     setDestinationsState((current) => {
@@ -1015,17 +1052,22 @@ export default function TradeComparison() {
         .filter(Boolean),
     ).size === participants.length &&
     allSelectedHaveDestinations &&
+    allFaabHaveDestinations &&
     !isSubmitting;
   const setDestinations = (key: string, value: string) => {
     setDestinationsState((current) => ({ ...current, [key]: value }));
     setResult(null);
+  };
+  const setFaab = (participantId: string, amount: number, destination: string) => {
+    setResult(null);
+    setParticipants((current) => current.map((participant) => participant.participantId === participantId ? { ...participant, faabAmount: amount, faabDestination: destination } : participant));
   };
   const changeMode = (nextMode: "LEAGUE_TRADE" | "SANDBOX") => {
     setMode(nextMode);
     setResult(null);
     setErrorMessage(null);
     setParticipants((current) =>
-      current.map((participant) => ({ ...participant, selected: [] })),
+      current.map((participant) => ({ ...participant, selected: [], faabAmount: 0, faabDestination: "" })),
     );
     setDestinationsState({});
   };
@@ -1038,6 +1080,7 @@ export default function TradeComparison() {
               ...participant,
               franchiseId,
               selected: mode === "SANDBOX" ? participant.selected : [],
+              faabDestination: "",
             }
           : participant,
       ),
@@ -1075,6 +1118,8 @@ export default function TradeComparison() {
           participantId: `participant-${current.length + 1}`,
           franchiseId: "",
           selected: [],
+          faabAmount: 0,
+          faabDestination: "",
         },
       ]);
   };
@@ -1095,8 +1140,8 @@ export default function TradeComparison() {
   };
   const resetTrade = () => {
     setParticipants([
-      { participantId: "participant-1", franchiseId: "", selected: [] },
-      { participantId: "participant-2", franchiseId: "", selected: [] },
+      { participantId: "participant-1", franchiseId: "", selected: [], faabAmount: 0, faabDestination: "" },
+      { participantId: "participant-2", franchiseId: "", selected: [], faabAmount: 0, faabDestination: "" },
     ]);
     setDestinationsState({});
     setResult(null);
@@ -1146,7 +1191,7 @@ export default function TradeComparison() {
         `${participant.participantId}:${participant.selected[0]}`
       ] = next[1 - index].franchiseId;
     });
-    setParticipants(next);
+    setParticipants(next.map((participant) => ({ ...participant, faabAmount: 0, faabDestination: "" })));
     setDestinationsState(nextDestinations);
     setResult(null);
     setErrorMessage(null);
@@ -1170,6 +1215,7 @@ export default function TradeComparison() {
               destinations[`${participant.participantId}:${playerId}`] ??
               automaticDestination(participants, participant),
           })),
+          faab: { amount: participant.faabAmount, destinationFranchiseId: participant.faabDestination || automaticDestination(participants, participant) },
         })),
       };
       const response = await fetch("/api/trade-comparison/multi-team", {
@@ -1398,11 +1444,12 @@ export default function TradeComparison() {
               setParticipants((current) =>
                 current.map((candidate) =>
                   candidate.participantId === participant.participantId
-                    ? { ...candidate, selected: [] }
+                    ? { ...candidate, selected: [], faabAmount: 0, faabDestination: "" }
                     : candidate,
                 ),
               )
             }
+            onFaabChange={(amount, destination) => setFaab(participant.participantId, amount, destination)}
           />
         ))}
       </div>

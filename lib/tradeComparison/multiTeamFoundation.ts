@@ -1,7 +1,6 @@
 import {
   adjustedKeeperSurplus,
   adjustedTalent,
-  FAAB_WEIGHT,
   KEEPER_SURPLUS_WEIGHT,
   rosterTax,
 } from "./fairness/packageValue";
@@ -14,6 +13,7 @@ import {
   type MultiTeamModelParticipantResult,
   type MultiTeamModelSummary,
   type MultiTeamMarketEntry,
+  type MultiTeamFaabTransfer,
   type MultiTeamSignalLeader,
   type MultiTeamPackageMarketContext,
   type MultiTeamParticipantInput,
@@ -30,6 +30,12 @@ import { sandboxMarketFairness } from "./sandboxMarketFairnessCalibration";
 
 function invalid(code: MultiTeamValidationError["code"], message: string): MultiTeamValidationError {
   return { code, message };
+}
+
+function readFaab(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as { amount?: unknown; destinationFranchiseId?: unknown }
+    : null;
 }
 
 function emptyCounts(): TradeComparisonPositionCounts {
@@ -100,6 +106,21 @@ export function validateMultiTeamTradeRequest(
       : undefined;
     if (!context.rosters.some((candidate) => candidate.franchiseId === participant.franchiseId)) errors.push(invalid("UNKNOWN_FRANCHISE", "Every participant must use a canonical River City franchise."));
     if (participant.outgoing.length === 0) errors.push(invalid("EMPTY_PACKAGE", "Every participant must send at least one asset."));
+    const faab = readFaab(participant.faab);
+    if (participant.faab !== undefined && participant.faab !== null && !faab) errors.push(invalid("INVALID_FAAB", "FAAB must be a single routed transfer."));
+    if (faab) {
+      const amount = faab.amount;
+      if (typeof amount !== "number" || !Number.isFinite(amount) || !Number.isInteger(amount) || amount < 0) errors.push(invalid("INVALID_FAAB", "FAAB must be a finite nonnegative integer."));
+      if (typeof amount === "number" && Number.isFinite(amount) && amount > 0) {
+        if (typeof faab.destinationFranchiseId !== "string" || !faab.destinationFranchiseId) errors.push(invalid("FAAB_DESTINATION_REQUIRED", "FAAB above zero requires a participating destination."));
+        if (faab.destinationFranchiseId === participant.franchiseId) errors.push(invalid("INVALID_DESTINATION", "FAAB destination must differ from its source franchise."));
+        if (typeof faab.destinationFranchiseId === "string" && !selectedFranchises.has(faab.destinationFranchiseId)) errors.push(invalid("DESTINATION_NOT_PARTICIPANT", "FAAB destination must be a participating franchise."));
+        if (value.mode === "LEAGUE_TRADE") {
+          if (roster?.availableFaab === null || roster?.availableFaab === undefined) errors.push(invalid("FAAB_BALANCE_UNAVAILABLE", "Authoritative FAAB balance is unavailable."));
+          else if (amount > roster.availableFaab) errors.push(invalid("FAAB_BALANCE_EXCEEDED", `FAAB transfer exceeds the available balance of $${roster.availableFaab}.`));
+        }
+      }
+    }
     for (const asset of participant.outgoing as unknown[]) {
       if (!asset || typeof asset !== "object" || Array.isArray(asset)) {
         errors.push(invalid("INVALID_REQUEST", "Each outgoing asset must be an object."));
@@ -142,6 +163,15 @@ export function buildMultiTeamRouting(
     const after = request.mode === "LEAGUE_TRADE"
       ? participantRosterAfter(roster, sends, receives)
       : [];
+    const faabSent = participant.faab && participant.faab.amount > 0 && participant.faab.destinationFranchiseId
+      ? { senderFranchiseId: participant.franchiseId, receiverFranchiseId: participant.faab.destinationFranchiseId, amount: participant.faab.amount } satisfies MultiTeamFaabTransfer
+      : null;
+    const faabReceived = participants.flatMap((source) => {
+      const faab = source.faab;
+      return faab && faab.amount > 0 && faab.destinationFranchiseId === participant.franchiseId
+        ? [{ senderFranchiseId: source.franchiseId, receiverFranchiseId: participant.franchiseId, amount: faab.amount }]
+        : [];
+    });
     return {
       participantId: participant.participantId,
       franchiseId: participant.franchiseId,
@@ -152,6 +182,8 @@ export function buildMultiTeamRouting(
       positionalAfter: request.mode === "LEAGUE_TRADE" ? countPositions(after) : {},
       market: { sent: packageMarket(sends, context.marketByPlayer), received: packageMarket(receives, context.marketByPlayer) },
       reasoning: [],
+      faabSent,
+      faabReceived,
     };
   });
   const sandboxMarketResult = request.mode === "SANDBOX" && results.length === 2
@@ -188,9 +220,9 @@ export function buildMultiTeamModelSummary(packages: readonly MultiTeamModelPack
     const surplusReceived = playersReceived.reduce((sum, player) => sum + adjustedKeeperSurplus(player), 0);
     const deltaTalent = talentReceived - talentSent;
     const deltaSurplus = surplusReceived - surplusSent;
-    const deltaFaab = (pkg.faabReceived ?? 0) - (pkg.faabSent ?? 0);
+    const deltaFaab = 0;
     const tax = rosterTax(playersSent, playersReceived);
-    return { participantId: pkg.participantId, talentSent, talentReceived, surplusSent, surplusReceived, deltaTalent, deltaSurplus, deltaFaab, rosterTax: tax, netValue: deltaTalent + deltaSurplus * KEEPER_SURPLUS_WEIGHT + deltaFaab * FAAB_WEIGHT - tax };
+    return { participantId: pkg.participantId, talentSent, talentReceived, surplusSent, surplusReceived, deltaTalent, deltaSurplus, deltaFaab, rosterTax: tax, netValue: deltaTalent + deltaSurplus * KEEPER_SURPLUS_WEIGHT - tax };
   });
   const values = results.map((result) => result.netValue);
   const maximum = Math.max(...values);

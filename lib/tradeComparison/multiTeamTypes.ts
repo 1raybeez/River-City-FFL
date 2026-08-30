@@ -17,10 +17,16 @@ export type MultiTeamOutgoingAssetInput = {
   destinationFranchiseId: string;
 };
 
+export type MultiTeamFaabInput = {
+  amount: number;
+  destinationFranchiseId: string;
+};
+
 export type MultiTeamParticipantInput = {
   participantId: string;
   franchiseId: string;
   outgoing: MultiTeamOutgoingAssetInput[];
+  faab?: MultiTeamFaabInput | null;
 };
 
 export type MultiTeamTradeRequest = {
@@ -44,7 +50,11 @@ export type MultiTeamValidationErrorCode =
   | "INVALID_DESTINATION"
   | "DESTINATION_NOT_PARTICIPANT"
   | "PLAYER_NOT_ROSTERED"
-  | "CLIENT_VALUATION_FORBIDDEN";
+  | "CLIENT_VALUATION_FORBIDDEN"
+  | "INVALID_FAAB"
+  | "FAAB_DESTINATION_REQUIRED"
+  | "FAAB_BALANCE_UNAVAILABLE"
+  | "FAAB_BALANCE_EXCEEDED";
 
 export type MultiTeamValidationError = {
   code: MultiTeamValidationErrorCode;
@@ -89,6 +99,14 @@ export type MultiTeamParticipantResult = {
     received: MultiTeamPackageMarketContext;
   };
   reasoning: string[];
+  faabSent: MultiTeamFaabTransfer | null;
+  faabReceived: MultiTeamFaabTransfer[];
+};
+
+export type MultiTeamFaabTransfer = {
+  senderFranchiseId: string;
+  receiverFranchiseId: string;
+  amount: number;
 };
 
 export type MultiTeamRoutingResult = {
