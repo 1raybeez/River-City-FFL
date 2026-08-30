@@ -30,6 +30,48 @@
   .active-nav {
     @apply opacity-100 font-bold border-b-2 border-red-600;
   }
+
+  /* Keep proposal text readable across dark-mode preferences and WebKit autofill. */
+  .legislative-proposal-form input,
+  .legislative-proposal-form textarea {
+    background-color: #ffffff;
+    color: #0f172a;
+    color-scheme: light;
+    caret-color: #c2410c;
+    -webkit-text-fill-color: #0f172a;
+  }
+
+  .legislative-proposal-form input:focus,
+  .legislative-proposal-form input:active,
+  .legislative-proposal-form textarea:focus,
+  .legislative-proposal-form textarea:active {
+    color: #0f172a;
+    -webkit-text-fill-color: #0f172a;
+  }
+
+  .legislative-proposal-form input::placeholder,
+  .legislative-proposal-form textarea::placeholder {
+    color: #64748b;
+    opacity: 1;
+  }
+
+  .legislative-proposal-form ::selection {
+    background-color: #fed7aa;
+    color: #0f172a;
+    -webkit-text-fill-color: #0f172a;
+  }
+
+  .legislative-proposal-form input:-webkit-autofill,
+  .legislative-proposal-form input:-webkit-autofill:hover,
+  .legislative-proposal-form input:-webkit-autofill:focus,
+  .legislative-proposal-form textarea:-webkit-autofill,
+  .legislative-proposal-form textarea:-webkit-autofill:hover,
+  .legislative-proposal-form textarea:-webkit-autofill:focus {
+    -webkit-text-fill-color: #0f172a;
+    -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
+    box-shadow: 0 0 0 1000px #ffffff inset;
+    caret-color: #c2410c;
+  }
 }
 
 /* --- 3D Flip Card Utilities (Tailwind v4) --- */

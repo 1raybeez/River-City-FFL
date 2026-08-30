@@ -22,9 +22,15 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const invalidRequest = validateJsonMutationRequest(request);
-  if (invalidRequest) return invalidRequest;
   try {
+    const invalidRequest = validateJsonMutationRequest(request);
+    if (invalidRequest) {
+      const payload = (await invalidRequest.json()) as { error?: string };
+      return NextResponse.json(
+        { ok: false, error: payload.error ?? "Invalid proposal request." },
+        { status: invalidRequest.status }
+      );
+    }
     const session = await requireLegislativeOwner();
     const canonicalOwnerId = session.access.canonicalOwnerId;
     if (!canonicalOwnerId) throw new Error("Authenticated River City owner access is required.");
@@ -34,10 +40,18 @@ export async function POST(request: Request) {
       canonicalOwnerId,
       session.email
     );
-    return NextResponse.json({ proposalId }, { status: 201 });
+    return NextResponse.json({ ok: true, proposalId }, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to submit proposal.";
-    const status = message.includes("access is required") ? 401 : 400;
-    return NextResponse.json({ error: message }, { status });
+    const rawMessage = error instanceof Error ? error.message : "";
+    const isUnauthorized = rawMessage.includes("access is required") || rawMessage.includes("authenticated owner");
+    const isValidation = rawMessage.includes("valid proposer") || rawMessage.includes("session configuration");
+    const message = isUnauthorized
+      ? "Authenticated River City owner access is required."
+      : isValidation
+        ? rawMessage
+        : "We couldn't submit your proposal right now. Please try again.";
+    const status = isUnauthorized ? 401 : isValidation ? 400 : 500;
+    if (status === 500) console.error("Legislative proposal submission failed.", error);
+    return NextResponse.json({ ok: false, error: message }, { status });
   }
 }
