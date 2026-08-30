@@ -31,11 +31,44 @@ assert.match(service, /plannedCapAtPurchase: null/);
 assert.match(client, /Sale details are retained; use Retry Sale/);
 assert.match(client, /Retry Sale/);
 assert.match(client, /manualSalePersistenceStatus/);
+assert.match(client, /undoPersistenceStatus/);
+assert.match(client, /Undoing…/);
+assert.match(client, /The sale remains active/);
+assert.match(client, /payload\.purchaseId !== latestUndoableManualSale\.id/);
+assert.match(client, /disabled=\{undoPersistenceStatus === 'saving'\}/);
 const purchaseRegion = client.slice(
   client.indexOf("const recordManualSale"),
   client.indexOf("const undoLastManualSale")
 );
 assert.doesNotMatch(purchaseRegion, /clearCurrentNomination\(\)/);
 assert.doesNotMatch(route, /actor\.email/);
+const undoRegion = client.slice(
+  client.indexOf("const undoLastManualSale"),
+  client.indexOf("useEffect(() => {", client.indexOf("const undoLastManualSale"))
+);
+assert.match(undoRegion, /const response = await fetch/);
+assert.doesNotMatch(undoRegion, /void fetch/);
+assert.doesNotMatch(undoRegion, /setManualAuctionSales\(nextSales\)[\s\S]*fetch/);
+assert.doesNotMatch(client, /initialMockBudgetRows/);
+assert.doesNotMatch(client, /Team Budgets/);
+assert.doesNotMatch(client, /mock data/);
+const utilitySections = client.slice(
+  client.indexOf('const draftUtilitySections'),
+  client.indexOf('const historyAuditFilterOptions')
+);
+assert.match(utilitySections, /value: 'budgets', icon: '💰'/);
+assert.match(utilitySections, /value: 'heat', icon: '🔥'/);
+assert.match(utilitySections, /value: 'trends', icon: '📈'/);
+assert.match(utilitySections, /value: 'sales', icon: '🕒'/);
+assert.equal((utilitySections.match(/\{ label: [^}]+value:/g) ?? []).length, 4);
+assert.ok(utilitySections.indexOf("value: 'budgets'") < utilitySections.indexOf("value: 'heat'"));
+assert.match(client, /💰 Current Team Budget/);
+assert.match(client, /Authoritative War Room state/);
+assert.match(client, /Current team budget is temporarily unavailable/);
+assert.match(client, /Current team budget is incomplete/);
+assert.match(client, /guidanceBudgetRow\.remainingBudget/);
+assert.match(client, /guidanceBudgetRow\.totalSpent/);
+assert.match(client, /guidanceBudgetRow\.rosterSpotsRemaining/);
+assert.match(client, /guidanceBudgetRow\.maxBid/);
 
 console.log("Purchase integrity checks passed (fake state/seams only; no production writes).");

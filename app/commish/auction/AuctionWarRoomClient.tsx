@@ -2488,18 +2488,6 @@ function formatInflationPercent(value: number | null) {
   return value === null ? 'N/A' : `${value >= 0 ? '+' : ''}${value.toFixed(0)}%`;
 }
 
-function getBudgetPressureClass(pressure: BudgetPressureLevel) {
-  if (pressure === 'High') {
-    return 'border-rose-600/20 bg-rose-600/10 text-rose-700 dark:text-rose-300';
-  }
-
-  if (pressure === 'Medium') {
-    return 'border-yellow-600/20 bg-yellow-600/10 text-yellow-700 dark:text-yellow-300';
-  }
-
-  return 'border-emerald-600/20 bg-emerald-600/10 text-emerald-700 dark:text-emerald-300';
-}
-
 function getByeWeekSeverity(playerCount: number) {
   if (playerCount >= 4) return 'crowded';
   if (playerCount >= 2) return 'watch';
@@ -3929,7 +3917,6 @@ export default function AuctionWarRoomClient({
   initialPurchaseDecisions,
   initialWarRoomLiveState,
   initialWarRoomBudget,
-  initialMockBudgetRows,
   initialKeeperAuthority,
   initialGlobalNomination,
 }: {
@@ -3942,7 +3929,6 @@ export default function AuctionWarRoomClient({
   initialPurchaseDecisions?: AuctionWarRoomInitialPurchaseDecision[];
   initialWarRoomLiveState?: AuctionWarRoomInitialLiveState | null;
   initialWarRoomBudget?: AuctionWarRoomInitialBudget | null;
-  initialMockBudgetRows: AuctionWarRoomMockBudgetRow[];
   initialKeeperAuthority: KeeperAuthority;
   initialGlobalNomination: GlobalNominationReadResult;
 }) {
@@ -4138,6 +4124,9 @@ export default function AuctionWarRoomClient({
     useState<ManualAuctionSale | null>(null);
   const [manualSalePersistenceStatus, setManualSalePersistenceStatus] = useState<
     'idle' | 'saving' | 'saved' | 'error'
+  >('idle');
+  const [undoPersistenceStatus, setUndoPersistenceStatus] = useState<
+    'idle' | 'saving' | 'error'
   >('idle');
   const [pendingManualSale, setPendingManualSale] = useState<{
     sale: ManualAuctionSale;
@@ -6424,43 +6413,71 @@ export default function AuctionWarRoomClient({
       );
     }
   };
-  const undoLastManualSale = () => {
-    if (latestUndoableManualSale === null) return;
+  const undoLastManualSale = async () => {
+    if (latestUndoableManualSale === null || undoPersistenceStatus === 'saving') return;
 
-    const nextSales = manualAuctionSales.filter(
-      (sale) => sale.id !== latestUndoableManualSale.id
-    );
-    const nextUndoableConfirmation =
-      [...nextSales]
-        .reverse()
-        .find((sale) => !suppressedManualSaleIds.includes(sale.id)) ?? null;
-    setManualAuctionSales(nextSales);
-    setPurchaseDecisionSnapshotsByPurchaseId((currentSnapshots) => {
-      const nextSnapshots = new Map(currentSnapshots);
-      const snapshot = nextSnapshots.get(latestUndoableManualSale.id);
-      if (snapshot) {
-        nextSnapshots.set(latestUndoableManualSale.id, {
-          ...snapshot,
-          status: 'undone',
-          undoneAt: new Date().toISOString(),
-          undoneBy: access.email ?? 'war-room',
-        });
-      }
-      return nextSnapshots;
-    });
-    void fetch('/api/auction/purchase-decisions', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        season: riverCityAuctionLeagueSettings.season,
-        purchaseId: latestUndoableManualSale.id,
-      }),
-    }).catch((error) => {
-      console.error('Purchase decision snapshot undo failed:', error);
-    });
-    setManualSaleConfirmation(nextUndoableConfirmation);
+    setUndoPersistenceStatus('saving');
     setManualSaleError(null);
-    void refreshRecommendedNow();
+    try {
+      const response = await fetch('/api/auction/purchase-decisions', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          season: riverCityAuctionLeagueSettings.season,
+          purchaseId: latestUndoableManualSale.id,
+        }),
+      });
+      const payload = (await response.json()) as {
+        purchaseId?: string;
+        status?: 'undone';
+        undoneAt?: string;
+        undoneBy?: string;
+        error?: string;
+      };
+      if (
+        !response.ok ||
+        payload.purchaseId !== latestUndoableManualSale.id ||
+        payload.status !== 'undone' ||
+        !payload.undoneAt ||
+        !payload.undoneBy
+      ) {
+        throw new Error(payload.error ?? 'Undo could not be persisted. The sale remains active.');
+      }
+      const authoritativeUndoneAt = payload.undoneAt;
+      const authoritativeUndoneBy = payload.undoneBy;
+
+      const nextSales = manualAuctionSales.filter(
+        (sale) => sale.id !== latestUndoableManualSale.id
+      );
+      const nextUndoableConfirmation =
+        [...nextSales]
+          .reverse()
+          .find((sale) => !suppressedManualSaleIds.includes(sale.id)) ?? null;
+      setManualAuctionSales(nextSales);
+      setPurchaseDecisionSnapshotsByPurchaseId((currentSnapshots) => {
+        const nextSnapshots = new Map(currentSnapshots);
+        const snapshot = nextSnapshots.get(latestUndoableManualSale.id);
+        if (snapshot) {
+          nextSnapshots.set(latestUndoableManualSale.id, {
+            ...snapshot,
+            status: 'undone',
+            undoneAt: authoritativeUndoneAt,
+            undoneBy: authoritativeUndoneBy,
+          });
+        }
+        return nextSnapshots;
+      });
+      setManualSaleConfirmation(nextUndoableConfirmation);
+      setUndoPersistenceStatus('idle');
+      void refreshRecommendedNow();
+    } catch (error) {
+      setUndoPersistenceStatus('error');
+      setManualSaleError(
+        error instanceof Error
+          ? `${error.message} Retry Undo when the server is available.`
+          : 'Undo could not be persisted. The sale remains active; retry Undo.'
+      );
+    }
   };
   useEffect(() => {
     if (!access.canRecordSales || !isUsingSleeperPurchases) return;
@@ -10900,83 +10917,44 @@ export default function AuctionWarRoomClient({
                       <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                         <div>
                           <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">
-                            💰 Team Budgets
+                            💰 Current Team Budget
                           </p>
                           <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
-                            Calculated · read-only · mock data
+                            Authoritative War Room state
                           </p>
                         </div>
                         <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
-                          {purchaseSourceDetail}
+                          {guidanceTeam?.teamName ?? 'Current franchise'}
                         </p>
                       </div>
 
-                      <div className="max-h-[54vh] space-y-2 overflow-y-auto pr-1">
-                        {budgetRows.map((row) => {
-                          const teamIntelligence = teamIntelligenceById.get(row.team.id);
-                          const pressure = teamIntelligence?.pressure ?? 'Low';
-                          const isGuidanceTeam = guidanceTeam?.id === row.team.id;
-
-                          return (
-                            <article
-                              key={row.team.id}
-                              className={`rounded-xl border bg-white p-3 dark:bg-black/25 ${isGuidanceTeam ? 'border-orange-600/35 ring-1 ring-inset ring-orange-600/20' : 'border-black/10 dark:border-white/10'}`}
-                            >
-                              <div className="flex min-w-0 items-start justify-between gap-2">
-                                <div className="min-w-0">
-                                  <p className="break-words text-sm font-black uppercase italic leading-tight">
-                                    {row.team.teamName}
-                                  </p>
-                                  <p className="mt-1 break-words text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
-                                    {row.team.managerName}
-                                  </p>
-                                </div>
-                                <span className={`shrink-0 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-widest ${getBudgetPressureClass(pressure)}`}>
-                                  {pressure}
-                                </span>
-                              </div>
-
-                              <div className="mt-3 grid grid-cols-3 gap-1.5">
-                                <div className="min-w-0 rounded-lg bg-emerald-600/10 px-2 py-2">
-                                  <p className="text-[8px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
-                                    Left
-                                  </p>
-                                  <p className="mt-1 truncate text-lg font-black text-emerald-700 dark:text-emerald-300">
-                                    {row.budgetIsIncomplete ? '—' : formatMoney(row.remainingBudget)}
-                                  </p>
-                                </div>
-                                <div className="min-w-0 rounded-lg bg-orange-600/10 px-2 py-2">
-                                  <p className="text-[8px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">
-                                    Max bid
-                                  </p>
-                                  <p className="mt-1 truncate text-lg font-black text-orange-700 dark:text-orange-300">
-                                    {row.budgetIsIncomplete ? '—' : formatMoney(row.maxBid)}
-                                  </p>
-                                </div>
-                                <div className="min-w-0 rounded-lg bg-black/[0.04] px-2 py-2 dark:bg-white/[0.06]">
-                                  <p className="text-[8px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">
-                                    Open
-                                  </p>
-                                  <p className="mt-1 truncate text-lg font-black">
-                                    {row.rosterSpotsRemaining}
-                                  </p>
-                                </div>
-                              </div>
-
-                              <p className="mt-2 truncate text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
-                                Spent {row.budgetIsIncomplete ? '—' : formatMoney(row.totalSpent)} · Keepers {row.budgetIsIncomplete ? '—' : formatMoney(row.keeperCost)} · Avg/Open {row.budgetIsIncomplete ? '—' : formatMoneyPerSlot(row.averageDollarsPerOpenSlot)}
+                      {guidanceBudgetRow === null ? (
+                        <p className="rounded-xl border border-black/10 bg-white px-3 py-3 text-xs font-bold uppercase tracking-widest text-gray-500 dark:border-white/10 dark:bg-black/20 dark:text-gray-400">
+                          Current team budget is temporarily unavailable.
+                        </p>
+                      ) : guidanceBudgetRow.budgetIsIncomplete ? (
+                        <p className="rounded-xl border border-orange-600/20 bg-orange-600/10 px-3 py-3 text-xs font-bold uppercase tracking-widest text-orange-700 dark:text-orange-300">
+                          Current team budget is incomplete; keeper pricing is missing.
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          {[
+                            ['Remaining', formatMoney(guidanceBudgetRow.remainingBudget), 'text-emerald-700 dark:text-emerald-300'],
+                            ['Spent', formatMoney(guidanceBudgetRow.totalSpent), 'text-gray-900 dark:text-white'],
+                            ['Open Slots', String(guidanceBudgetRow.rosterSpotsRemaining), 'text-gray-900 dark:text-white'],
+                            ['Legal Max', formatMoney(guidanceBudgetRow.maxBid), 'text-orange-700 dark:text-orange-300'],
+                          ].map(([label, value, valueClass]) => (
+                            <div key={label} className="min-w-0 rounded-xl bg-white px-2.5 py-2 dark:bg-black/20">
+                              <p className="truncate text-[8px] font-black uppercase tracking-widest text-gray-400">
+                                {label}
                               </p>
-
-                              {row.budgetIsIncomplete && (
-                                <p className="mt-2 flex items-start gap-1 text-[9px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">
-                                  <span aria-hidden="true">⚠</span>
-                                  <span>{row.missingKeeperPriceCount} keeper price missing; budget totals unavailable</span>
-                                </p>
-                              )}
-                            </article>
-                          );
-                        })}
-                      </div>
+                              <p className={`mt-1 truncate text-lg font-black ${valueClass}`}>
+                                {value}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -11203,12 +11181,18 @@ export default function AuctionWarRoomClient({
                       </div>
                       <button
                         type="button"
-                        onClick={undoLastManualSale}
-                        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-black/10 bg-black/[0.03] px-3 text-[10px] font-black uppercase tracking-widest text-gray-600 transition hover:border-orange-600/30 hover:bg-orange-600/10 hover:text-orange-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-300"
+                        onClick={() => void undoLastManualSale()}
+                        disabled={undoPersistenceStatus === 'saving'}
+                        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-black/10 bg-black/[0.03] px-3 text-[10px] font-black uppercase tracking-widest text-gray-600 transition hover:border-orange-600/30 hover:bg-orange-600/10 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-300"
                       >
                         <ArrowLeft className="h-4 w-4" />
-                        Undo Manual Sale
+                        {undoPersistenceStatus === 'saving' ? 'Undoing…' : 'Undo Manual Sale'}
                       </button>
+                      {undoPersistenceStatus === 'error' ? (
+                        <p role="alert" className="text-xs font-bold text-rose-700 dark:text-rose-300">
+                          Undo failed. The sale remains active; retry when the server is available.
+                        </p>
+                      ) : null}
                     </div>
                   ) : (
                     <p className="rounded-xl border border-black/10 bg-black/[0.03] p-3 text-xs font-bold uppercase tracking-widest text-gray-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-400">
@@ -12855,58 +12839,6 @@ export default function AuctionWarRoomClient({
                       </td>
                     </tr>
                   )}
-                </tbody>
-              </table>
-            </div>
-          </SectionShell>
-
-          <SectionShell
-            title="Team Budgets"
-            eyebrow="Mock data · calculated"
-            icon={Users}
-          >
-            <p className="mb-4 text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
-              Read-only mock data only. Budget fields below are calculated with the auction calculation helpers.
-            </p>
-            <div className="overflow-x-auto rounded-2xl border border-black/10 dark:border-white/10">
-              <table className="w-full min-w-[1040px] text-left">
-                <thead>
-                  <tr className="border-b border-black/10 text-[9px] font-black uppercase tracking-widest text-gray-400 dark:border-white/10">
-                    <th className="py-3 pr-4">Team</th>
-                    <th className="py-3 pr-4">Manager</th>
-                    <th className="py-3 pr-4">Budget</th>
-                    <th className="py-3 pr-4">Keeper Cost</th>
-                    <th className="py-3 pr-4">Total Spent</th>
-                    <th className="py-3 pr-4">Remaining</th>
-                    <th className="py-3 pr-4">Open Slots</th>
-                    <th className="py-3 pr-4">Legal Max</th>
-                    <th className="py-3 pr-4">Avg/Open</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-black/5 dark:divide-white/10">
-                  {initialMockBudgetRows.map((row) => {
-                    return (
-                      <tr key={row.teamId} className="text-sm">
-                        <td className="py-3 pr-4 font-black">
-                          {row.teamName}
-                        </td>
-                        <td className="py-3 pr-4 font-bold text-gray-500 dark:text-gray-400">{row.managerName}</td>
-                        <td className="py-3 pr-4 font-black">{formatMoney(row.teamBudget)}</td>
-                        <td className="py-3 pr-4 font-black">{formatMoney(row.keeperCost)}</td>
-                        <td className="py-3 pr-4 font-black">{formatMoney(row.totalSpent)}</td>
-                        <td className="py-3 pr-4 font-black text-emerald-600">
-                          {formatMoney(row.remainingBudget)}
-                        </td>
-                        <td className="py-3 pr-4 font-black">{row.rosterSpotsRemaining}</td>
-                        <td className="py-3 pr-4 font-black text-orange-600">
-                          {formatMoney(row.maxBid)}
-                        </td>
-                        <td className="py-3 pr-4 font-bold text-gray-500 dark:text-gray-400">
-                          {formatMoneyPerSlot(row.averageDollarsPerOpenSlot)}
-                        </td>
-                      </tr>
-                    );
-                  })}
                 </tbody>
               </table>
             </div>

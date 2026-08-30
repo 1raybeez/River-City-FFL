@@ -15,20 +15,6 @@ import { deriveWarRoomBudgetState } from "@/lib/auction/warRoomLiveState";
 import { riverCityAuctionLeagueSettings } from "@/lib/auction/leagueSettings";
 import { readKeeperAuthority } from "@/lib/auction/keeperAuthority";
 import { readGlobalNomination } from "@/lib/auction/globalNominationState";
-import {
-  calculateAverageDollarsPerOpenRosterSpot,
-  calculateKeeperCostForTeam,
-  calculateMaxBid,
-  calculatePurchaseSpendByTeam,
-  calculateRemainingBudget,
-  calculateRosterSpotsRemaining,
-  calculateTotalSpent,
-} from "@/lib/auction/calculations";
-import {
-  mockAuctionKeepers,
-  mockAuctionPurchases,
-  mockAuctionTeams,
-} from "@/lib/auction/mockAuctionData";
 import { readPublishedMasterviewFromFirestore } from "@/lib/auction/valueRefreshService";
 import AuctionWarRoomClient from "./AuctionWarRoomClient";
 import type {
@@ -38,46 +24,6 @@ import type {
   AuctionWarRoomInitialPurchaseDecision,
   AuctionWarRoomInitialValueSource,
 } from "./AuctionWarRoomClient";
-
-function buildMockBudgetRows() {
-  const purchaseSpendByTeam = calculatePurchaseSpendByTeam(mockAuctionPurchases);
-
-  return mockAuctionTeams.map((team) => {
-    const keeperCost = calculateKeeperCostForTeam(mockAuctionKeepers, team.id);
-    const purchaseSpend = purchaseSpendByTeam[team.id] ?? 0;
-    const filledSlots = Math.min(
-      team.rosterSlots.total,
-      team.keeperIds.length + team.purchaseIds.length
-    );
-    const rosterSpotsRemaining = calculateRosterSpotsRemaining({
-      total: team.rosterSlots.total,
-      filled: filledSlots,
-    });
-    const budgetInput = {
-      teamBudget: team.teamBudget,
-      keeperCostTotal: keeperCost,
-      spentBudget: purchaseSpend,
-    };
-    const totalSpent = calculateTotalSpent(budgetInput);
-    const remainingBudget = calculateRemainingBudget(budgetInput);
-
-    return {
-      teamId: team.id,
-      teamName: team.teamName,
-      managerName: team.managerName,
-      teamBudget: team.teamBudget,
-      keeperCost,
-      totalSpent,
-      remainingBudget,
-      rosterSpotsRemaining,
-      maxBid: calculateMaxBid(remainingBudget, rosterSpotsRemaining),
-      averageDollarsPerOpenSlot: calculateAverageDollarsPerOpenRosterSpot(
-        remainingBudget,
-        rosterSpotsRemaining
-      ),
-    };
-  });
-}
 
 async function readInitialAuctionValueSource(): Promise<
   AuctionWarRoomInitialValueSource | undefined
@@ -300,8 +246,6 @@ export default async function AuctionWarRoomPage() {
     readKeeperAuthority(),
     readGlobalNomination(),
   ]);
-  const initialMockBudgetRows = buildMockBudgetRows();
-
   return (
     <AuctionWarRoomClient
       access={actor.access}
@@ -313,7 +257,6 @@ export default async function AuctionWarRoomPage() {
       initialPurchaseDecisions={initialPurchaseDecisions}
       initialWarRoomLiveState={initialWarRoomLiveState}
       initialWarRoomBudget={initialWarRoomBudget}
-      initialMockBudgetRows={initialMockBudgetRows}
       initialKeeperAuthority={initialKeeperAuthority}
       initialGlobalNomination={initialGlobalNomination}
     />
