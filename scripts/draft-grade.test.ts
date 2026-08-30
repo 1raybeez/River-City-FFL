@@ -243,11 +243,31 @@ assert.equal(calculatePublicDraftGrades(extremeBestBuy).records[1].draftScore, s
 const incomplete = structuredClone(publicInput);
 incomplete.records[0].coverage.rosterValueCount = 2;
 incomplete.records[0].coverage.status = "partial";
+incomplete.records[0].coverage.warnings = ["Roster value coverage is partial."];
 const incompleteGrade = calculatePublicDraftGrades(incomplete).records[0];
-assert.equal(incompleteGrade.status, "not-ready");
-assert.equal(incompleteGrade.draftScore, null);
-assert.equal(incompleteGrade.letterGrade, null);
-assert.notEqual(incompleteGrade.letterGrade, "F");
+assert.equal(incompleteGrade.status, "partial");
+assert.notEqual(incompleteGrade.draftScore, null);
+assert.notEqual(incompleteGrade.letterGrade, null);
+assert.match(incompleteGrade.coverageWarnings.join(" "), /Grade calculated from available validated inputs/);
+assert.equal(incompleteGrade.valueEfficiency.score !== null, true);
+const completedCoverageGrade = calculatePublicDraftGrades({
+  ...incomplete,
+  records: incomplete.records.map((record) => ({
+    ...record,
+    coverage: { ...record.coverage, status: "complete", warnings: [], rosterValueCount: record.metrics.rosterSize },
+  })),
+}).records[0];
+assert.equal(completedCoverageGrade.draftScore, incompleteGrade.draftScore);
+assert.notEqual(completedCoverageGrade.draftScore, null);
+
+const missingRequiredComponent = structuredClone(publicInput);
+missingRequiredComponent.records[0].metrics.rosterSlotCapacity = null;
+const missingComponentGrade = calculatePublicDraftGrades(missingRequiredComponent).records[0];
+assert.equal(missingComponentGrade.status, "not-ready");
+assert.equal(missingComponentGrade.draftScore, null);
+assert.equal(missingComponentGrade.letterGrade, null);
+assert.equal(missingComponentGrade.rosterConstruction.score, null);
+assert.notEqual(missingComponentGrade.letterGrade, "F");
 
 const deterministicAgain = calculatePublicDraftGrades(publicInput);
 assert.deepEqual(deterministicAgain, grades);

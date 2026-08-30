@@ -211,22 +211,6 @@ function letterGrade(score: number) {
   return "F";
 }
 
-function hasCriticalCoverage(record: PostDraftPublicRecord) {
-  const metrics = record.metrics;
-  const valueCoverage = metrics.rosterSize > 0
-    ? (record.coverage.rosterValueCount / metrics.rosterSize)
-    : 0;
-  return record.source.draftStatus === "complete" &&
-    metrics.rosterSize > 0 &&
-    record.coverage.positionCount === metrics.rosterSize &&
-    valueCoverage >= DRAFT_GRADE_MIN_VALUE_COVERAGE &&
-    metrics.valueDifferential.comparablePlayerCount > 0 &&
-    metrics.rosterSlotCapacity !== null &&
-    metrics.rosterCompleteness.status !== "unavailable" &&
-    metrics.depthCoverageStatus !== "unavailable" &&
-    Object.keys(metrics.requiredStarterSlots).length > 0;
-}
-
 function buildRecord(
   record: PostDraftPublicRecord,
   allMetrics: readonly PostDraftPublicMetrics[]
@@ -237,11 +221,17 @@ function buildRecord(
   const budget = budgetManagement(record.metrics);
   const keeper = keeperEfficiency(record.metrics, peers);
   const components = [value, roster, budget, keeper];
-  const criticalReady = hasCriticalCoverage(record) && roster.score !== null && budget.score !== null && value.score !== null;
+  const criticalReady = record.source.draftStatus === "complete" &&
+    value.score !== null &&
+    roster.score !== null &&
+    budget.score !== null &&
+    (record.metrics.keeperCount === 0 || keeper.score !== null);
   const warnings = [
     ...record.coverage.warnings,
     ...components.flatMap((part) => part.warnings),
-    ...(hasCriticalCoverage(record) ? [] : ["Critical public metric coverage is insufficient for a final grade."]),
+    ...(criticalReady && record.coverage.status === "partial"
+      ? ["Grade calculated from available validated inputs; coverage is partial."]
+      : []),
   ];
   const availableWeight = components.reduce((sum, part) => sum + (part.score === null ? 0 : part.baseWeight), 0);
   components.forEach((part) => {

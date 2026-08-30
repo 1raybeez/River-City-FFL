@@ -29,6 +29,7 @@ import { getCanonicalPowerRankings } from "@/lib/powerRankings";
 import { readPublishedMasterviewFromFirestore } from "@/lib/auction/valueRefreshService";
 import { readPublishedAdpConsensusFromFirestore } from "@/lib/auction/adpRefreshService";
 import { canonicalAuctionTeams } from "@/lib/auction/canonicalTeamCatalog";
+import { buildCommissionerPostDraftIndex } from "@/lib/commissionerPostDraftIndex";
 
 const MAX_TEXT_LENGTH = 4000;
 const MAX_LIST_ITEMS = 20;
@@ -174,6 +175,25 @@ export async function listPostDraftSnapshots() {
   await requireCommissioner();
   const result = await firestore.collection(POST_DRAFT_FIRESTORE_PATHS.snapshots).orderBy("generatedAt", "desc").limit(25).get();
   return result.docs.map((doc) => doc.data() as PostDraftSnapshot);
+}
+
+export async function getCommissionerPostDraftIndex() {
+  const session = await requireCommissioner();
+  if (session.access.role !== "commissioner") throw new PostDraftWorkflowError("Commissioner access required.", 401);
+  const metrics = await getPostDraftMetrics();
+  return buildCommissionerPostDraftIndex(metrics, calculatePublicDraftGrades(metrics));
+}
+
+export async function getCommissionerPostDraftReport(franchiseId: string) {
+  const session = await requireCommissioner();
+  if (session.access.role !== "commissioner") throw new PostDraftWorkflowError("Commissioner access required.", 401);
+  const metrics = await getPostDraftMetrics();
+  const publicRecord = metrics.records.find((record) => record.franchiseId === franchiseId);
+  if (!publicRecord) throw new PostDraftWorkflowError("Franchise report data is unavailable.", 404);
+  return {
+    publicRecord,
+    draftGrade: calculatePublicDraftGrades(metrics).records.find((record) => record.franchiseId === franchiseId) ?? null,
+  };
 }
 
 function validateNarrativeInput(input: Record<string, unknown>) {
