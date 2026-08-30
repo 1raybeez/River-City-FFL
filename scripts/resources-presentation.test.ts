@@ -18,6 +18,9 @@ assert.match(page, /desc: "Fantasy football rankings, projections, draft tools, 
 assert.match(page, /url: "https:\/\/www\.draftsharks\.com\/"/);
 assert.equal((page.match(/name: "DraftSharks"/g) ?? []).length, 1);
 assert.equal((page.match(/https:\/\/www\.draftsharks\.com\//g) ?? []).length, 1);
+assert.match(page, /2026 River City FFL Draft Playlist/);
+assert.match(page, /https:\/\/music\.apple\.com\/us\/playlist\/2026-river-city-ffl\/pl\.u-JPAZDjmIWljak5/);
+assert.match(page, /https:\/\/open\.spotify\.com\/playlist\/6yypu2jaGs5thA8C9eYvLE\?si=nWVd8w2STbuI5Ov1GdiDrA/);
 assert.match(page, /target="_blank"[\s\S]*rel="noopener noreferrer"/);
 assert.match(page, /grid-cols-1/);
 assert.match(page, /focus-visible:ring/);

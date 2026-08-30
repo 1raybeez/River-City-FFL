@@ -10,6 +10,13 @@ import SiteShell from '@/components/SiteShell';
 
 const BROADCAST_FEED = [
   {
+    year: "2026",
+    label: "Draft Playlist",
+    title: "2026 River City FFL Draft Playlist",
+    appleMusicUrl: "https://music.apple.com/us/playlist/2026-river-city-ffl/pl.u-JPAZDjmIWljak5",
+    spotifyUrl: "https://open.spotify.com/playlist/6yypu2jaGs5thA8C9eYvLE?si=nWVd8w2STbuI5Ov1GdiDrA",
+  },
+  {
     year: "2025",
     label: "Draft Kit",
     appleMusicUrl: "https://music.apple.com/us/playlist/2025-river-city-ffl/pl.u-mJy88LDtBYqpd1",
@@ -238,6 +245,7 @@ export default function ResourcesPage() {
                   <div className="relative z-10">
                     <span className="text-6xl font-black tracking-tighter italic uppercase">{p.year}</span>
                     <p className="text-[11px] font-black uppercase tracking-[0.2em] mt-1 text-red-600">{p.label}</p>
+                    {p.title && <p className="mt-2 max-w-xs text-sm font-bold leading-5">{p.title}</p>}
                     <div className="mt-6 flex flex-wrap gap-2">
                       <a
                         href={p.appleMusicUrl}
