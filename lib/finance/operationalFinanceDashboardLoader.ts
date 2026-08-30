@@ -8,6 +8,7 @@ import {
 import { getApprovedOperationalRingInput } from "@/lib/finance/operationalFinanceExpenses";
 import { getOperationalFinanceLedgerRepository } from "@/lib/finance/operationalFinanceLedgerFirestore";
 import { getOperationalFinancePaymentContactRepository } from "@/lib/finance/operationalFinancePaymentContactsFirestore";
+import { getCurrentSeasonTeamIdentityMap } from "@/lib/currentSeasonTeamIdentityServer";
 
 export async function loadOperationalFinanceDashboardFromFirestore(
   season: number
@@ -24,10 +25,19 @@ export async function loadOperationalFinanceDashboardFromFirestore(
     ),
     getOperationalFinancePaymentContactRepository().getSnapshot(),
   ]);
-  return buildOperationalFinanceCommissionerDashboardPresentation(
+  const presentation = buildOperationalFinanceCommissionerDashboardPresentation(
     snapshot,
     season,
     awardSource,
     paymentContactSnapshot.contacts
   );
+  if (season !== 2026) return presentation;
+  const identities = await getCurrentSeasonTeamIdentityMap();
+  return {
+    ...presentation,
+    duesRows: presentation.duesRows.map((row) => ({
+      ...row,
+      franchiseName: identities.get(row.franchiseId)?.currentTeamName ?? row.franchiseName,
+    })),
+  };
 }

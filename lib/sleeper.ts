@@ -18,7 +18,7 @@ export const LEAGUE_IDS: Record<number, string> = {
 };
 
 const CACHE_OPTIONS = { next: { revalidate: 3600 } } as const;
-export type SleeperFetchOptions = { fresh?: boolean };
+export type SleeperFetchOptions = { fresh?: boolean; revalidateSeconds?: number };
 
 export interface Transaction {
   transaction_id: string;
@@ -187,7 +187,7 @@ async function sleeperFetch<T>(
   options: SleeperFetchOptions = {}
 ): Promise<T | null> {
   try {
-    const res = await fetch(url, options.fresh ? { cache: "no-store" } : CACHE_OPTIONS);
+    const res = await fetch(url, options.fresh ? { cache: "no-store" } : { next: { revalidate: options.revalidateSeconds ?? 3600 } });
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch (error) {
@@ -348,16 +348,18 @@ export async function getSleeperPlayerIdentityDirectory(): Promise<Record<string
 
 // --- LEAGUE COMPONENT FETCHERS ---
 
-export async function getLeagueRosters(leagueId: string = LEAGUE_ID) {
+export async function getLeagueRosters(leagueId: string = LEAGUE_ID, options: SleeperFetchOptions = {}) {
   const data = await sleeperFetch<any[]>(
-    `https://api.sleeper.app/v1/league/${leagueId}/rosters`
+    `https://api.sleeper.app/v1/league/${leagueId}/rosters`,
+    options
   );
   return data ?? [];
 }
 
-export async function getLeagueUsers(leagueId: string = LEAGUE_ID) {
+export async function getLeagueUsers(leagueId: string = LEAGUE_ID, options: SleeperFetchOptions = {}) {
   const data = await sleeperFetch<any[]>(
-    `https://api.sleeper.app/v1/league/${leagueId}/users`
+    `https://api.sleeper.app/v1/league/${leagueId}/users`,
+    options
   );
   return data ?? [];
 }

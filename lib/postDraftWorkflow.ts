@@ -30,6 +30,9 @@ import { readPublishedMasterviewFromFirestore } from "@/lib/auction/valueRefresh
 import { readPublishedAdpConsensusFromFirestore } from "@/lib/auction/adpRefreshService";
 import { canonicalAuctionTeams } from "@/lib/auction/canonicalTeamCatalog";
 import { buildCommissionerPostDraftIndex } from "@/lib/commissionerPostDraftIndex";
+import { getCurrentSeasonTeamIdentityMap } from "@/lib/currentSeasonTeamIdentityServer";
+import { buildPostDraftTeamAnalysis } from "@/lib/postDraftTeamAnalysis";
+import { postDraftReportFranchiseId, postDraftSourceFranchiseId } from "@/lib/postDraftFranchiseIdentity";
 
 const MAX_TEXT_LENGTH = 4000;
 const MAX_LIST_ITEMS = 20;
@@ -114,7 +117,8 @@ export async function createPostDraftSnapshot() {
   const publicRecords = metrics.records.map((publicRecord) => ({
     publicRecord,
     draftGrade: grades.records.find((grade) => grade.franchiseId === publicRecord.franchiseId) ?? null,
-    powerRanking: rankings.teams.find((team) => team.franchiseId === publicRecord.franchiseId) ?? null,
+    powerRanking: rankings.teams.find((team) => postDraftReportFranchiseId(team.franchiseId) === publicRecord.franchiseId) ?? null,
+    teamAnalysis: buildPostDraftTeamAnalysis(publicRecord, input, metrics),
   }));
   if (publicRecords.length !== canonicalAuctionTeams.length) {
     throw new PostDraftWorkflowError("Every canonical franchise must have a public snapshot record before locking.");
@@ -180,19 +184,23 @@ export async function listPostDraftSnapshots() {
 export async function getCommissionerPostDraftIndex() {
   const session = await requireCommissioner();
   if (session.access.role !== "commissioner") throw new PostDraftWorkflowError("Commissioner access required.", 401);
-  const metrics = await getPostDraftMetrics();
-  return buildCommissionerPostDraftIndex(metrics, calculatePublicDraftGrades(metrics));
+  const [metrics, identities] = await Promise.all([getPostDraftMetrics(), getCurrentSeasonTeamIdentityMap()]);
+  return buildCommissionerPostDraftIndex(metrics, calculatePublicDraftGrades(metrics), identities);
 }
 
 export async function getCommissionerPostDraftReport(franchiseId: string) {
   const session = await requireCommissioner();
   if (session.access.role !== "commissioner") throw new PostDraftWorkflowError("Commissioner access required.", 401);
-  const metrics = await getPostDraftMetrics();
-  const publicRecord = metrics.records.find((record) => record.franchiseId === franchiseId);
+  const [metrics, identities, input] = await Promise.all([getPostDraftMetrics(), getCurrentSeasonTeamIdentityMap(), loadPostDraftMetricsInput(2026)]);
+  const reportFranchiseId = postDraftReportFranchiseId(franchiseId);
+  const publicRecord = metrics.records.find((record) => record.franchiseId === reportFranchiseId);
   if (!publicRecord) throw new PostDraftWorkflowError("Franchise report data is unavailable.", 404);
+  const sourceFranchiseId = postDraftSourceFranchiseId(franchiseId);
+  const currentPublicRecord = { ...publicRecord, teamName: identities.get(sourceFranchiseId)?.currentTeamName ?? publicRecord.teamName };
   return {
-    publicRecord,
+    publicRecord: currentPublicRecord,
     draftGrade: calculatePublicDraftGrades(metrics).records.find((record) => record.franchiseId === franchiseId) ?? null,
+    teamAnalysis: buildPostDraftTeamAnalysis(currentPublicRecord, input, metrics),
   };
 }
 
@@ -211,6 +219,24 @@ function validateNarrativeInput(input: Record<string, unknown>) {
   };
 }
 
+function factualNarrativeCandidates(record: PostDraftSnapshot["publicRecords"][number]) {
+  const analysis = record.teamAnalysis;
+  if (!analysis) return null;
+  const bestBuy = record.publicRecord.metrics.bestBuy;
+  const biggestReach = record.publicRecord.metrics.biggestReach;
+  const ranked = analysis.positionStrengths.filter((row) => row.rank !== null);
+  const strongest = ranked.slice().sort((first, second) => first.rank! - second.rank!)[0];
+  const weakest = ranked.filter((row) => ["QB", "RB", "WR", "TE", "FLEX"].includes(row.position)).slice().sort((first, second) => second.rank! - first.rank!)[0] ?? ranked.slice().sort((first, second) => second.rank! - first.rank!)[0];
+  return {
+    strengths: analysis.strengths,
+    concerns: analysis.concerns,
+    bestBuyCommentary: bestBuy ? `${bestBuy.playerName} was acquired for $${bestBuy.valueDifferential.toFixed(0)} below market value. Add editorial context before publication.` : null,
+    biggestReachCommentary: biggestReach ? `${biggestReach.playerName} was acquired for $${Math.abs(biggestReach.valueDifferential).toFixed(0)} above market value. Add editorial context before publication.` : null,
+    rosterOutlook: strongest && weakest ? `${strongest.position} ranks #${strongest.rank} in River City while ${weakest.position} ranks #${weakest.rank}; use that positional spread to frame the roster outlook.` : null,
+    xFactor: null,
+  };
+}
+
 export async function createNarrativeDraft(snapshotId: string, franchiseId: string) {
   const session = await requireCommissioner();
   const snapshotDoc = await snapshotRef(snapshotId).get();
@@ -220,11 +246,12 @@ export async function createNarrativeDraft(snapshotId: string, franchiseId: stri
   const record = snapshot.publicRecords.find((item) => item.publicRecord.franchiseId === franchiseId);
   if (!record) throw new PostDraftWorkflowError("Franchise is not present in the locked snapshot.", 404);
   const narrativeId = `${snapshotId}:${franchiseId}:r1`;
+  const candidates = factualNarrativeCandidates(record);
   const narrative: FranchiseNarrativeDraft = {
     franchiseId, season: snapshot.season, snapshotId, status: "draft", revision: 1,
     createdAt: now(), updatedAt: now(), updatedBy: session.access.canonicalOwnerId ?? "commissioner",
-    approvedAt: null, approvedBy: null, strengths: [], concerns: [], bestBuyCommentary: null,
-    biggestReachCommentary: null, xFactor: null, rosterOutlook: null, commissionerTake: null,
+    approvedAt: null, approvedBy: null, strengths: candidates?.strengths ?? [], concerns: candidates?.concerns ?? [], bestBuyCommentary: candidates?.bestBuyCommentary ?? null,
+    biggestReachCommentary: candidates?.biggestReachCommentary ?? null, xFactor: candidates?.xFactor ?? null, rosterOutlook: candidates?.rosterOutlook ?? null, commissionerTake: null,
     privateStrategyTake: null, trashTalk: null, internalNotes: null,
   };
   await narrativeRef(narrativeId).create({ ...narrative, narrativeId, schemaVersion: POST_DRAFT_NARRATIVE_SCHEMA_VERSION });
@@ -243,6 +270,38 @@ export async function createNarrativeDraftsForSnapshot(snapshotId: string) {
     if (!existing.exists) created.push(await createNarrativeDraft(snapshotId, record.publicRecord.franchiseId));
   }
   return created;
+}
+
+export async function generateFactualNarrativeDraft(narrativeId: string) {
+  const session = await requireCommissioner();
+  const ref = narrativeRef(narrativeId);
+  let generated: FranchiseNarrativeDraft | null = null;
+  await firestore.runTransaction(async (transaction) => {
+    const narrativeDoc = await transaction.get(ref);
+    if (!narrativeDoc.exists) throw new PostDraftWorkflowError("Narrative was not found.", 404);
+    const current = narrativeDoc.data() as FranchiseNarrativeDraft;
+    if (current.status !== "draft" && current.status !== "in_review") throw new PostDraftWorkflowError("Only draft narratives can receive factual candidates.");
+    const snapshotDoc = await transaction.get(snapshotRef(current.snapshotId));
+    if (!snapshotDoc.exists || (snapshotDoc.data() as PostDraftSnapshot).snapshotStatus !== "locked") throw new PostDraftWorkflowError("A locked snapshot is required for factual candidates.");
+    const record = (snapshotDoc.data() as PostDraftSnapshot).publicRecords.find((item) => item.publicRecord.franchiseId === current.franchiseId);
+    const candidates = record ? factualNarrativeCandidates(record) : null;
+    if (!candidates) throw new PostDraftWorkflowError("This snapshot predates stored factual analysis. Capture a new locked snapshot to generate candidates.");
+    generated = {
+      ...current,
+      strengths: current.strengths.length > 0 ? current.strengths : candidates.strengths,
+      concerns: current.concerns.length > 0 ? current.concerns : candidates.concerns,
+      bestBuyCommentary: current.bestBuyCommentary ?? candidates.bestBuyCommentary,
+      biggestReachCommentary: current.biggestReachCommentary ?? candidates.biggestReachCommentary,
+      rosterOutlook: current.rosterOutlook ?? candidates.rosterOutlook,
+      xFactor: current.xFactor ?? candidates.xFactor,
+      revision: current.revision + 1,
+      updatedAt: now(),
+      updatedBy: session.access.canonicalOwnerId ?? "commissioner",
+    };
+    transaction.set(ref, generated, { merge: true });
+  });
+  if (!generated) throw new PostDraftWorkflowError("Factual candidate generation failed.", 500);
+  return generated;
 }
 
 export async function listNarratives(snapshotId?: string) {

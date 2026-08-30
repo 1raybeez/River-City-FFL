@@ -3091,7 +3091,7 @@ const defaultGuidanceTeam =
   canonicalAuctionTeams[0] ??
   null;
 
-function buildBudgetRows(purchases: readonly AuctionWarRoomPurchaseRow[]) {
+function buildBudgetRows(purchases: readonly AuctionWarRoomPurchaseRow[], currentTeamNames?: ReadonlyMap<number, string>) {
   const keeperRows = purchases.filter(
     (purchase) => purchase.status === 'active' && purchase.source === 'sleeper-keeper'
   );
@@ -3160,6 +3160,7 @@ function buildBudgetRows(purchases: readonly AuctionWarRoomPurchaseRow[]) {
     return {
       team: {
         ...team,
+        teamName: currentTeamNames?.get(team.rosterId) ?? team.teamName,
         teamBudget,
       },
       keeperCost,
@@ -4413,9 +4414,9 @@ export default function AuctionWarRoomClient({
           ?.teamName?.trim() || null;
   const ownerBoardTeam = getCanonicalAuctionTeamByRosterId(access.sleeperRosterId);
   const ownerBoardTeamName =
-    ownerBoardTeam?.teamName ??
     liveSleeperTeamName ??
     access.sleeperTeamName ??
+    ownerBoardTeam?.teamName ??
     access.ownerProfileLabel ??
     initialOwnerSettings?.sleeperTeamName ??
     access.ownerDisplayName;
@@ -4640,7 +4641,10 @@ export default function AuctionWarRoomClient({
       : 'No live Sleeper snapshot or manual sales loaded';
   const budgetRows = useMemo(
     () => {
-      const rows = buildBudgetRows(activePurchaseRows);
+      const currentTeamNames = new Map(
+        (sleeperSnapshot?.teams ?? []).flatMap((team) => team.teamName?.trim() ? [[team.rosterId, team.teamName.trim()] as const] : [])
+      );
+      const rows = buildBudgetRows(activePurchaseRows, currentTeamNames);
       if (!isManagerWarRoom || !initialWarRoomBudget || !guidanceTeam) return rows;
       return rows
         .filter((row) => row.team.id === guidanceTeam.id)
@@ -4661,7 +4665,7 @@ export default function AuctionWarRoomClient({
           ) ?? false,
         }));
     },
-    [activePurchaseRows, guidanceTeam, initialWarRoomBudget, initialWarRoomLiveState, isManagerWarRoom]
+    [activePurchaseRows, guidanceTeam, initialWarRoomBudget, initialWarRoomLiveState, isManagerWarRoom, sleeperSnapshot?.teams]
   );
   const guidanceBudgetRow =
     guidanceTeam === null
@@ -7060,7 +7064,7 @@ export default function AuctionWarRoomClient({
       ownerId: manager.sleeperId,
       ownerName: manager.fullName,
       shortName: manager.shortName,
-      teamName: manager.teamName,
+      teamName: sleeperSnapshot?.teams?.find((team) => team.ownerUserId === manager.sleeperId)?.teamName?.trim() ?? manager.teamName,
     })
   );
   const getOpponentQuestionPosition = (

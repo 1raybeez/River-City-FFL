@@ -6,6 +6,7 @@ import { listPostDraftPublications } from "@/lib/postDraftPublication";
 import { listPostDraftRecapDrafts } from "@/lib/postDraftRecap";
 import PostDraftRecapClient from "./PostDraftRecapClient";
 import PostDraftClient from "./PostDraftClient";
+import ReportCardOverview from "./ReportCardOverview";
 
 export default async function PostDraftPage() {
   let snapshots;
@@ -19,5 +20,5 @@ export default async function PostDraftPage() {
     if (error instanceof AuctionAccessError) redirect("/commish/login?returnTo=%2Fcommish%2Fpost-draft");
     throw error;
   }
-  return <SiteShell activePath="/commish"><PostDraftClient initialSnapshots={snapshots} initialNarratives={narratives} initialPublications={publications} reportIndex={reportIndex} /><PostDraftRecapClient initialRecaps={recapDrafts} initialPublications={publications} /></SiteShell>;
+  return <SiteShell activePath="/commish"><div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8"><ReportCardOverview reportIndex={reportIndex} /></div><PostDraftClient initialSnapshots={snapshots} initialNarratives={narratives} initialPublications={publications} reportIndex={reportIndex} /><PostDraftRecapClient initialRecaps={recapDrafts} initialPublications={publications} /></SiteShell>;
 }

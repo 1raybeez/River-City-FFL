@@ -14,6 +14,7 @@ const SLEEPER_LEAGUE_ID = "1312149033254416384";
 type ManagerTab = "active" | "retired" | "staff";
 type ActiveOwnerLayout = "all" | "division";
 type SleeperFetchStatus = "idle" | "loading" | "ready" | "error";
+type CurrentTeamIdentity = { sleeperUserId: string; currentTeamName: string };
 
 type SleeperRoster = {
   owner_id?: string;
@@ -55,6 +56,7 @@ export default function ManagersPage() {
     useState<ActiveOwnerLayout>("division");
 
   const activeData = activeManagers as unknown as ActiveManager[];
+  const [currentTeamNames, setCurrentTeamNames] = useState<Record<string, string>>({});
   const [leagueInfo, setLeagueInfo] = useState<SleeperLeagueInfo | null>(null);
   const [sleeperRosters, setSleeperRosters] = useState<SleeperRoster[]>([]);
   const [sleeperStatus, setSleeperStatus] =
@@ -75,7 +77,12 @@ export default function ManagersPage() {
       setSleeperError(null);
 
       try {
-          const [leagueResponse, rostersResponse] =
+        const identitiesResponse = await fetch("/api/current-team-identities");
+        if (identitiesResponse.ok) {
+          const identities = await identitiesResponse.json() as CurrentTeamIdentity[];
+          setCurrentTeamNames(Object.fromEntries(identities.map((identity) => [identity.sleeperUserId, identity.currentTeamName])));
+        }
+        const [leagueResponse, rostersResponse] =
             await Promise.all([
               fetch(`https://api.sleeper.app/v1/league/${SLEEPER_LEAGUE_ID}`),
               fetch(
@@ -117,9 +124,14 @@ export default function ManagersPage() {
     };
   }, [view, mounted]);
 
+  const displayManagers = useMemo(
+    () => activeData.map((manager) => ({ ...manager, currentTeamName: currentTeamNames[manager.sleeperId] ?? manager.teamName })),
+    [activeData, currentTeamNames]
+  );
+
   const divisionGroups = useMemo<DivisionGroup[]>(() => {
-    const managerBySleeperId = new Map(
-      activeData.map((manager) => [manager.sleeperId, manager])
+      const managerBySleeperId = new Map(
+      displayManagers.map((manager) => [manager.sleeperId, manager])
     );
     const assignedSleeperIds = new Set<string>();
     const groupsById = new Map<string, DivisionGroup>();
@@ -154,7 +166,7 @@ export default function ManagersPage() {
       assignedSleeperIds.add(manager.sleeperId);
     });
 
-    activeData.forEach((manager) => {
+    displayManagers.forEach((manager) => {
       if (assignedSleeperIds.has(manager.sleeperId)) return;
 
       if (!groupsById.has("unassigned")) {
@@ -171,7 +183,7 @@ export default function ManagersPage() {
     return Array.from(groupsById.values()).filter(
       (group) => group.id !== "unassigned" || group.managers.length > 0
     );
-  }, [activeData, leagueInfo, sleeperRosters]);
+  }, [displayManagers, leagueInfo, sleeperRosters]);
 
   if (!mounted) return null;
 
@@ -368,7 +380,7 @@ export default function ManagersPage() {
           </div>
         </header>
 
-        {view === "active" && renderPortraitWall(activeData, "active")}
+        {view === "active" && renderPortraitWall(displayManagers, "active")}
         {view === "retired" && renderPortraitWall(retiredManagers as any, "retired")}
         {view === "staff" && renderPortraitWall(staffManagers as any, "staff")}
       </main>

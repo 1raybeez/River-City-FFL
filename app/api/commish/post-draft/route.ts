@@ -6,6 +6,7 @@ import {
 import {
   createNarrativeDraft,
   createNarrativeDraftsForSnapshot,
+  generateFactualNarrativeDraft,
   createPostDraftSnapshot,
   isPostDraftWorkflowError,
   listNarratives,
@@ -74,6 +75,7 @@ export async function POST(request: Request) {
     if (body.action === "capture-snapshot") return NextResponse.json({ snapshot: await createPostDraftSnapshot() }, { status: 201 });
     if (body.action === "create-narratives") return NextResponse.json({ narratives: await createNarrativeDraftsForSnapshot(String(body.snapshotId)) }, { status: 201 });
     if (body.action === "create-narrative") return NextResponse.json({ narrative: await createNarrativeDraft(String(body.snapshotId), String(body.franchiseId)) }, { status: 201 });
+    if (body.action === "generate-factual-draft") return NextResponse.json({ narrative: await generateFactualNarrativeDraft(String(body.narrativeId)) });
     if (body.action === "save-narrative") return NextResponse.json({ narrative: await saveNarrativeDraft({ narrativeId: String(body.narrativeId), input: (body.input ?? {}) as Record<string, unknown>, expectedRevision: Number(body.expectedRevision) }) });
     if (body.action === "transition-narrative") return NextResponse.json({ narrative: await transitionNarrative({ narrativeId: String(body.narrativeId), to: body.to as "in_review" | "approved", expectedRevision: Number(body.expectedRevision) }) });
     if (body.action === "preview-narrative") return NextResponse.json({ preview: await previewNarrative({ narrativeId: String(body.narrativeId) }) });

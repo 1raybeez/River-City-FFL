@@ -4,13 +4,14 @@ import { canonicalAuctionTeams } from "@/lib/auction/canonicalTeamCatalog";
 import { readPublishedMasterviewFromFirestore } from "@/lib/auction/valueRefreshService";
 import { readPublishedAdpConsensusFromFirestore } from "@/lib/auction/adpRefreshService";
 import { buildCurrentFranchiseRosters, buildTradeComparison, type CanonicalTradeComparisonTeam } from "./adapter";
+import { getCurrentSeasonTeamIdentityMap } from "@/lib/currentSeasonTeamIdentityServer";
 import type { PublishedAuctionValue, TradeComparisonInput } from "./types";
 import type { MultiTeamMarketEntry } from "./multiTeamTypes";
 
 export async function loadTradeComparisonContext() {
-  const [rosters, users, playerDirectory, publishedValues, publishedAdp] = await Promise.all([getLeagueRosters(), getLeagueUsers(), getSleeperPlayerIdentityDirectory(), readPublishedMasterviewFromFirestore().catch(() => null), readPublishedAdpConsensusFromFirestore(2026).catch(() => null)]);
+  const [rosters, users, playerDirectory, publishedValues, publishedAdp, identities] = await Promise.all([getLeagueRosters(), getLeagueUsers(), getSleeperPlayerIdentityDirectory(), readPublishedMasterviewFromFirestore().catch(() => null), readPublishedAdpConsensusFromFirestore(2026).catch(() => null), getCurrentSeasonTeamIdentityMap()]);
   const avatarsByUserId = new Map(users.map((user: { user_id?: string; avatar?: string | null }) => [user.user_id, user.avatar ?? null] as const));
-  const teams: CanonicalTradeComparisonTeam[] = canonicalAuctionTeams.map((team) => ({ franchiseId: team.franchiseId, franchiseName: team.teamName, rosterId: team.rosterId, avatar: avatarsByUserId.get(team.managerId) ?? null }));
+  const teams: CanonicalTradeComparisonTeam[] = canonicalAuctionTeams.map((team) => ({ franchiseId: team.franchiseId, franchiseName: identities.get(team.franchiseId)?.currentTeamName ?? team.teamName, rosterId: team.rosterId, avatar: identities.get(team.franchiseId)?.avatar ?? avatarsByUserId.get(team.managerId) ?? null }));
   const currentRosters = buildCurrentFranchiseRosters({ teams, rosters, playerDirectory });
   const auctionValues = new Map<string, PublishedAuctionValue>();
   publishedValues?.rows.forEach((row) => {

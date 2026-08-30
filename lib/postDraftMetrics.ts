@@ -1,6 +1,7 @@
 import type { AuctionOwnerPlayerPreference } from "@/lib/auction/ownerPreferenceTypes";
 import { riverCityAuctionLeagueSettings } from "@/lib/auction/leagueSettings";
 import type { CanonicalPowerRankings } from "@/lib/powerRankings";
+import { postDraftReportFranchiseId } from "@/lib/postDraftFranchiseIdentity";
 
 export const POST_DRAFT_METRICS_SCHEMA_VERSION = "post-draft-metrics-v1";
 export const POST_DRAFT_METRICS_SEASON = 2026;
@@ -459,8 +460,8 @@ function buildPublicMetrics(
         average: comparablePlayers.length === 0 ? null : round(totalValueDifferential / comparablePlayers.length),
         comparablePlayerCount: comparablePlayers.length,
       },
-      bestBuy: comparablePlayers[0] ?? null,
-      biggestReach: comparablePlayers[comparablePlayers.length - 1] ?? null,
+      bestBuy: comparablePlayers.find((player) => player.valueDifferential > 0) ?? null,
+      biggestReach: comparablePlayers.slice().reverse().find((player) => player.valueDifferential < 0) ?? null,
       keeperCount: keeperRows.length,
       totalKeeperCost: round(keeperRows.reduce((sum, keeper) => sum + (keeper.purchasePrice ?? keeper.keeperCost ?? 0), 0)),
       keeperPublishedValue,
@@ -557,9 +558,10 @@ export function calculatePostDraftMetrics(input: PostDraftMetricsInput): PostDra
     if (!ranking || seenFranchises.has(ranking.franchiseId)) return [];
     seenFranchises.add(ranking.franchiseId);
     const built = buildPublicMetrics(roster, ranking.franchiseId, input.acquisitions, input.players, input.powerRankings, input.rosterRequirements);
+    const reportFranchiseId = postDraftReportFranchiseId(ranking.franchiseId);
     return [{
       season: input.season,
-      franchiseId: ranking.franchiseId,
+      franchiseId: reportFranchiseId,
       rosterId: roster.rosterId,
       teamName: ranking.teamName || roster.teamName || "Unknown Team",
       generatedAt,

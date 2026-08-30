@@ -37,7 +37,7 @@ export default function ManagerPortraitCard({
   const profilePath = getOwnerProfilePathByFullName(manager.fullName);
   const displayTeamName =
     group === "active"
-      ? getOwnerCurrentTeamNameByFullName(manager.fullName) ?? manager.teamName
+      ? manager.currentTeamName ?? getOwnerCurrentTeamNameByFullName(manager.fullName) ?? manager.teamName
       : manager.teamName;
   const staffSince = manager.fantasyStart || manager.tookOver;
   const hasCoOwner = Boolean(manager.coOwner?.fullName);

@@ -5,6 +5,7 @@ import type {
 } from "@/lib/postDraftMetrics";
 import type { PublicDraftGradeRecord } from "@/lib/draftGrade";
 import type { StrategyExecutionResult } from "@/lib/strategyExecution";
+import type { PostDraftTeamAnalysis } from "@/lib/postDraftTeamAnalysis";
 
 export const POST_DRAFT_SNAPSHOT_SCHEMA_VERSION = "post-draft-snapshot-v1";
 
@@ -33,6 +34,7 @@ export type PostDraftPublicSnapshotRecord = {
   publicRecord: PostDraftPublicRecord;
   draftGrade: PublicDraftGradeRecord | null;
   powerRanking: CanonicalPowerRankingTeam | null;
+  teamAnalysis?: PostDraftTeamAnalysis;
 };
 
 export type PostDraftPrivateSnapshotRecord = {
