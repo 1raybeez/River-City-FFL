@@ -1523,14 +1523,17 @@ export default function MatchupsPage() {
       setLoadError(null);
 
       try {
-        const [userData, rosterData, matchupData, playerData, projectionResponse, info] = await Promise.all([
+        const [userData, rosterData, matchupData, projectionResponse, info] = await Promise.all([
           getLeagueUsers(),
           getLeagueRosters(),
           getMatchups(activeWeek),
-          getSleeperPlayerIdentityDirectory().catch(() => ({})),
           fetch(`/api/projections/active?week=${activeWeek}`).catch(() => null),
           getLeagueInfo(),
         ]);
+
+        const playerData = await getSleeperPlayerIdentityDirectory(
+          rosterData.flatMap((roster) => Array.isArray(roster.players) ? roster.players : [])
+        ).catch(() => ({}));
 
         if (cancelled) return;
 

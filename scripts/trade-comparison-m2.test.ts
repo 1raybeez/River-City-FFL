@@ -7,7 +7,8 @@ const page = readFileSync("app/league-info/analyzer/page.tsx", "utf8");
 
 assert.match(route, /getCurrentMember/);
 assert.match(route, /League Member Login required/);
-assert.match(route, /buildServerTradeComparison/);
+assert.match(route, /loadTradeComparisonContext/);
+assert.match(route, /buildTradeComparison/);
 assert.match(route, /serializePublicTradeComparison/);
 assert.doesNotMatch(route, /email|uid|token|warRoom|target|budget|strategy|notes/i);
 assert.match(component, /Trade builder/);

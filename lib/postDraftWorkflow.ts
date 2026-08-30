@@ -21,7 +21,7 @@ import {
   POST_DRAFT_SNAPSHOT_SCHEMA_VERSION,
   type PostDraftSnapshot,
 } from "@/lib/postDraftSnapshotTypes";
-import { calculatePrivatePostDraftMetrics, getPostDraftMetrics, loadPostDraftMetricsInput } from "@/lib/postDraftMetrics";
+import { calculatePostDraftMetrics, calculatePrivatePostDraftMetrics, getPostDraftMetrics, loadPostDraftMetricsInput } from "@/lib/postDraftMetrics";
 import { calculateStrategyExecution } from "@/lib/strategyExecution";
 import { readAuctionOwnerPreferences } from "@/lib/auction/ownerPreferences";
 import { readAuctionOwnerProfileSettings } from "@/lib/auction/ownerProfileSettings";
@@ -191,7 +191,8 @@ export async function getCommissionerPostDraftIndex() {
 export async function getCommissionerPostDraftReport(franchiseId: string) {
   const session = await requireCommissioner();
   if (session.access.role !== "commissioner") throw new PostDraftWorkflowError("Commissioner access required.", 401);
-  const [metrics, identities, input] = await Promise.all([getPostDraftMetrics(), getCurrentSeasonTeamIdentityMap(), loadPostDraftMetricsInput(2026)]);
+  const [input, identities] = await Promise.all([loadPostDraftMetricsInput(2026), getCurrentSeasonTeamIdentityMap()]);
+  const metrics = calculatePostDraftMetrics(input);
   const reportFranchiseId = postDraftReportFranchiseId(franchiseId);
   const publicRecord = metrics.records.find((record) => record.franchiseId === reportFranchiseId);
   if (!publicRecord) throw new PostDraftWorkflowError("Franchise report data is unavailable.", 404);

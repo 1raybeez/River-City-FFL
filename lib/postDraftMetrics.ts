@@ -694,19 +694,19 @@ export async function loadPostDraftMetricsInput(season: number): Promise<PostDra
   const [rosters, users, sleeperPlayers, leagueInfo] = await Promise.all([
     sleeper.getLeagueRosters(snapshot.leagueId ?? undefined),
     sleeper.getLeagueUsers(snapshot.leagueId ?? undefined),
-    fetch("https://api.sleeper.app/v1/players/nfl", { next: { revalidate: 3600 } }).then((response) => response.ok ? response.json() : {}),
+    sleeper.getSleeperPlayerIdentityDirectory(),
     sleeper.getLeagueInfo(snapshot.leagueId ?? undefined),
   ]);
   const usersById = new Map(users.map((user: any) => [String(user.user_id), user]));
   const playerStats = new Map(playerStatsSnapshot.docs.map((document) => [document.id, document.data()]));
   const adpById = new Map((adp?.rows ?? []).map((row) => [row.playerId, row.consensusOverallAdp]));
-  const players = new Map<string, PostDraftPlayerInput>(Object.entries(sleeperPlayers as Record<string, any>).map(([playerId, player]) => {
+  const players = new Map<string, PostDraftPlayerInput>(Object.entries(sleeperPlayers).map(([playerId, player]) => {
     const stats = playerStats.get(playerId);
     return [playerId, {
       playerId,
-      playerName: player.full_name ?? playerId,
+      playerName: player.displayName ?? playerId,
       position: player.position ?? null,
-      nflTeam: player.team ?? null,
+      nflTeam: player.nflTeam ?? null,
       publishedValue: typeof stats?.totalValueScore === "number" ? stats.totalValueScore : null,
       adp: adpById.get(playerId) ?? null,
     }];
@@ -733,7 +733,11 @@ export async function loadPostDraftMetricsInput(season: number): Promise<PostDra
     })),
     rosters,
     users,
-    playersById: sleeperPlayers,
+    playersById: Object.fromEntries(Object.entries(sleeperPlayers).map(([id, player]) => [id, {
+      full_name: player.displayName,
+      position: player.position,
+      team: player.nflTeam,
+    }])),
     warnings: snapshot.warnings,
   });
   const acquisitions = [

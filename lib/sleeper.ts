@@ -1,6 +1,9 @@
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "./firebase";
 import { MANUAL_HISTORY } from "./manual-history";
+import localMasterview from "@/data/auction/generated/masterview-2026.json";
+import localAdp from "@/data/auction/adp/generated/adp-consensus-2026.json";
+import localTradePlayers from "@/data/trade-analyzer/player-stats-2026.json";
 
 // --- CORE CONFIGURATION ---
 export const LEAGUE_ID = "1312149033254416384"; // 2026 Season
@@ -17,7 +20,6 @@ export const LEAGUE_IDS: Record<number, string> = {
   2018: "342868033913540608",
 };
 
-const CACHE_OPTIONS = { next: { revalidate: 3600 } } as const;
 export type SleeperFetchOptions = { fresh?: boolean; revalidateSeconds?: number };
 
 export interface Transaction {
@@ -49,18 +51,6 @@ export interface SleeperPlayerIdentity {
   injuryStatus?: string | null;
   avatar?: string | null;
 }
-
-type SleeperPlayerDirectoryEntry = {
-  player_id?: string | number | null;
-  full_name?: string | null;
-  first_name?: string | null;
-  last_name?: string | null;
-  position?: string | null;
-  team?: string | null;
-  injury_status?: string | null;
-  status?: string | null;
-  avatar?: string | null;
-};
 
 export interface BracketSource {
   w?: number | null;
@@ -279,33 +269,32 @@ export async function getLeagueInfo(
 
 export async function getAllPlayers() {
   try {
-    const response = await fetch(
-      "https://api.sleeper.app/v1/players/nfl",
-      CACHE_OPTIONS
-    );
-    const sleeperPlayers = await response.json();
-
     const valuationSnap = await getDocs(collection(db, "player_stats"));
     const valuations: Record<string, any> = {};
     valuationSnap.forEach((doc) => {
       valuations[doc.id] = doc.data();
     });
 
+    const registry = getLocalPlayerIdentityRegistry();
     const mergedPlayers: Record<string, any> = {};
-    Object.keys(sleeperPlayers).forEach((id) => {
-      const s = sleeperPlayers[id];
+    Object.keys(registry).forEach((id) => {
+      const s = registry[id];
       const v = valuations[id] || {};
       const firestoreValue = Number(v.totalValueScore || 0);
       const hasFirestoreValue = firestoreValue > 0;
       mergedPlayers[id] = {
-        ...s,
+        player_id: s.playerId,
+        full_name: s.displayName,
+        position: s.position,
+        team: s.nflTeam,
+        injury_status: s.injuryStatus,
+        avatar: s.avatar,
         totalValueScore: firestoreValue,
         keeperCost: v.keeperCost || 0,
         valueSource: hasFirestoreValue ? "Firestore" : "Missing",
         generatedAt: v.generatedAt ?? null,
         sourceDetail: v.sourceDetail ?? null,
         sourceVersion: v.sourceVersion ?? null,
-        full_name: s.full_name || `${s.first_name} ${s.last_name}`,
       };
     });
 
@@ -316,36 +305,38 @@ export async function getAllPlayers() {
   }
 }
 
-export async function getSleeperPlayerIdentityDirectory(): Promise<Record<string, SleeperPlayerIdentity>> {
-  const players = await sleeperFetch<Record<string, SleeperPlayerDirectoryEntry>>(
-    "https://api.sleeper.app/v1/players/nfl"
-  );
-  if (!players) return {};
-
-  return Object.fromEntries(
-    Object.entries(players).map(([key, player]) => {
-      const playerId = String(player.player_id ?? key);
-      const composedName = [player.first_name, player.last_name]
-        .filter((part): part is string => typeof part === "string" && part.trim().length > 0)
-        .join(" ");
-      return [playerId, {
-        playerId,
-        displayName: typeof player.full_name === "string" && player.full_name.trim()
-          ? player.full_name.trim()
-          : composedName || null,
-        position: typeof player.position === "string" && player.position.trim() ? player.position.trim() : null,
-        nflTeam: typeof player.team === "string" && player.team.trim() ? player.team.trim() : null,
-        injuryStatus: typeof player.injury_status === "string" && player.injury_status.trim()
-          ? player.injury_status.trim()
-          : typeof player.status === "string" && /questionable|doubtful|out|ir/i.test(player.status)
-            ? player.status.trim()
-            : null,
-        avatar: typeof player.avatar === "string" && player.avatar.trim() ? player.avatar.trim() : null,
-      } satisfies SleeperPlayerIdentity];
-    })
-  );
+export function getLocalPlayerIdentityRegistry(): Record<string, SleeperPlayerIdentity> {
+  const registry: Record<string, SleeperPlayerIdentity> = {};
+  const add = (playerId: unknown, displayName: unknown, position: unknown, nflTeam: unknown) => {
+    if (playerId === null || playerId === undefined) return;
+    const id = String(playerId);
+    registry[id] ??= {
+      playerId: id,
+      displayName: typeof displayName === "string" && displayName.trim() ? displayName.trim() : null,
+      position: typeof position === "string" && position.trim() ? position.trim() : null,
+      nflTeam: typeof nflTeam === "string" && nflTeam.trim() ? nflTeam.trim() : null,
+      injuryStatus: null,
+      avatar: null,
+    };
+    registry[id] = {
+      ...registry[id],
+      displayName: registry[id].displayName ?? (typeof displayName === "string" && displayName.trim() ? displayName.trim() : null),
+      position: registry[id].position ?? (typeof position === "string" && position.trim() ? position.trim() : null),
+      nflTeam: registry[id].nflTeam ?? (typeof nflTeam === "string" && nflTeam.trim() ? nflTeam.trim() : null),
+    };
+  };
+  localMasterview.rows.forEach((row) => add(row.sleeperPlayerId, row.playerName, row.position, row.nflTeam));
+  localAdp.rows.forEach((row) => add(row.playerId, row.playerName, row.position, row.nflTeam));
+  Object.values(localTradePlayers.players).forEach((player) => add(player.playerId, player.playerName, player.position, player.nflTeam));
+  return registry;
 }
 
+export async function getSleeperPlayerIdentityDirectory(playerIds?: readonly (string | number | null)[]): Promise<Record<string, SleeperPlayerIdentity>> {
+  const registry = getLocalPlayerIdentityRegistry();
+  if (!playerIds) return registry;
+  const requested = new Set(playerIds.filter((id): id is string | number => id !== null && id !== undefined).map(String));
+  return Object.fromEntries(Object.entries(registry).filter(([playerId]) => requested.has(playerId)));
+}
 // --- LEAGUE COMPONENT FETCHERS ---
 
 export async function getLeagueRosters(leagueId: string = LEAGUE_ID, options: SleeperFetchOptions = {}) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentMember } from "@/lib/auth/currentMember";
-import { loadTradeComparisonContext, buildServerTradeComparison } from "@/lib/tradeComparison/serverAdapter";
+import { loadTradeComparisonContext } from "@/lib/tradeComparison/serverAdapter";
+import { buildTradeComparison } from "@/lib/tradeComparison/adapter";
 import { serializePublicTradeComparison } from "@/lib/tradeComparison/publicSerializer";
 import type { TradeComparisonInput } from "@/lib/tradeComparison/types";
 
@@ -62,7 +63,8 @@ export async function POST(request: Request) {
       input = null;
     }
     if (!input) return NextResponse.json({ success: false, error: "Choose two franchises and at least one current player on each side." }, { status: 400 });
-    const result = await buildServerTradeComparison(input);
+    const context = await loadTradeComparisonContext();
+    const result = buildTradeComparison({ input, ...context });
     return NextResponse.json({ success: true, comparison: serializePublicTradeComparison(result) }, { status: 200, headers: { "Cache-Control": "private, no-store" } });
   } catch {
     return NextResponse.json({ success: false, error: "Trade comparison is temporarily unavailable." }, { status: 503 });

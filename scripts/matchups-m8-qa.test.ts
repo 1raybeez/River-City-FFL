@@ -16,7 +16,7 @@ assert.match(page, /aria-controls=\{detailId\}/);
 assert.match(page, /Historical Context/);
 assert.match(page, /View Full Head-to-Head/);
 assert.match(page, /View Rivalry Hub/);
-assert.match(page, /getSleeperPlayerIdentityDirectory\(\)\.catch\(\(\) => \(\{\}\)\)/);
+assert.match(page, /getSleeperPlayerIdentityDirectory\(\s*rosterData\.flatMap/);
 assert.match(page, /fetch\(`\/api\/projections\/active\?week=\$\{activeWeek\}`\)\.catch\(\(\) => null\)/);
 
 console.log("Matchups M8 QA checks passed.");

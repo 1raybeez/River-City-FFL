@@ -8,6 +8,7 @@ import {
   getSleeperLeagueDrafts,
   getLeagueUsers,
   getSleeperAuctionDraftSnapshot,
+  getSleeperPlayerIdentityDirectory,
   LEAGUE_IDS,
 } from "@/lib/sleeper";
 import { normalizeSleeperAuctionSyncSnapshot } from "@/lib/auction/sleeperAuctionSync";
@@ -40,25 +41,6 @@ function buildCounts(
     missingAuctionPrices,
     keepers: picks.filter((pick) => pick.isKeeper === true).length,
   };
-}
-
-async function getSleeperNflPlayers() {
-  const response = await fetch("https://api.sleeper.app/v1/players/nfl", {
-    next: { revalidate: 3600 },
-  });
-
-  if (!response.ok) return {};
-
-  return (await response.json()) as Record<
-    string,
-    {
-      full_name?: string | null;
-      first_name?: string | null;
-      last_name?: string | null;
-      position?: string | null;
-      team?: string | null;
-    }
-  >;
 }
 
 function readRosterKeeperIds(roster: { keepers?: unknown }) {
@@ -126,10 +108,11 @@ export async function GET(req: Request) {
       );
     }
 
-    const [rosters, users, playersById] = await Promise.all([
+    const playerIds = snapshot.picks.map((pick) => pick.playerId);
+    const [rosters, users, playerDirectory] = await Promise.all([
       getLeagueRosters(snapshot.leagueId ?? undefined),
       getLeagueUsers(snapshot.leagueId ?? undefined),
-      getSleeperNflPlayers(),
+      getSleeperPlayerIdentityDirectory(playerIds),
     ]);
     const draftId =
       typeof snapshot.draft?.draft_id === "string"
@@ -143,7 +126,11 @@ export async function GET(req: Request) {
       picks: snapshot.picks,
       rosters,
       users,
-      playersById,
+      playersById: Object.fromEntries(Object.entries(playerDirectory).map(([id, player]) => [id, {
+        full_name: player.displayName,
+        position: player.position,
+        team: player.nflTeam,
+      }])),
       warnings: snapshot.warnings,
     });
     const auctionDraftCount = leagueDrafts.filter(

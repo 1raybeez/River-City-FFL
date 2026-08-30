@@ -195,7 +195,7 @@ export async function POST(req: Request) {
   if (!snapshot.sleeperPlayerId) {
     return NextResponse.json({ error: "A valid player ID is required." }, { status: 400 });
   }
-  const playerDirectory = await getSleeperPlayerIdentityDirectory();
+  const playerDirectory = await getSleeperPlayerIdentityDirectory([snapshot.sleeperPlayerId]);
   if (!playerDirectory[snapshot.sleeperPlayerId]) {
     return NextResponse.json(
       { error: "The selected player could not be resolved from Sleeper." },

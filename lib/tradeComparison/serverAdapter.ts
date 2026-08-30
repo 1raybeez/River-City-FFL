@@ -28,6 +28,6 @@ export async function loadTradeComparisonContext() {
   return { rosters: currentRosters, playerDirectory, multiTeamPlayerDirectory, auctionValues, marketByPlayer };
 }
 
-export async function buildServerTradeComparison(input: TradeComparisonInput) {
-  return buildTradeComparison({ input, ...(await loadTradeComparisonContext()) });
+export async function buildServerTradeComparison(input: TradeComparisonInput, context = null) {
+  return buildTradeComparison({ input, ...(context ?? await loadTradeComparisonContext()) });
 }

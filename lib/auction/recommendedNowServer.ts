@@ -10,7 +10,7 @@ import { readWarRoomLiveAuctionState } from "@/lib/auction/warRoomLiveStateFires
 import { normalizeSleeperAuctionSyncSnapshot } from "@/lib/auction/sleeperAuctionSync";
 import { deriveWarRoomBudgetState } from "@/lib/auction/warRoomLiveState";
 import { reconcileAuctionPurchases } from "@/lib/auction/purchaseReconciliation";
-import { getLeagueRosters, getLeagueUsers, getSleeperAuctionDraftSnapshot } from "@/lib/sleeper";
+import { getLeagueRosters, getLeagueUsers, getSleeperAuctionDraftSnapshot, getSleeperPlayerIdentityDirectory } from "@/lib/sleeper";
 import localMasterview from "@/data/auction/generated/masterview-2026.json";
 import localAdp from "@/data/auction/adp/generated/adp-consensus-2026.json";
 import {
@@ -98,12 +98,11 @@ async function readPublicAuctionState() {
   try {
     const snapshot = await getSleeperAuctionDraftSnapshot(2026);
     if (!snapshot.leagueId) return null;
-    const [rosters, users, playersResponse] = await Promise.all([
+    const [rosters, users] = await Promise.all([
       getLeagueRosters(snapshot.leagueId),
       getLeagueUsers(snapshot.leagueId),
-      fetch("https://api.sleeper.app/v1/players/nfl", { next: { revalidate: 3600 } }),
     ]);
-    const players = playersResponse.ok ? await playersResponse.json() : undefined;
+    const players = await getSleeperPlayerIdentityDirectory(snapshot.picks.map((pick) => pick.playerId));
     return normalizeSleeperAuctionSyncSnapshot({
       leagueId: snapshot.leagueId,
       season: 2026,
@@ -112,7 +111,11 @@ async function readPublicAuctionState() {
       picks: snapshot.picks,
       rosters,
       users,
-      playersById: players,
+      playersById: Object.fromEntries(Object.entries(players).map(([id, player]) => [id, {
+        full_name: player.displayName,
+        position: player.position,
+        team: player.nflTeam,
+      }])),
       warnings: snapshot.warnings,
     });
   } catch (error) {
