@@ -6,6 +6,7 @@ import { Info, Plus, RotateCcw, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { TradeComparisonPosition } from "@/lib/tradeComparison/types";
 import type { SandboxMarketFairnessResult } from "@/lib/tradeComparison/sandboxMarketFairnessCalibration";
+import type { TradeFairnessActivation } from "@/lib/tradeComparison/fairness/activation";
 
 type PlayerOption = {
   playerId: string;
@@ -55,6 +56,7 @@ type RoutingResult = {
     faabReceived: { senderFranchiseId: string; receiverFranchiseId: string; amount: number }[];
   }>;
   sandboxMarketFairness: SandboxMarketFairnessResult | null;
+  riverCityFairness: TradeFairnessActivation | null;
 };
 
 function automaticDestination(
@@ -710,25 +712,29 @@ function ResultView({
           River City analysis
         </h3>
         <p className="mt-3 text-sm font-bold text-slate-900">
-          River City Fairness Model · Available after the 2026 Auction
+          River City Fairness Model
         </p>
-        <p className="mt-2 text-sm leading-6 text-slate-700">
-          Final keeper and auction acquisition costs are required before
-          calibrated fairness scoring can be calculated.
-        </p>
-        <p className="mt-3 text-xs leading-5 text-slate-700">
-          After the auction, eligible two-team trades can use River City Model
-          Edge, calibrated fairness scoring, signal agreement, and factual
-          participant reasoning from server-owned model values, actual
-          acquisition costs, five-source auction consensus, five-source ADP, and
-          historical trade calibration.
-        </p>
-        <p className="mt-2 text-xs leading-5 text-slate-700">
-          For three- and four-team trades, future analysis may report
-          participant net results, Model Spread, and the largest River City
-          Model Edge; the historical two-team calibration does not apply to
-          multi-team trades.
-        </p>
+        {result.riverCityFairness?.status === "READY" && result.riverCityFairness.result ? (
+          <>
+            <p className="mt-2 text-sm font-semibold text-emerald-800">Calibrated result available.</p>
+            <p className="mt-3 text-3xl font-black text-slate-950">
+              {result.riverCityFairness.result.fairnessScore?.toFixed(1)} / 100
+            </p>
+          </>
+        ) : result.riverCityFairness?.status === "NOT_APPLICABLE" ? (
+          <p className="mt-2 text-sm leading-6 text-slate-700">Calibrated River City fairness is currently available only for eligible two-team league trades.</p>
+        ) : (
+          <>
+            <p className="mt-2 text-sm leading-6 text-slate-700">
+              Calibrated fairness is unavailable because one or more selected players do not have an approved current acquisition-cost basis.
+            </p>
+            {result.riverCityFairness?.affectedPlayerNames.length ? (
+              <p className="mt-2 text-xs font-semibold leading-5 text-slate-700">
+                Affected player{result.riverCityFairness.affectedPlayerNames.length === 1 ? "" : "s"}: {result.riverCityFairness.affectedPlayerNames.join(", ")}.
+              </p>
+            ) : null}
+          </>
+        )}
       </section>}
       <section aria-labelledby="package-details-title">
         <h3

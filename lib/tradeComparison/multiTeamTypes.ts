@@ -5,6 +5,7 @@ import type {
   TradeComparisonPositionCounts,
 } from "./types";
 import type { SandboxMarketFairnessResult } from "./sandboxMarketFairnessCalibration";
+import type { TradeFairnessActivation } from "./fairness/activation";
 
 export const MULTI_TEAM_CONTRACT_VERSION = "m10" as const;
 export const MULTI_TEAM_MIN_PARTICIPANTS = 2;
@@ -115,6 +116,7 @@ export type MultiTeamRoutingResult = {
   mode: MultiTeamTradeMode;
   participants: MultiTeamParticipantResult[];
   sandboxMarketFairness?: SandboxMarketFairnessResult | null;
+  riverCityFairness?: TradeFairnessActivation | null;
 };
 
 export type MultiTeamModelAsset = {

@@ -151,7 +151,8 @@ assert.equal(cookLondon.keeperCostSourceVersion, provenance.keeperCostSourceVers
 const serialized = JSON.stringify(serializePublicFairnessResult(cookLondon));
 assert.doesNotMatch(serialized, /target|cap|strategy|note|budget|finance|email|uid|warRoom|preferredEntry|private/i);
 const activeAdapter = readFileSync("lib/tradeComparison/serverAdapter.ts", "utf8");
-assert.doesNotMatch(activeAdapter, /fairness|evaluateFairness|keeperCost/i);
+assert.match(activeAdapter, /buildAcquisitionSnapshot/);
+assert.doesNotMatch(activeAdapter, /WarRoom|strategy|target|preferredEntry|private/i);
 const fairnessSource = readFileSync("lib/tradeComparison/fairness/sourceContracts.ts", "utf8");
 assert.doesNotMatch(fairnessSource, /target|preferredEntry|WarRoom|strategy|notes|budget|finance/i);
 const keeperAdapter = readFileSync("lib/tradeComparison/fairness/keeperCostSource.ts", "utf8");

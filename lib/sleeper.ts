@@ -4,6 +4,7 @@ import { MANUAL_HISTORY } from "./manual-history";
 import localMasterview from "@/data/auction/generated/masterview-2026.json";
 import localAdp from "@/data/auction/adp/generated/adp-consensus-2026.json";
 import localTradePlayers from "@/data/trade-analyzer/player-stats-2026.json";
+import { mergeIdentityValue } from "@/lib/identity/mergeIdentity";
 
 // --- CORE CONFIGURATION ---
 export const LEAGUE_ID = "1312149033254416384"; // 2026 Season
@@ -320,9 +321,9 @@ export function getLocalPlayerIdentityRegistry(): Record<string, SleeperPlayerId
     };
     registry[id] = {
       ...registry[id],
-      displayName: registry[id].displayName ?? (typeof displayName === "string" && displayName.trim() ? displayName.trim() : null),
-      position: registry[id].position ?? (typeof position === "string" && position.trim() ? position.trim() : null),
-      nflTeam: registry[id].nflTeam ?? (typeof nflTeam === "string" && nflTeam.trim() ? nflTeam.trim() : null),
+      displayName: mergeIdentityValue(registry[id].displayName, typeof displayName === "string" && displayName.trim() ? displayName.trim() : null),
+      position: mergeIdentityValue(registry[id].position, typeof position === "string" && position.trim() ? position.trim() : null),
+      nflTeam: mergeIdentityValue(registry[id].nflTeam, typeof nflTeam === "string" && nflTeam.trim() ? nflTeam.trim() : null),
     };
   };
   localMasterview.rows.forEach((row) => add(row.sleeperPlayerId, row.playerName, row.position, row.nflTeam));

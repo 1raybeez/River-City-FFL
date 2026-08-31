@@ -35,15 +35,15 @@ assert.match(component, /onAdd\(player\.playerId, participant\.participantId\)/)
 assert.doesNotMatch(component, /Adding to package|sourceParticipantId|onSourceParticipantChange/);
 assert.match(component, /automaticDestination\(participants, participant\)/);
 assert.match(component, /candidate\.franchiseId !== participant\.franchiseId/);
-assert.match(component, /Final keeper and auction acquisition costs are required/);
-for (const label of ["Before", "After", "No players received", "No players sent", "historical trade calibration"]) assert.match(component, new RegExp(label, "i"));
+assert.match(component, /Calibrated fairness is unavailable/);
+for (const label of ["Before", "After", "No players received", "No players sent", "Calibrated result available"]) assert.match(component, new RegExp(label, "i"));
 assert.match(component, /data-warning-title/);
 assert.doesNotMatch(component, /data-coverage-title|Routing: validated/);
 assert.match(component, /result\.mode === "LEAGUE_TRADE"/);
 assert.match(component, /positionalBefore/);
 assert.match(component, /positionalAfter/);
 assert.match(component, /overflow-x-auto/);
-assert.match(component, /historical\s+two-team\s+calibration\s+does\s+not\s+apply\s+to\s+multi-team\s+trades/);
+assert.match(component, /available only for eligible two-team league trades/);
 assert.match(component, /summaryRows/);
 assert.doesNotMatch(component, /temporary winner|placeholder score|fake score|estimated score/i);
 assert.match(route, /buildMultiTeamRouting/);

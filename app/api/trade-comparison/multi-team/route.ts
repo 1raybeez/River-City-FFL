@@ -3,6 +3,8 @@ import { getCurrentMember } from "@/lib/auth/currentMember";
 import { buildMultiTeamRouting } from "@/lib/tradeComparison/multiTeamFoundation";
 import { loadTradeComparisonContext } from "@/lib/tradeComparison/serverAdapter";
 import type { MultiTeamTradeRequest } from "@/lib/tradeComparison/multiTeamTypes";
+import { buildTwoTeamFairnessActivation } from "@/lib/tradeComparison/fairness/activation";
+import { serializePublicFairnessResult } from "@/lib/tradeComparison/fairness/publicSerializer";
 
 export const dynamic = "force-dynamic";
 
@@ -28,9 +30,17 @@ export async function POST(request: Request) {
     let input: MultiTeamTradeRequest | null = null;
     try { input = parseRequest(await request.json()); } catch { input = null; }
     if (!input) return NextResponse.json({ success: false, error: "Choose two to four participants and valid player destinations." }, { status: 400 });
-    const context = await loadTradeComparisonContext();
+    const context = await loadTradeComparisonContext({ includeAcquisitionSnapshot: input.mode === "LEAGUE_TRADE" && input.participants.length === 2 });
     const routing = buildMultiTeamRouting(input, { rosters: context.rosters, playerDirectory: context.multiTeamPlayerDirectory, marketByPlayer: context.marketByPlayer });
-    return NextResponse.json({ success: routing.status === "READY", routing: { status: routing.status, mode: routing.mode, errors: routing.errors, sandboxMarketFairness: routing.sandboxMarketFairness ?? null, participants: routing.participants.map((participant) => ({
+    const internalFairness = routing.status === "READY" && input.mode === "LEAGUE_TRADE" && input.participants.length === 2 && context.acquisitionSnapshot
+      ? buildTwoTeamFairnessActivation({ participants: routing.participants, acquisitionSnapshot: context.acquisitionSnapshot, marketByPlayer: context.marketByPlayer, draftStatus: context.draftStatus })
+      : input.mode === "LEAGUE_TRADE" && input.participants.length !== 2
+        ? { status: "NOT_APPLICABLE" as const, result: null, reason: "TWO_TEAM_ONLY", affectedPlayerNames: [] }
+        : null;
+    const riverCityFairness = internalFairness?.result
+      ? { ...internalFairness, result: serializePublicFairnessResult(internalFairness.result) }
+      : internalFairness;
+    return NextResponse.json({ success: routing.status === "READY", routing: { status: routing.status, mode: routing.mode, errors: routing.errors, sandboxMarketFairness: routing.sandboxMarketFairness ?? null, riverCityFairness, participants: routing.participants.map((participant) => ({
       participantId: participant.participantId,
       franchiseId: participant.franchiseId,
       sends: participant.sends.map((asset) => ({ player: asset.player, sourceFranchiseId: asset.sourceFranchiseId, destinationFranchiseId: asset.destinationFranchiseId })),

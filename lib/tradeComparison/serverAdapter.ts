@@ -1,5 +1,5 @@
 import "server-only";
-import { getLeagueInfo, getLeagueRosters, getLeagueUsers, getSleeperPlayerIdentityDirectory } from "@/lib/sleeper";
+import { getLeagueInfo, getLeagueRosters, getLeagueUsers, getSleeperAuctionDraftSnapshot, getSleeperPlayerIdentityDirectory, getTransactions, type Transaction } from "@/lib/sleeper";
 import { canonicalAuctionTeams } from "@/lib/auction/canonicalTeamCatalog";
 import { readPublishedMasterviewFromFirestore } from "@/lib/auction/valueRefreshService";
 import { readPublishedAdpConsensusFromFirestore } from "@/lib/auction/adpRefreshService";
@@ -7,9 +7,22 @@ import { buildCurrentFranchiseRosters, buildTradeComparison, type CanonicalTrade
 import { getCurrentSeasonTeamIdentityMap } from "@/lib/currentSeasonTeamIdentityServer";
 import type { PublishedAuctionValue, TradeComparisonInput } from "./types";
 import type { MultiTeamMarketEntry } from "./multiTeamTypes";
+import { buildAcquisitionSnapshot, type AcquisitionSnapshotRecord } from "./fairness/acquisitionSnapshot";
 
-export async function loadTradeComparisonContext() {
-  const [league, rosters, users, playerDirectory, publishedValues, publishedAdp, identities] = await Promise.all([getLeagueInfo(), getLeagueRosters(), getLeagueUsers(), getSleeperPlayerIdentityDirectory(), readPublishedMasterviewFromFirestore().catch(() => null), readPublishedAdpConsensusFromFirestore(2026).catch(() => null), getCurrentSeasonTeamIdentityMap()]);
+export async function loadTradeComparisonContext(options: { includeAcquisitionSnapshot?: boolean } = {}) {
+  const [league, rosters, users, playerDirectory, publishedValues, publishedAdp, identities, auctionSnapshot, transactions] = await Promise.all([
+    getLeagueInfo(),
+    getLeagueRosters(),
+    getLeagueUsers(),
+    getSleeperPlayerIdentityDirectory(),
+    readPublishedMasterviewFromFirestore().catch(() => null),
+    readPublishedAdpConsensusFromFirestore(2026).catch(() => null),
+    getCurrentSeasonTeamIdentityMap(),
+    options.includeAcquisitionSnapshot ? getSleeperAuctionDraftSnapshot(2026) : Promise.resolve(null),
+    options.includeAcquisitionSnapshot
+      ? Promise.all(Array.from({ length: 18 }, (_, index) => getTransactions(index + 1, "1312149033254416384"))).then((rows) => rows.flat() as Transaction[])
+      : Promise.resolve([] as Transaction[]),
+  ]);
   const avatarsByUserId = new Map(users.map((user: { user_id?: string; avatar?: string | null }) => [user.user_id, user.avatar ?? null] as const));
   const teams: CanonicalTradeComparisonTeam[] = canonicalAuctionTeams.map((team) => ({ franchiseId: team.franchiseId, franchiseName: identities.get(team.franchiseId)?.currentTeamName ?? team.teamName, rosterId: team.rosterId, avatar: identities.get(team.franchiseId)?.avatar ?? avatarsByUserId.get(team.managerId) ?? null }));
   const startingFaab = Number(league.settings?.waiver_budget);
@@ -26,7 +39,10 @@ export async function loadTradeComparisonContext() {
     marketByPlayer.set(row.playerId, { playerId: row.playerId, value: current?.value ?? null, sourceCount: current?.sourceCount ?? 0, season: current?.season ?? 2026, sourceLabel: current?.sourceLabel ?? null, averageAdp: Number.isFinite(row.medianOverallAdp) ? row.medianOverallAdp : null, adpSourceCount: row.sourceCount ?? 0 });
   });
   const multiTeamPlayerDirectory = new Map(Object.values(playerDirectory).map((player) => [player.playerId, { playerId: player.playerId, name: player.displayName, position: player.position as "QB" | "RB" | "WR" | "TE" | "K" | "DEF" | null, nflTeam: player.nflTeam, injuryStatus: player.injuryStatus ?? null, avatar: player.avatar ?? null, byeWeek: null }] as const));
-  return { rosters: currentRosters, playerDirectory, multiTeamPlayerDirectory, auctionValues, marketByPlayer };
+  const acquisitionSnapshot: ReadonlyMap<string, AcquisitionSnapshotRecord> | null = auctionSnapshot
+    ? buildAcquisitionSnapshot({ season: 2026, teams, rosters, picks: auctionSnapshot.picks, transactions, auctionValues })
+    : null;
+  return { rosters: currentRosters, playerDirectory, multiTeamPlayerDirectory, auctionValues, marketByPlayer, acquisitionSnapshot, draftStatus: auctionSnapshot?.draft?.status ?? "unknown" };
 }
 
 export async function buildServerTradeComparison(input: TradeComparisonInput, context = null) {
