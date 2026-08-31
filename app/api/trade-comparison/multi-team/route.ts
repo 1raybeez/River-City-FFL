@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     try { input = parseRequest(await request.json()); } catch { input = null; }
     if (!input) return NextResponse.json({ success: false, error: "Choose two to four participants and valid player destinations." }, { status: 400 });
     const context = await loadTradeComparisonContext({ includeAcquisitionSnapshot: input.mode === "LEAGUE_TRADE" && input.participants.length === 2 });
-    const routing = buildMultiTeamRouting(input, { rosters: context.rosters, playerDirectory: context.multiTeamPlayerDirectory, marketByPlayer: context.marketByPlayer });
+    const routing = buildMultiTeamRouting(input, { rosters: context.rosters, playerDirectory: context.multiTeamPlayerDirectory, marketByPlayer: context.marketByPlayer, currentValueByPlayer: context.currentValueByPlayer, starterSlots: context.starterSlots });
     const internalFairness = routing.status === "READY" && input.mode === "LEAGUE_TRADE" && input.participants.length === 2 && context.acquisitionSnapshot
       ? buildTwoTeamFairnessActivation({ participants: routing.participants, acquisitionSnapshot: context.acquisitionSnapshot, marketByPlayer: context.marketByPlayer, draftStatus: context.draftStatus })
       : input.mode === "LEAGUE_TRADE" && input.participants.length !== 2
@@ -50,6 +50,16 @@ export async function POST(request: Request) {
       faabReceived: participant.faabReceived,
       positionalBefore: participant.positionalBefore,
       positionalAfter: participant.positionalAfter,
+      ...(input.mode === "LEAGUE_TRADE" ? {
+        currentValueAnalysis: participant.currentValueAnalysis ?? null,
+        lineupImpact: participant.lineupImpact ?? null,
+        keeperEconomics: context.acquisitionSnapshot
+          ? [...participant.sends, ...participant.receives].map((asset) => {
+              const record = context.acquisitionSnapshot!.get(`${input.season}:${participant.franchiseId}:${asset.player.playerId}`);
+              return { playerId: asset.player.playerId, playerName: asset.player.name, highestSeasonAcquisitionPrice: record?.highestSeasonAcquisitionPrice ?? null, projectedNextSeasonKeeperCost: record?.projectedNextSeasonKeeperCost ?? null, keeperCostStatus: record?.keeperCostStatus ?? "UNKNOWN", fairnessAcquisitionCost: record?.currentAcquisitionCost ?? null, fairnessEligibility: record?.fairnessEligibility ?? "INELIGIBLE" };
+            })
+          : null,
+      } : {}),
       market: participant.market,
       reasoning: participant.reasoning,
     })) } }, { status: 200, headers: { "Cache-Control": "private, no-store" } });

@@ -21,6 +21,7 @@ export type CurrentFranchiseRoster = {
   rosterId: number | null;
   available: boolean;
   players: TradeComparisonPlayer[];
+  starterIds?: string[];
   avatar?: string | null;
   availableFaab?: number | null;
 };

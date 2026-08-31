@@ -8,6 +8,7 @@ import { getCurrentSeasonTeamIdentityMap } from "@/lib/currentSeasonTeamIdentity
 import type { PublishedAuctionValue, TradeComparisonInput } from "./types";
 import type { MultiTeamMarketEntry } from "./multiTeamTypes";
 import { buildAcquisitionSnapshot, type AcquisitionSnapshotRecord } from "./fairness/acquisitionSnapshot";
+import { resolveCurrentSeasonPlayerValue, type CurrentSeasonPlayerValue } from "./currentValue";
 
 export async function loadTradeComparisonContext(options: { includeAcquisitionSnapshot?: boolean } = {}) {
   const [league, rosters, users, playerDirectory, publishedValues, publishedAdp, identities, auctionSnapshot, transactions] = await Promise.all([
@@ -39,10 +40,26 @@ export async function loadTradeComparisonContext(options: { includeAcquisitionSn
     marketByPlayer.set(row.playerId, { playerId: row.playerId, value: current?.value ?? null, sourceCount: current?.sourceCount ?? 0, season: current?.season ?? 2026, sourceLabel: current?.sourceLabel ?? null, averageAdp: Number.isFinite(row.medianOverallAdp) ? row.medianOverallAdp : null, adpSourceCount: row.sourceCount ?? 0 });
   });
   const multiTeamPlayerDirectory = new Map(Object.values(playerDirectory).map((player) => [player.playerId, { playerId: player.playerId, name: player.displayName, position: player.position as "QB" | "RB" | "WR" | "TE" | "K" | "DEF" | null, nflTeam: player.nflTeam, injuryStatus: player.injuryStatus ?? null, avatar: player.avatar ?? null, byeWeek: null }] as const));
+  const adpByPlayer = new Map((publishedAdp?.rows ?? []).map((row) => [row.playerId, row] as const));
+  const currentValueByPlayer = new Map<string, CurrentSeasonPlayerValue>();
+  multiTeamPlayerDirectory.forEach((player, playerId) => {
+    const adp = adpByPlayer.get(playerId);
+    currentValueByPlayer.set(playerId, resolveCurrentSeasonPlayerValue({
+      playerId,
+      playerName: player.name ?? playerId,
+      position: player.position ?? "UNKNOWN",
+      nflTeam: player.nflTeam,
+      sources: adp ? [{ source: "River City ADP consensus", mode: "FALLBACK", overallRank: adp.medianOverallAdp, positionalRank: adp.consensusPositionAdp, generatedAt: publishedAdp?.generatedAt ?? null, sourceCount: adp.sourceCount, confidence: adp.confidence, allowAsFallback: true }] : [],
+    }));
+  });
+  const rosterPositions = (league as unknown as { roster_positions?: unknown }).roster_positions;
+  const starterSlots = Array.isArray(rosterPositions)
+    ? rosterPositions.filter((slot): slot is string => typeof slot === "string" && slot !== "BN" && slot !== "IR")
+    : [];
   const acquisitionSnapshot: ReadonlyMap<string, AcquisitionSnapshotRecord> | null = auctionSnapshot
     ? buildAcquisitionSnapshot({ season: 2026, teams, rosters, picks: auctionSnapshot.picks, transactions, auctionValues })
     : null;
-  return { rosters: currentRosters, playerDirectory, multiTeamPlayerDirectory, auctionValues, marketByPlayer, acquisitionSnapshot, draftStatus: auctionSnapshot?.draft?.status ?? "unknown" };
+  return { rosters: currentRosters, playerDirectory, multiTeamPlayerDirectory, auctionValues, marketByPlayer, currentValueByPlayer, starterSlots, acquisitionSnapshot, draftStatus: auctionSnapshot?.draft?.status ?? "unknown" };
 }
 
 export async function buildServerTradeComparison(input: TradeComparisonInput, context = null) {

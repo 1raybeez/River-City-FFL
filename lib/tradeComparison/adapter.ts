@@ -4,7 +4,7 @@ import { TRADE_COMPARISON_POSITIONS } from "./types";
 import { validateTradeComparisonInput } from "./validation";
 
 export type CanonicalTradeComparisonTeam = { franchiseId: string; franchiseName: string; rosterId: number | null; avatar?: string | null };
-type SleeperRosterLike = { roster_id?: number | string | null; players?: unknown; settings?: { waiver_budget_used?: unknown } };
+type SleeperRosterLike = { roster_id?: number | string | null; players?: unknown; starters?: unknown; settings?: { waiver_budget_used?: unknown } };
 
 function normalizePosition(value: string | null | undefined): TradeComparisonPosition | null {
   const position = value?.trim().toUpperCase();
@@ -35,7 +35,7 @@ export function buildCurrentFranchiseRosters({ teams, rosters, playerDirectory, 
     });
     const usedFaab = Number(roster?.settings?.waiver_budget_used);
     const availableFaab = roster !== null && Number.isFinite(startingFaab) && Number.isFinite(usedFaab) ? startingFaab! - usedFaab : null;
-    return { franchiseId: team.franchiseId, franchiseName: team.franchiseName, rosterId: team.rosterId, avatar: team.avatar ?? null, available: roster !== null, players, availableFaab: availableFaab !== null && availableFaab >= 0 ? availableFaab : null };
+    return { franchiseId: team.franchiseId, franchiseName: team.franchiseName, rosterId: team.rosterId, avatar: team.avatar ?? null, available: roster !== null, players, starterIds: readPlayerIds(roster?.starters), availableFaab: availableFaab !== null && availableFaab >= 0 ? availableFaab : null };
   });
 }
 

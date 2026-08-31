@@ -27,6 +27,8 @@ import {
 import { RIVER_CITY_HISTORICAL_CALIBRATION, scoreHistoricalGap } from "./fairness/historicalCalibration";
 import type { TradeComparisonPlayer, TradeComparisonPositionCounts } from "./types";
 import { sandboxMarketFairness } from "./sandboxMarketFairnessCalibration";
+import { buildLineupImpact } from "./lineupImpact";
+import { buildUnavailableCurrentValue } from "./currentValue";
 
 function invalid(code: MultiTeamValidationError["code"], message: string): MultiTeamValidationError {
   return { code, message };
@@ -184,6 +186,12 @@ export function buildMultiTeamRouting(
       reasoning: [],
       faabSent,
       faabReceived,
+      ...(request.mode === "LEAGUE_TRADE" && context.currentValueByPlayer && context.starterSlots
+        ? {
+            currentValueAnalysis: [...new Set([...sends, ...receives].map((asset) => asset.player.playerId))].map((playerId) => context.currentValueByPlayer!.get(playerId) ?? buildUnavailableCurrentValue(context.playerDirectory.get(playerId)!)),
+            lineupImpact: buildLineupImpact({ beforePlayers: roster?.players ?? [], afterPlayers: after, currentValues: context.currentValueByPlayer, starterSlots: context.starterSlots }),
+          }
+        : {}),
     };
   });
   const sandboxMarketResult = request.mode === "SANDBOX" && results.length === 2

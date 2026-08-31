@@ -6,6 +6,8 @@ import type {
 } from "./types";
 import type { SandboxMarketFairnessResult } from "./sandboxMarketFairnessCalibration";
 import type { TradeFairnessActivation } from "./fairness/activation";
+import type { CurrentSeasonPlayerValue } from "./currentValue";
+import type { LineupImpactResult } from "./lineupImpact";
 
 export const MULTI_TEAM_CONTRACT_VERSION = "m10" as const;
 export const MULTI_TEAM_MIN_PARTICIPANTS = 2;
@@ -71,6 +73,8 @@ export type MultiTeamServerContext = {
   rosters: readonly CurrentFranchiseRoster[];
   playerDirectory: ReadonlyMap<string, TradeComparisonPlayer>;
   marketByPlayer: ReadonlyMap<string, MultiTeamMarketEntry>;
+  currentValueByPlayer?: ReadonlyMap<string, CurrentSeasonPlayerValue>;
+  starterSlots?: readonly string[];
 };
 
 export type MultiTeamRoutedAsset = {
@@ -102,6 +106,8 @@ export type MultiTeamParticipantResult = {
   reasoning: string[];
   faabSent: MultiTeamFaabTransfer | null;
   faabReceived: MultiTeamFaabTransfer[];
+  currentValueAnalysis?: CurrentSeasonPlayerValue[];
+  lineupImpact?: LineupImpactResult;
 };
 
 export type MultiTeamFaabTransfer = {

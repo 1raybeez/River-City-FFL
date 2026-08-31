@@ -47,6 +47,7 @@ export interface FantasyCalcValueRow {
   overallRank: number | null;
   positionRank: number | null;
   trend30Day: number | null;
+  redraftValue?: number | null;
 }
 
 export interface CandidatePlayerStatsRow extends RiverCityPlayerTemplateRow {
@@ -80,7 +81,7 @@ export interface CandidatePlayerStatsSnapshot {
   importTargetPath: string;
   sourceAttribution: typeof FANTASYCALC_ATTRIBUTION;
   sourceSettings: {
-    isDynasty: true;
+    isDynasty: boolean;
     numQbs: "1";
     numTeams: "12";
     ppr: ".5";
@@ -202,7 +203,7 @@ interface FantasyCalcClassifiedRows {
   invalidRows: Array<{ row: FantasyCalcValueRow; reason: string }>;
 }
 
-const SOURCE_SETTINGS = {
+const DYNASTY_SOURCE_SETTINGS = {
   isDynasty: true,
   numQbs: "1",
   numTeams: "12",
@@ -210,6 +211,28 @@ const SOURCE_SETTINGS = {
   tePremium: false,
   includeAdp: false,
 } as const;
+
+const REDRAFT_SOURCE_SETTINGS = {
+  isDynasty: false,
+  numQbs: "1",
+  numTeams: "12",
+  ppr: ".5",
+  tePremium: false,
+  includeAdp: false,
+} as const;
+
+function getSourceSettings(sourceUrl: string) {
+  const settings = new URL(sourceUrl).searchParams;
+  return settings.get("isDynasty") === "false"
+    ? REDRAFT_SOURCE_SETTINGS
+    : DYNASTY_SOURCE_SETTINGS;
+}
+
+function getSourceDetail(sourceUrl: string): string {
+  return getSourceSettings(sourceUrl).isDynasty
+    ? FANTASYCALC_SOURCE_DETAIL
+    : "FantasyCalc /values/current; Redraft; 1QB; 12-team; Half PPR; no TE premium; reviewed candidate";
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -342,6 +365,7 @@ function buildCandidateRow({
   generatedAt,
   captureDate,
   sourceVersion,
+  sourceDetail,
   additionalNotes,
 }: {
   templateRow: RiverCityPlayerTemplateRow;
@@ -351,6 +375,7 @@ function buildCandidateRow({
   generatedAt: string;
   captureDate: string;
   sourceVersion: string;
+  sourceDetail: string;
   additionalNotes?: string[];
 }): CandidatePlayerStatsRow {
   const totalValueScore = normalizeFantasyCalcValue(fantasyCalcRow.value);
@@ -363,7 +388,7 @@ function buildCandidateRow({
     keeperCost: getKeeperCost(templateRow),
     valueSource: "ManualSnapshot",
     generatedAt,
-    sourceDetail: FANTASYCALC_SOURCE_DETAIL,
+    sourceDetail,
     sourceVersion,
     sourceAttribution: FANTASYCALC_ATTRIBUTION.name,
     sourceUrl: FANTASYCALC_ATTRIBUTION.url,
@@ -495,6 +520,8 @@ export function buildFantasyCalcSnapshot({
   importTargetPath = "data/trade-analyzer/player-stats-2026.json",
 }: BuildFantasyCalcSnapshotInput): BuildFantasyCalcSnapshotResult {
   const sourceVersion = getSourceVersion(captureDate);
+  const sourceSettings = getSourceSettings(sourceUrl);
+  const sourceDetail = getSourceDetail(sourceUrl);
   const { entries: templateEntries, draftPickEntries } =
     buildTemplateEntries(template);
   const classifiedRows = classifyFantasyCalcRows(fantasyCalcRows);
@@ -549,6 +576,7 @@ export function buildFantasyCalcSnapshot({
         captureDate,
         sourceVersion,
         additionalNotes: notes,
+        sourceDetail,
       });
       directSleeperIdMatches.push(
         buildMatchedReportRow(
@@ -629,6 +657,7 @@ export function buildFantasyCalcSnapshot({
         captureDate,
         sourceVersion,
         additionalNotes: notes,
+        sourceDetail,
       });
       fallbackCandidates.push(
         buildMatchedReportRow(
@@ -701,11 +730,11 @@ export function buildFantasyCalcSnapshot({
 
   const candidate: CandidatePlayerStatsSnapshot = {
     generatedAt,
-    sourceDetail: FANTASYCALC_SOURCE_DETAIL,
+    sourceDetail,
     sourceVersion,
     importTargetPath,
     sourceAttribution: FANTASYCALC_ATTRIBUTION,
-    sourceSettings: SOURCE_SETTINGS,
+    sourceSettings,
     sourceFreshness: {
       capturedAt: captureDate,
       generatedAt,
@@ -727,7 +756,7 @@ export function buildFantasyCalcSnapshot({
     captureDate,
     inputMode,
     sourceUrl,
-    sourceDetail: FANTASYCALC_SOURCE_DETAIL,
+    sourceDetail,
     sourceVersion,
     sourceAttribution: FANTASYCALC_ATTRIBUTION,
     candidateSnapshotPath,
@@ -867,6 +896,7 @@ export function parseFantasyCalcApiRows(rawJson: unknown): FantasyCalcValueRow[]
       overallRank: readNumber(row.overallRank),
       positionRank: readNumber(row.positionRank),
       trend30Day: readNumber(row.trend30Day),
+      redraftValue: readNumber(row.redraftValue),
     };
   });
 }

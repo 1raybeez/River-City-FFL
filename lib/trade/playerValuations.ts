@@ -59,7 +59,7 @@ export async function calculatePlayerValue(playerId: string): Promise<UnifiedPla
 
   const { nextSeasonCost } = resolveKeeperCostForPlayer(playerId, keeperHistory);
 
-  const keeperCost = nextSeasonCost;
+  const keeperCost = nextSeasonCost ?? 0;
 
   return {
     playerId,

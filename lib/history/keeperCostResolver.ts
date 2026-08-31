@@ -6,10 +6,22 @@ export interface SleeperTransaction {
   created: number;          // timestamp (ms or s, we’ll normalize)
 }
 
+export type KeeperAcquisitionType = "draft" | "keeper" | "waiver" | "free_agent";
+
+export interface KeeperAcquisitionEvent {
+  type: KeeperAcquisitionType;
+  amount: number;
+  created?: number;
+  transactionId?: string;
+}
+
 export interface KeeperCostResult {
   playerId: string;
-  currentCost: number;      // this season's cost (from Sleeper)
-  nextSeasonCost: number;   // projected cost for next season (+$10)
+  status: "KNOWN" | "UNKNOWN";
+  highestAcquisitionPrice: number | null;
+  currentCost: number | null;
+  nextSeasonCost: number | null;
+  acquisitionEvents: KeeperAcquisitionEvent[];
 }
 
 /**
@@ -24,37 +36,57 @@ function normalizeTransactions(raw: any[]): SleeperTransaction[] {
   }));
 }
 
-/**
- * Find the most recent transaction with a dollar amount.
- * This is your league's source of truth for current keeper cost.
- */
-function findLatestPricedTransaction(
-  transactions: SleeperTransaction[]
-): SleeperTransaction | null {
-  const priced = transactions.filter((tx) => typeof tx.amount === "number");
-  if (!priced.length) return null;
+function isKeeperAcquisitionType(value: unknown): value is KeeperAcquisitionType {
+  return value === "draft" || value === "keeper" || value === "waiver" || value === "free_agent";
+}
 
-  return priced.sort((a, b) => b.created - a.created)[0];
+function normalizeAmount(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+/** Current-season highest auction/FAAB acquisition price plus $10. */
+export function resolveNextSeasonKeeperCost({
+  playerId,
+  acquisitionEvents,
+}: {
+  playerId: string;
+  acquisitionEvents: readonly KeeperAcquisitionEvent[];
+}): KeeperCostResult {
+  const events = acquisitionEvents
+    .filter((event) => isKeeperAcquisitionType(event.type) && normalizeAmount(event.amount) !== null)
+    .map((event) => ({ ...event, amount: normalizeAmount(event.amount)! }));
+
+  if (events.length === 0) {
+    return { playerId, status: "UNKNOWN", highestAcquisitionPrice: null, currentCost: null, nextSeasonCost: null, acquisitionEvents: [] };
+  }
+
+  const highestAcquisitionPrice = Math.max(...events.map((event) => event.amount));
+  return {
+    playerId,
+    status: "KNOWN",
+    highestAcquisitionPrice,
+    currentCost: highestAcquisitionPrice,
+    nextSeasonCost: highestAcquisitionPrice + 10,
+    acquisitionEvents: events,
+  };
 }
 
 /**
  * Core resolver:
- * - currentCost = latest Sleeper dollar value (draft / keeper / FAAB)
- * - nextSeasonCost = currentCost + 10
+ * Compatibility wrapper for the older raw-transaction caller.
  */
 export function resolveKeeperCostForPlayer(
   playerId: string,
   rawTransactions: any[]
 ): KeeperCostResult {
   const transactions = normalizeTransactions(rawTransactions);
-  const latest = findLatestPricedTransaction(transactions);
-
-  const currentCost = latest?.amount ?? 0;
-  const nextSeasonCost = currentCost > 0 ? currentCost + 10 : 0;
-
-  return {
+  return resolveNextSeasonKeeperCost({
     playerId,
-    currentCost,
-    nextSeasonCost,
-  };
+    acquisitionEvents: transactions.flatMap((transaction) => {
+      const type = transaction.type === "free-agent" ? "free_agent" : transaction.type;
+      return isKeeperAcquisitionType(type) && normalizeAmount(transaction.amount) !== null
+        ? [{ type, amount: normalizeAmount(transaction.amount)!, created: transaction.created }]
+        : [];
+    }),
+  });
 }

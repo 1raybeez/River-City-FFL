@@ -74,6 +74,8 @@ assert.equal(snapshot.get("2026:team-b:traded")?.originalFranchiseId, "team-a");
 assert.equal(snapshot.get("2026:team-b:traded")?.originalAcquisitionCost, 3);
 assert.equal(snapshot.get("2026:team-b:traded")?.currentAcquisitionCost, null);
 assert.equal(snapshot.get("2026:team-b:traded")?.fairnessEligibility, "INELIGIBLE");
+assert.equal(snapshot.get("2026:team-b:traded")?.highestSeasonAcquisitionPrice, 3);
+assert.equal(snapshot.get("2026:team-b:traded")?.projectedNextSeasonKeeperCost, 13);
 
 function participant(participantId: string, franchiseId: string, sends: string[], receives: string[]): MultiTeamParticipantResult {
   const player = (playerId: string) => ({ playerId, name: playerId, position: "RB" as const, nflTeam: "BUF", injuryStatus: null, avatar: null, byeWeek: null });

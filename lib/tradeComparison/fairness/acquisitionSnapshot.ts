@@ -1,4 +1,5 @@
 import type { NormalizedSleeperAuctionPick, Transaction } from "@/lib/sleeper";
+import { resolveNextSeasonKeeperCost, type KeeperAcquisitionEvent } from "@/lib/history/keeperCostResolver";
 import type { PublishedAuctionValue } from "../types";
 
 export const POST_DRAFT_ACQUISITION_POLICY_UNDEFINED =
@@ -32,6 +33,9 @@ export type AcquisitionSnapshotRecord = {
   originalFranchiseId: string | null;
   originalAcquisitionType: "KEEPER" | "AUCTION_PURCHASE" | null;
   originalAcquisitionCost: number | null;
+  highestSeasonAcquisitionPrice: number | null;
+  projectedNextSeasonKeeperCost: number | null;
+  keeperCostStatus: "KNOWN" | "UNKNOWN";
   currentAcquisitionType: CurrentAcquisitionType;
   currentAcquisitionCost: number | null;
   transactionEvidence: AcquisitionTransactionEvidence | null;
@@ -77,6 +81,19 @@ function waiverBid(transaction: Transaction | null) {
   if (!settings || typeof settings !== "object" || Array.isArray(settings)) return null;
   const value = (settings as Record<string, unknown>).waiver_bid;
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function transactionAcquisitionEvent(transaction: Transaction, playerId: string): KeeperAcquisitionEvent | null {
+  if (transaction.adds?.[playerId] === undefined) return null;
+  if (transaction.type !== "waiver" && transaction.type !== "free_agent" && transaction.type !== "free-agent") return null;
+  const settings = transaction.settings;
+  const settingBid = settings && typeof settings === "object" && !Array.isArray(settings)
+    ? (settings as Record<string, unknown>).waiver_bid
+    : null;
+  const amount = typeof settingBid === "number" ? settingBid : typeof transaction.amount === "number" ? transaction.amount : null;
+  return amount !== null && Number.isFinite(amount) && amount >= 0
+    ? { type: transaction.type === "waiver" ? "waiver" : "free_agent", amount, created: transaction.status_updated, transactionId: transaction.transaction_id }
+    : null;
 }
 
 export function buildAcquisitionSnapshot({
@@ -128,6 +145,16 @@ export function buildAcquisitionSnapshot({
       const currentType: CurrentAcquisitionType = remainsWithOriginal
         ? originalPick?.isKeeper === true ? "KEEPER" : "AUCTION_PURCHASE"
         : acquisitionType(currentTransaction);
+      const acquisitionEvents: KeeperAcquisitionEvent[] = [];
+      if (originalPick?.auctionPrice !== null && originalPick?.auctionPrice !== undefined) {
+        acquisitionEvents.push({ type: originalPick.isKeeper === true ? "keeper" : "draft", amount: originalPick.auctionPrice });
+      }
+      orderedTransactions.forEach((transaction) => {
+        if (transaction.status !== "complete") return;
+        const event = transactionAcquisitionEvent(transaction, playerId);
+        if (event) acquisitionEvents.push(event);
+      });
+      const keeperCost = resolveNextSeasonKeeperCost({ playerId, acquisitionEvents });
       const isOriginal = currentType === "KEEPER" || currentType === "AUCTION_PURCHASE";
       const hasModelValue = auctionValues.get(playerId)?.value !== null &&
         auctionValues.get(playerId)?.value !== undefined;
@@ -160,6 +187,9 @@ export function buildAcquisitionSnapshot({
           ? originalPick.isKeeper === true ? "KEEPER" : "AUCTION_PURCHASE"
           : null,
         originalAcquisitionCost: originalPick?.auctionPrice ?? null,
+        highestSeasonAcquisitionPrice: keeperCost.highestAcquisitionPrice,
+        projectedNextSeasonKeeperCost: keeperCost.nextSeasonCost,
+        keeperCostStatus: keeperCost.status,
         currentAcquisitionType: currentType,
         currentAcquisitionCost: eligible ? originalPick?.auctionPrice ?? null : null,
         transactionEvidence: evidence,
