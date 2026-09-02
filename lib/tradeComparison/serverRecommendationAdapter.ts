@@ -90,8 +90,8 @@ export function buildServerDiagnosticPresets(context: ServerContext): ServerDiag
 }
 
 function marketEvidence(context: MultiTeamServerContext): ReadonlyMap<string, TradeMarketEvidence> {
-  return new Map([...context.marketByPlayer].flatMap(([playerId, row]) => typeof row.value === "number" && Number.isFinite(row.value)
-    ? [[playerId, { playerId, fantasyCalcValue: row.value, overallRank: row.overallRank ?? null, positionalRank: row.positionalRank ?? null, trend30Day: row.trend30Day ?? null, generatedAt: row.generatedAt ?? "", freshness: "FRESH" as const } satisfies TradeMarketEvidence]]
+  return new Map([...context.fantasyCalcByPlayer ?? []].flatMap(([playerId, row]) => typeof row.rawSourceValue === "number" && Number.isFinite(row.rawSourceValue)
+    ? [[playerId, { playerId, fantasyCalcValue: row.rawSourceValue, overallRank: row.fantasycalcOverallRank, positionalRank: row.fantasycalcPositionRank, trend30Day: row.fantasycalcTrend30Day, generatedAt: row.generatedAt, freshness: "FRESH" as const } satisfies TradeMarketEvidence]]
     : []));
 }
 

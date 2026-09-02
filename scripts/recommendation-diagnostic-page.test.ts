@@ -20,6 +20,8 @@ assert.match(page, /buildServerDiagnosticPresets/);
 assert.match(adapter, /Fairness available/);
 assert.match(adapter, /Positive FAAB/);
 assert.match(client, /No optimized starter changed/);
+assert.match(client, /FantasyCalc REDRAFT/);
+assert.match(client, /preseasonContext\.auctionConsensus/);
 assert.doesNotMatch(commish, /trade-recommendation-diagnostic/);
 assert.doesNotMatch(nav, /trade-recommendation-diagnostic/);
 assert.doesNotMatch(client, /firestore|writeBatch|updateDoc|deleteDoc|mutateSleeper|PUT|PATCH|DELETE/);

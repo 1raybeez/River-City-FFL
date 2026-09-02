@@ -1,5 +1,4 @@
 import "server-only";
-import { readFile } from "node:fs/promises";
 import { getLeagueInfo, getLeagueRosters, getLeagueUsers, getNFLState, getSleeperAuctionDraftSnapshot, getSleeperPlayerIdentityDirectory, getTransactions, type Transaction } from "@/lib/sleeper";
 import { canonicalAuctionTeams } from "@/lib/auction/canonicalTeamCatalog";
 import { readPublishedMasterviewFromFirestore } from "@/lib/auction/valueRefreshService";
@@ -11,17 +10,7 @@ import type { MultiTeamMarketEntry } from "./multiTeamTypes";
 import { buildAcquisitionSnapshot, type AcquisitionSnapshotRecord } from "./fairness/acquisitionSnapshot";
 import { resolveCurrentSeasonPlayerValue, type CurrentSeasonPlayerValue } from "./currentValue";
 import { readPublishedRosArtifact } from "./rosArtifact";
-
-type ShadowFantasyCalcRow = { playerId: string; rawSourceValue: number; fantasycalcOverallRank: number | null; fantasycalcPositionRank: number | null; fantasycalcTrend30Day: number | null; generatedAt: string; fantasycalcName: string | null; fantasycalcId: string | null; fantasycalcSleeperId: string | null };
-
-async function readShadowFantasyCalcMap(): Promise<ReadonlyMap<string, ShadowFantasyCalcRow>> {
-  try {
-    const candidate = JSON.parse(await readFile("data/trade-analyzer/player-stats-2026.fantasycalc-redraft-candidate.json", "utf8")) as { players?: Record<string, Record<string, unknown>> };
-    return new Map(Object.values(candidate.players ?? {}).flatMap((row) => typeof row.playerId === "string" && typeof row.rawSourceValue === "number" && typeof row.generatedAt === "string" ? [[row.playerId, { playerId: row.playerId, rawSourceValue: row.rawSourceValue, fantasycalcOverallRank: typeof row.fantasycalcOverallRank === "number" ? row.fantasycalcOverallRank : null, fantasycalcPositionRank: typeof row.fantasycalcPositionRank === "number" ? row.fantasycalcPositionRank : null, fantasycalcTrend30Day: typeof row.fantasycalcTrend30Day === "number" ? row.fantasycalcTrend30Day : null, generatedAt: row.generatedAt, fantasycalcName: typeof row.fantasycalcName === "string" ? row.fantasycalcName : null, fantasycalcId: typeof row.fantasycalcId === "string" ? row.fantasycalcId : null, fantasycalcSleeperId: typeof row.fantasycalcSleeperId === "string" ? row.fantasycalcSleeperId : null }] as const] : []));
-  } catch {
-    return new Map();
-  }
-}
+import { readPublishedFantasyCalcArtifact } from "./fantasyCalcArtifact";
 
 function seasonMode(week: number | null, draftStatus: string) {
   if (draftStatus !== "complete" || week === null || week < 1) return "PRESEASON" as const;
@@ -45,7 +34,7 @@ export async function loadTradeComparisonContext(options: { includeAcquisitionSn
       : Promise.resolve([] as Transaction[]),
     getNFLState(),
     readPublishedRosArtifact(),
-    readShadowFantasyCalcMap(),
+    Promise.resolve(readPublishedFantasyCalcArtifact().rows),
   ]);
   const avatarsByUserId = new Map(users.map((user: { user_id?: string; avatar?: string | null }) => [user.user_id, user.avatar ?? null] as const));
   const teams: CanonicalTradeComparisonTeam[] = canonicalAuctionTeams.map((team) => ({ franchiseId: team.franchiseId, franchiseName: identities.get(team.franchiseId)?.currentTeamName ?? team.teamName, rosterId: team.rosterId, avatar: identities.get(team.franchiseId)?.avatar ?? avatarsByUserId.get(team.managerId) ?? null }));

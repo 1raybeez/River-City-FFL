@@ -1,11 +1,9 @@
-import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import publishedRosArtifact from "../../data/trade-analyzer/ros/published/ros-consensus-2026-2026-08-31.json";
 import type { ExpertRosEvidence } from "./recommendationEngine";
 
 export const PUBLISHED_ROS_ARTIFACT_ID = "ros-consensus-2026-2026-08-31" as const;
 export const PUBLISHED_ROS_ARTIFACT_PATH = "data/trade-analyzer/ros/published/ros-consensus-2026-2026-08-31.json" as const;
-const PUBLISHED_ROS_ABSOLUTE_PATH = join(process.cwd(), PUBLISHED_ROS_ARTIFACT_PATH);
+export const PUBLISHED_ROS_CHECKSUM = "489176711acabf12f3f8aa923d8a8edcf8ced117244f48b195d15b4e51ff4273" as const;
 const POSITIONS = new Set(["QB", "RB", "WR", "TE", "K", "DEF"]);
 const FRESHNESS = new Set(["FRESH", "AGING", "STALE", "UNKNOWN"]);
 const CONFIDENCE = new Set(["HIGH", "MEDIUM", "LOW", "UNAVAILABLE"]);
@@ -62,12 +60,11 @@ function toEvidence(row: RosRow): ExpertRosEvidence {
 
 export async function readPublishedRosArtifact(): Promise<LoadedPublishedRos> {
   try {
-    const raw = await readFile(PUBLISHED_ROS_ABSOLUTE_PATH, "utf8");
-    const parsed = JSON.parse(raw) as RosArtifact;
+    const parsed = publishedRosArtifact as RosArtifact;
     const validation = validateRosArtifact(parsed);
     if (!validation.valid) return { ...validation, artifactId: PUBLISHED_ROS_ARTIFACT_ID, artifactPath: PUBLISHED_ROS_ARTIFACT_PATH, checksum: null, rows: new Map() };
     const rows = parsed.rows as RosRow[];
-    return { ...validation, artifactId: PUBLISHED_ROS_ARTIFACT_ID, artifactPath: PUBLISHED_ROS_ARTIFACT_PATH, checksum: createHash("sha256").update(raw).digest("hex"), rows: new Map(rows.map((row) => [row.playerId as string, toEvidence(row)])) };
+    return { ...validation, artifactId: PUBLISHED_ROS_ARTIFACT_ID, artifactPath: PUBLISHED_ROS_ARTIFACT_PATH, checksum: PUBLISHED_ROS_CHECKSUM, rows: new Map(rows.map((row) => [row.playerId as string, toEvidence(row)])) };
   } catch (error) {
     return { valid: false, errors: [error instanceof SyntaxError ? "Published ROS artifact is malformed JSON." : "Published ROS artifact is missing or unreadable."], playerCount: 0, generatedAt: null, sourceNames: [], artifactId: PUBLISHED_ROS_ARTIFACT_ID, artifactPath: PUBLISHED_ROS_ARTIFACT_PATH, checksum: null, rows: new Map() };
   }

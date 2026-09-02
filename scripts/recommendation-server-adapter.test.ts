@@ -26,12 +26,16 @@ assert.doesNotMatch(source, /acquisitionCost|keeperCost.*request|request.*keeper
 assert.match(serverContext, /getSleeperAuctionDraftSnapshot/);
 assert.match(serverContext, /buildAcquisitionSnapshot/);
 assert.match(serverContext, /readPublishedRosArtifact/);
+assert.match(serverContext, /readPublishedFantasyCalcArtifact/);
+assert.doesNotMatch(serverContext, /readShadowFantasyCalcMap|player-stats-2026\.fantasycalc-redraft-candidate/);
 assert.doesNotMatch(serverContext, /readFile\("data\/trade-analyzer\/ros\/ros-consensus-2026-2026-08-31\.candidate\.json/);
 assert.match(serverContext, /function seasonMode/);
 assert.match(serverContext, /week <= 4/);
 assert.match(serverContext, /week <= 10/);
 assert.match(source, /preseasonContext/);
 assert.match(source, /expertRosByPlayer/);
+assert.match(source, /context\.fantasyCalcByPlayer/);
+assert.doesNotMatch(source, /\[\.\.\.context\.marketByPlayer\]/);
 assert.doesNotMatch(source, /request\.(currentValue|expertRos|tradeMarket|keeper|fairness|seasonMode|preseasonContext)/);
 assert.match(multiTeam, /PLAYER_NOT_ROSTERED/);
 assert.match(multiTeam, /request\.mode === "LEAGUE_TRADE"/);
