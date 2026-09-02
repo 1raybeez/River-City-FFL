@@ -2,8 +2,11 @@ import type { TradeComparisonPlayer } from "./types";
 import type { CurrentSeasonPlayerValue } from "./currentValue";
 
 export type LineupImpactStatus = "COMPLETE" | "PARTIAL" | "UNAVAILABLE";
-export type LineupSlot = { slot: string; playerId: string | null; playerName: string | null; value: number | null; rank: number | null };
+export type LineupSelectionEvidence = "CURRENT_VALUE" | "OVERALL_RANK" | "UNKNOWN";
+export type LineupSlot = { slot: string; playerId: string | null; playerName: string | null; value: number | null; rank: number | null; selectionEvidence: LineupSelectionEvidence };
 export type LineupAllocation = { status: LineupImpactStatus; slots: LineupSlot[]; starterValue: number | null; valuedStarterCount: number; rankedStarterCount: number; starterCount: number };
+export type StartingUnitPlayer = { playerId: string; playerName: string | null };
+export type StartingUnitSlotMove = StartingUnitPlayer & { beforeSlot: string; afterSlot: string };
 export type LineupImpactResult = {
   status: LineupImpactStatus;
   before: LineupAllocation;
@@ -16,6 +19,9 @@ export type LineupImpactResult = {
   surplusAfter: number | null;
   surplusDelta: number | null;
   starterRankChanges: Array<{ slot: string; beforeRank: number | null; afterRank: number | null }>;
+  startingUnitAdded: StartingUnitPlayer[];
+  startingUnitRemoved: StartingUnitPlayer[];
+  slotOnlyMoves: StartingUnitSlotMove[];
 };
 
 type State = { mask: number; value: number; known: number; slots: LineupSlot[] };
@@ -29,17 +35,20 @@ function allocate(players: readonly TradeComparisonPlayer[], values: ReadonlyMap
   let states = new Map<number, State>([[0, { mask: 0, value: 0, known: 0, slots: [] }]]);
   starterSlots.forEach((slot) => {
     const next = new Map<number, State>();
-    states.forEach((state) => players.forEach((player, index) => {
+    states.forEach((state) => {
+      next.set(state.mask, { ...state, slots: [...state.slots, { slot, playerId: null, playerName: null, value: null, rank: null, selectionEvidence: "UNKNOWN" }] });
+      players.forEach((player, index) => {
       if (state.mask & (1 << index) || !eligible(player, slot)) return;
       const playerValue = values.get(player.playerId)?.currentValueScore;
       const playerRank = values.get(player.playerId)?.overallRank;
       const hasValue = typeof playerValue === "number" && Number.isFinite(playerValue);
       const hasRank = typeof playerRank === "number" && Number.isFinite(playerRank) && playerRank > 0;
-      const value = hasValue ? playerValue : hasRank ? 100000 - playerRank : 0;
-      const candidate: State = { mask: state.mask | (1 << index), value: state.value + value, known: state.known + (hasValue ? 1 : 0), slots: [...state.slots, { slot, playerId: player.playerId, playerName: player.name, value: hasValue ? playerValue : null, rank: hasRank ? playerRank : null }] };
+      const value = hasValue ? playerValue : hasRank ? 100000 - playerRank : null;
+      const candidate: State = { mask: state.mask | (1 << index), value: state.value + (value ?? 0), known: state.known + (hasValue ? 1 : 0), slots: [...state.slots, { slot, playerId: player.playerId, playerName: player.name, value: hasValue ? playerValue : null, rank: hasRank ? playerRank : null, selectionEvidence: hasValue ? "CURRENT_VALUE" : hasRank ? "OVERALL_RANK" : "UNKNOWN" }] };
       const prior = next.get(candidate.mask);
       if (!prior || candidate.value > prior.value || candidate.value === prior.value && candidate.known > prior.known) next.set(candidate.mask, candidate);
-    }));
+      });
+    });
     states = next;
   });
   const best = [...states.values()].sort((first, second) => second.value - first.value || second.known - first.known)[0];
@@ -61,5 +70,11 @@ export function buildLineupImpact({ beforePlayers, afterPlayers, currentValues, 
   const positions = new Set([...Object.keys(depthBefore), ...Object.keys(depthAfter)]);
   const depthDelta = Object.fromEntries([...positions].map((position) => [position, (depthAfter[position] ?? 0) - (depthBefore[position] ?? 0)]));
   const status = before.status === "UNAVAILABLE" || after.status === "UNAVAILABLE" ? "UNAVAILABLE" : before.status === "PARTIAL" || after.status === "PARTIAL" ? "PARTIAL" : "COMPLETE";
-  return { status, before, after, starterValueDelta: before.starterValue !== null && after.starterValue !== null ? after.starterValue - before.starterValue : null, depthByPositionBefore: depthBefore, depthByPositionAfter: depthAfter, depthDeltaByPosition: depthDelta, surplusBefore: before.starterValue, surplusAfter: after.starterValue, surplusDelta: before.starterValue !== null && after.starterValue !== null ? after.starterValue - before.starterValue : null, starterRankChanges: starterSlots.map((slot, index) => ({ slot, beforeRank: before.slots[index]?.rank ?? null, afterRank: after.slots[index]?.rank ?? null })) };
+  const beforeById = new Map(before.slots.flatMap((slot) => slot.playerId ? [[slot.playerId, slot] as const] : []));
+  const afterById = new Map(after.slots.flatMap((slot) => slot.playerId ? [[slot.playerId, slot] as const] : []));
+  const playerName = (id: string) => beforeById.get(id)?.playerName ?? afterById.get(id)?.playerName ?? null;
+  const startingUnitAdded = [...afterById.keys()].filter((id) => !beforeById.has(id)).map((playerId) => ({ playerId, playerName: playerName(playerId) }));
+  const startingUnitRemoved = [...beforeById.keys()].filter((id) => !afterById.has(id)).map((playerId) => ({ playerId, playerName: playerName(playerId) }));
+  const slotOnlyMoves = [...beforeById.keys()].filter((id) => afterById.has(id) && beforeById.get(id)?.slot !== afterById.get(id)?.slot).map((playerId) => ({ playerId, playerName: playerName(playerId), beforeSlot: beforeById.get(playerId)?.slot as string, afterSlot: afterById.get(playerId)?.slot as string }));
+  return { status, before, after, starterValueDelta: before.starterValue !== null && after.starterValue !== null ? after.starterValue - before.starterValue : null, depthByPositionBefore: depthBefore, depthByPositionAfter: depthAfter, depthDeltaByPosition: depthDelta, surplusBefore: before.starterValue, surplusAfter: after.starterValue, surplusDelta: before.starterValue !== null && after.starterValue !== null ? after.starterValue - before.starterValue : null, starterRankChanges: starterSlots.map((slot, index) => ({ slot, beforeRank: before.slots[index]?.rank ?? null, afterRank: after.slots[index]?.rank ?? null })), startingUnitAdded, startingUnitRemoved, slotOnlyMoves };
 }

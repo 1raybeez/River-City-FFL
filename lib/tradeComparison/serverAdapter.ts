@@ -1,5 +1,6 @@
 import "server-only";
-import { getLeagueInfo, getLeagueRosters, getLeagueUsers, getSleeperAuctionDraftSnapshot, getSleeperPlayerIdentityDirectory, getTransactions, type Transaction } from "@/lib/sleeper";
+import { readFile } from "node:fs/promises";
+import { getLeagueInfo, getLeagueRosters, getLeagueUsers, getNFLState, getSleeperAuctionDraftSnapshot, getSleeperPlayerIdentityDirectory, getTransactions, type Transaction } from "@/lib/sleeper";
 import { canonicalAuctionTeams } from "@/lib/auction/canonicalTeamCatalog";
 import { readPublishedMasterviewFromFirestore } from "@/lib/auction/valueRefreshService";
 import { readPublishedAdpConsensusFromFirestore } from "@/lib/auction/adpRefreshService";
@@ -9,9 +10,41 @@ import type { PublishedAuctionValue, TradeComparisonInput } from "./types";
 import type { MultiTeamMarketEntry } from "./multiTeamTypes";
 import { buildAcquisitionSnapshot, type AcquisitionSnapshotRecord } from "./fairness/acquisitionSnapshot";
 import { resolveCurrentSeasonPlayerValue, type CurrentSeasonPlayerValue } from "./currentValue";
+import type { ExpertRosEvidence } from "./recommendationEngine";
+
+type ShadowFantasyCalcRow = { playerId: string; rawSourceValue: number; fantasycalcOverallRank: number | null; fantasycalcPositionRank: number | null; fantasycalcTrend30Day: number | null; generatedAt: string; fantasycalcName: string | null; fantasycalcId: string | null; fantasycalcSleeperId: string | null };
+
+async function readShadowRosMap(): Promise<ReadonlyMap<string, ExpertRosEvidence>> {
+  try {
+    const candidate = JSON.parse(await readFile("data/trade-analyzer/ros/ros-consensus-2026-2026-08-31.candidate.json", "utf8")) as { rows?: Array<Record<string, unknown>> };
+    return new Map((candidate.rows ?? []).flatMap((row) => {
+      if (typeof row.playerId !== "string" || typeof row.playerName !== "string") return [];
+      const sourceRows = Array.isArray(row.sourceRows) ? row.sourceRows : [];
+      return [[row.playerId, { playerId: row.playerId, playerName: row.playerName, consensusOverallRank: typeof row.consensusOverallRank === "number" ? row.consensusOverallRank : null, consensusPositionalRank: typeof row.consensusPositionalRank === "number" ? row.consensusPositionalRank : null, sourceCount: typeof row.sourceCount === "number" ? row.sourceCount : sourceRows.length, staleSourceCount: typeof row.staleSourceCount === "number" ? row.staleSourceCount : 0, generatedAt: typeof row.generatedAt === "string" ? row.generatedAt : null, freshness: row.freshness === "FRESH" || row.freshness === "AGING" || row.freshness === "STALE" ? row.freshness : "UNKNOWN", confidence: row.confidence === "HIGH" || row.confidence === "MEDIUM" || row.confidence === "LOW" ? row.confidence : "UNAVAILABLE", sourceRanks: sourceRows.flatMap((source) => typeof source.source === "string" ? [{ source: source.source, overallRank: typeof source.overallRank === "number" ? source.overallRank : null, positionalRank: typeof source.positionalRank === "number" ? source.positionalRank : null }] : []) } satisfies ExpertRosEvidence] as const];
+    }));
+  } catch {
+    return new Map();
+  }
+}
+
+async function readShadowFantasyCalcMap(): Promise<ReadonlyMap<string, ShadowFantasyCalcRow>> {
+  try {
+    const candidate = JSON.parse(await readFile("data/trade-analyzer/player-stats-2026.fantasycalc-redraft-candidate.json", "utf8")) as { players?: Record<string, Record<string, unknown>> };
+    return new Map(Object.values(candidate.players ?? {}).flatMap((row) => typeof row.playerId === "string" && typeof row.rawSourceValue === "number" && typeof row.generatedAt === "string" ? [[row.playerId, { playerId: row.playerId, rawSourceValue: row.rawSourceValue, fantasycalcOverallRank: typeof row.fantasycalcOverallRank === "number" ? row.fantasycalcOverallRank : null, fantasycalcPositionRank: typeof row.fantasycalcPositionRank === "number" ? row.fantasycalcPositionRank : null, fantasycalcTrend30Day: typeof row.fantasycalcTrend30Day === "number" ? row.fantasycalcTrend30Day : null, generatedAt: row.generatedAt, fantasycalcName: typeof row.fantasycalcName === "string" ? row.fantasycalcName : null, fantasycalcId: typeof row.fantasycalcId === "string" ? row.fantasycalcId : null, fantasycalcSleeperId: typeof row.fantasycalcSleeperId === "string" ? row.fantasycalcSleeperId : null }] as const] : []));
+  } catch {
+    return new Map();
+  }
+}
+
+function seasonMode(week: number | null, draftStatus: string) {
+  if (draftStatus !== "complete" || week === null || week < 1) return "PRESEASON" as const;
+  if (week <= 4) return "EARLY_SEASON" as const;
+  if (week <= 10) return "MID_SEASON" as const;
+  return "LATE_SEASON" as const;
+}
 
 export async function loadTradeComparisonContext(options: { includeAcquisitionSnapshot?: boolean } = {}) {
-  const [league, rosters, users, playerDirectory, publishedValues, publishedAdp, identities, auctionSnapshot, transactions] = await Promise.all([
+  const [league, rosters, users, playerDirectory, publishedValues, publishedAdp, identities, auctionSnapshot, transactions, nflState, expertRosByPlayer, fantasyCalcByPlayer] = await Promise.all([
     getLeagueInfo(),
     getLeagueRosters(),
     getLeagueUsers(),
@@ -23,6 +56,9 @@ export async function loadTradeComparisonContext(options: { includeAcquisitionSn
     options.includeAcquisitionSnapshot
       ? Promise.all(Array.from({ length: 18 }, (_, index) => getTransactions(index + 1, "1312149033254416384"))).then((rows) => rows.flat() as Transaction[])
       : Promise.resolve([] as Transaction[]),
+    getNFLState(),
+    readShadowRosMap(),
+    readShadowFantasyCalcMap(),
   ]);
   const avatarsByUserId = new Map(users.map((user: { user_id?: string; avatar?: string | null }) => [user.user_id, user.avatar ?? null] as const));
   const teams: CanonicalTradeComparisonTeam[] = canonicalAuctionTeams.map((team) => ({ franchiseId: team.franchiseId, franchiseName: identities.get(team.franchiseId)?.currentTeamName ?? team.teamName, rosterId: team.rosterId, avatar: identities.get(team.franchiseId)?.avatar ?? avatarsByUserId.get(team.managerId) ?? null }));
@@ -39,17 +75,19 @@ export async function loadTradeComparisonContext(options: { includeAcquisitionSn
     const current = marketByPlayer.get(row.playerId);
     marketByPlayer.set(row.playerId, { playerId: row.playerId, value: current?.value ?? null, sourceCount: current?.sourceCount ?? 0, season: current?.season ?? 2026, sourceLabel: current?.sourceLabel ?? null, averageAdp: Number.isFinite(row.medianOverallAdp) ? row.medianOverallAdp : null, adpSourceCount: row.sourceCount ?? 0 });
   });
+  fantasyCalcByPlayer.forEach((row, playerId) => marketByPlayer.set(playerId, { playerId, value: row.rawSourceValue, sourceCount: 1, season: 2026, sourceLabel: "FantasyCalc REDRAFT", averageAdp: null, adpSourceCount: 0, overallRank: row.fantasycalcOverallRank, positionalRank: row.fantasycalcPositionRank, trend30Day: row.fantasycalcTrend30Day, generatedAt: row.generatedAt }));
   const multiTeamPlayerDirectory = new Map(Object.values(playerDirectory).map((player) => [player.playerId, { playerId: player.playerId, name: player.displayName, position: player.position as "QB" | "RB" | "WR" | "TE" | "K" | "DEF" | null, nflTeam: player.nflTeam, injuryStatus: player.injuryStatus ?? null, avatar: player.avatar ?? null, byeWeek: null }] as const));
   const adpByPlayer = new Map((publishedAdp?.rows ?? []).map((row) => [row.playerId, row] as const));
   const currentValueByPlayer = new Map<string, CurrentSeasonPlayerValue>();
   multiTeamPlayerDirectory.forEach((player, playerId) => {
     const adp = adpByPlayer.get(playerId);
+    const fantasyCalc = fantasyCalcByPlayer.get(playerId);
     currentValueByPlayer.set(playerId, resolveCurrentSeasonPlayerValue({
       playerId,
       playerName: player.name ?? playerId,
       position: player.position ?? "UNKNOWN",
       nflTeam: player.nflTeam,
-      sources: adp ? [{ source: "River City ADP consensus", mode: "FALLBACK", overallRank: adp.medianOverallAdp, positionalRank: adp.consensusPositionAdp, generatedAt: publishedAdp?.generatedAt ?? null, sourceCount: adp.sourceCount, confidence: adp.confidence, allowAsFallback: true }] : [],
+      sources: fantasyCalc ? [{ source: "FantasyCalc REDRAFT", mode: "REDRAFT", overallRank: fantasyCalc.fantasycalcOverallRank, positionalRank: fantasyCalc.fantasycalcPositionRank, value: fantasyCalc.rawSourceValue, generatedAt: fantasyCalc.generatedAt, sourceCount: 1, confidence: "MEDIUM" }] : adp ? [{ source: "River City ADP consensus", mode: "FALLBACK", overallRank: adp.medianOverallAdp, positionalRank: adp.consensusPositionAdp, generatedAt: publishedAdp?.generatedAt ?? null, sourceCount: adp.sourceCount, confidence: adp.confidence, allowAsFallback: true }] : [],
     }));
   });
   const rosterPositions = (league as unknown as { roster_positions?: unknown }).roster_positions;
@@ -59,7 +97,9 @@ export async function loadTradeComparisonContext(options: { includeAcquisitionSn
   const acquisitionSnapshot: ReadonlyMap<string, AcquisitionSnapshotRecord> | null = auctionSnapshot
     ? buildAcquisitionSnapshot({ season: 2026, teams, rosters, picks: auctionSnapshot.picks, transactions, auctionValues })
     : null;
-  return { rosters: currentRosters, playerDirectory, multiTeamPlayerDirectory, auctionValues, marketByPlayer, currentValueByPlayer, starterSlots, acquisitionSnapshot, draftStatus: auctionSnapshot?.draft?.status ?? "unknown" };
+  const draftStatus = auctionSnapshot?.draft?.status ?? "unknown";
+  const week = Number(nflState.week);
+  return { rosters: currentRosters, playerDirectory, multiTeamPlayerDirectory, auctionValues, marketByPlayer, currentValueByPlayer, starterSlots, acquisitionSnapshot, draftStatus, seasonMode: seasonMode(Number.isFinite(week) ? week : null, draftStatus), week: Number.isFinite(week) ? week : null, expertRosByPlayer, fantasyCalcByPlayer, keeperByPlayer: new Map() };
 }
 
 export async function buildServerTradeComparison(input: TradeComparisonInput, context = null) {

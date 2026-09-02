@@ -8,6 +8,9 @@ import type { SandboxMarketFairnessResult } from "./sandboxMarketFairnessCalibra
 import type { TradeFairnessActivation } from "./fairness/activation";
 import type { CurrentSeasonPlayerValue } from "./currentValue";
 import type { LineupImpactResult } from "./lineupImpact";
+import type { ExpertRosEvidence, KeeperEvidence } from "./recommendationEngine";
+import type { RecommendationSeasonMode } from "./recommendationEngine";
+import type { AcquisitionSnapshotRecord } from "./fairness/acquisitionSnapshot";
 
 export const MULTI_TEAM_CONTRACT_VERSION = "m10" as const;
 export const MULTI_TEAM_MIN_PARTICIPANTS = 2;
@@ -67,6 +70,10 @@ export type MultiTeamValidationError = {
 export type MultiTeamMarketEntry = PublishedAuctionValue & {
   averageAdp: number | null;
   adpSourceCount?: number;
+  overallRank?: number | null;
+  positionalRank?: number | null;
+  trend30Day?: number | null;
+  generatedAt?: string | null;
 };
 
 export type MultiTeamServerContext = {
@@ -75,6 +82,13 @@ export type MultiTeamServerContext = {
   marketByPlayer: ReadonlyMap<string, MultiTeamMarketEntry>;
   currentValueByPlayer?: ReadonlyMap<string, CurrentSeasonPlayerValue>;
   starterSlots?: readonly string[];
+  expertRosByPlayer?: ReadonlyMap<string, ExpertRosEvidence>;
+  keeperByPlayer?: ReadonlyMap<string, KeeperEvidence>;
+  acquisitionSnapshot?: ReadonlyMap<string, AcquisitionSnapshotRecord> | null;
+  draftStatus?: string;
+  seasonMode?: RecommendationSeasonMode;
+  week?: number | null;
+  fantasyCalcByPlayer?: ReadonlyMap<string, { playerId: string; rawSourceValue: number; fantasycalcOverallRank: number | null; fantasycalcPositionRank: number | null; fantasycalcTrend30Day: number | null; generatedAt: string; fantasycalcName?: string | null; fantasycalcId?: string | null; fantasycalcSleeperId?: string | null }>;
 };
 
 export type MultiTeamRoutedAsset = {
