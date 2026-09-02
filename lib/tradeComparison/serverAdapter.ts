@@ -10,22 +10,9 @@ import type { PublishedAuctionValue, TradeComparisonInput } from "./types";
 import type { MultiTeamMarketEntry } from "./multiTeamTypes";
 import { buildAcquisitionSnapshot, type AcquisitionSnapshotRecord } from "./fairness/acquisitionSnapshot";
 import { resolveCurrentSeasonPlayerValue, type CurrentSeasonPlayerValue } from "./currentValue";
-import type { ExpertRosEvidence } from "./recommendationEngine";
+import { readPublishedRosArtifact } from "./rosArtifact";
 
 type ShadowFantasyCalcRow = { playerId: string; rawSourceValue: number; fantasycalcOverallRank: number | null; fantasycalcPositionRank: number | null; fantasycalcTrend30Day: number | null; generatedAt: string; fantasycalcName: string | null; fantasycalcId: string | null; fantasycalcSleeperId: string | null };
-
-async function readShadowRosMap(): Promise<ReadonlyMap<string, ExpertRosEvidence>> {
-  try {
-    const candidate = JSON.parse(await readFile("data/trade-analyzer/ros/ros-consensus-2026-2026-08-31.candidate.json", "utf8")) as { rows?: Array<Record<string, unknown>> };
-    return new Map((candidate.rows ?? []).flatMap((row) => {
-      if (typeof row.playerId !== "string" || typeof row.playerName !== "string") return [];
-      const sourceRows = Array.isArray(row.sourceRows) ? row.sourceRows : [];
-      return [[row.playerId, { playerId: row.playerId, playerName: row.playerName, consensusOverallRank: typeof row.consensusOverallRank === "number" ? row.consensusOverallRank : null, consensusPositionalRank: typeof row.consensusPositionalRank === "number" ? row.consensusPositionalRank : null, sourceCount: typeof row.sourceCount === "number" ? row.sourceCount : sourceRows.length, staleSourceCount: typeof row.staleSourceCount === "number" ? row.staleSourceCount : 0, generatedAt: typeof row.generatedAt === "string" ? row.generatedAt : null, freshness: row.freshness === "FRESH" || row.freshness === "AGING" || row.freshness === "STALE" ? row.freshness : "UNKNOWN", confidence: row.confidence === "HIGH" || row.confidence === "MEDIUM" || row.confidence === "LOW" ? row.confidence : "UNAVAILABLE", sourceRanks: sourceRows.flatMap((source) => typeof source.source === "string" ? [{ source: source.source, overallRank: typeof source.overallRank === "number" ? source.overallRank : null, positionalRank: typeof source.positionalRank === "number" ? source.positionalRank : null }] : []) } satisfies ExpertRosEvidence] as const];
-    }));
-  } catch {
-    return new Map();
-  }
-}
 
 async function readShadowFantasyCalcMap(): Promise<ReadonlyMap<string, ShadowFantasyCalcRow>> {
   try {
@@ -44,7 +31,7 @@ function seasonMode(week: number | null, draftStatus: string) {
 }
 
 export async function loadTradeComparisonContext(options: { includeAcquisitionSnapshot?: boolean } = {}) {
-  const [league, rosters, users, playerDirectory, publishedValues, publishedAdp, identities, auctionSnapshot, transactions, nflState, expertRosByPlayer, fantasyCalcByPlayer] = await Promise.all([
+  const [league, rosters, users, playerDirectory, publishedValues, publishedAdp, identities, auctionSnapshot, transactions, nflState, rosArtifact, fantasyCalcByPlayer] = await Promise.all([
     getLeagueInfo(),
     getLeagueRosters(),
     getLeagueUsers(),
@@ -57,7 +44,7 @@ export async function loadTradeComparisonContext(options: { includeAcquisitionSn
       ? Promise.all(Array.from({ length: 18 }, (_, index) => getTransactions(index + 1, "1312149033254416384"))).then((rows) => rows.flat() as Transaction[])
       : Promise.resolve([] as Transaction[]),
     getNFLState(),
-    readShadowRosMap(),
+    readPublishedRosArtifact(),
     readShadowFantasyCalcMap(),
   ]);
   const avatarsByUserId = new Map(users.map((user: { user_id?: string; avatar?: string | null }) => [user.user_id, user.avatar ?? null] as const));
@@ -99,7 +86,7 @@ export async function loadTradeComparisonContext(options: { includeAcquisitionSn
     : null;
   const draftStatus = auctionSnapshot?.draft?.status ?? "unknown";
   const week = Number(nflState.week);
-  return { rosters: currentRosters, playerDirectory, multiTeamPlayerDirectory, auctionValues, marketByPlayer, currentValueByPlayer, starterSlots, acquisitionSnapshot, draftStatus, seasonMode: seasonMode(Number.isFinite(week) ? week : null, draftStatus), week: Number.isFinite(week) ? week : null, expertRosByPlayer, fantasyCalcByPlayer, keeperByPlayer: new Map() };
+  return { rosters: currentRosters, playerDirectory, multiTeamPlayerDirectory, auctionValues, marketByPlayer, currentValueByPlayer, starterSlots, acquisitionSnapshot, draftStatus, seasonMode: seasonMode(Number.isFinite(week) ? week : null, draftStatus), week: Number.isFinite(week) ? week : null, expertRosByPlayer: rosArtifact.rows, rosArtifact, fantasyCalcByPlayer, keeperByPlayer: new Map() };
 }
 
 export async function buildServerTradeComparison(input: TradeComparisonInput, context = null) {

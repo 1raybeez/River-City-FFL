@@ -7,6 +7,7 @@ import { getCanonicalAuctionTeamByRosterId } from "@/lib/auction/canonicalTeamCa
 import { evaluateShadowRecommendation, type ExpertRosEvidence, type FairnessEvidence, type KeeperEvidence, type RecommendationResult, type TradeMarketEvidence } from "./recommendationEngine";
 import type { MultiTeamServerContext, MultiTeamTradeRequest } from "./multiTeamTypes";
 import type { TradeComparisonPlayer } from "./types";
+import type { LoadedPublishedRos } from "./rosArtifact";
 
 export type ServerRecommendationDiagnosticStatus = "READY" | "INVALID" | "NOT_APPLICABLE";
 
@@ -30,7 +31,7 @@ export type ServerRecommendationDiagnostic = {
     sleeperLeague: boolean;
     rosters: boolean;
     ownership: boolean;
-    expertRos: { available: boolean; playerCount: number; runtime: "LOCAL_ONLY_RUNTIME_DEPENDENCY" };
+    expertRos: { available: boolean; playerCount: number; runtime: "PUBLISHED_SERVER_ARTIFACT" | "UNAVAILABLE"; artifactId: string; checksum: string | null; validation: "PASS" | "FAIL"; generatedAt: string | null; sourceNames: string[] };
     fantasyCalcRedraft: { available: boolean; playerCount: number; format: "REDRAFT"; isDynasty: false; teams: 12; ppr: 0.5; quarterbacks: 1 };
     acquisitionSnapshot: boolean;
     keeperHistory: boolean;
@@ -42,14 +43,15 @@ export type ServerRecommendationDiagnostic = {
 type ServerContext = Awaited<ReturnType<typeof loadTradeComparisonContext>>;
 
 function emptyCoverage(mode: MultiTeamTradeRequest["mode"]): ServerRecommendationDiagnostic["contextCoverage"] {
-  return { sleeperLeague: false, rosters: false, ownership: false, expertRos: { available: false, playerCount: 0, runtime: "LOCAL_ONLY_RUNTIME_DEPENDENCY" }, fantasyCalcRedraft: { available: false, playerCount: 0, format: "REDRAFT", isDynasty: false, teams: 12, ppr: 0.5, quarterbacks: 1 }, acquisitionSnapshot: false, keeperHistory: false, fairnessEngine: false, seasonMode: mode === "SANDBOX" ? "SANDBOX_ISOLATED" : "UNAVAILABLE" };
+  return { sleeperLeague: false, rosters: false, ownership: false, expertRos: { available: false, playerCount: 0, runtime: "UNAVAILABLE", artifactId: "ros-consensus-2026-2026-08-31", checksum: null, validation: "FAIL", generatedAt: null, sourceNames: [] }, fantasyCalcRedraft: { available: false, playerCount: 0, format: "REDRAFT", isDynasty: false, teams: 12, ppr: 0.5, quarterbacks: 1 }, acquisitionSnapshot: false, keeperHistory: false, fairnessEngine: false, seasonMode: mode === "SANDBOX" ? "SANDBOX_ISOLATED" : "UNAVAILABLE" };
 }
 
 function contextCoverage(context: ServerContext): ServerRecommendationDiagnostic["contextCoverage"] {
   const rosCount = context.expertRosByPlayer?.size ?? 0;
   const fantasyCalcCount = context.fantasyCalcByPlayer?.size ?? 0;
   const acquisitionAvailable = Boolean(context.acquisitionSnapshot && context.acquisitionSnapshot.size > 0);
-  return { sleeperLeague: true, rosters: context.rosters.length > 0, ownership: context.rosters.some((roster) => roster.players.length > 0), expertRos: { available: rosCount > 0, playerCount: rosCount, runtime: "LOCAL_ONLY_RUNTIME_DEPENDENCY" }, fantasyCalcRedraft: { available: fantasyCalcCount > 0, playerCount: fantasyCalcCount, format: "REDRAFT", isDynasty: false, teams: 12, ppr: 0.5, quarterbacks: 1 }, acquisitionSnapshot: acquisitionAvailable, keeperHistory: acquisitionAvailable, fairnessEngine: acquisitionAvailable, seasonMode: context.seasonMode ?? "UNAVAILABLE" };
+  const artifact = context.rosArtifact as LoadedPublishedRos;
+  return { sleeperLeague: true, rosters: context.rosters.length > 0, ownership: context.rosters.some((roster) => roster.players.length > 0), expertRos: { available: rosCount > 0, playerCount: rosCount, runtime: artifact.valid ? "PUBLISHED_SERVER_ARTIFACT" : "UNAVAILABLE", artifactId: artifact.artifactId, checksum: artifact.checksum, validation: artifact.valid ? "PASS" : "FAIL", generatedAt: artifact.generatedAt, sourceNames: artifact.sourceNames }, fantasyCalcRedraft: { available: fantasyCalcCount > 0, playerCount: fantasyCalcCount, format: "REDRAFT", isDynasty: false, teams: 12, ppr: 0.5, quarterbacks: 1 }, acquisitionSnapshot: acquisitionAvailable, keeperHistory: acquisitionAvailable, fairnessEngine: acquisitionAvailable, seasonMode: context.seasonMode ?? "UNAVAILABLE" };
 }
 
 export type ServerDiagnosticPreset = { key: "P1D" | "FAIRNESS_AVAILABLE" | "FAIRNESS_UNAVAILABLE" | "POSITIVE_FAAB"; label: string; request: MultiTeamTradeRequest | null; note: string };

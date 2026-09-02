@@ -25,7 +25,8 @@ assert.match(source, /participants: request\.participants\.map\(\(participant\) 
 assert.doesNotMatch(source, /acquisitionCost|keeperCost.*request|request.*keeperCost/);
 assert.match(serverContext, /getSleeperAuctionDraftSnapshot/);
 assert.match(serverContext, /buildAcquisitionSnapshot/);
-assert.match(serverContext, /ros-consensus-2026-2026-08-31\.candidate\.json/);
+assert.match(serverContext, /readPublishedRosArtifact/);
+assert.doesNotMatch(serverContext, /readFile\("data\/trade-analyzer\/ros\/ros-consensus-2026-2026-08-31\.candidate\.json/);
 assert.match(serverContext, /function seasonMode/);
 assert.match(serverContext, /week <= 4/);
 assert.match(serverContext, /week <= 10/);

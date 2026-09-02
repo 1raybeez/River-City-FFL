@@ -15,7 +15,7 @@ assert.match(route, /requireAuctionAccess\("maintenance"\)/);
 assert.match(route, /buildServerTradeRecommendation/);
 assert.match(client, /\/api\/commish\/trade-recommendation-diagnostic/);
 assert.match(client, /TIEBREAKER_ONLY|preseasonContext\.relevance/);
-assert.match(adapter, /LOCAL_ONLY_RUNTIME_DEPENDENCY/);
+assert.match(adapter, /PUBLISHED_SERVER_ARTIFACT/);
 assert.match(page, /buildServerDiagnosticPresets/);
 assert.match(adapter, /Fairness available/);
 assert.match(adapter, /Positive FAAB/);
