@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { TradeComparisonPosition } from "@/lib/tradeComparison/types";
 import type { SandboxMarketFairnessResult } from "@/lib/tradeComparison/sandboxMarketFairnessCalibration";
 import type { TradeFairnessActivation } from "@/lib/tradeComparison/fairness/activation";
+import type { RecommendationResult } from "@/lib/tradeComparison/recommendationEngine";
 
 type PlayerOption = {
   playerId: string;
@@ -57,6 +58,24 @@ type RoutingResult = {
   }>;
   sandboxMarketFairness: SandboxMarketFairnessResult | null;
   riverCityFairness: TradeFairnessActivation | null;
+  tradeAdvisor?: TradeAdvisorResult;
+};
+
+type TradeAdvisorResult = {
+  status: "READY" | "INVALID" | "NOT_APPLICABLE";
+  reasonCode: string | null;
+  currentValueCoverage: { available: number; total: number };
+  keeperCoverage: { available: number; total: number };
+  fairness: { status: "AVAILABLE" | "UNAVAILABLE" | "NOT_APPLICABLE"; reason: string | null; score: number | null; verdict: string | null };
+  teamRecommendations: RecommendationResult[];
+  missingEvidence: string[];
+  tradedPlayerEvidence: Array<{
+    playerId: string;
+    canonicalName: string;
+    expertRos: { consensusOverallRank: number | null; sourceCount: number; freshness: string } | null;
+    fantasyCalc: { value: number; overallRank: number | null; positionalRank: number | null } | null;
+  }>;
+  playerNames: Record<string, string>;
 };
 
 function automaticDestination(
@@ -197,13 +216,13 @@ function MarketCard({
       ) : (
         <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
           <span>
-            <b className="block text-slate-500">Auction consensus</b>
+            <b className="block text-slate-500">Auction consensus · preseason</b>
             <span className="font-black text-slate-950">
               {marketMoney(context.totalAuctionConsensus)}
             </span>
           </span>
           <span>
-            <b className="block text-slate-500">ADP</b>
+            <b className="block text-slate-500">ADP · preseason</b>
             <span className="font-black text-slate-950">
               {context.medianAdp === null
                 ? "Unavailable"
@@ -564,12 +583,116 @@ function formatAssetNames(
   return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
 }
 
+const OWNER_LANGUAGE: Record<string, string> = {
+  HIGH_VALUE_DEPTH: "Strong depth",
+  VIABLE_DEPTH: "Adequate depth",
+  REPLACEMENT_DEPTH: "Replacement-level depth",
+  THIN: "Thin depth",
+  CORE_COMPLETE: "Core lineup complete",
+  CORE_PARTIAL: "Core lineup partly supported",
+  FULL_COMPLETE: "Full lineup complete",
+  FULL_PARTIAL: "Full lineup partly supported",
+  OUTGOING_STRONGER: "The players sent have stronger ROS ranks",
+  INCOMING_STRONGER: "The players received have stronger ROS ranks",
+  NOT_COMPARABLE: "ROS coverage is incomplete",
+  STRONG_POSITIVE: "Strong keeper outlook",
+  POSITIVE: "Positive keeper outlook",
+  NEUTRAL: "Neutral keeper outlook",
+  NEGATIVE: "Negative keeper outlook",
+  STRONG_NEGATIVE: "Strong negative keeper outlook",
+  UNKNOWN: "Unknown keeper outlook",
+  ABOVE_P90: "Very large historical imbalance",
+  TIEBREAKER_ONLY: "Historical context only",
+};
+
+function ownerLanguage(text: string) {
+  return text.replace("The optimized starting lineup improves on ordinal starter quality.", "Your optimized starting lineup improves.").replace("The optimized starting lineup declines on ordinal starter quality.", "Your optimized starting lineup gets worse.").replace(/HIGH_VALUE_DEPTH|VIABLE_DEPTH|REPLACEMENT_DEPTH|CORE_COMPLETE|CORE_PARTIAL|FULL_COMPLETE|FULL_PARTIAL|OUTGOING_STRONGER|INCOMING_STRONGER|NOT_COMPARABLE|ABOVE_P90|TIEBREAKER_ONLY/g, (value) => OWNER_LANGUAGE[value] ?? value);
+}
+
+function recommendationLabel(value: RecommendationResult["recommendation"]) {
+  return value.replaceAll("_", " ");
+}
+
+function confidenceLabel(value: RecommendationResult["confidence"]) {
+  return value.replaceAll("_", " ");
+}
+
+function evidenceNames(rows: RecommendationResult["expertRos"]["outgoing"] | RecommendationResult["expertRos"]["incoming"]) {
+  return rows.map((row) => `${row.playerName} · ${row.consensusOverallRank === null ? "Current ROS ranking unavailable" : `ROS #${row.consensusOverallRank}`} · ${row.sourceCount} sources · ${row.freshness}`).join("; ");
+}
+
+function playerDisplayName(result: RecommendationResult, playerId: string, playerNames: Record<string, string>) {
+  const transaction = result.transactionChanges.find((change) => change.playerId === playerId);
+  if (transaction) return transaction.playerName;
+  return playerNames[playerId] ?? playerId;
+}
+
+function fairnessLabel(band: string | null) {
+  return band === "P25" ? "Very balanced" : band === "P50" ? "Generally balanced" : band === "P75" ? "Meaningful imbalance" : band === "P90" ? "Large imbalance" : band === "ABOVE_P90" ? "Very large historical imbalance" : "Unavailable";
+}
+
+function keeperConfidence(value: string) {
+  return value === "HIGH" ? "High confidence" : value === "MEDIUM" ? "Medium confidence" : value === "LOW" ? "Low confidence" : "Confidence unavailable";
+}
+
+function AdvisorCard({ result }: { result: RecommendationResult }) {
+  const positives = result.whyILikeIt.map(ownerLanguage);
+  const pauses = result.whatGivesMePause.map(ownerLanguage);
+  return (
+    <article className="rounded-2xl border border-orange-200 bg-orange-50 p-5 shadow-sm sm:p-6">
+      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-700">{result.franchiseName}</p>
+      <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+        <p className="text-2xl font-black uppercase tracking-tight text-slate-950">{recommendationLabel(result.recommendation)}</p>
+        <p className="text-xs font-black uppercase tracking-widest text-slate-600">{confidenceLabel(result.confidence)} confidence</p>
+      </div>
+      <p className="mt-3 text-sm font-semibold leading-6 text-slate-800">{ownerLanguage(result.summary).replace("LEAN_ACCEPT", "lean toward accepting").replace("LEAN_DECLINE", "lean toward declining").replace("INSUFFICIENT_DATA", "has insufficient data")}</p>
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <div><h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-800">Why I like it</h4><ul className="mt-2 space-y-2 text-sm leading-5 text-slate-800">{(positives.length ? positives : ["No major current-season advantage identified."]).map((item) => <li key={item}>• {item}</li>)}</ul></div>
+        <div><h4 className="text-[10px] font-black uppercase tracking-widest text-amber-900">What gives me pause</h4><ul className="mt-2 space-y-2 text-sm leading-5 text-slate-800">{(pauses.length ? pauses : result.confidence === "LOW" ? ["Current evidence is incomplete; confidence remains low."] : ["No major current-season concern identified."]).map((item) => <li key={item}>• {item}</li>)}</ul></div>
+      </div>
+      <p className="mt-5 border-t border-orange-200 pt-4 text-sm font-bold leading-6 text-slate-900"><span className="font-black uppercase tracking-wider">Bottom line:</span> {ownerLanguage(result.bottomLine)}</p>
+    </article>
+  );
+}
+
+function WhatChanges({ result, playerNames }: { result: RecommendationResult; playerNames: Record<string, string> }) {
+  const starterChanges = result.starterChanges.filter((change) => change.before !== change.after && change.before !== null && change.after !== null);
+  const positions = Object.keys(result.positionalImpact.after).filter((position) => result.positionalImpact.before[position] !== result.positionalImpact.after[position]);
+  return (
+    <section aria-labelledby={`what-changes-${result.franchiseId}`} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <h3 id={`what-changes-${result.franchiseId}`} className="text-sm font-black uppercase tracking-widest text-slate-950">What changes · {result.franchiseName}</h3>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div><h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Starting lineup</h4>{starterChanges.length ? <ul className="mt-2 space-y-2 text-sm text-slate-800">{starterChanges.map((change, index) => <li key={`${change.slot}:${change.before ?? "empty"}:${change.after ?? "empty"}:${index}`}><span className="font-black">{change.slot}:</span> {change.before} → {change.after}</li>)}</ul> : <p className="mt-2 text-sm text-slate-600">No meaningful starter change identified.</p>}{result.lineupImpact.slotOnlyMoves.length > 0 && <p className="mt-3 text-xs leading-5 text-slate-500">Some players changed legal slots without leaving the optimized starting unit.</p>}</div>
+        <div><h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Position impact</h4>{positions.length ? <ul className="mt-2 space-y-2 text-sm text-slate-800">{positions.map((position) => <li key={position}><span className="font-black">{position}:</span> {ownerLanguage(result.positionalImpact.before[position])} → {ownerLanguage(result.positionalImpact.after[position])}</li>)}</ul> : <p className="mt-2 text-sm text-slate-600">No meaningful position-strength change identified.</p>}</div>
+      </div>
+      {(result.lineupImpact.startersEntering.length > 0 || result.lineupImpact.startersLeaving.length > 0) && <p className="mt-4 text-xs leading-5 text-slate-600">Starting-unit additions: {result.lineupImpact.startersEntering.map((id) => playerDisplayName(result, id, playerNames)).join(", ") || "none"}. Departures: {result.lineupImpact.startersLeaving.map((id) => playerDisplayName(result, id, playerNames)).join(", ") || "none"}.</p>}
+    </section>
+  );
+}
+
+function TradeAdvisorPreview({ advisor }: { advisor: TradeAdvisorResult }) {
+  if (advisor.status !== "READY") return <section aria-label="Trade Advisor unavailable" className="rounded-2xl border border-slate-300 bg-white p-5 shadow-sm"><h2 className="text-xl font-black uppercase italic">Trade Advisor</h2><p className="mt-2 text-sm font-semibold text-slate-700">Current-season recommendation unavailable for this trade. Multi-team recommendations remain unavailable; factual and fairness analysis is preserved below.</p></section>;
+  return (
+    <section aria-labelledby="trade-advisor-title" className="space-y-5">
+      <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-600">Commissioner preview</p><h2 id="trade-advisor-title" className="mt-1 text-2xl font-black uppercase italic tracking-tight text-slate-950">Trade verdict</h2></div>
+      <div className="grid gap-5 lg:grid-cols-2">{advisor.teamRecommendations.map((result) => <AdvisorCard key={result.franchiseId} result={result} />)}</div>
+      <div><h2 className="text-xl font-black uppercase italic tracking-tight text-slate-950">What changes</h2><div className="mt-3 grid gap-4 lg:grid-cols-2">{advisor.teamRecommendations.map((result) => <WhatChanges key={result.franchiseId} result={result} playerNames={advisor.playerNames} />)}</div></div>
+      <section aria-labelledby="current-value-title" className="rounded-2xl border border-sky-200 bg-sky-50 p-5 shadow-sm sm:p-6"><h2 id="current-value-title" className="text-xl font-black uppercase italic">Current value</h2><div className="mt-4 grid gap-5 lg:grid-cols-2">{advisor.teamRecommendations.map((result) => <article key={result.franchiseId}><h3 className="text-sm font-black uppercase tracking-wider text-slate-950">{result.franchiseName}</h3><p className="mt-2 text-sm font-bold">FantasyCalc Redraft Market · Sent: {result.tradeMarket.outgoingValue === null ? "Unavailable" : result.tradeMarket.outgoingValue.toLocaleString()} value points · Received: {result.tradeMarket.incomingValue === null ? "Unavailable" : result.tradeMarket.incomingValue.toLocaleString()} value points · Net: {result.tradeMarket.difference === null ? "Unavailable" : `${result.tradeMarket.difference >= 0 ? "+" : ""}${result.tradeMarket.difference.toLocaleString()} value points`}</p><p className="mt-3 text-xs leading-5 text-slate-700"><span className="font-black uppercase tracking-wider">Expert ROS:</span> {evidenceNames(result.expertRos.outgoing) || "Current ROS ranking unavailable"}; {evidenceNames(result.expertRos.incoming) || "Current ROS ranking unavailable"}</p></article>)}</div><div className="mt-5 border-t border-sky-200 pt-4"><h3 className="text-[10px] font-black uppercase tracking-widest text-slate-600">Traded-player coverage</h3><ul className="mt-2 grid gap-2 text-sm text-slate-800 sm:grid-cols-2">{advisor.tradedPlayerEvidence.map((row) => <li key={row.playerId}><span className="font-black">{row.canonicalName}</span><br />ROS ranking: {row.expertRos ? `#${row.expertRos.consensusOverallRank ?? "Unavailable"} · ${row.expertRos.sourceCount} sources · ${row.expertRos.freshness}` : "Unavailable"}<br />FantasyCalc Redraft Market: {row.fantasyCalc ? row.fantasyCalc.value.toLocaleString() : "Unavailable"}</li>)}</ul></div></section>
+      <section aria-labelledby="keeper-outlook-title" className="rounded-2xl border border-violet-200 bg-violet-50 p-5 shadow-sm sm:p-6"><h2 id="keeper-outlook-title" className="text-xl font-black uppercase italic">Keeper outlook</h2><div className="mt-4 grid gap-5 lg:grid-cols-2">{advisor.teamRecommendations.map((result) => <article key={result.franchiseId}><h3 className="text-sm font-black uppercase tracking-wider text-slate-950">{result.franchiseName}</h3><ul className="mt-2 space-y-2 text-sm text-slate-800">{[...result.keeperImpact.outgoing, ...result.keeperImpact.incoming].map((keeper) => <li key={keeper.playerId}>{keeper.playerName}: {keeper.projectedCost === null ? "Projected next-year keeper cost: Unknown" : `Projected next-year keeper cost: $${keeper.projectedCost}`} · {keeperConfidence(keeper.confidence)}</li>)}</ul><p className="mt-3 text-xs font-bold uppercase tracking-wider text-slate-600">Overall keeper impact: {result.keeperImpact.assessment === "UNKNOWN" ? "Unclear" : ownerLanguage(result.keeperImpact.assessment)}</p></article>)}</div></section>
+      <section aria-labelledby="fairness-title" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><h2 id="fairness-title" className="text-xl font-black uppercase italic">Fairness</h2><p className="mt-3 text-3xl font-black">{advisor.fairness.score === null ? "Unavailable" : `${advisor.fairness.score.toFixed(1)} / 100`}</p><p className="mt-1 text-sm font-black uppercase tracking-wider text-slate-600">{fairnessLabel(advisor.fairness.verdict)}</p><p className="mt-3 text-sm leading-6 text-slate-700">Fairness is supporting evidence from the River City historical model; it does not determine whether either roster improves equally.</p></section>
+      {advisor.missingEvidence.length > 0 && <section aria-label="Recommendation uncertainty" className="rounded-2xl border border-amber-200 bg-amber-50 p-5"><h2 className="text-sm font-black uppercase tracking-widest text-amber-950">Risk and uncertainty</h2><ul className="mt-2 space-y-2 text-sm leading-5 text-amber-900">{advisor.missingEvidence.map((item) => <li key={item}>{ownerLanguage(item)}</li>)}</ul></section>}
+    </section>
+  );
+}
+
 function ResultView({
   result,
   franchises,
+  isCommissioner,
 }: {
   result: RoutingResult;
   franchises: FranchiseOption[];
+  isCommissioner: boolean;
 }) {
   const names = new Map(
     franchises.map((franchise) => [
@@ -654,6 +777,7 @@ function ResultView({
           )}
         </section>
       )}
+      {result.mode === "LEAGUE_TRADE" && isCommissioner && result.tradeAdvisor && <TradeAdvisorPreview advisor={result.tradeAdvisor} />}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-600">
           Trade summary
@@ -839,7 +963,7 @@ function ResultView({
           ))}
         </div>
       </section>
-      {result.mode === "LEAGUE_TRADE" && <section aria-labelledby="roster-impact-title">
+      {result.mode === "LEAGUE_TRADE" && !(isCommissioner && result.tradeAdvisor?.status === "READY") && <section aria-labelledby="roster-impact-title">
         <h3
           id="roster-impact-title"
           className="text-sm font-black uppercase tracking-wider text-slate-700"
@@ -933,6 +1057,7 @@ export default function TradeComparison() {
   >("loading");
   const [franchises, setFranchises] = useState<FranchiseOption[]>([]);
   const [sandboxPlayers, setSandboxPlayers] = useState<PlayerOption[]>([]);
+  const [isCommissioner, setIsCommissioner] = useState(false);
   const [mode, setMode] = useState<"LEAGUE_TRADE" | "SANDBOX">("LEAGUE_TRADE");
   const [showSandboxHelp, setShowSandboxHelp] = useState(false);
   const [participants, setParticipants] = useState<Participant[]>([
@@ -956,11 +1081,12 @@ export default function TradeComparison() {
           ? response.json()
           : Promise.reject(new Error("Member state unavailable")),
       )
-      .then((payload: { authenticated?: boolean }) => {
+      .then((payload: { authenticated?: boolean; canAccessMaintenance?: boolean }) => {
         if (!payload.authenticated) {
           setMemberState("anonymous");
           return null;
         }
+        setIsCommissioner(payload.canAccessMaintenance === true);
         return fetch("/api/trade-comparison", {
           cache: "no-store",
           signal: controller.signal,
@@ -1476,7 +1602,7 @@ export default function TradeComparison() {
       >
         {isSubmitting ? "Building analysis..." : "Analyze Trade"}
       </button>
-      {result && <ResultView result={result} franchises={franchises} />}
+      {result && <ResultView result={result} franchises={franchises} isCommissioner={isCommissioner} />}
     </section>
   );
 }

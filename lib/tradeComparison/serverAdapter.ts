@@ -51,7 +51,6 @@ export async function loadTradeComparisonContext(options: { includeAcquisitionSn
     const current = marketByPlayer.get(row.playerId);
     marketByPlayer.set(row.playerId, { playerId: row.playerId, value: current?.value ?? null, sourceCount: current?.sourceCount ?? 0, season: current?.season ?? 2026, sourceLabel: current?.sourceLabel ?? null, averageAdp: Number.isFinite(row.medianOverallAdp) ? row.medianOverallAdp : null, adpSourceCount: row.sourceCount ?? 0 });
   });
-  fantasyCalcByPlayer.forEach((row, playerId) => marketByPlayer.set(playerId, { playerId, value: row.rawSourceValue, sourceCount: 1, season: 2026, sourceLabel: "FantasyCalc REDRAFT", averageAdp: null, adpSourceCount: 0, overallRank: row.fantasycalcOverallRank, positionalRank: row.fantasycalcPositionRank, trend30Day: row.fantasycalcTrend30Day, generatedAt: row.generatedAt }));
   const multiTeamPlayerDirectory = new Map(Object.values(playerDirectory).map((player) => [player.playerId, { playerId: player.playerId, name: player.displayName, position: player.position as "QB" | "RB" | "WR" | "TE" | "K" | "DEF" | null, nflTeam: player.nflTeam, injuryStatus: player.injuryStatus ?? null, avatar: player.avatar ?? null, byeWeek: null }] as const));
   const adpByPlayer = new Map((publishedAdp?.rows ?? []).map((row) => [row.playerId, row] as const));
   const currentValueByPlayer = new Map<string, CurrentSeasonPlayerValue>();

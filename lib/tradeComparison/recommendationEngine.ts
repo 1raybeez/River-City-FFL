@@ -249,6 +249,16 @@ function fairnessRelationship(fairness: FairnessEvidence | null | undefined, rec
   return fairnessFavorsIncoming === recommendationAccepts ? "SUPPORTS" : "CONFLICTS";
 }
 
+function missingEvidenceConcerns(players: readonly TradeComparisonPlayer[], expertRos: ReadonlyMap<string, ExpertRosEvidence>, tradeMarket: ReadonlyMap<string, TradeMarketEvidence>) {
+  return players.flatMap((player) => {
+    const missingRos = !expertRos.has(player.playerId);
+    const missingMarket = !tradeMarket.has(player.playerId);
+    if (!missingRos && !missingMarket) return [];
+    const unavailable = [missingRos ? "current ROS" : null, missingMarket ? "trade-market" : null].filter((item): item is string => Boolean(item));
+    return [`${unavailable.join(" and ")} data ${unavailable.length === 1 ? "is" : "are"} unavailable for ${playerLabel(player)}, making this player's current value harder to evaluate.`];
+  });
+}
+
 export function evaluateShadowRecommendation(input: RecommendationInput): RecommendationResult {
   const now = input.now ?? new Date().toISOString();
   const sentIds = ids(input.outgoing);
@@ -295,6 +305,7 @@ export function evaluateShadowRecommendation(input: RecommendationInput): Recomm
   regressions.forEach((position) => { counterweights.push(`${position} changes from ${beforePositions[position]} to ${afterPositions[position]}.`); reasonCodes.push("CREATES_POSITIONAL_HOLE"); });
   if (market.direction === "GAIN") { primaryReasons.push("Incoming package carries more FantasyCalc redraft market value."); reasonCodes.push("MARKET_VALUE_GAIN"); }
   if (market.direction === "LOSS") { counterweights.push("Incoming package carries less FantasyCalc redraft market value."); reasonCodes.push("MARKET_VALUE_LOSS"); }
+  if (incomingMarket.length === input.incoming.length && outgoingMarket.length < input.outgoing.length) primaryReasons.push("The incoming players have stronger covered current-value evidence than one or more players sent.");
   if (rosAssessment === "MIXED" || rosAssessment === "NOT_COMPARABLE") counterweights.push("Expert ROS package comparison is mixed or not directly comparable by ordinal ranks.");
   if (rosAssessment === "INCOMING_STRONGER") reasonCodes.push("EXPERT_MARKET_AGREE");
   if (rosAssessment === "OUTGOING_STRONGER") reasonCodes.push("EXPERT_MARKET_CONFLICT");
@@ -315,10 +326,14 @@ export function evaluateShadowRecommendation(input: RecommendationInput): Recomm
   if (keeper === "NEGATIVE") counterweights.push("Keeper economics decline for this franchise.");
   if (depthDelta === "IMPROVES") { primaryReasons.push("Roster depth improves at one or more positions."); reasonCodes.push("DEPTH_IMPROVES"); }
   if (depthDelta === "DECLINES") { counterweights.push("Roster depth declines at one or more positions."); reasonCodes.push("DEPTH_DECLINES"); }
+  const missingEvidence = missingEvidenceConcerns(allPlayers, input.expertRos, input.tradeMarket);
+  counterweights.push(...missingEvidence);
   const whyILikeIt = [...primaryReasons];
   const whatGivesMePause = [...counterweights];
   const missingCoreEvidence = lineup.status === "UNAVAILABLE" && outgoingRos.length === 0 && incomingRos.length === 0 && outgoingMarket.length === 0 && incomingMarket.length === 0;
-  const bottomLine = recommendation === "INSUFFICIENT_DATA" ? "There is not enough primary current-season evidence for a directional recommendation." : recommendation === "ACCEPT" || recommendation === "LEAN_ACCEPT" ? `I would ${recommendation === "ACCEPT" ? "accept" : "lean toward accepting"} because the primary roster evidence supports the move${confidence === "LOW" ? ", although missing asset coverage lowers confidence" : ""}.` : recommendation === "DECLINE" || recommendation === "LEAN_DECLINE" ? `I would ${recommendation === "DECLINE" ? "decline" : "lean toward declining"} because the primary roster evidence does not improve the team enough${confidence === "LOW" ? ", although missing asset coverage lowers confidence" : ""}.` : missingCoreEvidence ? "This is a hold because core evidence is incomplete; missing current evidence must be resolved before using this result directionally." : primaryReasons.length > 0 && counterweights.length > 0 ? "This is a close or conflicting result; hold because current evidence is mixed." : "This is a neutral result; hold because current evidence does not create a clear edge.";
+  const directionLabel = recommendation === "ACCEPT" || recommendation === "LEAN_ACCEPT" ? "Lean accept" : recommendation === "DECLINE" || recommendation === "LEAN_DECLINE" ? "Lean decline" : recommendation.replaceAll("_", " ");
+  const evidenceQualifier = missingEvidence.length && confidence === "LOW" ? `, but ${missingEvidence.join(" ")} Confidence remains low.` : "";
+  const bottomLine = recommendation === "INSUFFICIENT_DATA" ? "There is not enough primary current-season evidence for a directional recommendation." : recommendation === "ACCEPT" || recommendation === "LEAN_ACCEPT" ? `${directionLabel}. The current evidence favors the move${evidenceQualifier}` : recommendation === "DECLINE" || recommendation === "LEAN_DECLINE" ? `${directionLabel}. The current evidence does not improve the team enough${evidenceQualifier}` : missingCoreEvidence ? "This is a hold because core evidence is incomplete; missing current evidence must be resolved before using this result directionally." : primaryReasons.length > 0 && counterweights.length > 0 ? "This is a close or conflicting result; hold because current evidence is mixed." : "This is a neutral result; hold because current evidence does not create a clear edge.";
   return {
     franchiseId: input.franchiseId,
     franchiseName: input.franchiseName,

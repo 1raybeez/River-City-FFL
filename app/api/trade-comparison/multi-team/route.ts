@@ -5,6 +5,7 @@ import { loadTradeComparisonContext } from "@/lib/tradeComparison/serverAdapter"
 import type { MultiTeamTradeRequest } from "@/lib/tradeComparison/multiTeamTypes";
 import { buildTwoTeamFairnessActivation } from "@/lib/tradeComparison/fairness/activation";
 import { serializePublicFairnessResult } from "@/lib/tradeComparison/fairness/publicSerializer";
+import { buildServerTradeRecommendation } from "@/lib/tradeComparison/serverRecommendationAdapter";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,10 @@ export async function POST(request: Request) {
     const riverCityFairness = internalFairness?.result
       ? { ...internalFairness, result: serializePublicFairnessResult(internalFairness.result) }
       : internalFairness;
-    return NextResponse.json({ success: routing.status === "READY", routing: { status: routing.status, mode: routing.mode, errors: routing.errors, sandboxMarketFairness: routing.sandboxMarketFairness ?? null, riverCityFairness, participants: routing.participants.map((participant) => ({
+    const tradeAdvisor = member.canAccessMaintenance
+      ? await buildServerTradeRecommendation(input, context)
+      : null;
+    return NextResponse.json({ success: routing.status === "READY", routing: { status: routing.status, mode: routing.mode, errors: routing.errors, sandboxMarketFairness: routing.sandboxMarketFairness ?? null, riverCityFairness, ...(member.canAccessMaintenance ? { tradeAdvisor } : {}), participants: routing.participants.map((participant) => ({
       participantId: participant.participantId,
       franchiseId: participant.franchiseId,
       sends: participant.sends.map((asset) => ({ player: asset.player, sourceFranchiseId: asset.sourceFranchiseId, destinationFranchiseId: asset.destinationFranchiseId })),
