@@ -21,7 +21,9 @@ assert.match(page, /focus-visible:ring-2/);
 assert.doesNotMatch(page, /<nav/);
 assert.doesNotMatch(page, /AI Championship Predictor|Intelligence Dispatch/);
 assert.equal(existsSync("components/PowerRankings.tsx"), false);
-assert.match(siteShell, /\["Power Rankings", "\/predictor"\]/);
+assert.match(siteShell, /MOBILE_SITE_NAV_ITEMS/);
+const navigation = readFileSync("lib/navigation/siteNavigation.ts", "utf8");
+assert.match(navigation, /\{ label: "Power Rankings", href: "\/predictor", match: "exact" \}/);
 assert.match(home, /href="\/predictor"/);
 
 console.log("Predictor presentation checks passed.");
