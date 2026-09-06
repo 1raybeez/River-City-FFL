@@ -59,6 +59,7 @@ type RoutingResult = {
   sandboxMarketFairness: SandboxMarketFairnessResult | null;
   riverCityFairness: TradeFairnessActivation | null;
   tradeAdvisor?: TradeAdvisorResult;
+  tradeAdvisorNotice?: string;
 };
 
 type TradeAdvisorResult = {
@@ -670,11 +671,11 @@ function WhatChanges({ result, playerNames }: { result: RecommendationResult; pl
   );
 }
 
-function TradeAdvisorPreview({ advisor }: { advisor: TradeAdvisorResult }) {
+function TradeAdvisorPreview({ advisor, isCommissioner }: { advisor: TradeAdvisorResult; isCommissioner: boolean }) {
   if (advisor.status !== "READY") return <section aria-label="Trade Advisor unavailable" className="rounded-2xl border border-slate-300 bg-white p-5 shadow-sm"><h2 className="text-xl font-black uppercase italic">Trade Advisor</h2><p className="mt-2 text-sm font-semibold text-slate-700">Current-season recommendation unavailable for this trade. Multi-team recommendations remain unavailable; factual and fairness analysis is preserved below.</p></section>;
   return (
     <section aria-labelledby="trade-advisor-title" className="space-y-5">
-      <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-600">Commissioner preview</p><h2 id="trade-advisor-title" className="mt-1 text-2xl font-black uppercase italic tracking-tight text-slate-950">Trade verdict</h2></div>
+      <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-600">{isCommissioner ? "Commissioner preview" : "Your trade advisor"}</p><h2 id="trade-advisor-title" className="mt-1 text-2xl font-black uppercase italic tracking-tight text-slate-950">{isCommissioner ? "Trade verdict" : "Your trade verdict"}</h2></div>
       <div className="grid gap-5 lg:grid-cols-2">{advisor.teamRecommendations.map((result) => <AdvisorCard key={result.franchiseId} result={result} />)}</div>
       <div><h2 className="text-xl font-black uppercase italic tracking-tight text-slate-950">What changes</h2><div className="mt-3 grid gap-4 lg:grid-cols-2">{advisor.teamRecommendations.map((result) => <WhatChanges key={result.franchiseId} result={result} playerNames={advisor.playerNames} />)}</div></div>
       <section aria-labelledby="current-value-title" className="rounded-2xl border border-sky-200 bg-sky-50 p-5 shadow-sm sm:p-6"><h2 id="current-value-title" className="text-xl font-black uppercase italic">Current value</h2><div className="mt-4 grid gap-5 lg:grid-cols-2">{advisor.teamRecommendations.map((result) => <article key={result.franchiseId}><h3 className="text-sm font-black uppercase tracking-wider text-slate-950">{result.franchiseName}</h3><p className="mt-2 text-sm font-bold">FantasyCalc Redraft Market · Sent: {result.tradeMarket.outgoingValue === null ? "Unavailable" : result.tradeMarket.outgoingValue.toLocaleString()} value points · Received: {result.tradeMarket.incomingValue === null ? "Unavailable" : result.tradeMarket.incomingValue.toLocaleString()} value points · Net: {result.tradeMarket.difference === null ? "Unavailable" : `${result.tradeMarket.difference >= 0 ? "+" : ""}${result.tradeMarket.difference.toLocaleString()} value points`}</p><p className="mt-3 text-xs leading-5 text-slate-700"><span className="font-black uppercase tracking-wider">Expert ROS:</span> {evidenceNames(result.expertRos.outgoing) || "Current ROS ranking unavailable"}; {evidenceNames(result.expertRos.incoming) || "Current ROS ranking unavailable"}</p></article>)}</div><div className="mt-5 border-t border-sky-200 pt-4"><h3 className="text-[10px] font-black uppercase tracking-widest text-slate-600">Traded-player coverage</h3><ul className="mt-2 grid gap-2 text-sm text-slate-800 sm:grid-cols-2">{advisor.tradedPlayerEvidence.map((row) => <li key={row.playerId}><span className="font-black">{row.canonicalName}</span><br />ROS ranking: {row.expertRos ? `#${row.expertRos.consensusOverallRank ?? "Unavailable"} · ${row.expertRos.sourceCount} sources · ${row.expertRos.freshness}` : "Unavailable"}<br />FantasyCalc Redraft Market: {row.fantasyCalc ? row.fantasyCalc.value.toLocaleString() : "Unavailable"}</li>)}</ul></div></section>
@@ -777,7 +778,8 @@ function ResultView({
           )}
         </section>
       )}
-      {result.mode === "LEAGUE_TRADE" && isCommissioner && result.tradeAdvisor && <TradeAdvisorPreview advisor={result.tradeAdvisor} />}
+      {result.mode === "LEAGUE_TRADE" && result.tradeAdvisor && <TradeAdvisorPreview advisor={result.tradeAdvisor} isCommissioner={isCommissioner} />}
+      {result.mode === "LEAGUE_TRADE" && !isCommissioner && result.tradeAdvisorNotice && <section aria-label="Trade Advisor unavailable" className="rounded-2xl border border-slate-300 bg-white p-5 shadow-sm"><h2 className="text-xl font-black uppercase italic">Trade Advisor</h2><p className="mt-2 text-sm font-semibold text-slate-700">{result.tradeAdvisorNotice}</p></section>}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-600">
           Trade summary
@@ -963,7 +965,7 @@ function ResultView({
           ))}
         </div>
       </section>
-      {result.mode === "LEAGUE_TRADE" && !(isCommissioner && result.tradeAdvisor?.status === "READY") && <section aria-labelledby="roster-impact-title">
+      {result.mode === "LEAGUE_TRADE" && !(isCommissioner && result.tradeAdvisor?.status === "READY") && !(result.tradeAdvisor?.status === "READY" && !isCommissioner) && <section aria-labelledby="roster-impact-title">
         <h3
           id="roster-impact-title"
           className="text-sm font-black uppercase tracking-wider text-slate-700"

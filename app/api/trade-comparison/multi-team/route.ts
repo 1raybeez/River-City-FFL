@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentMember } from "@/lib/auth/currentMember";
+import { verifyAuctionSession } from "@/lib/auth/auctionAccess";
 import { buildMultiTeamRouting } from "@/lib/tradeComparison/multiTeamFoundation";
 import { loadTradeComparisonContext } from "@/lib/tradeComparison/serverAdapter";
 import type { MultiTeamTradeRequest } from "@/lib/tradeComparison/multiTeamTypes";
@@ -27,6 +28,7 @@ function parseRequest(value: unknown): MultiTeamTradeRequest | null {
 export async function POST(request: Request) {
   try {
     const member = await getCurrentMember();
+    const session = member.authenticated ? await verifyAuctionSession() : null;
     if (!member.authenticated) return NextResponse.json({ success: false, error: "League Member Login required." }, { status: 401 });
     let input: MultiTeamTradeRequest | null = null;
     try { input = parseRequest(await request.json()); } catch { input = null; }
@@ -41,10 +43,26 @@ export async function POST(request: Request) {
     const riverCityFairness = internalFairness?.result
       ? { ...internalFairness, result: serializePublicFairnessResult(internalFairness.result) }
       : internalFairness;
-    const tradeAdvisor = member.canAccessMaintenance
+    const isCommissioner = member.canAccessMaintenance;
+    const ownerFranchiseId = isCommissioner ? null : session?.access.authorizedFranchiseId ?? null;
+    const ownerIsParticipant = Boolean(ownerFranchiseId && routing.participants.some((participant) => participant.franchiseId === ownerFranchiseId));
+    const eligibleOwnerTrade = input.mode === "LEAGUE_TRADE" && input.participants.length === 2 && routing.status === "READY" && ownerIsParticipant;
+    const fullTradeAdvisor = member.canAccessMaintenance
       ? await buildServerTradeRecommendation(input, context)
+      : eligibleOwnerTrade
+        ? await buildServerTradeRecommendation(input, context)
+        : null;
+    const tradeAdvisor = fullTradeAdvisor && !isCommissioner && ownerFranchiseId
+      ? { ...fullTradeAdvisor, teamRecommendations: fullTradeAdvisor.teamRecommendations.filter((recommendation) => recommendation.franchiseId === ownerFranchiseId) }
+      : fullTradeAdvisor;
+    const tradeAdvisorNotice = !isCommissioner && input.mode === "LEAGUE_TRADE" && (!eligibleOwnerTrade || !tradeAdvisor)
+      ? input.participants.length !== 2
+        ? "Trade Advisor is available only for valid two-team league trades."
+        : ownerIsParticipant
+          ? "Current-season recommendation unavailable."
+          : "Trade Advisor is available when your franchise is part of the trade."
       : null;
-    return NextResponse.json({ success: routing.status === "READY", routing: { status: routing.status, mode: routing.mode, errors: routing.errors, sandboxMarketFairness: routing.sandboxMarketFairness ?? null, riverCityFairness, ...(member.canAccessMaintenance ? { tradeAdvisor } : {}), participants: routing.participants.map((participant) => ({
+    return NextResponse.json({ success: routing.status === "READY", routing: { status: routing.status, mode: routing.mode, errors: routing.errors, sandboxMarketFairness: routing.sandboxMarketFairness ?? null, riverCityFairness, ...(tradeAdvisor ? { tradeAdvisor } : {}), ...(tradeAdvisorNotice ? { tradeAdvisorNotice } : {}), participants: routing.participants.map((participant) => ({
       participantId: participant.participantId,
       franchiseId: participant.franchiseId,
       sends: participant.sends.map((asset) => ({ player: asset.player, sourceFranchiseId: asset.sourceFranchiseId, destinationFranchiseId: asset.destinationFranchiseId })),
