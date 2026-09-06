@@ -6,6 +6,10 @@ const shell = fs.readFileSync('components/SiteShell.tsx', 'utf8');
 
 assert.match(page, /<SiteShell activePath="\/league-info">/);
 assert.match(page, /River City Draft Board/);
+assert.match(page, /2026 Draft Report Cards/);
+assert.match(page, /See how all 12 teams graded out/);
+assert.match(page, /href="\/league-info\/draft-report\/overview"/);
+assert.match(page, /href="\/league-info\/draft-report"/);
 assert.match(page, /href="\/league-info"/);
 assert.match(page, /id="draft-season"/);
 assert.match(page, /selectedYear/);

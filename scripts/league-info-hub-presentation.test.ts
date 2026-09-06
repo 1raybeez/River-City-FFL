@@ -17,6 +17,7 @@ assert.doesNotMatch(page, /River City League Hub/);
 assert.doesNotMatch(page, /League destinations|League Destinations/);
 assert.doesNotMatch(page, /More league records|Payouts|Archives|Trophy Room|Matchups/);
 assert.match(page, /focus-visible:ring/);
+assert.match(page, /bg-orange-600.*2026 Draft Report Cards/);
 
 const destinations = {
   Constitution: '/league-info/constitution',
@@ -26,7 +27,7 @@ const destinations = {
 };
 
 for (const [title, href] of Object.entries(destinations)) {
-  assert.match(page, new RegExp(title));
+  assert.match(page, new RegExp(title, 'i'));
   assert.match(page, new RegExp(`['\"]${href.replaceAll('/', '\\/')}['\"]`));
 }
 

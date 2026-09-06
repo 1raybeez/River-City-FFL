@@ -11,6 +11,7 @@ import Link from 'next/link';
 import {
   ArrowLeft,
   ChevronDown,
+  FileText,
   Grid3X3,
   Loader2,
   Search,
@@ -565,6 +566,23 @@ export default function DraftBoardPage() {
           <h1 id="draft-title" className="mt-2 font-sans text-4xl font-black italic uppercase tracking-tight text-slate-950 sm:text-5xl">River City Draft Board</h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">Draft history and pick archives powered by the league&apos;s Sleeper draft data.</p>
         </div>
+
+        <section aria-labelledby="draft-report-cards-title" className="mt-5 rounded-2xl border border-orange-200 bg-orange-50 p-5 shadow-sm sm:p-6">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <FileText className="mt-0.5 shrink-0 text-orange-600" size={22} aria-hidden="true" />
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-orange-600">2026 season review</p>
+                <h2 id="draft-report-cards-title" className="mt-1 text-2xl font-black italic uppercase tracking-tight text-slate-950">2026 Draft Report Cards</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-700">See how all 12 teams graded out, then open your personal report card for value, roster construction, budget management, best buys, reaches, and more.</p>
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+              <Link href="/league-info/draft-report/overview" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2">View report cards <span aria-hidden="true">→</span></Link>
+              <Link href="/league-info/draft-report" className="inline-flex min-h-11 items-center justify-center px-3 py-2 text-xs font-black uppercase tracking-widest text-orange-700 underline decoration-orange-300 underline-offset-4 transition hover:text-orange-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2">My report card <span aria-hidden="true">→</span></Link>
+            </div>
+          </div>
+        </section>
 
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <label htmlFor="draft-season" className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Draft season</label>
