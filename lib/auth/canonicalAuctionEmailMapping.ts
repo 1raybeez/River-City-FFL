@@ -32,6 +32,24 @@ async function readEmailMappings(normalizedEmail: string) {
   });
 }
 
+export async function listAuthorizedEmailMappingsFromFirestore() {
+  const snapshot = await firestore
+    .collection(AUCTION_AUTHORIZED_OWNER_EMAILS_COLLECTION)
+    .get();
+
+  return snapshot.docs.map((document) => {
+    const data = document.data();
+    return {
+      normalizedEmail:
+        typeof data.normalizedEmail === "string"
+          ? normalizeEmail(data.normalizedEmail)
+          : normalizeEmail(document.id),
+      canonicalOwnerId:
+        typeof data.canonicalOwnerId === "string" ? data.canonicalOwnerId : "",
+    } satisfies AuthorizedOwnerEmailMapping;
+  });
+}
+
 export async function resolveAuthorizedEmailFromFirestore(
   email: string | null | undefined
 ) {

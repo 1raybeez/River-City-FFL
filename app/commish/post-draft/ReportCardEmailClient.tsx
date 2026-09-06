@@ -1,0 +1,23 @@
+"use client";
+
+import { useState } from "react";
+import type { ReportCardEmailAuditRow } from "@/lib/reportCardEmailContract";
+
+export default function ReportCardEmailClient() {
+  const [preview, setPreview] = useState<{ audit: ReportCardEmailAuditRow[]; subject: string; html: string; text: string; recipientCount: number } | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [message, setMessage] = useState("");
+  const call = async (action: string) => {
+    const response = await fetch("/api/commish/post-draft", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error ?? "Email request failed.");
+    return payload;
+  };
+  const previewEmail = async () => { try { const payload = await call("preview-report-card-email"); setPreview(payload.preview); setMessage("Preview generated. No message was sent."); } catch (error) { setMessage(error instanceof Error ? error.message : "Preview failed."); } };
+  const sendEmail = async () => { try { const payload = await call("send-report-card-email"); setConfirming(false); setMessage(payload.result.status === "SEND_DISABLED" ? "Send is disabled. No provider request was made." : `Email result: ${payload.result.status}.`); } catch (error) { setMessage(error instanceof Error ? error.message : "Send failed."); } };
+  return <section className="rounded-3xl border-2 border-orange-600/30 bg-white p-5 shadow-sm dark:border-orange-400/30 dark:bg-[#121212]" aria-labelledby="report-card-email-title">
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.3em] text-orange-600">Commissioner-only control</p><h2 id="report-card-email-title" className="mt-1 text-2xl font-black uppercase italic">Email Draft Report Cards</h2><p className="mt-2 text-sm font-semibold text-slate-500">Server-resolved recipients · live sending disabled</p></div><button type="button" onClick={previewEmail} className="min-h-11 rounded-xl bg-orange-600 px-4 text-xs font-black uppercase tracking-widest text-white">Preview email</button></div>
+    {message ? <p role="status" className="mt-4 rounded-xl bg-orange-600/10 p-3 text-sm font-semibold text-orange-800 dark:text-orange-200">{message}</p> : null}
+    {preview ? <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"><div className="min-w-0 rounded-2xl border border-slate-900/10 p-4 dark:border-white/10"><p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Recipients · {preview.recipientCount} resolved</p><div className="mt-3 grid gap-2">{preview.audit.map((row) => <div key={row.franchiseId} className="rounded-xl bg-slate-50 p-3 text-xs dark:bg-white/[0.04]"><p className="font-black">{row.teamName} · {row.status}</p><p className="mt-1 break-words text-slate-500">{row.owners.map((owner) => `${owner.ownerName}: ${owner.email ?? "MISSING_EMAIL"}`).join(" · ")}</p>{row.warning ? <p className="mt-1 font-semibold text-orange-700">{row.warning}</p> : null}</div>)}</div></div><div className="min-w-0 rounded-2xl border border-slate-900/10 p-4 dark:border-white/10"><p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Exact email preview</p><p className="mt-3 break-words font-black">{preview.subject}</p><div className="prose prose-sm mt-3 max-w-none break-words dark:prose-invert" dangerouslySetInnerHTML={{ __html: preview.html }} /><details className="mt-4"><summary className="cursor-pointer text-xs font-black uppercase tracking-widest">Text fallback</summary><pre className="mt-2 whitespace-pre-wrap break-words text-xs">{preview.text}</pre></details><div className="mt-5 rounded-xl border border-orange-600/30 bg-orange-600/10 p-3"><p className="text-xs font-bold">Sending is disabled for this checkpoint.</p>{confirming ? <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => setConfirming(false)} className="min-h-10 rounded-lg border border-slate-900/20 px-3 text-[10px] font-black uppercase tracking-widest">Cancel</button><button type="button" onClick={sendEmail} className="min-h-10 rounded-lg bg-slate-500 px-3 text-[10px] font-black uppercase tracking-widest text-white">Send email</button></div> : <button type="button" onClick={() => setConfirming(true)} className="mt-3 min-h-10 rounded-lg bg-slate-300 px-3 text-[10px] font-black uppercase tracking-widest text-slate-600">Prepare send to {preview.recipientCount} recipients</button>}</div></div></div> : null}
+  </section>;
+}

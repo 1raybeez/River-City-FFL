@@ -34,6 +34,8 @@ import {
   transitionPostDraftRecap,
   unpublishPostDraftRecap,
 } from "@/lib/postDraftRecap";
+import { buildReportCardEmailPreview, getReportCardEmailAudit, getResolvedLeagueRecipients, isReportCardEmailReady, sendLeagueEmail } from "@/lib/reportCardEmail";
+import { getCommissionerPostDraftIndex } from "@/lib/postDraftWorkflow";
 
 export const runtime = "nodejs";
 
@@ -90,6 +92,26 @@ export async function POST(request: Request) {
     if (body.action === "publish-recap") return NextResponse.json({ publication: await publishPostDraftRecap({ recapId: String(body.recapId), expectedRevision: Number(body.expectedRevision) }) }, { status: 201 });
     if (body.action === "unpublish-recap") return NextResponse.json({ publication: await unpublishPostDraftRecap(String(body.publicationId)) });
     if (body.action === "rollback-recap") return NextResponse.json({ publication: await rollbackPostDraftRecap(String(body.publicationId)) });
+    if (body.action === "preview-report-card-email") {
+      const reportIndex = await getCommissionerPostDraftIndex();
+      const audit = await getReportCardEmailAudit(reportIndex);
+      return NextResponse.json({ preview: buildReportCardEmailPreview(reportIndex, audit) }, { headers: { "Cache-Control": "private, no-store" } });
+    }
+    if (body.action === "send-report-card-email") {
+      const reportIndex = await getCommissionerPostDraftIndex();
+      const audit = await getReportCardEmailAudit(reportIndex);
+      const preview = buildReportCardEmailPreview(reportIndex, audit);
+      if (!isReportCardEmailReady(audit)) return NextResponse.json({ result: { status: "RECIPIENT_AUDIT_NOT_READY", attemptedRecipientCount: 0, requestId: null } }, { headers: { "Cache-Control": "private, no-store" } });
+      const recipients = getResolvedLeagueRecipients(audit);
+      const result = await sendLeagueEmail({ recipients: recipients.map((recipient) => recipient.email), subject: preview.subject, html: preview.html, text: preview.text });
+      return NextResponse.json({ result }, { headers: { "Cache-Control": "private, no-store" } });
+    }
+    if (body.action === "send-report-card-test") {
+      const reportIndex = await getCommissionerPostDraftIndex();
+      const preview = buildReportCardEmailPreview(reportIndex, []);
+      const result = await sendLeagueEmail({ recipients: [actor.email], subject: preview.subject, html: preview.html, text: preview.text });
+      return NextResponse.json({ result }, { headers: { "Cache-Control": "private, no-store" } });
+    }
     return NextResponse.json({ error: "Unknown post-draft action." }, { status: 400 });
   } catch (error) { return errorResponse(error); }
 }
