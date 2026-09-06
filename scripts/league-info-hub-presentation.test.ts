@@ -22,6 +22,7 @@ const destinations = {
   Constitution: '/league-info/constitution',
   Legislation: '/league-info/legislative',
   History: '/history',
+  'draft report cards': '/league-info/draft-report/overview',
 };
 
 for (const [title, href] of Object.entries(destinations)) {

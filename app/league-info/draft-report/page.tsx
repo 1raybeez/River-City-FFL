@@ -7,7 +7,7 @@ import DraftReportCardView from "./DraftReportCardView";
 export default async function OwnerDraftReportPage() {
   let report;
   try { report = await getOwnerDraftReportCard(); } catch (error) {
-    if (error instanceof AuctionAccessError) redirect("/commish/auction/login?returnTo=%2Fleague-info%2Fdraft-report");
+    if (error instanceof AuctionAccessError) redirect("/member/login?returnTo=%2Fleague-info%2Fdraft-report");
     throw error;
   }
   if (!report) redirect("/commish/post-draft");
