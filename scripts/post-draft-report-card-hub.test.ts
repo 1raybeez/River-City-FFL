@@ -7,8 +7,8 @@ const page = readFileSync("app/commish/post-draft/page.tsx", "utf8");
 const managerCard = readFileSync("components/ManagerPortraitCard.tsx", "utf8");
 
 assert.match(overview, /rows = \[\.\.\.reportIndex\]\.sort/);
-assert.match(overview, /Current Team/);
-assert.match(overview, /Owner/);
+assert.match(overview, /Current 2026 team names/);
+assert.match(overview, /row\.ownerName/);
 assert.match(overview, /View report/);
 assert.match(overview, /franchiseId\)}/);
 assert.match(index, /currentTeamName/);

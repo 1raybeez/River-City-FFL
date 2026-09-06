@@ -52,6 +52,7 @@ export default function MemberAccountMenu({ member, signOutControl, mobile = fal
 
   const actions = <>
     {member.canAccessWarRoom && <Link ref={firstActionRef} href="/commish/auction" role="menuitem" onClick={closeMenu} className="block rounded-lg px-3 py-2 text-[10px] font-black uppercase text-white/85 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">My War Room</Link>}
+    {member.canAccessWarRoom && <Link href="/league-info/draft-report" role="menuitem" onClick={closeMenu} className="block rounded-lg px-3 py-2 text-[10px] font-black uppercase text-white/85 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">My Draft Report Card</Link>}
     {member.canAccessMaintenance && <Link ref={member.canAccessWarRoom ? undefined : firstActionRef} href="/commish" role="menuitem" onClick={closeMenu} className="block rounded-lg px-3 py-2 text-[10px] font-black uppercase text-amber-200 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">Commissioner Hub</Link>}
     <div role="menuitem" className="pt-1">{signOutControl}</div>
   </>;

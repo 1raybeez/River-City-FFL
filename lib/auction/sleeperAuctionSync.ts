@@ -122,6 +122,7 @@ export type SleeperAuctionSyncNormalizeInput = {
   users: readonly SleeperAuctionSyncUserLike[];
   playersById?: Record<string, SleeperAuctionSyncPlayerLike> | null;
   warnings?: readonly string[];
+  includeRosterKeepers?: boolean;
 };
 
 export type SleeperAuctionMergeRow = {
@@ -297,6 +298,7 @@ export function normalizeSleeperAuctionSyncSnapshot({
   users,
   playersById = null,
   warnings = [],
+  includeRosterKeepers = true,
 }: SleeperAuctionSyncNormalizeInput): SleeperAuctionSyncPayload {
   const usersById = new Map(
     users.flatMap((user) => {
@@ -375,7 +377,7 @@ export function normalizeSleeperAuctionSyncSnapshot({
         sourceDetail: 'draft-pick',
       };
     });
-  const rosterKeeperRows = normalizedRosters.flatMap<
+  const rosterKeeperRows = includeRosterKeepers ? normalizedRosters.flatMap<
     SleeperAuctionKeeperRow & { sourceDetail: 'roster' }
   >((roster) =>
     roster.keeperIds.map((playerId) => {
@@ -397,7 +399,7 @@ export function normalizeSleeperAuctionSyncSnapshot({
         sourceDetail: 'roster',
       };
     })
-  );
+  ) : [];
   const mergedKeepers = mergeKeeperRows([
     ...pickKeeperRows,
     ...rosterKeeperRows,

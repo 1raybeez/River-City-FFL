@@ -2,6 +2,8 @@ import type { AuctionOwnerPlayerPreference } from "@/lib/auction/ownerPreference
 import { riverCityAuctionLeagueSettings } from "@/lib/auction/leagueSettings";
 import type { CanonicalPowerRankings } from "@/lib/powerRankings";
 import { postDraftReportFranchiseId } from "@/lib/postDraftFranchiseIdentity";
+import { resolveDraftNightRosters } from "@/lib/postDraftDraftNightRoster";
+import type { DraftNightRosterDiagnostic } from "@/lib/postDraftDraftNightRoster";
 
 export const POST_DRAFT_METRICS_SCHEMA_VERSION = "post-draft-metrics-v1";
 export const POST_DRAFT_METRICS_SEASON = 2026;
@@ -14,6 +16,8 @@ export type PostDraftRosterInput = {
   teamName: string | null;
   playerIds: readonly string[];
   starterIds?: readonly string[];
+  franchiseId?: string;
+  ownerIds?: readonly string[];
 };
 
 export type PostDraftPlayerInput = {
@@ -35,6 +39,7 @@ export type PostDraftAcquisitionInput = {
   isKeeper: boolean;
   pickNumber: number | null;
   keeperCost: number | null;
+  acquisitionClassification?: "KEEPER" | "AUCTION";
 };
 
 export type PostDraftStrategyInput = {
@@ -63,6 +68,9 @@ export type PostDraftMetricsInput = {
   players: ReadonlyMap<string, PostDraftPlayerInput>;
   powerRankings: CanonicalPowerRankings;
   rosterRequirements: PostDraftRosterRequirements | null;
+  currentRosters?: readonly PostDraftRosterInput[];
+  draftNightDiagnostics?: readonly DraftNightRosterDiagnostic[];
+  draftNightWarnings?: readonly string[];
   generatedAt?: string;
 };
 
@@ -739,31 +747,21 @@ export async function loadPostDraftMetricsInput(season: number): Promise<PostDra
       team: player.nflTeam,
     }])),
     warnings: snapshot.warnings,
+    includeRosterKeepers: false,
   });
-  const acquisitions = [
-    ...normalizedAuction.completedPurchases.map((purchase) => ({
-      playerId: purchase.playerId,
-      playerName: purchase.playerName,
-      position: purchase.position,
-      nflTeam: purchase.nflTeam,
-      rosterId: purchase.rosterId,
-      purchasePrice: purchase.salePrice,
-      isKeeper: false,
-      pickNumber: purchase.pickNumber,
-      keeperCost: null,
-    })),
-    ...normalizedAuction.keepers.map((keeper) => ({
-      playerId: keeper.playerId,
-      playerName: keeper.playerName,
-      position: keeper.position,
-      nflTeam: keeper.nflTeam,
-      rosterId: keeper.rosterId,
-      purchasePrice: keeper.keeperPrice,
-      isKeeper: true,
-      pickNumber: keeper.keeperRound,
-      keeperCost: keeper.keeperPrice,
-    })),
-  ].filter((pick): pick is PostDraftAcquisitionInput => pick.rosterId !== null && pick.playerId !== null);
+  const currentRosters = rosters.map((roster: any) => ({
+    rosterId: Number(roster.roster_id),
+    ownerUserId: roster.owner_id ? String(roster.owner_id) : null,
+    teamName: usersById.get(String(roster.owner_id))?.metadata?.team_name ?? null,
+    playerIds: Array.isArray(roster.players) ? roster.players.map(String) : [],
+    starterIds: Array.isArray(roster.starters) ? roster.starters.map(String) : [],
+  }));
+  const draftNight = resolveDraftNightRosters({
+    auction: normalizedAuction,
+    players,
+    requirements: readSleeperRosterRequirements((leagueInfo as { roster_positions?: unknown }).roster_positions),
+    budget: riverCityAuctionLeagueSettings.auctionBudgetPerTeam,
+  });
   /*
    * The normalized sync layer is the existing read-only reconciliation point
    * for draft-pick keepers and final-roster keepers. It is intentionally used
@@ -774,17 +772,14 @@ export async function loadPostDraftMetricsInput(season: number): Promise<PostDra
     draftId: snapshot.draft?.draft_id ?? null,
     draftStatus: snapshot.draft?.status ?? "unknown",
     draftPickCount: snapshot.picks.length,
-    rosters: rosters.map((roster: any) => ({
-      rosterId: Number(roster.roster_id),
-      ownerUserId: roster.owner_id ? String(roster.owner_id) : null,
-      teamName: usersById.get(String(roster.owner_id))?.metadata?.team_name ?? null,
-      playerIds: Array.isArray(roster.players) ? roster.players.map(String) : [],
-      starterIds: Array.isArray(roster.starters) ? roster.starters.map(String) : [],
-    })),
-    acquisitions,
+    rosters: draftNight.rosters,
+    acquisitions: draftNight.acquisitions,
     players,
     powerRankings: await rankings.getCanonicalPowerRankings(),
     rosterRequirements: readSleeperRosterRequirements((leagueInfo as { roster_positions?: unknown }).roster_positions),
+    currentRosters,
+    draftNightDiagnostics: draftNight.diagnostics,
+    draftNightWarnings: draftNight.warnings,
     generatedAt: new Date().toISOString(),
   };
   return input;

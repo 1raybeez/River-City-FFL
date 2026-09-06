@@ -52,8 +52,8 @@ assert.match(workflow, /session\.access\.role !== "commissioner"/);
 assert.match(indexPage, /Post-Draft Reports/);
 assert.match(indexPage, /View report/);
 assert.match(indexPage, /Owner-scoped/);
-assert.match(peerPage, /Commissioner-only factual report/);
-assert.match(peerPage, /Private War Room strategy sections are not included/);
+assert.match(peerPage, /getCommissionerDraftReportCard/);
+assert.match(peerPage, /DraftReportCardView/);
 assert.doesNotMatch(peerPage, /getAuthorizedPrivatePostDraftMetrics|calculateStrategyExecution/);
 
 console.log("Commissioner post-draft index checks passed.");

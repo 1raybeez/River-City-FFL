@@ -46,6 +46,11 @@ function positionLabel(value: string) {
   return ({ QB: "quarterback", RB: "running back", WR: "wide receiver", TE: "tight end", K: "kicker", DEF: "defense" } as Record<string, string>)[value] ?? value.toLowerCase();
 }
 
+function sentencePositionLabel(value: string) {
+  const label = positionLabel(value);
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 function money(value: number) {
   return `$${Math.round(value)}`;
 }
@@ -237,7 +242,7 @@ export function buildPostDraftTeamAnalysis(
 
   const strengths = strongest
     ? [
-        `${strongestNames.length > 0 ? strongestNames.join(" and ") : "The roster"} give this team its clearest ${positionLabel(strongestRanked?.position ?? strongest.position)}${strongestUsesFlex ? "/FLEX" : ""} group strength, ranking #${strongestRanked?.rank ?? "N/A"} in River City.`,
+        `${strongestNames.length > 0 ? strongestNames.join(" and ") : "The roster"} ${strongestNames.length > 0 ? "give" : "gives"} this team its clearest ${sentencePositionLabel(strongestRanked?.position ?? strongest.position)}${strongestUsesFlex ? "/FLEX" : ""} group strength, ranking #${strongestRanked?.rank ?? "N/A"} in River City.`,
         ...(canonicalStrongest && canonicalStrongest.covered >= canonicalStrongest.required && canonicalStrongest.players.length > canonicalStrongest.required
           ? [`The ${positionLabel(strongestRanked?.position ?? canonicalStrongest.position)} room covers its required starter slot${canonicalStrongest.required === 1 ? "" : "s"} and retains depth behind it.`]
           : []),
@@ -249,7 +254,7 @@ export function buildPostDraftTeamAnalysis(
 
   const concerns = weakest
     ? [
-        `${positionLabel(weakestRanked?.position ?? weakest.position)} is the clearest relative concern at #${weakestRanked?.rank ?? "N/A"} in River City, with ${canonicalWeakest?.covered ?? weakest.covered} of ${canonicalWeakest?.required ?? weakest.required} required starter slot${(canonicalWeakest?.required ?? weakest.required) === 1 ? "" : "s"} covered and ${canonicalWeakest?.players.length ?? weakest.players.length} rostered player${(canonicalWeakest?.players.length ?? weakest.players.length) === 1 ? "" : "s"}.`,
+        `${sentencePositionLabel(weakestRanked?.position ?? weakest.position)} is the clearest relative concern at #${weakestRanked?.rank ?? "N/A"} in River City, with ${canonicalWeakest?.covered ?? weakest.covered} of ${canonicalWeakest?.required ?? weakest.required} required starter slot${(canonicalWeakest?.required ?? weakest.required) === 1 ? "" : "s"} covered and ${canonicalWeakest?.players.length ?? weakest.players.length} rostered player${(canonicalWeakest?.players.length ?? weakest.players.length) === 1 ? "" : "s"}.`,
         ...((canonicalWeakest?.covered ?? weakest.covered) < (canonicalWeakest?.required ?? weakest.required)
           ? [`The ${positionLabel(weakestRanked?.position ?? weakest.position)} room has an uncovered starter need rather than merely a depth concern.`]
           : (canonicalWeakest?.players.length ?? weakest.players.length) <= (canonicalWeakest?.required ?? weakest.required)
