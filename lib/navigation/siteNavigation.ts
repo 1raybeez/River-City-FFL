@@ -13,7 +13,7 @@ export const PRIMARY_SITE_NAV_ITEMS = [
 
 export const MOBILE_SITE_NAV_ITEMS = [
   ...PRIMARY_SITE_NAV_ITEMS,
-  { label: "Power Rankings", href: "/predictor", match: "exact" },
+  { label: "Predictions", href: "/predictor", match: "exact" },
 ] as const satisfies readonly SiteNavItem[];
 
 export function isSiteNavItemActive(item: SiteNavItem, pathname: string) {

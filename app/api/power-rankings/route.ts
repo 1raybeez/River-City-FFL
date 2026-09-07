@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCanonicalPowerRankings } from "@/lib/powerRankings";
+import { getCanonicalPowerRankings } from "@/lib/powerRankings/canonicalPowerRankings";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

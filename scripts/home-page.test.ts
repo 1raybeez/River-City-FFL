@@ -8,7 +8,7 @@ const publicFinanceRoute = readFileSync("app/api/public-finance/summary/route.ts
 
 assert.match(page, /2026 Power Rankings/);
 assert.doesNotMatch(page, /Championship Odds/);
-assert.match(page, /Power rankings reflect roster strength and schedule factors/);
+assert.match(page, /Power rankings currently reflect preseason roster strength/);
 assert.match(page, /href="\/predictor"/);
 assert.match(page, /Open 2026 Matchups/);
 assert.match(page, /href="\/matchups"/);
