@@ -21,5 +21,5 @@ export default async function PostDraftPage() {
     if (error instanceof AuctionAccessError) redirect("/commish/login?returnTo=%2Fcommish%2Fpost-draft");
     throw error;
   }
-  return <SiteShell activePath="/commish"><div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8"><ReportCardOverview reportIndex={reportIndex} /><ReportCardEmailClient /></div><PostDraftClient initialSnapshots={snapshots} initialNarratives={narratives} initialPublications={publications} reportIndex={reportIndex} /><PostDraftRecapClient initialRecaps={recapDrafts} initialPublications={publications} /></SiteShell>;
+  return <SiteShell activePath="/commish"><div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8"><div><a href="/commish/post-draft/v2" className="font-semibold text-orange-700">Open Draft Report V2 commissioner preview →</a></div><ReportCardOverview reportIndex={reportIndex} /><ReportCardEmailClient /></div><PostDraftClient initialSnapshots={snapshots} initialNarratives={narratives} initialPublications={publications} reportIndex={reportIndex} /><PostDraftRecapClient initialRecaps={recapDrafts} initialPublications={publications} /></SiteShell>;
 }
