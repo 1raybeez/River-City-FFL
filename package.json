@@ -24,7 +24,10 @@
     "auction:test-production-refresh": "tsx scripts/auction-test-production-refresh.ts",
     "auction:update-values": "tsx scripts/auction-update-values.ts",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "draft-report-v2:test": "tsx scripts/draft-report-v2.test.ts",
+    "draft-report-v2:diagnostic": "tsx scripts/draft-report-v2-diagnostic.ts",
+    "draft-report-v2:calibration": "tsx scripts/draft-report-v2-calibration.ts"
   },
   "dependencies": {
     "@opentelemetry/api": "1.9.1",
