@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* A closed disclosure is one summary-card grid item. Once opened, its full
+   report uses the complete available grid width. */
+details.draft-report-disclosure[open] {
+  grid-column: 1 / -1;
+}
+
 :root {
   --background: #0a0a0a;
   --foreground: #ffffff;
