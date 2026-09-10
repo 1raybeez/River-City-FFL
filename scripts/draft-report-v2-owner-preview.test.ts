@@ -3,15 +3,16 @@ import { readFileSync } from "node:fs";
 
 const page = readFileSync("app/commish/post-draft/v2/owner-preview/page.tsx", "utf8");
 const client = readFileSync("app/commish/post-draft/v2/owner-preview/OwnerPreviewClient.tsx", "utf8");
+const presentation = readFileSync("lib/draftReportV2/ownerPresentation.ts", "utf8");
 const v1 = readFileSync("app/league-info/draft-report/DraftReportCardView.tsx", "utf8");
 
 assert.match(page, /requireAuctionAccess\("maintenance"\)/);
 assert.match(page, /AuctionAccessError/);
 assert.match(page, /hydrateMethodDResults/);
 assert.match(page, /review\.finalGrades/);
-assert.match(page, /review\.formulaC/);
-assert.match(page, /review\.auctionEfficiency/);
-assert.match(page, /review\.snapshot\.teams\.map/);
+assert.match(presentation, /review\.formulaC/);
+assert.match(presentation, /review\.auctionEfficiency/);
+assert.match(presentation, /review\.snapshot\.teams\.map/);
 assert.match(page, /readDraftReportV2ReviewSnapshot/);
 assert.match(page, /frozenReview \?\? liveReview/);
 assert.doesNotMatch(page, /freezeDraftReportV2ReviewSnapshot|method: "POST"|set\(/);

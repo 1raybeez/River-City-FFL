@@ -1,6 +1,6 @@
 import "server-only";
 import { firestore } from "@/lib/firebaseAdmin";
-import { requireAuctionAccess } from "@/lib/auth/auctionAccess";
+import { requireAuctionAccess, requireAuctionWarRoomAccess } from "@/lib/auth/auctionAccess";
 import { buildLiveDraftReportV2Review } from "@/lib/draftReportV2/review";
 import type { DraftReportV2Snapshot } from "@/lib/draftReportV2/types";
 
@@ -10,6 +10,13 @@ function ref(snapshotId: string) { return firestore.collection(DRAFT_REPORT_V2_R
 
 export async function readDraftReportV2ReviewSnapshot(snapshotId: string) {
   await requireAuctionAccess("maintenance");
+  const doc = await ref(snapshotId).get();
+  return doc.exists ? doc.data() as DraftReportV2ReviewSnapshot : null;
+}
+
+/** Read-only owner publication reader. The route must pass the owner access check first. */
+export async function readDraftReportV2ReviewSnapshotForOwner(snapshotId: string) {
+  await requireAuctionWarRoomAccess();
   const doc = await ref(snapshotId).get();
   return doc.exists ? doc.data() as DraftReportV2ReviewSnapshot : null;
 }
