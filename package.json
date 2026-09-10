@@ -30,6 +30,7 @@
     "draft-report-v2:owner-verdict:test": "tsx scripts/draft-report-v2-owner-verdict.test.ts",
     "draft-report-v2:p9:test": "tsx scripts/draft-report-v2-p9-publication.test.ts",
     "draft-report-v2:p10-readiness:test": "tsx scripts/draft-report-v2-p10-readiness.test.ts",
+    "draft-report-v2:p10.2a:test": "tsx scripts/draft-report-v2-p10.2a-routing.test.ts",
     "draft-report-v2:diagnostic": "tsx scripts/draft-report-v2-diagnostic.ts",
     "draft-report-v2:calibration": "tsx scripts/draft-report-v2-calibration.ts"
   },
