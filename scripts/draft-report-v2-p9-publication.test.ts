@@ -6,13 +6,14 @@ import {
   getDraftReportV2OwnerPublicationStatus,
 } from "../lib/draftReportV2/ownerPublication";
 
-const disabled = { DRAFT_REPORT_V2_OWNER_PUBLICATION_ENABLED: "false", DRAFT_REPORT_V2_OWNER_PUBLICATION_SNAPSHOT_ID: "approved" };
+const valid = { DRAFT_REPORT_V2_OWNER_PUBLICATION_ENABLED: "true", DRAFT_REPORT_V2_OWNER_PUBLICATION_SNAPSHOT_ID: "approved", DRAFT_REPORT_V2_OWNER_PUBLICATION_SEASON: "2026", DRAFT_REPORT_V2_OWNER_PUBLICATION_CHECKSUM: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" };
+const disabled = { ...valid, DRAFT_REPORT_V2_OWNER_PUBLICATION_ENABLED: "false" };
 assert.equal(draftReportV2OwnerPublicationEnabled({}), false);
-assert.equal(draftReportV2OwnerPublicationEnabled({ DRAFT_REPORT_V2_OWNER_PUBLICATION_ENABLED: "yes", DRAFT_REPORT_V2_OWNER_PUBLICATION_SNAPSHOT_ID: "approved" }), false);
+assert.equal(draftReportV2OwnerPublicationEnabled({ ...valid, DRAFT_REPORT_V2_OWNER_PUBLICATION_ENABLED: "yes" }), false);
 assert.equal(draftReportV2OwnerPublicationEnabled(disabled), false);
-assert.equal(draftReportV2OwnerPublicationEnabled({ DRAFT_REPORT_V2_OWNER_PUBLICATION_ENABLED: "true" }), false);
-assert.equal(draftReportV2OwnerPublicationEnabled({ DRAFT_REPORT_V2_OWNER_PUBLICATION_ENABLED: " TRUE ", DRAFT_REPORT_V2_OWNER_PUBLICATION_SNAPSHOT_ID: " approved-2026 " }), true);
-assert.deepEqual(getDraftReportV2OwnerPublicationConfig(2027, { DRAFT_REPORT_V2_OWNER_PUBLICATION_ENABLED: "true", DRAFT_REPORT_V2_OWNER_PUBLICATION_SNAPSHOT_ID: "s2027" }), { season: 2027, enabled: true, snapshotId: "s2027", source: "explicit-environment-gate-and-snapshot-pointer" });
+assert.equal(draftReportV2OwnerPublicationEnabled({ DRAFT_REPORT_V2_OWNER_PUBLICATION_ENABLED: "true", DRAFT_REPORT_V2_OWNER_PUBLICATION_SNAPSHOT_ID: "approved" }), false);
+assert.equal(draftReportV2OwnerPublicationEnabled({ ...valid, DRAFT_REPORT_V2_OWNER_PUBLICATION_ENABLED: " TRUE ", DRAFT_REPORT_V2_OWNER_PUBLICATION_SNAPSHOT_ID: " approved-2026 " }), true);
+assert.deepEqual(getDraftReportV2OwnerPublicationConfig(2027, { ...valid, DRAFT_REPORT_V2_OWNER_PUBLICATION_SEASON: "2027", DRAFT_REPORT_V2_OWNER_PUBLICATION_SNAPSHOT_ID: "s2027" }), { season: 2027, enabled: true, snapshotId: "s2027", expectedChecksum: valid.DRAFT_REPORT_V2_OWNER_PUBLICATION_CHECKSUM, source: "explicit-environment-gate-and-snapshot-pointer" });
 assert.equal(getDraftReportV2OwnerPublicationStatus(2026, {}).enabled, false);
 
 const ownerPage = readFileSync("app/league-info/draft-report/page.tsx", "utf8");

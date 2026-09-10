@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import SiteShell from "@/components/SiteShell";
 import { AuctionAccessError, requireAuctionWarRoomAccess } from "@/lib/auth/auctionAccess";
 import { getOwnerDraftReportCard } from "@/lib/draftReportCard";
-import { draftReportV2OwnerPublicationEnabled, getDraftReportV2OwnerPublicationConfig } from "@/lib/draftReportV2/ownerPublication";
+import { draftReportV2OwnerPublicationEnabled, getDraftReportV2OwnerPublicationConfig, isDraftReportV2OwnerPublicationReviewValid } from "@/lib/draftReportV2/ownerPublication";
 import { readDraftReportV2ReviewSnapshotForOwner } from "@/lib/draftReportV2/persistence";
 import { hydrateMethodDResults } from "@/lib/draftReportV2/finalGrade";
 import { buildOwnerPresentationReports } from "@/lib/draftReportV2/ownerPresentation";
@@ -17,13 +17,19 @@ export default async function OwnerDraftReportPage() {
       throw error;
     }
     if (session.access.role === "commissioner") redirect("/commish/post-draft");
-    const config = getDraftReportV2OwnerPublicationConfig();
-    const frozenReview = config.snapshotId ? await readDraftReportV2ReviewSnapshotForOwner(config.snapshotId) : null;
-    if (frozenReview) {
-      const review = hydrateMethodDResults(frozenReview);
-      const report = buildOwnerPresentationReports(review).find((candidate) => candidate.team.franchiseId === session.access.authorizedFranchiseId);
-      if (!report) throw new Error("Published Draft Report V2 owner report is unavailable.");
-      return <SiteShell activePath="/league-info"><main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8"><OwnerReport report={report} /></main></SiteShell>;
+    try {
+      const config = getDraftReportV2OwnerPublicationConfig();
+      const frozenReview = config.snapshotId ? await readDraftReportV2ReviewSnapshotForOwner(config.snapshotId) : null;
+      if (frozenReview) {
+        const review = hydrateMethodDResults(frozenReview);
+        const reports = buildOwnerPresentationReports(review);
+        if (!isDraftReportV2OwnerPublicationReviewValid(review, config) || reports.length !== 12) throw new Error("Published Draft Report V2 integrity validation failed.");
+        const report = reports.find((candidate) => candidate.team.franchiseId === session.access.authorizedFranchiseId);
+        if (!report) throw new Error("Published Draft Report V2 owner report is unavailable.");
+        return <SiteShell activePath="/league-info"><main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8"><OwnerReport report={report} /></main></SiteShell>;
+      }
+    } catch {
+      // Publication-integrity failures deliberately fall through to V1.
     }
   }
   let report;
