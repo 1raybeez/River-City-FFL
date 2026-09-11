@@ -36,6 +36,10 @@ export type ProjectionEvidenceArtifact = {
   readonly mappingDiagnostics: unknown;
   readonly coverageDiagnostics: unknown;
   readonly unavailableTeamDiagnostics: readonly unknown[];
+  readonly capturePurpose?: "CALIBRATION_BASELINE";
+  readonly freezeWindowOpen?: string;
+  readonly firstKickoff?: string;
+  readonly capturedWithinApprovedWindow?: boolean;
   readonly checksum: string;
 };
 
