@@ -86,7 +86,7 @@ export function resolveFantasyProsIdentity(
   if (known) return { sleeperPlayerId: known, method: "EXACT_KNOWN_CROSSWALK" };
 
   if (["DST", "DEF"].includes(providerPosition(provider))) {
-    const defense = sleeperRecords.find(record => sleeperPosition(record) === "DST" && sleeperTeam(record) === providerTeam(provider));
+    const defense = sleeperRecords.find(record => record.player_id === providerTeam(provider) && sleeperPosition(record) === "DST") ?? sleeperRecords.find(record => sleeperPosition(record) === "DST" && sleeperTeam(record) === providerTeam(provider));
     return defense ? { sleeperPlayerId: defense.player_id, method: "DST_TEAM_CODE" } : { sleeperPlayerId: null, method: "UNRESOLVED" };
   }
 

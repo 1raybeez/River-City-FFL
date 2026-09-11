@@ -39,7 +39,7 @@ export function normalizeFantasyProsFeed(
       playerId: identity.sleeperPlayerId,
       providerPlayerId: record.fpid ?? record.player_id ?? null,
       playerName: record.name ?? record.player_name ?? null,
-      position: record.position_id ?? null,
+      position: record.position_id === "DST" ? "DEF" : record.position_id ?? null,
       nflTeam: record.team_id ?? null,
       projectedPoints: points,
       source: FANTASYPROS_SOURCE,

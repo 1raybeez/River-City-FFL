@@ -24,6 +24,7 @@ assert.equal(feed.projections.find(p => p.providerPlayerId === "wr-fp")?.project
 assert.equal(feed.projections.find(p => p.providerPlayerId === "bad")?.coverageStatus, "MISSING");
 assert.equal(feed.projections.find(p => p.providerPlayerId === "malformed")?.coverageStatus, "UNRESOLVED");
 assert.equal(feed.projections.find(p => p.providerPlayerId === "def-fp")?.playerId, "def");
+assert.equal(feed.projections.find(p => p.providerPlayerId === "def-fp")?.position, "DEF");
 
 (async () => {
 let calls = 0;
