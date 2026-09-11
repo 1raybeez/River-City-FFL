@@ -26,6 +26,7 @@
     "start": "next start",
     "lint": "eslint",
     "home:live-season:test": "tsx scripts/home-live-season.test.ts",
+    "season-simulator:prerequisites:test": "tsx scripts/season-simulator-prerequisites.test.ts",
     "draft-report-v2:test": "tsx scripts/draft-report-v2.test.ts",
     "draft-report-v2:owner-preview:test": "tsx scripts/draft-report-v2-owner-preview.test.ts",
     "draft-report-v2:owner-verdict:test": "tsx scripts/draft-report-v2-owner-verdict.test.ts",
