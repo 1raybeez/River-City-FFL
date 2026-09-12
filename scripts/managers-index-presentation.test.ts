@@ -19,7 +19,11 @@ assert.match(page, /aria-pressed=\{view === "retired"\}/);
 assert.match(page, /aria-pressed=\{view === "staff"\}/);
 assert.match(page, /focus-visible:ring/);
 
+assert.match(page, /useState<ActiveOwnerLayout>\("all"\)/);
+assert.doesNotMatch(page, /useState<ActiveOwnerLayout>\("division"\)/);
 assert.match(page, /activeLayout === "division"/);
+assert.match(page, /onClick=\{\(\) => setActiveLayout\("division"\)\}/);
+assert.match(page, /onClick=\{\(\) => setActiveLayout\("all"\)\}/);
 assert.match(page, /getDivisionName/);
 assert.match(page, /getRosterDivisionId/);
 assert.match(page, /api\.sleeper\.app\/v1\/league/);

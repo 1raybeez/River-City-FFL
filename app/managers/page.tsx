@@ -53,7 +53,7 @@ function getRosterDivisionId(roster: SleeperRoster) {
 export default function ManagersPage() {
   const [view, setView] = useState<ManagerTab>("active");
   const [activeLayout, setActiveLayout] =
-    useState<ActiveOwnerLayout>("division");
+    useState<ActiveOwnerLayout>("all");
 
   const activeData = activeManagers as unknown as ActiveManager[];
   const [currentTeamNames, setCurrentTeamNames] = useState<Record<string, string>>({});
