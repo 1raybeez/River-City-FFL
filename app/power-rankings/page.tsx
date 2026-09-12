@@ -1,0 +1,13 @@
+import Link from "next/link";
+import SiteShell from "@/components/SiteShell";
+import PowerRankingsDetail from "@/components/PowerRankingsDetail";
+import { getCanonicalPowerRankings } from "@/lib/powerRankings/canonicalPowerRankings";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export default async function PowerRankingsPage() {
+  let report;
+  try { report = await getCanonicalPowerRankings(); } catch (error) { console.error("Power Rankings report failed", error); return <SiteShell activePath="/power-rankings"><main className="min-h-screen bg-[#f7f8fa] px-4 py-8 text-slate-950 dark:bg-[#0a0a0a] dark:text-white"><div className="mx-auto max-w-3xl rounded-2xl border border-red-600/20 bg-white p-10 text-center shadow-sm dark:bg-white/5"><p className="text-xs font-black uppercase tracking-[0.2em] text-red-600">Power Rankings unavailable</p><p className="mt-3 text-sm font-bold text-slate-600 dark:text-white/65">Current roster-strength data could not be loaded.</p></div></main></SiteShell>; }
+  return <SiteShell activePath="/power-rankings"><main className="min-h-screen bg-[#f7f8fa] px-4 py-8 text-slate-950 dark:bg-[#0a0a0a] dark:text-white sm:px-6 lg:px-8"><div className="mx-auto max-w-[1600px] space-y-6"><header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#121212] sm:p-8"><Link href="/" className="inline-flex min-h-10 items-center rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-black uppercase tracking-widest text-slate-600 hover:border-orange-600 hover:text-orange-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 dark:border-white/15 dark:bg-white/5 dark:text-white/65">← Back to Home</Link><div className="mt-6 max-w-3xl"><p className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-600">RIVER CITY POWER RANKINGS</p><h1 className="mt-2 text-4xl font-black uppercase italic leading-none tracking-tight sm:text-5xl">WHO IS STRONGEST RIGHT NOW?</h1><p className="mt-4 text-sm font-medium leading-7 text-slate-600 dark:text-white/65">Current roster-strength rankings based on the league&apos;s approved strength model.</p><p className="mt-4 text-sm font-bold leading-6 text-slate-700 dark:text-white/70">Power Rankings measure current roster strength. They are not projected standings, playoff odds, or championship odds.</p><Link href="/predictor" className="mt-5 inline-flex min-h-10 items-center rounded-lg border border-fuchsia-600/40 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-fuchsia-700 dark:text-fuchsia-300">Open Predictor →</Link></div></header><PowerRankingsDetail report={report} /></div></main></SiteShell>;
+}

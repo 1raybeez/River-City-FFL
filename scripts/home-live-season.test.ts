@@ -43,6 +43,7 @@ assert.match(home, /preseason-strength-v1 model on current rosters/);
 assert.match(home, /href="\/league-info\/payouts"/);
 assert.match(home, /href="\/league-info\/legislative"/);
 assert.match(home, /href="\/predictor"/);
+assert.match(home, /href="\/power-rankings"/);
 for (const role of ["Commissioner Corner", "Reigning Champion", "2026 Power Rankings", "2026 Matchups", "Predictor", "Legislative Hub", "2026 Payouts", "Recent Recap"]) assert.match(home, new RegExp(`label=\"${role}\"`));
 assert.match(home, /if \(label === "League History"\) return null/);
 assert.match(home, /Projected Standings/);
