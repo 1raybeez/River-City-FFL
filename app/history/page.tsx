@@ -1,5 +1,6 @@
 import Link from "next/link";
 import SiteShell from "@/components/SiteShell";
+import OwnerPortrait from "@/components/OwnerPortrait";
 import HallOfFameResumeExplorer from "./HallOfFameResumeExplorer";
 import TrophyRoomExplorer from "./TrophyRoomExplorer";
 import { riverCityAuctionLeagueSettings } from "@/lib/auction/leagueSettings";
@@ -46,7 +47,7 @@ function Overview({ completedSeasons, uniqueChampionCount, recentChampionships }
 }
 
 function ChampionsClub({ rankings, uniqueChampionCount }: { rankings: ReturnType<typeof getCanonicalHallOfFameResumes>; uniqueChampionCount: number }) {
-  return <section className="mt-8" aria-labelledby="club-title"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-widest text-amber-700">The honor roll</p><h2 id="club-title" className="mt-1 text-2xl font-black">Champions Club</h2></div><p className="text-sm text-slate-600">{uniqueChampionCount} managers with canonical titles</p></div><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{rankings.filter((stat) => stat.championships > 0).map((stat) => <article key={stat.ownerId} className={cardClass}><h3 className="font-black text-slate-950">{stat.manager}</h3><p className="mt-2 text-xs font-black uppercase tracking-widest text-orange-700">{stat.championships} {stat.championships === 1 ? "title" : "titles"}</p><p className="mt-2 text-sm font-semibold text-slate-600">{stat.championshipYears.join(" · ")}</p></article>)}</div></section>;
+  return <section className="mt-8" aria-labelledby="club-title"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-widest text-amber-700">The honor roll</p><h2 id="club-title" className="mt-1 text-2xl font-black">Champions Club</h2></div><p className="text-sm text-slate-600">{uniqueChampionCount} managers with canonical titles</p></div><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{rankings.filter((stat) => stat.championships > 0).map((stat) => <article key={stat.ownerId} className={cardClass}><div className="flex items-center gap-3"><OwnerPortrait name={stat.manager} photo={ownerProfilesById[stat.ownerId]?.photo} className="h-12 w-12" /><div className="min-w-0"><h3 className="break-words font-black text-slate-950">{stat.manager}</h3><p className="mt-1 text-xs font-black uppercase tracking-widest text-orange-700">{stat.championships} {stat.championships === 1 ? "title" : "titles"}</p><p className="mt-1 text-sm font-semibold text-slate-600">{stat.championshipYears.join(" · ")}</p></div></div></article>)}</div></section>;
 }
 
 function ExploreMoreHistory() {
