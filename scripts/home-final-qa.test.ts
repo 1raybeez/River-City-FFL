@@ -50,6 +50,19 @@ assert.doesNotMatch(historicalResults, /wins|losses/);
 assert.match(home, /Aaron Hawkins/);
 assert.match(home, /Official 2025 winner/);
 assert.match(home, /value=\"9-5\"/);
+assert.match(home, /Same league\./i);
+assert.match(home, /Higher standards\./i);
+assert.match(home, /View Championship History/);
+assert.match(home, /href=\"\/history\"/);
+assert.match(home, /River City FFL <span className=\"text-orange-600\/80\">\|<\/span> A tradition of competition/);
+assert.match(home, /Est\. 2011 <span className=\"text-orange-600\/80\">•<\/span> Richmond, VA/);
+assert.match(home, /Megaphone/);
+assert.match(home, /DollarSign/);
+assert.match(home, /FileText/);
+assert.match(home, /Projected Standings.*Calibrating/);
+assert.match(home, /Playoff Odds.*Calibrating/);
+assert.match(home, /Championship Odds.*Calibrating/);
+assert.doesNotMatch(home, /Projected Standings.*\d+%|Playoff Odds.*\d+%|Championship Odds.*\d+%/);
 
 for (const unsafeField of ["email", "firebaseUid", "canonicalOwnerId", "warRoomId", "rosterId", "idToken", "plannedCaps", "preferredEntry"]) {
   assert.doesNotMatch(home, new RegExp(unsafeField, "i"));
