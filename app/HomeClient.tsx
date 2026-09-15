@@ -17,6 +17,7 @@ import { RSVP_ATTENDEES, resolveRsvpAttendee } from "@/lib/rsvpAttendees";
 import { getHomePowerRankingTeams, type CanonicalPowerRankings } from "@/lib/powerRankings/types";
 import type { HomeLiveSeasonState } from "@/lib/home/liveSeasonState";
 import { getWeeklySpotlightLabel } from "@/lib/home/weeklySpotlight";
+import type { WeeklyLeagueRecap } from "@/lib/weeklyRecapPublication";
 
 const RECAP_LOADING_TEXT = "Loading latest league note...";
 const RECAP_FALLBACK_TEXT = "Commish recap could not be loaded. Check back soon for the latest league update.";
@@ -125,7 +126,7 @@ function useModalFocusTrap(
   }, [dialogRef, open, triggerRef]);
 }
 
-export default function HomeClient({ initialMember, initialPublishedRecap, initialBoxOneState, initialLiveSeasonState }: { initialMember: CurrentMember; initialPublishedRecap: PublicLeagueRecap | null; initialBoxOneState: BoxOneState; initialLiveSeasonState: HomeLiveSeasonState }) {
+export default function HomeClient({ initialMember, initialPublishedRecap, initialPublishedWeeklyRecap, initialBoxOneState, initialLiveSeasonState }: { initialMember: CurrentMember; initialPublishedRecap: PublicLeagueRecap | null; initialPublishedWeeklyRecap: WeeklyLeagueRecap | null; initialBoxOneState: BoxOneState; initialLiveSeasonState: HomeLiveSeasonState }) {
   const [showRecap, setShowRecap] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const recapTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -135,6 +136,7 @@ export default function HomeClient({ initialMember, initialPublishedRecap, initi
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [liveRecap, setLiveRecap] = useState(RECAP_LOADING_TEXT);
   const publishedRecap = initialPublishedRecap;
+  const publishedWeeklyRecap = initialPublishedWeeklyRecap;
   const [predictorTeams, setPredictorTeams] = useState<CanonicalPowerRankings["teams"]>([]);
   const [loadingPredictor, setLoadingPredictor] = useState(true);
   const [predictorError, setPredictorError] = useState<string | null>(null);
@@ -295,7 +297,7 @@ export default function HomeClient({ initialMember, initialPublishedRecap, initi
       </section>
       <section className="contents" aria-label="League history and recent recap">
         <DashboardCard label="League History" icon={<Calendar size={17} className="text-slate-700" />}><p className="mt-5 max-w-2xl text-sm leading-6 text-slate-600 dark:text-white/60">River City FFL was founded on competition, friendship, and a commitment to keeping records that matter.</p><p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600 dark:text-white/60">{historyFinanceText}</p><button ref={historyTriggerRef} type="button" onClick={() => setShowHistoryModal(true)} className="mt-6 min-h-11 rounded-lg border border-orange-600/40 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-orange-700 hover:bg-orange-600/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600">View Full League History</button></DashboardCard>
-        <DashboardCard label="Recent Recap" icon={<MessageCircle size={17} className="text-blue-600" />}><h2 className="mt-5 text-2xl font-black uppercase italic">{publishedRecap?.title ?? "Latest Commissioner Briefing"}</h2><p className="mt-4 line-clamp-4 text-sm leading-6 text-slate-600 dark:text-white/60">{publishedRecap?.dek ?? publishedRecap?.openingCommissionerTake ?? liveRecap}</p>{publishedRecap && <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Published {new Date(publishedRecap.publishedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>}<button ref={recapTriggerRef} type="button" onClick={() => setShowRecap(true)} className="mt-6 min-h-11 text-[10px] font-black uppercase tracking-widest text-blue-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700">Read Recap <ArrowRight className="ml-1 inline" size={14} /></button></DashboardCard>
+        <DashboardCard label="Recent Recap" icon={<MessageCircle size={17} className="text-blue-600" />}><h2 className="mt-5 text-2xl font-black uppercase italic">{publishedWeeklyRecap?.title ?? publishedRecap?.title ?? "Latest Commissioner Briefing"}</h2><p className="mt-4 line-clamp-4 text-sm leading-6 text-slate-600 dark:text-white/60">{publishedWeeklyRecap?.excerpt ?? publishedRecap?.dek ?? publishedRecap?.openingCommissionerTake ?? liveRecap}</p>{publishedWeeklyRecap ? <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Published Week {publishedWeeklyRecap.week}</p> : publishedRecap && <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Published {new Date(publishedRecap.publishedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>}{publishedWeeklyRecap ? <Link href={`/league-info/recaps/${publishedWeeklyRecap.season}/week/${publishedWeeklyRecap.week}`} className="mt-6 inline-flex min-h-11 items-center text-[10px] font-black uppercase tracking-widest text-blue-700 hover:underline">Read Full Recap <ArrowRight className="ml-1 inline" size={14} /></Link> : <button ref={recapTriggerRef} type="button" onClick={() => setShowRecap(true)} className="mt-6 min-h-11 text-[10px] font-black uppercase tracking-widest text-blue-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700">Read Recap <ArrowRight className="ml-1 inline" size={14} /></button>}</DashboardCard>
       </section>
     </main>
 

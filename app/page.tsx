@@ -9,12 +9,15 @@ import { getHomeBoxOneState } from "@/lib/home/boxOneServer";
 import type { BoxOneState } from "@/lib/home/boxOneState";
 import { getHomeLiveSeasonState } from "@/lib/home/liveSeasonState";
 import type { HomeLiveSeasonState } from "@/lib/home/liveSeasonState";
+import { getPublishedWeeklyRecap } from "@/lib/weeklyRecapPublication";
+import type { WeeklyLeagueRecap } from "@/lib/weeklyRecapPublication";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   let member = anonymousCurrentMember;
   let publishedRecap: PublicLeagueRecap | null = null;
+  let publishedWeeklyRecap: WeeklyLeagueRecap | null = null;
   let boxOneState: BoxOneState;
   let liveSeasonState: HomeLiveSeasonState;
   try {
@@ -26,6 +29,11 @@ export default async function HomePage() {
     publishedRecap = await getPublishedLeagueRecap(2026);
   } catch {
     // The legacy client recap remains available if publication lookup is unavailable.
+  }
+  try {
+    publishedWeeklyRecap = await getPublishedWeeklyRecap(2026);
+  } catch {
+    // Weekly publication lookup is optional until a weekly recap is published.
   }
   try {
     boxOneState = await getHomeBoxOneState(2026);
@@ -64,5 +72,5 @@ export default async function HomePage() {
       seasonType: null,
     };
   }
-  return <HomeClient initialMember={member} initialPublishedRecap={publishedRecap} initialBoxOneState={boxOneState} initialLiveSeasonState={liveSeasonState} />;
+  return <HomeClient initialMember={member} initialPublishedRecap={publishedRecap} initialPublishedWeeklyRecap={publishedWeeklyRecap} initialBoxOneState={boxOneState} initialLiveSeasonState={liveSeasonState} />;
 }
