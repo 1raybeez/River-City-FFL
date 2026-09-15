@@ -1,5 +1,3 @@
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "./firebase";
 import { MANUAL_HISTORY } from "./manual-history";
 import localMasterview from "@/data/auction/generated/masterview-2026.json";
 import localAdp from "@/data/auction/adp/generated/adp-consensus-2026.json";
@@ -270,6 +268,10 @@ export async function getLeagueInfo(
 
 export async function getAllPlayers() {
   try {
+    const [{ collection, getDocs }, { db }] = await Promise.all([
+      import("firebase/firestore"),
+      import("./firebase"),
+    ]);
     const valuationSnap = await getDocs(collection(db, "player_stats"));
     const valuations: Record<string, any> = {};
     valuationSnap.forEach((doc) => {

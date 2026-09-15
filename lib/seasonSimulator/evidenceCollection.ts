@@ -60,10 +60,16 @@ export type SleeperActualMatchupRow = {
   players: readonly SleeperActualPlayerRow[];
 };
 
+export type ActualCalibrationEligibility =
+  | "INELIGIBLE_PATH_C"
+  | "ELIGIBLE_IF_PAIRED_WITH_VALID_PROJECTION";
+
 export type ActualEvidenceArtifact = {
   readonly schemaVersion: typeof ACTUAL_EVIDENCE_SCHEMA;
   readonly season: number;
   readonly week: number;
+  readonly calibrationEligibility: ActualCalibrationEligibility;
+  readonly calibrationEligibilityReason: string;
   readonly finalizedAt: string;
   readonly finalityEvidence: unknown;
   readonly sleeperLeagueState: unknown;
@@ -118,6 +124,9 @@ export function buildActualEvidenceArtifact(input: Omit<ActualEvidenceArtifact, 
 }
 
 export function pairProjectionAndActualEvidence(projection: ProjectionEvidenceArtifact, actual: ActualEvidenceArtifact): PairedResidualDataset {
+  if (actual.calibrationEligibility === "INELIGIBLE_PATH_C") {
+    throw new Error("Week 1 PATH C actual evidence is historical-only and cannot be used for residual calibration.");
+  }
   const actualByPlayer = new Map(actual.playerActuals.map(row => [row.playerId, row]));
   const actualStarters = new Set(Object.values(actual.officialStarterIds).flat());
   const exclusions: Record<string, number> = {};
