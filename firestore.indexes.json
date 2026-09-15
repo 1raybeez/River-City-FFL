@@ -1,0 +1,22 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "weekly_recap_publications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "season",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "week",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ]
+}
