@@ -1,0 +1,23 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+const source = readFileSync("lib/weeklyCommissionerRecap.ts", "utf8");
+const route = readFileSync("app/commish/weekly-recap/page.tsx", "utf8");
+assert.match(source, /getMatchups\(1, LEAGUE_ID\)/);
+assert.match(source, /grouped\.size !== 6/);
+assert.match(source, /highScore/);
+assert.match(source, /lowScore/);
+assert.match(source, /closestGame/);
+assert.match(source, /biggestBlowout/);
+assert.match(source, /record === "1-0"/);
+assert.match(source, /WEEK 1: WELCOME BACK TO THE CHAOS/);
+assert.match(source, /124\.36 and starting 0-1/);
+assert.match(source, /Prestigio Mundial needs a bounce-back from 86\.06/);
+assert.match(source, /Art of War lost with 108\.74/);
+assert.doesNotMatch(source, /respectable/);
+assert.match(source, /Third-highest score in the league\. Still 0-1\. Fantasy football remains a cruel and stupid game/);
+assert.match(source, /unfortunately for him, Brian showed up with 129\.82/);
+assert.doesNotMatch(route, /Closing Note|recap\.closingTake/);
+assert.match(route, /requireAuctionAccess\("maintenance"\)/);
+assert.match(route, /not published/);
+console.log("Weekly commissioner recap contract checks passed.");
