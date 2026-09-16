@@ -5,6 +5,7 @@ import { getLeagueInfo, getLeagueRosters, getLeagueUsers, getMatchups, getNFLSta
 import { buildCurrentSeasonTeamIdentityMap } from "@/lib/currentSeasonTeamIdentity";
 import { resolveWeeklyFinality, type WeeklyFinality, type WeeklyScoreEvidence } from "@/lib/home/weeklyFinality";
 import { selectWeeklyHighScore, type WeeklyHighScoreCandidate } from "@/lib/home/weeklyHighScore";
+import { getWeeklyHighScoreSettlement } from "@/lib/weeklyHighScoreSettlement";
 
 export type HomeWeeklyHighScoreWinner = WeeklyHighScoreCandidate;
 
@@ -43,6 +44,25 @@ export async function getHomeLiveSeasonState(): Promise<HomeLiveSeasonState> {
     : null;
   const seasonType = (state as { season_type?: string }).season_type ?? null;
   const phase = seasonType === "post" || (playoffWeekStart !== null && activeWeek >= playoffWeekStart) ? "PLAYOFFS" as const : "WEEK_ACTIVE" as const;
+  const settledWeek = activeWeek - 1;
+  if (settledWeek > 0) {
+    const settlement = await getWeeklyHighScoreSettlement(2026, settledWeek).catch(() => null);
+    if (settlement) {
+      const [rosters, users] = await Promise.all([getLeagueRosters(), getLeagueUsers()]);
+      const identities = buildCurrentSeasonTeamIdentityMap({ users, rosters });
+      const winners = settlement.winnerFranchiseIds.flatMap((franchiseId) => {
+        const identity = identities.get(franchiseId);
+        const franchise = franchisesById[franchiseId];
+        if (!identity || !franchise) return [];
+        const display = ownerDisplay(franchiseId);
+        const user = users.find((entry) => String(entry.user_id) === identity.sleeperUserId);
+        return [{ franchiseId, teamName: identity.currentTeamName, ownerNames: display.ownerNames.length ? display.ownerNames : [user?.display_name ?? "River City owner"], ownerPhoto: display.ownerPhoto, sleeperAvatar: sleeperAvatar(user?.avatar), points: settlement.highScore, week: settlement.week } satisfies HomeWeeklyHighScoreWinner];
+      });
+      if (winners.length === settlement.winnerFranchiseIds.length) {
+        return { activeWeek, phase, finality: { activeWeek, finalizedWeek: settlement.week, finalizedWeeks: [settlement.week], statCorrectionBufferWeeks: 1 }, weeklyHighScore: winners, playoffWeekStart, seasonType };
+      }
+    }
+  }
   const candidateWeeks = Array.from({ length: Math.max(0, activeWeek - 2) }, (_, index) => index + 1);
   const matchupSets = await Promise.all(candidateWeeks.map(async (week) => ({ week, matchups: await getMatchups(week) })));
   const evidence: WeeklyScoreEvidence[] = matchupSets.map(({ week, matchups }) => ({
