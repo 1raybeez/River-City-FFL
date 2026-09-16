@@ -31,6 +31,7 @@ import {
   type SleeperPlayerIdentity,
 } from "@/lib/sleeper";
 import { ownerProfiles } from "@/lib/managers/identityData";
+import { MATCHUP_POLL_INTERVAL_MS, shouldPollMatchups } from "@/lib/matchupsPolling";
 import {
   aggregateStarterProjections,
   resolveStarterProjection,
@@ -1483,6 +1484,7 @@ export default function MatchupsPage() {
   const [playoffError, setPlayoffError] = useState<string | null>(null);
   const [playoffsLoaded, setPlayoffsLoaded] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [refreshError, setRefreshError] = useState(false);
 
   useEffect(() => {
     const tab = new URLSearchParams(window.location.search).get("tab");
@@ -1583,6 +1585,37 @@ export default function MatchupsPage() {
   }, [mounted, week]);
 
   useEffect(() => {
+    if (!mounted || activeTab !== "regular" || !shouldPollMatchups({ selectedWeek: week, currentWeek, leagueStatus: leagueInfo?.status })) return;
+
+    let cancelled = false;
+    const interval = setInterval(() => void refreshScores(), MATCHUP_POLL_INTERVAL_MS);
+
+    const refreshScores = async () => {
+      if (document.hidden || week === null) return;
+      try {
+        const matchupData = await getMatchups(week);
+        if (!cancelled) {
+          setMatchups(Array.isArray(matchupData) ? matchupData : []);
+          setRefreshError(false);
+        }
+      } catch {
+        if (!cancelled) setRefreshError(true);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) void refreshScores();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearInterval(interval);
+    };
+  }, [activeTab, currentWeek, leagueInfo?.status, mounted, week]);
+
+  useEffect(() => {
     if (!mounted || activeTab !== "playoffs" || playoffsLoaded) return;
 
     let cancelled = false;
@@ -1645,6 +1678,7 @@ export default function MatchupsPage() {
               <p className="mt-3 max-w-3xl text-sm font-semibold leading-6 text-slate-600 dark:text-gray-400">
                 Weekly head-to-heads with starters, projected scores, Series History, and playoff context.
               </p>
+              {shouldPollMatchups({ selectedWeek: week, currentWeek, leagueStatus: leagueInfo?.status }) && <p className="mt-2 text-xs font-bold text-emerald-700 dark:text-emerald-300">Live scores refresh automatically every 60 seconds{refreshError ? " · Last refresh failed; showing the previous scores" : ""}.</p>}
             </div>
             <Link
               href="/league-info"
