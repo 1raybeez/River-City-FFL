@@ -44,6 +44,11 @@ function checksum(value: unknown) {
   return createHash("sha256").update(stable(value)).digest("hex");
 }
 
+export function weeklyHighScoreSettlementChecksum(record: Omit<WeeklyHighScoreSettlement, "checksum">) {
+  const { settledAt: _settledAt, sourceAsOf: _sourceAsOf, ...content } = record;
+  return checksum(content);
+}
+
 export function weeklyHighScoreSettlementId(season: number, week: number) {
   return `${season}:week-${String(week).padStart(2, "0")}`;
 }
@@ -96,13 +101,13 @@ export async function buildWeeklyHighScoreSettlementCandidate({ season, week, no
   const identity = canonicalRosterMap().get(leaders[0].roster_id);
   if (!identity) return { ...base, eligible: false, reason: `Roster ${leaders[0].roster_id} has no canonical River City identity.`, settlement: null };
   const recordBase = { schemaVersion: WEEKLY_HIGH_SCORE_SETTLEMENT_SCHEMA, season, week, status: "settled" as const, settledAt: sourceAsOf, finalityEvidence, winnerFranchiseIds: [identity.franchiseId], winnerOwnerIds: [identity.ownerId], highScore, prizePool: 1_000, prizePerWinner: 1_000, tieCount: 0, source: "SLEEPER" as const, sourceAsOf };
-  const settlement = { ...recordBase, checksum: checksum(recordBase) };
+  const settlement = { ...recordBase, checksum: weeklyHighScoreSettlementChecksum(recordBase) };
   return { ...base, eligible: true, reason: null, settlement };
 }
 
 export function validateWeeklyHighScoreSettlement(record: WeeklyHighScoreSettlement) {
-  const { checksum: actual, ...base } = record;
-  if (record.schemaVersion !== WEEKLY_HIGH_SCORE_SETTLEMENT_SCHEMA || record.status !== "settled" || record.prizePool !== 1_000 || record.prizePerWinner !== 1_000 || record.tieCount !== 0 || actual !== checksum(base)) throw new Error("Weekly high-score settlement checksum or policy validation failed.");
+  const { checksum: actual, ...content } = record;
+  if (record.schemaVersion !== WEEKLY_HIGH_SCORE_SETTLEMENT_SCHEMA || record.status !== "settled" || record.prizePool !== 1_000 || record.prizePerWinner !== 1_000 || record.tieCount !== 0 || actual !== weeklyHighScoreSettlementChecksum(content)) throw new Error("Weekly high-score settlement checksum or policy validation failed.");
   return record;
 }
 
