@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { buildPublicOperationalFinancePresentation } from "../lib/finance/publicOperationalFinancePresentation";
-import { buildPublicPayoutCurrentSeason, buildPublicPayoutHistory } from "../lib/finance/publicPayoutPresentation";
+import { buildPublicPayoutCurrentSeason, buildPublicPayoutHistory, buildWeeklyHighScoreAwards } from "../lib/finance/publicPayoutPresentation";
 import { buildFinancialHistory } from "../lib/history/financialHistory";
 import { HISTORICAL_FINANCIAL_SOURCE, HISTORICAL_FINANCIAL_TRANSACTIONS } from "../lib/history/historicalFinancialData";
 import { franchises, ownerProfiles, ownershipTenures } from "../lib/managers/identityData";
@@ -30,9 +30,32 @@ const history = buildFinancialHistoryPresentation({
 });
 
 async function main() {
+  const weekOneSettlement = {
+    schemaVersion: "river-city-weekly-high-score-settlement-v1" as const,
+    season: 2026,
+    week: 1,
+    status: "settled" as const,
+    settledAt: "2026-09-16T02:21:32.234Z",
+    finalityEvidence: {},
+    winnerFranchiseIds: ["shake-n-bakers"],
+    winnerOwnerIds: ["jordan-maslyn"],
+    highScore: 134.26,
+    prizePool: 1_000,
+    prizePerWinner: 1_000,
+    tieCount: 0,
+    source: "SLEEPER" as const,
+    sourceAsOf: "2026-09-16T02:21:32.234Z",
+    checksum: "fixture",
+  };
+  const weeklyAwards = buildWeeklyHighScoreAwards([weekOneSettlement]);
+  assert.deepEqual(weeklyAwards[0], { week: 1, teamNames: ["The Shake-N-Bakers"], owners: ["Jordan Maslyn", "Landon Elliott"], score: 134.26, prizeCents: 1_000 });
+  assert.equal(buildWeeklyHighScoreAwards([]).length, 0);
   const repository = new InMemoryOperationalFinanceLedgerRepository();
   await apply2026OpeningDuesMigration(repository, { actorId: "privacy-fixture", role: "system" }, "2026-08-12T12:00:00.000Z");
   const current = buildPublicPayoutCurrentSeason(buildPublicOperationalFinancePresentation(await repository.getSnapshot()));
+  assert.equal(current.weeklyHighScoreAwards.length, 0);
+  assert.equal(current.expectedPrizeStructure.find((item) => item.label === "Weekly Awards")?.amountCents, 14_000);
+  assert.equal(current.expectedPrizeTotalCents, 60_000);
   const publicHistory = buildPublicPayoutHistory(history);
   const serialized = JSON.stringify({ current, publicHistory });
 

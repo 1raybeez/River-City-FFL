@@ -1,5 +1,15 @@
 import type { PublicOperationalFinancePresentation } from "@/lib/finance/publicOperationalFinancePresentation";
 import type { FinancialHistoryPresentation } from "@/lib/managers/financialHistoryPresentation";
+import { getFranchiseById, getOwnerProfileById } from "@/lib/managers/identityData";
+import type { WeeklyHighScoreSettlement } from "@/lib/weeklyHighScoreSettlement";
+
+export type PublicWeeklyHighScoreAward = Readonly<{
+  week: number;
+  teamNames: readonly string[];
+  owners: readonly string[];
+  score: number;
+  prizeCents: number;
+}>;
 
 export type PublicPayoutAward = Readonly<{
   label: string;
@@ -35,6 +45,7 @@ export type PublicPayoutCurrentSeason = Readonly<{
   projectedChampionCashCents: number | null;
   reconciliationStatus: string;
   fundLocationSummary: readonly string[];
+  weeklyHighScoreAwards: readonly PublicWeeklyHighScoreAward[];
 }>;
 
 export type PublicPayoutSeason = Readonly<{
@@ -56,7 +67,8 @@ export type PublicPayoutHistory = Readonly<{
 }>;
 
 export function buildPublicPayoutCurrentSeason(
-  presentation: PublicOperationalFinancePresentation
+  presentation: PublicOperationalFinancePresentation,
+  settlements: readonly WeeklyHighScoreSettlement[] = []
 ): PublicPayoutCurrentSeason {
   return {
     season: presentation.season,
@@ -88,7 +100,30 @@ export function buildPublicPayoutCurrentSeason(
     projectedChampionCashCents: presentation.projectedChampionCashCents,
     reconciliationStatus: presentation.reconciliationStatus,
     fundLocationSummary: presentation.fundLocationSummary,
+    weeklyHighScoreAwards: buildWeeklyHighScoreAwards(settlements),
   };
+}
+
+export function buildWeeklyHighScoreAwards(settlements: readonly WeeklyHighScoreSettlement[]): readonly PublicWeeklyHighScoreAward[] {
+  return [...settlements]
+    .filter((settlement) => settlement.season === 2026 && settlement.status === "settled")
+    .sort((first, second) => first.week - second.week)
+    .map((settlement) => ({
+      week: settlement.week,
+      teamNames: settlement.winnerFranchiseIds.flatMap((id) => {
+        const franchise = getFranchiseById(id);
+        return franchise ? [franchise.currentTeamName] : [];
+      }),
+      owners: settlement.winnerFranchiseIds.flatMap((id) => {
+        const franchise = getFranchiseById(id);
+        return franchise ? franchise.activeOwnerIds.flatMap((ownerId) => {
+          const owner = getOwnerProfileById(ownerId);
+          return owner ? [owner.fullName] : [];
+        }) : [];
+      }),
+      score: settlement.highScore,
+      prizeCents: settlement.prizePerWinner,
+    }));
 }
 
 export function buildPublicPayoutHistory(

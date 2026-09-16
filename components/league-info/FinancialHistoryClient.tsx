@@ -22,6 +22,10 @@ function SummaryCard({ label, value, note }: { label: string | number; value: st
   return <div className="min-w-0 rounded-3xl border border-black/5 bg-white/70 p-5 shadow-sm dark:border-white/10 dark:bg-black/20"><p className="text-[9px] font-black uppercase tracking-[0.2em] opacity-45">{label}</p><p className="mt-2 break-words text-2xl font-black italic tracking-tighter text-emerald-600 sm:text-3xl">{value}</p>{note && <p className="mt-2 text-xs font-semibold leading-relaxed opacity-55">{note}</p>}</div>;
 }
 
+function WeeklyHighScoreSection({ awards }: { awards: PublicPayoutCurrentSeason["weeklyHighScoreAwards"] }) {
+  return <section aria-labelledby="weekly-high-score-heading" className="rounded-[2rem] border border-amber-500/25 bg-amber-500/5 p-4 dark:border-amber-400/20 dark:bg-amber-500/10 sm:p-7"><div className="mb-5 flex items-center gap-3"><Trophy className="text-amber-500" size={22} aria-hidden="true" /><div><p className="text-[9px] font-black uppercase tracking-[0.25em] text-amber-600">Settled award history</p><h2 id="weekly-high-score-heading" className="text-2xl font-black uppercase italic tracking-tighter">Weekly High-Score Winners</h2></div></div>{awards.length > 0 ? <div className="grid gap-3 sm:grid-cols-2">{awards.map((award) => <article key={award.week} className="rounded-3xl border border-amber-500/15 bg-white/70 p-4 dark:border-white/10 dark:bg-black/20"><p className="text-xs font-black uppercase tracking-widest text-amber-700 dark:text-amber-300">Week {award.week}</p><p className="mt-2 text-lg font-black uppercase italic">{award.teamNames.join(" / ") || "Team unavailable"}</p><p className="mt-1 text-xs font-black uppercase tracking-widest opacity-60">{award.owners.join(" / ") || "Owner unavailable"}</p><p className="mt-4 text-sm font-black">{award.score.toFixed(2)} · <span className="text-amber-700 dark:text-amber-300">{formatCurrencyCents(award.prizeCents)}</span></p></article>)}</div> : <p className="rounded-2xl border border-dashed border-amber-500/30 p-5 text-sm font-semibold opacity-65">No weekly high-score awards have been settled yet.</p>}</section>;
+}
+
 export default function FinancialHistoryClient({
   presentation,
   currentSeason,
@@ -45,6 +49,7 @@ export default function FinancialHistoryClient({
           <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-600">League payout structure, approved award categories, and aggregate financial history. Owner payment and settlement details remain private to authorized finance administration.</p>
         </header>
         <PublicCurrentSeasonSection currentSeason={currentSeason} />
+        <WeeklyHighScoreSection awards={currentSeason.weeklyHighScoreAwards} />
         <section aria-labelledby="overall-heading">
           <div className="mb-5 flex items-center gap-3"><Landmark className="text-emerald-600" size={22} aria-hidden="true" /><div><p className="text-[9px] font-black uppercase tracking-[0.25em] text-emerald-600">Public aggregate history</p><h2 id="overall-heading" className="text-2xl font-black uppercase italic tracking-tighter">Overall accounting</h2></div></div>
           <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">{presentation.overallSummary.map((item) => <SummaryCard key={item.label} label={item.label} value={item.kind === "currency" ? formatCurrencyCents(Math.round(item.value * 100)) : String(item.value)} note={item.note} />)}</div>

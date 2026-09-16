@@ -68,6 +68,7 @@ export default async function HomePage() {
       phase: "WEEK_ACTIVE",
       finality: { activeWeek: 1, finalizedWeek: null, finalizedWeeks: [], statCorrectionBufferWeeks: 1 },
       weeklyHighScore: [],
+      weeklyHighScorePrizeCents: null,
       playoffWeekStart: null,
       seasonType: null,
     };

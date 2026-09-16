@@ -41,7 +41,7 @@ function DashboardCard({ label, icon, children, accent = false }: DashboardCardP
                   : label === "Recent Recap" ? <FileText size={17} className="text-blue-600" /> : icon;
   return <section className={`min-w-0 rounded-2xl border bg-white p-5 shadow-sm dark:bg-[#121212] sm:p-6 md:col-span-1 lg:col-span-4 ${desktopOrder} ${accent ? "border-blue-600/60 ring-1 ring-blue-600/20" : "border-slate-900/10 dark:border-white/10"}`}>
     <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-white/60">{cardIcon && <span aria-hidden="true" className="inline-flex shrink-0">{cardIcon}</span>}<span>{label}</span></div>
-    {children}{label === "Reigning Champion" && <Link href="/history" className="mt-5 inline-flex min-h-10 items-center gap-2 text-[10px] font-black uppercase tracking-widest text-amber-700 hover:underline">View Championship History <ArrowRight size={14} /></Link>}
+    {children}{label === "WEEKLY HIGH SCORE" && <p className="mt-1 text-sm font-black uppercase tracking-widest text-amber-700 dark:text-amber-300">$10 WEEKLY WINNER</p>}{label === "Reigning Champion" && <Link href="/history" className="mt-5 inline-flex min-h-10 items-center gap-2 text-[10px] font-black uppercase tracking-widest text-amber-700 hover:underline">View Championship History <ArrowRight size={14} /></Link>}
   </section>;
 }
 
@@ -243,7 +243,7 @@ export default function HomeClient({ initialMember, initialPublishedRecap, initi
   const draftCountdownLabel = boxOneCountdown ? boxOneCountdown.reached ? "Draft window open" : `${boxOneCountdown.days}d ${boxOneCountdown.hours}h ${boxOneCountdown.minutes}m` : "Unavailable";
   const isDraftPhase = boxOneState.state === "DRAFT_UPCOMING" || boxOneState.state === "DRAFT_LIVE";
   const showDraftRecap = boxOneState.state === "POST_DRAFT_PRESEASON";
-  const liveSeasonSpotlightLabel = getWeeklySpotlightLabel(liveSeasonState.phase, liveSeasonState.weeklyHighScore.length > 0);
+  const liveSeasonSpotlightLabel = getWeeklySpotlightLabel(liveSeasonState.phase, liveSeasonState.weeklyHighScorePrizeCents !== null);
   const commissionerEyebrow = boxOneState.state === "DRAFT_UPCOMING"
     ? "2026 virtual draft"
     : boxOneState.state === "DRAFT_LIVE"

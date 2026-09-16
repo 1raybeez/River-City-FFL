@@ -14,6 +14,7 @@ export type HomeLiveSeasonState = {
   phase: "PRESEASON" | "WEEK_ACTIVE" | "PLAYOFFS" | "CHAMPIONSHIP_WEEK";
   finality: WeeklyFinality;
   weeklyHighScore: HomeWeeklyHighScoreWinner[];
+  weeklyHighScorePrizeCents: number | null;
   playoffWeekStart: number | null;
   seasonType: string | null;
 };
@@ -59,7 +60,7 @@ export async function getHomeLiveSeasonState(): Promise<HomeLiveSeasonState> {
         return [{ franchiseId, teamName: identity.currentTeamName, ownerNames: display.ownerNames.length ? display.ownerNames : [user?.display_name ?? "River City owner"], ownerPhoto: display.ownerPhoto, sleeperAvatar: sleeperAvatar(user?.avatar), points: settlement.highScore, week: settlement.week } satisfies HomeWeeklyHighScoreWinner];
       });
       if (winners.length === settlement.winnerFranchiseIds.length) {
-        return { activeWeek, phase, finality: { activeWeek, finalizedWeek: settlement.week, finalizedWeeks: [settlement.week], statCorrectionBufferWeeks: 1 }, weeklyHighScore: winners, playoffWeekStart, seasonType };
+        return { activeWeek, phase, finality: { activeWeek, finalizedWeek: settlement.week, finalizedWeeks: [settlement.week], statCorrectionBufferWeeks: 1 }, weeklyHighScore: winners, weeklyHighScorePrizeCents: settlement.prizePerWinner, playoffWeekStart, seasonType };
       }
     }
   }
@@ -72,7 +73,7 @@ export async function getHomeLiveSeasonState(): Promise<HomeLiveSeasonState> {
   }));
   const finality = resolveWeeklyFinality(activeWeek, evidence);
   if (finality.finalizedWeek === null) {
-    return { activeWeek, phase, finality, weeklyHighScore: [], playoffWeekStart, seasonType };
+    return { activeWeek, phase, finality, weeklyHighScore: [], weeklyHighScorePrizeCents: null, playoffWeekStart, seasonType };
   }
 
   const finalizedWeek = finality.finalizedWeek;
@@ -102,5 +103,5 @@ export async function getHomeLiveSeasonState(): Promise<HomeLiveSeasonState> {
     });
   const winner = selectWeeklyHighScore(candidates);
 
-  return { activeWeek, phase, finality, weeklyHighScore: winner, playoffWeekStart, seasonType };
+  return { activeWeek, phase, finality, weeklyHighScore: winner, weeklyHighScorePrizeCents: null, playoffWeekStart, seasonType };
 }

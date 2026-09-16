@@ -31,6 +31,10 @@ assert.match(home, /showDraftRecap = boxOneState\.state === "POST_DRAFT_PRESEASO
 assert.doesNotMatch(home, /showDraftRecap = liveSeasonState\.finality\.finalizedWeek === null/);
 assert.match(home, /weeklyHighScore\.length > 0/);
 assert.match(home, /getWeeklySpotlightLabel/);
+assert.match(home, /\$10 WEEKLY WINNER/);
+assert.match(home, /weeklyHighScorePrizeCents !== null/);
+assert.match(loader, /weeklyHighScorePrizeCents: settlement\.prizePerWinner/);
+assert.match(loader, /weeklyHighScorePrizeCents: null/);
 assert.match(spotlight, /"WEEKLY HIGH SCORE"/);
 assert.match(spotlight, /"2026 WEEKLY SPOTLIGHT"/);
 assert.match(spotlight, /"PLAYOFF SPOTLIGHT"/);
