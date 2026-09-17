@@ -28,6 +28,8 @@
     "home:live-season:test": "tsx scripts/home-live-season.test.ts",
     "season-simulator:capture-actuals": "tsx scripts/season-simulator-capture-actuals.ts",
     "weekly:settle": "tsx scripts/weekly-settle.ts",
+    "weekly:settle:automation": "tsx scripts/weekly-settle-automation.ts",
+    "weekly:settle:automation:test": "tsx scripts/weekly-settlement-automation.test.ts",
     "season-simulator:prerequisites:test": "tsx scripts/season-simulator-prerequisites.test.ts",
     "season-simulator:freeze-projections": "tsx scripts/season-simulator-freeze-projections.ts",
     "draft-report-v2:test": "tsx scripts/draft-report-v2.test.ts",
