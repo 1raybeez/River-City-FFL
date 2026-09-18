@@ -18,7 +18,13 @@ export async function importEvidence(options: ImportOptions) {
   const record = buildImportRecord(artifact, options);
   const objectPath = durableEvidencePath(options.season, options.week, options.kind, record.sourceChecksum);
   if (!options.execute) return { objectPath, record, writePerformed: false as const };
-  const result = await new CloudStorageImmutableEvidenceStore().create(objectPath, record);
+  const store = new CloudStorageImmutableEvidenceStore();
+  const existing = await store.read(objectPath);
+  if (existing) {
+    if (existing.kind === record.kind && existing.sourceChecksum === record.sourceChecksum && checksum(existing.payload) === checksum(record.payload)) return { objectPath, record: existing, result: "DUPLICATE" as const, writePerformed: false as const };
+    throw new Error("REFUSED: conflicting durable evidence already exists at the deterministic target.");
+  }
+  const result = await store.create(objectPath, record);
   return { objectPath, record, result, writePerformed: result === "CREATED" };
 }
 
