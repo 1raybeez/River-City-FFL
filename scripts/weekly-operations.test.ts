@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { MATCHUP_POLL_INTERVAL_MS, shouldPollMatchups } from "../lib/matchupsPolling";
 import { evaluateFreezeWindow, getApprovedFreezeWindow } from "../lib/seasonSimulator/freezeWindow";
 import { SETTLEMENT_FUNCTION_NAME, SETTLEMENT_SCHEDULE, SETTLEMENT_TIMEZONE } from "../lib/weeklyOperations";
+import { buildDurableEvidenceRecord, durableEvidencePath, MemoryImmutableEvidenceStore } from "../lib/seasonSimulator/durableEvidence";
+import { classifyWeeklyLifecycle, operationId } from "../lib/weeklyOperationsOrchestrator";
 
 assert.equal(MATCHUP_POLL_INTERVAL_MS, 60_000);
 assert.equal(shouldPollMatchups({ selectedWeek: 2, currentWeek: 2, leagueStatus: "in_season" }), true);
@@ -14,4 +16,16 @@ const window = getApprovedFreezeWindow(2026, 2)!;
 assert.equal(evaluateFreezeWindow(2026, 2, new Date("2026-09-17T14:59:59-04:00")).reason, "BEFORE_APPROVED_FREEZE_WINDOW");
 assert.equal(evaluateFreezeWindow(2026, 2, new Date("2026-09-17T15:00:00-04:00")).eligible, true);
 assert.equal(evaluateFreezeWindow(2026, 2, new Date(window.firstKickoff)).eligible, false);
-console.log("weekly operations control-plane tests passed");
+assert.equal(classifyWeeklyLifecycle({ season: 2026, week: 2, beforeFirstKickoff: false, freezeEligible: false, projectionBaselineExists: true, finalityReady: false, actualEvidenceExists: false, actualEvidencePathC: false, residualDatasetExists: false, recapDraftExists: false, recapPublished: false, settlementState: "WAITING" }).state, "WEEK_LIVE");
+assert.equal(classifyWeeklyLifecycle({ season: 2026, week: 1, beforeFirstKickoff: false, freezeEligible: false, projectionBaselineExists: false, finalityReady: true, actualEvidenceExists: true, actualEvidencePathC: true, residualDatasetExists: false, recapDraftExists: true, recapPublished: true, settlementState: "ALREADY_SETTLED" }).state, "COMPLETE");
+assert.equal(classifyWeeklyLifecycle({ season: 2026, week: 2, beforeFirstKickoff: true, freezeEligible: true, projectionBaselineExists: false, finalityReady: false, actualEvidenceExists: false, actualEvidencePathC: false, residualDatasetExists: false, recapDraftExists: false, recapPublished: false, settlementState: "WAITING" }).state, "PROJECTION_FREEZE_READY");
+assert.equal(operationId(2026, 2, "actual-capture"), "2026:week-02:actual-capture");
+(async () => {
+  const evidence = buildDurableEvidenceRecord({ season: 2026, week: 2, kind: "ACTUAL", sourceChecksum: "abc", capturedAt: "now", payload: { immutable: true } });
+  const evidencePath = durableEvidencePath(2026, 2, "ACTUAL", "abc");
+  const store = new MemoryImmutableEvidenceStore();
+  assert.equal(await store.create(evidencePath, evidence), "CREATED");
+  assert.equal(await store.create(evidencePath, evidence), "DUPLICATE");
+  await assert.rejects(() => store.create(evidencePath, { ...evidence, payload: { conflict: true }, recordChecksum: "different" }), /conflict/);
+  console.log("weekly operations control-plane tests passed");
+})().catch(error => { console.error(error); process.exitCode = 1; });
