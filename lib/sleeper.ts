@@ -3,6 +3,7 @@ import localMasterview from "@/data/auction/generated/masterview-2026.json";
 import localAdp from "@/data/auction/adp/generated/adp-consensus-2026.json";
 import localTradePlayers from "@/data/trade-analyzer/player-stats-2026.json";
 import { mergeIdentityValue } from "@/lib/identity/mergeIdentity";
+import { serverFetch } from "@/lib/serverFetch";
 
 // --- CORE CONFIGURATION ---
 export const LEAGUE_ID = "1312149033254416384"; // 2026 Season
@@ -176,7 +177,7 @@ async function sleeperFetch<T>(
   options: SleeperFetchOptions = {}
 ): Promise<T | null> {
   try {
-    const res = await fetch(url, options.fresh ? { cache: "no-store" } : { next: { revalidate: options.revalidateSeconds ?? 3600 } });
+    const res = await serverFetch(url, options);
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch (error) {

@@ -21,7 +21,7 @@ assert.equal(classifyWeeklyLifecycle({ season: 2026, week: 1, beforeFirstKickoff
 assert.equal(classifyWeeklyLifecycle({ season: 2026, week: 2, beforeFirstKickoff: true, freezeEligible: true, projectionBaselineExists: false, finalityReady: false, actualEvidenceExists: false, actualEvidencePathC: false, residualDatasetExists: false, recapDraftExists: false, recapPublished: false, settlementState: "WAITING" }).state, "PROJECTION_FREEZE_READY");
 assert.equal(operationId(2026, 2, "actual-capture"), "2026:week-02:actual-capture");
 (async () => {
-  const evidence = buildDurableEvidenceRecord({ season: 2026, week: 2, kind: "ACTUAL", sourceChecksum: "abc", capturedAt: "now", payload: { immutable: true } });
+  const evidence = buildDurableEvidenceRecord({ season: 2026, week: 2, kind: "ACTUAL", source: "fixture", sourceChecksum: "abc", capturedAt: "now", payload: { immutable: true } });
   const evidencePath = durableEvidencePath(2026, 2, "ACTUAL", "abc");
   const store = new MemoryImmutableEvidenceStore();
   assert.equal(await store.create(evidencePath, evidence), "CREATED");

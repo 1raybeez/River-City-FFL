@@ -1,6 +1,7 @@
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { logger } from "firebase-functions";
 import { runWeeklySettlementAutomation, type WeeklySettlementAutomationResult } from "../../lib/weeklySettlementAutomation";
+export { runWeeklyOperations } from "./weeklyOperations";
 
 export const SETTLE_WEEKLY_HIGH_SCORE_SCHEDULE = "15 11-15 * * 2" as const;
 export const SETTLE_WEEKLY_HIGH_SCORE_TIMEZONE = "America/New_York" as const;
