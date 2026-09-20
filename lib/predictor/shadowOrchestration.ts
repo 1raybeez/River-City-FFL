@@ -1,0 +1,7 @@
+import type { PredictorReadiness } from "./predictorContract";
+import { runCommissionerShadowSimulation, type ShadowResult } from "./shadowSimulation";
+import type { ProjectedScheduleGame, ProjectedStandingTeam } from "./projectedStandings";
+
+export type ShadowTrigger = Readonly<{ readiness: PredictorReadiness; currentResultId: string | null; inputEvidenceChecksums: readonly string[]; requestedInputEvidenceChecksums: readonly string[] }>;
+export function shouldRunShadow(input: ShadowTrigger) { if (input.readiness !== "SHADOW_READY") return { eligible: false, reason: "READINESS_NOT_SHADOW_READY" } as const; if (!input.requestedInputEvidenceChecksums.length) return { eligible: false, reason: "MISSING_INPUT_EVIDENCE" } as const; if (input.currentResultId) return { eligible: false, reason: "ALREADY_HAS_RESULT" } as const; if ([...input.inputEvidenceChecksums].sort().join("|") !== [...input.requestedInputEvidenceChecksums].sort().join("|")) return { eligible: false, reason: "INPUT_EVIDENCE_CHANGED" } as const; return { eligible: true, reason: "READY" } as const; }
+export function runShadowIfEligible(input: ShadowTrigger & { season: number; throughWeek: number; teams: readonly ProjectedStandingTeam[]; remaining: readonly ProjectedScheduleGame[]; generatedAt: string; seed?: string }): ShadowResult | null { if (!shouldRunShadow(input).eligible) return null; return runCommissionerShadowSimulation(input); }

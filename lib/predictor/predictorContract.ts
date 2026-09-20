@@ -29,6 +29,9 @@ export type PredictorCalibrationProgress = Readonly<{
   positionCoverage: Readonly<Record<string, number>>;
   bucketCoverage: Readonly<Record<string, number>>;
   latestEvidenceAt: string | null;
+  currentWeek?: number;
+  lastScoredLeg?: number | null;
+  projectedStandingsReason?: string;
   nextEvent: string;
   explanation: string;
 }>;

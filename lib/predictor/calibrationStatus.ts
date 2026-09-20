@@ -2,6 +2,7 @@ import { getLeagueInfo, getNFLState } from "@/lib/sleeper";
 import { CloudStorageImmutableEvidenceStore, listDurableEvidence, type DurableEvidenceRecord } from "@/lib/seasonSimulator/durableEvidence";
 import { APPROVED_CALIBRATION_THRESHOLDS } from "@/lib/seasonSimulator/calibrationReadiness";
 import { buildPredictorCalibrationProgress, type PredictorCalibrationProgress } from "./predictorContract";
+import { loadCanonicalLivePredictorInputs } from "./liveInputs";
 
 const SEASON = 2026;
 
@@ -24,6 +25,17 @@ export async function getPredictorCalibrationProgress(): Promise<PredictorCalibr
   const eligibleWeeks = eligibleResiduals.map(record => record.week).filter((week, index, values) => values.indexOf(week) === index).sort((a, b) => a - b);
   const readiness = playerSamples >= APPROVED_CALIBRATION_THRESHOLDS.minimumPlayerSamples && teamSamples >= APPROVED_CALIBRATION_THRESHOLDS.minimumTeamSamples ? "SHADOW_READY" : "CALIBRATING";
   const latestEvidenceAt = [...grouped.flatMap(row => [...row.projection, ...row.actual, ...row.residual])].map(record => record.capturedAt).sort().at(-1) ?? null;
+  let projectedStandingsReason = "Canonical expected team scores for the remaining schedule are not available.";
+  let liveCurrentWeek: number | undefined;
+  let liveLastScoredLeg: number | null | undefined;
+  try {
+    const live = await loadCanonicalLivePredictorInputs();
+    liveCurrentWeek = live.currentWeek;
+    liveLastScoredLeg = live.lastScoredLeg;
+    if (live.schedule.expectedScoreSource === "DURABLE_CANONICAL") projectedStandingsReason = "Canonical standings, schedule, and expected scores are ready.";
+  } catch (error) {
+    projectedStandingsReason = error instanceof Error ? `Live standings unavailable: ${error.message}` : "Live standings unavailable.";
+  }
   const positionCoverage: Record<string, number> = {};
   const bucketCoverage: Record<string, number> = {};
   for (const record of eligibleResiduals) {
@@ -49,5 +61,8 @@ export async function getPredictorCalibrationProgress(): Promise<PredictorCalibr
     positionCoverage,
     bucketCoverage,
     latestEvidenceAt,
+    currentWeek: liveCurrentWeek ?? currentWeek,
+    lastScoredLeg: liveLastScoredLeg ?? (Number.isInteger(lastScoredLeg) ? lastScoredLeg : null),
+    projectedStandingsReason,
   });
 }

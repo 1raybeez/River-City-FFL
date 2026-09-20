@@ -1,0 +1,11 @@
+import crypto from "node:crypto";
+import type { ShadowResult, ShadowResultStore } from "./shadowSimulation";
+
+export const SHADOW_BUCKET_PREFIX = "river-city/predictor/shadow" as const;
+export function shadowResultPath(result: Pick<ShadowResult, "season" | "throughWeek" | "resultId">) { return `${SHADOW_BUCKET_PREFIX}/${result.season}/week-${String(result.throughWeek).padStart(2, "0")}/${result.resultId}.json`; }
+export function shadowInputIdentity(input: Pick<ShadowResult, "season" | "throughWeek" | "simulationCount" | "inputEvidenceChecksums">) { return crypto.createHash("sha256").update(JSON.stringify({ season: input.season, throughWeek: input.throughWeek, simulationCount: input.simulationCount, inputEvidenceChecksums: [...input.inputEvidenceChecksums].sort() })).digest("hex"); }
+
+export class CloudStorageShadowResultStore implements ShadowResultStore {
+  async read(resultId: string) { const { getFirebaseStorageBucket } = await import("@/lib/firebaseAdmin"); const file = getFirebaseStorageBucket().file(`${SHADOW_BUCKET_PREFIX}/by-id/${resultId}.json`); const [exists] = await file.exists(); if (!exists) return null; return JSON.parse((await file.download())[0].toString("utf8")) as ShadowResult; }
+  async create(result: ShadowResult) { const { getFirebaseStorageBucket } = await import("@/lib/firebaseAdmin"); const file = getFirebaseStorageBucket().file(`${SHADOW_BUCKET_PREFIX}/by-id/${result.resultId}.json`); try { await file.save(JSON.stringify(result), { resumable: false, preconditionOpts: { ifGenerationMatch: 0 }, metadata: { contentType: "application/json", metadata: { schemaVersion: result.schemaVersion, inputIdentity: shadowInputIdentity(result) } } }); const stored = await this.read(result.resultId); if (!stored || JSON.stringify(stored) !== JSON.stringify(result)) throw new Error("Shadow result readback mismatch."); return "CREATED"; } catch (error) { const existing = await this.read(result.resultId); if (existing && JSON.stringify(existing) === JSON.stringify(result)) return "DUPLICATE"; if (existing) throw new Error("Shadow result conflict."); throw error; } }
+}
