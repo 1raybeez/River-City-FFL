@@ -8,6 +8,7 @@ export type ShadowValidationMetrics = Readonly<{ projectedFinishError: Readonly<
 export function validatePromotion(input: { readiness: PredictorReadiness; shadow: ShadowResult | null; approvedBy: string | null; approvedAt?: string; note?: string | null }): PromotionRecord {
   if (input.readiness !== "SHADOW_READY") throw new Error("Promotion requires SHADOW_READY readiness.");
   if (!input.shadow || input.shadow.simulationCount !== 10_000) throw new Error("Promotion requires a valid 10,000-run shadow result.");
+  if (input.shadow.varianceSource !== "CALIBRATED" || !input.shadow.varianceEvidenceIdentity) throw new Error("Promotion requires calibrated variance evidence; legacy fixture variance is not promotable.");
   if (!input.approvedBy?.trim()) throw new Error("Promotion requires commissioner approval.");
   return { schemaVersion: PROMOTION_SCHEMA, readiness: "PRODUCTION_READY", approvedBy: input.approvedBy.trim(), approvedAt: input.approvedAt ?? new Date().toISOString(), shadowResultId: input.shadow.resultId, inputEvidenceChecksums: input.shadow.inputEvidenceChecksums, note: input.note ?? null };
 }

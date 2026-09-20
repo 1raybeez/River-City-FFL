@@ -4,6 +4,7 @@ import { getPredictorCalibrationProgress } from "@/lib/predictor/calibrationStat
 import { CloudStorageShadowResultStore } from "@/lib/predictor/durableShadowStore";
 import { validatePromotion } from "@/lib/predictor/promotion";
 import { CloudStoragePromotionStore } from "@/lib/predictor/promotionStore";
+import { buildCurrentPredictorInputIdentity } from "@/lib/predictor/productionShadowPipeline";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,10 @@ export async function POST(request: Request) {
     if (!shadow) throw new Error("The requested durable shadow result does not exist.");
     const requestedChecksums = body.inputEvidenceChecksums.filter((value): value is string => typeof value === "string").sort();
     if (requestedChecksums.join("|") !== [...shadow.inputEvidenceChecksums].sort().join("|")) throw new Error("Shadow evidence checksums are stale or do not match the requested promotion.");
+    const apiKey = process.env.FANTASYPROS_API_KEY?.trim();
+    if (!apiKey) throw new Error("STALE: current canonical expected-score identity cannot be recomputed.");
+    const current = await buildCurrentPredictorInputIdentity({ now: new Date(), fantasyProsApiKey: apiKey });
+    if (current.inputEvidenceChecksums.join("|") !== [...shadow.inputEvidenceChecksums].sort().join("|")) throw new Error("STALE: current predictor inputs differ from the shadow result.");
     const promotion = validatePromotion({ readiness: progress.readiness, shadow, approvedBy: session.decodedToken.uid, note: typeof body.note === "string" ? body.note : null });
     const result = await new CloudStoragePromotionStore().create(shadow.season, promotion);
     return NextResponse.json({ promotion, persistence: result }, { status: result === "CREATED" ? 201 : 200 });

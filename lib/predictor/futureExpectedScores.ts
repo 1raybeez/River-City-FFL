@@ -24,8 +24,14 @@ export function buildFutureExpectedScores(input: { season: number; throughWeek: 
 
 export async function buildFutureExpectedScoresFromFantasyPros(input: { season: number; throughWeek: number; remaining: readonly Pick<ProjectedScheduleGame, "week" | "firstFranchiseId" | "secondFranchiseId">[]; now: Date; apiKey: string; fetchImpl?: ProjectionCandidateDependencies["fetchImpl"]; sleep?: ProjectionCandidateDependencies["sleep"] }): Promise<FutureExpectedScoreBuild> {
   const weeks = [...new Set(input.remaining.map(game => game.week))].sort((a, b) => a - b);
+  const scoreMatrix = await buildFantasyProsScoreMatrix({ ...input, weeks, franchiseIds: [...new Set(input.remaining.flatMap(game => [game.firstFranchiseId, game.secondFranchiseId]))] });
+  const scoreMap = new Map(scoreMatrix.rows.map(row => [`${row.week}:${row.franchiseId}`, row]));
+  return buildFutureExpectedScores({ season: input.season, throughWeek: input.throughWeek, remaining: input.remaining, scoreFor: (week, franchiseId) => scoreMap.get(`${week}:${franchiseId}`) ?? { season: input.season, week, franchiseId, expectedScore: null, status: "UNAVAILABLE", source: FUTURE_EXPECTED_SCORE_MODEL, sourceAsOf: null, evidenceVersion: null, reason: "NO_CANONICAL_PROJECTION_RECORD" } });
+}
+
+export async function buildFantasyProsScoreMatrix(input: { season: number; weeks: readonly number[]; franchiseIds: readonly string[]; now: Date; apiKey: string; fetchImpl?: ProjectionCandidateDependencies["fetchImpl"]; sleep?: ProjectionCandidateDependencies["sleep"] }): Promise<{ rows: readonly FutureExpectedScore[]; inputChecksum: string }> {
   const candidates = new Map<number, Awaited<ReturnType<typeof buildProjectionCandidate>>>();
-  for (const week of weeks) candidates.set(week, await buildProjectionCandidate({ season: input.season, week, now: input.now, apiKey: input.apiKey, fetchImpl: input.fetchImpl, sleep: input.sleep }));
+  for (const week of input.weeks) candidates.set(week, await buildProjectionCandidate({ season: input.season, week, now: input.now, apiKey: input.apiKey, fetchImpl: input.fetchImpl, sleep: input.sleep }));
   const rosterToFranchise = new Map(canonicalAuctionTeams.map(team => [String(team.rosterId), team.franchiseId]));
   const scoreMap = new Map<string, FutureExpectedScore>();
   for (const [week, candidate] of candidates) for (const [rosterId, raw] of Object.entries(candidate.artifact.expectedTeamScores)) {
@@ -34,7 +40,8 @@ export async function buildFutureExpectedScoresFromFantasyPros(input: { season: 
     const expectedScore = typeof value.expectedScore === "number" && Number.isFinite(value.expectedScore) ? value.expectedScore : null;
     scoreMap.set(`${week}:${franchiseId}`, { season: input.season, week, franchiseId, expectedScore, status: expectedScore === null ? "UNAVAILABLE" : "AVAILABLE", source: FUTURE_EXPECTED_SCORE_MODEL, sourceAsOf: typeof value.sourceAsOf === "string" ? value.sourceAsOf : candidate.sourceAsOf, evidenceVersion: candidate.artifact.checksum, reason: expectedScore === null ? String(value.reason ?? "EXPECTED_SCORE_UNAVAILABLE") : null });
   }
-  return buildFutureExpectedScores({ season: input.season, throughWeek: input.throughWeek, remaining: input.remaining, scoreFor: (week, franchiseId) => scoreMap.get(`${week}:${franchiseId}`) ?? { season: input.season, week, franchiseId, expectedScore: null, status: "UNAVAILABLE", source: FUTURE_EXPECTED_SCORE_MODEL, sourceAsOf: null, evidenceVersion: null, reason: "NO_CANONICAL_PROJECTION_RECORD" } });
+  const rows = input.weeks.flatMap(week => input.franchiseIds.map(franchiseId => scoreMap.get(`${week}:${franchiseId}`) ?? { season: input.season, week, franchiseId, expectedScore: null, status: "UNAVAILABLE" as const, source: FUTURE_EXPECTED_SCORE_MODEL, sourceAsOf: null, evidenceVersion: null, reason: "NO_CANONICAL_PROJECTION_RECORD" }));
+  return { rows, inputChecksum: checksum({ model: FUTURE_EXPECTED_SCORE_MODEL, season: input.season, weeks: input.weeks, rows }) };
 }
 
 export function applyFutureExpectedScores(remaining: readonly ProjectedScheduleGame[], scores: FutureExpectedScoreBuild): readonly ProjectedScheduleGame[] {

@@ -13,8 +13,8 @@ assert.equal(standings.find(team => team.franchiseId === "team-1")?.projectedTie
 assert.equal(standings.find(team => team.franchiseId === "team-1")?.tiebreakerStatus, "COMMISSIONER_PLATFORM_RESOLUTION_REQUIRED");
 assert.deepEqual(shouldRunShadow({ readiness: "CALIBRATING", currentResultId: null, inputEvidenceChecksums: ["a"], requestedInputEvidenceChecksums: ["a"] }).eligible, false);
 assert.deepEqual(shouldRunShadow({ readiness: "SHADOW_READY", currentResultId: null, inputEvidenceChecksums: ["a"], requestedInputEvidenceChecksums: ["a"] }).eligible, true);
-const shadowOne = runCommissionerShadowSimulation({ season: 2026, throughWeek: 2, teams, remaining, inputEvidenceChecksums: ["a"], generatedAt: "2026-09-20T00:00:00.000Z", seed: "stable" });
-const shadowTwo = runCommissionerShadowSimulation({ season: 2026, throughWeek: 2, teams, remaining, inputEvidenceChecksums: ["a"], generatedAt: "2026-09-21T00:00:00.000Z", seed: "stable" });
+const shadowOne = runCommissionerShadowSimulation({ season: 2026, throughWeek: 2, teams, remaining, inputEvidenceChecksums: ["a"], generatedAt: "2026-09-20T00:00:00.000Z", seed: "stable", allowLegacyFixtureVariance: true });
+const shadowTwo = runCommissionerShadowSimulation({ season: 2026, throughWeek: 2, teams, remaining, inputEvidenceChecksums: ["a"], generatedAt: "2026-09-21T00:00:00.000Z", seed: "stable", allowLegacyFixtureVariance: true });
 assert.equal(shadowOne.resultId, shadowTwo.resultId);
 assert.equal(shadowOne.simulationCount, 10_000);
 const progress = buildPredictorCalibrationProgress({ readiness: "SHADOW_READY", projectedStandingsStatus: "READY", probabilityStatus: "SHADOW_ONLY", playerSamples: 50, playerSampleTarget: 50, teamSamples: 12, teamSampleTarget: 12, eligibleWeeks: [2], excludedWeeks: [], projectionBaselines: [{ week: 2, status: "CAPTURED" }], actualEvidence: [{ week: 2, status: "WAITING" }], residualEvidence: [{ week: 2, status: "PAIRED" }], positionCoverage: {}, bucketCoverage: {}, latestEvidenceAt: "2026-09-20T00:00:00.000Z" });

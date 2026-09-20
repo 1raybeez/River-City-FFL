@@ -17,17 +17,21 @@ assert.equal(standings.length, 12);
 assert.equal(standings[0].projectedFinish, 1);
 assert.equal(standings.some(team => team.projectedWins !== team.currentWins), true);
 
-const shadow = runCommissionerShadowSimulation({ season: 2026, throughWeek: 2, teams, remaining, inputEvidenceChecksums: ["projection", "residual"], generatedAt: "2026-09-22T00:00:00.000Z", seed: "test" });
+const playoffExpectedScores = Object.fromEntries([15, 16, 17].map(week => [String(week), Object.fromEntries(teams.map(team => [team.franchiseId, 100]))]));
+const calibratedVariance = { status: "READY" as const, source: "RIVER_CITY_TEAM_RESIDUAL_BOOTSTRAP" as const, modelVersion: "river-city-variance-v1" as const, evidenceIdentity: "variance-fixture", eligibleResidualWeeks: [2], teamSampleCount: 12, models: [], sample: (score: number) => score };
+const shadow = runCommissionerShadowSimulation({ season: 2026, throughWeek: 2, teams, remaining, inputEvidenceChecksums: ["projection", "residual", "variance-fixture"], generatedAt: "2026-09-22T00:00:00.000Z", seed: "test", playoffExpectedScores, variance: calibratedVariance });
 assert.equal(shadow.simulationCount, SHADOW_SIMULATION_COUNT);
 assert.equal(shadow.teamResults.length, 12);
 assert.equal(shadow.teamResults.reduce((sum, team) => sum + team.playoffProbability, 0), 6);
-assert.equal(shadow.teamResults.reduce((sum, team) => sum + team.championshipProbability, 0), 1);
+assert.equal(shadow.teamResults.reduce((sum, team) => sum + (team.championshipProbability ?? 0), 0), 1);
 const shadowStore = new MemoryShadowResultStore();
 assert.equal(await shadowStore.create(shadow), "CREATED");
 assert.equal(await shadowStore.create(shadow), "DUPLICATE");
 const metrics = evaluateShadowAgainstActuals({ shadow, actualFinish: Object.fromEntries(teams.map((team, index) => [team.franchiseId, index + 1])), actualPlayoff: Object.fromEntries(teams.map((team, index) => [team.franchiseId, index < 6])) });
 assert.equal(metrics.evaluatedWeeks, 1);
 assert.equal(validatePromotion({ readiness: "SHADOW_READY", shadow, approvedBy: "commissioner", approvedAt: "2026-09-22T00:00:00.000Z" }).readiness, "PRODUCTION_READY");
+const legacyShadow = runCommissionerShadowSimulation({ season: 2026, throughWeek: 2, teams, remaining, inputEvidenceChecksums: ["projection"], generatedAt: "2026-09-22T00:00:00.000Z", seed: "legacy", allowLegacyFixtureVariance: true });
+assert.throws(() => validatePromotion({ readiness: "SHADOW_READY", shadow: legacyShadow, approvedBy: "commissioner" }), /calibrated variance/);
 assert.throws(() => validatePromotion({ readiness: "CALIBRATING", shadow, approvedBy: "commissioner" }), /SHADOW_READY/);
 console.log("Predictor Phase 2 tests passed.");
 }

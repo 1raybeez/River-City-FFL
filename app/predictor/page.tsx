@@ -4,7 +4,7 @@ import { anonymousCurrentMember, getCurrentMember } from "@/lib/auth/currentMemb
 import { getCanonicalPowerRankings } from "@/lib/powerRankings/canonicalPowerRankings";
 import { getPredictorCalibrationProgress } from "@/lib/predictor/calibrationStatus";
 import type { PredictorCalibrationProgress } from "@/lib/predictor/predictorContract";
-import { loadProductionPredictorOutcome } from "@/lib/predictor/productionOutcomeLoader";
+import { loadProductionPredictorOutcomeFromStorage } from "@/lib/predictor/productionOutcomeLoader";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,7 +32,7 @@ export default async function PredictorPage() {
   try { progress = await getPredictorCalibrationProgress(); } catch { progress = { readiness: "CALIBRATING", projectedStandingsStatus: "UNAVAILABLE", probabilityStatus: "CALIBRATING", playerSamples: 0, playerSampleTarget: 50, teamSamples: 0, teamSampleTarget: 12, eligibleWeeks: [], excludedWeeks: [{ week: 1, reason: "PATH C: no authoritative pregame projection baseline" }], projectionBaselines: [{ week: 1, status: "MISSING" }, { week: 2, status: "CAPTURED" }], actualEvidence: [{ week: 1, status: "CAPTURED" }, { week: 2, status: "WAITING" }], residualEvidence: [{ week: 1, status: "MISSING" }, { week: 2, status: "MISSING" }], positionCoverage: {}, bucketCoverage: {}, latestEvidenceAt: null, nextEvent: "Waiting for the next finalized Sleeper week", explanation: "Probabilities remain hidden until valid residual evidence satisfies the approved calibration policy." }; }
   const member = await getCurrentMember().catch(() => anonymousCurrentMember);
   const ownerTeam = member.authenticated && member.franchiseName ? report.teams.find((team) => team.teamName.trim().toLowerCase() === member.franchiseName?.trim().toLowerCase()) : undefined;
-  const outcome = loadProductionPredictorOutcome({ progress, production: null });
+  const outcome = await loadProductionPredictorOutcomeFromStorage({ progress, season: 2026 });
   const projectedLabel = outcome.projectedStandingsStatus === "READY" ? "Available" : "Waiting for future-week projection data";
   const probabilityLabel = outcome.readiness === "SHADOW_READY" ? "Probability model validating" : outcome.readiness === "PRODUCTION_READY" ? "Available" : "Calibrating";
   return <SiteShell activePath="/predictor"><main className="min-h-screen bg-[#f7f8fa] px-4 py-8 text-slate-950 dark:bg-[#0a0a0a] dark:text-white sm:px-6 lg:px-8"><div className="mx-auto max-w-[1600px] space-y-6">

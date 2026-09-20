@@ -9,12 +9,13 @@ export type PlayoffBracketResult = Readonly<{ status: "READY"; champion: Canonic
 function compare(a: PlayoffStandingInput, b: PlayoffStandingInput) { return b.wins - a.wins || b.pointsFor - a.pointsFor || b.pointsAgainst - a.pointsAgainst || a.teamName.localeCompare(b.teamName) || a.franchiseId.localeCompare(b.franchiseId); }
 function numericKey(team: PlayoffStandingInput) { return `${team.wins}|${team.pointsFor.toFixed(2)}|${team.pointsAgainst.toFixed(2)}`; }
 
-export function qualifyCanonicalPlayoffs(teams: readonly PlayoffStandingInput[]): PlayoffQualification {
+export function qualifyCanonicalPlayoffs(teams: readonly PlayoffStandingInput[], options: { simulationOnlyStableFranchiseFallback?: boolean } = {}): PlayoffQualification {
   if (teams.length !== 12 || new Set(teams.map(team => team.franchiseId)).size !== 12) throw new Error("Canonical playoff qualification requires exactly 12 unique teams.");
   const ordered = [...teams].sort(compare);
   const groups = [...new Set(ordered.map(numericKey))].map(key => ordered.filter(team => numericKey(team) === key));
   const unresolvedGroups = groups.filter(group => group.length > 1).map(group => group.map(team => team.franchiseId));
-  const seeds = ordered.slice(0, 6).map((team, index) => ({ ...team, seed: index + 1 }));
+  const simulationOrdered = options.simulationOnlyStableFranchiseFallback && unresolvedGroups.length ? [...teams].sort((a, b) => b.wins - a.wins || b.pointsFor - a.pointsFor || b.pointsAgainst - a.pointsAgainst || a.franchiseId.localeCompare(b.franchiseId)) : ordered;
+  const seeds = simulationOrdered.slice(0, 6).map((team, index) => ({ ...team, seed: index + 1 }));
   return { status: unresolvedGroups.length ? "COMMISSIONER_PLATFORM_RESOLUTION_REQUIRED" : "READY", seeds, unresolvedGroups, playoffTeamCount: 6, regularSeasonEndWeek: 14, tiebreakers: RIVER_CITY_2026_RULES.regularSeasonTiebreakers };
 }
 
