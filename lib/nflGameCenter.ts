@@ -1,4 +1,4 @@
-import { EspnNflScheduleAdapter, type NflKickoff, type NflGameStatus } from "@/lib/nflKickoffSchedule";
+import { EspnNflScheduleAdapter, type NflKickoff, type NflGameStatus, type NflKickoffSchedule } from "@/lib/nflKickoffSchedule";
 import type { TeamCode } from "@/lib/types/Manager";
 
 export type HomeNflGameCard = Readonly<{
@@ -131,7 +131,7 @@ export function buildNflGameCenterState(games: readonly NflKickoff[], favoriteTe
   return { card: card ? toPresentation(card, favoriteTeam) : null, unavailable: false, season: now.getUTCFullYear(), week: games[0]?.week ?? null };
 }
 
-export async function getHomeNflGameCenter({ favoriteTeam, now = new Date(), adapter = new EspnNflScheduleAdapter() }: { favoriteTeam?: TeamCode | null; now?: Date; adapter?: EspnNflScheduleAdapter } = {}): Promise<NflGameCenterState> {
+export async function getHomeNflGameCenter({ favoriteTeam, now = new Date(), adapter = new EspnNflScheduleAdapter() }: { favoriteTeam?: TeamCode | null; now?: Date; adapter?: NflKickoffSchedule } = {}): Promise<NflGameCenterState> {
   const week = resolveNflWeek(now);
   const season = now.getUTCFullYear();
   if (!week) return { card: null, unavailable: false, season, week: null };

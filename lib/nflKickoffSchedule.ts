@@ -28,7 +28,7 @@ export class KickoffScheduleUnavailableError extends Error {}
 export function resolveFirstKickoff(games: readonly NflKickoff[]): NflKickoff {
   if (games.length === 0) throw new KickoffScheduleUnavailableError("No authoritative NFL schedule games are available.");
   const timestamps = games.map(game => Date.parse(game.kickoffAt));
-  if (timestamps.some(Number.isNaN) || new Set(timestamps).size !== timestamps.length) throw new KickoffScheduleUnavailableError("NFL kickoff schedule is malformed or ambiguous.");
+  if (timestamps.some(Number.isNaN)) throw new KickoffScheduleUnavailableError("NFL kickoff schedule is malformed or ambiguous.");
   const index = timestamps.indexOf(Math.min(...timestamps));
   return games[index];
 }
