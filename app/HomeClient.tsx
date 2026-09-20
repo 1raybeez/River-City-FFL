@@ -20,6 +20,7 @@ import type { HomeLiveSeasonState } from "@/lib/home/liveSeasonState";
 import { getWeeklySpotlightLabel } from "@/lib/home/weeklySpotlight";
 import type { WeeklyLeagueRecap } from "@/lib/weeklyRecapPublication";
 import type { NflGameCenterState } from "@/lib/nflGameCenter";
+import type { PredictorCalibrationProgress } from "@/lib/predictor/predictorContract";
 
 const RECAP_LOADING_TEXT = "Loading latest league note...";
 const RECAP_FALLBACK_TEXT = "Commish recap could not be loaded. Check back soon for the latest league update.";
@@ -140,6 +141,7 @@ export default function HomeClient({ initialMember, initialPublishedRecap, initi
   const [predictorTeams, setPredictorTeams] = useState<CanonicalPowerRankings["teams"]>([]);
   const [loadingPredictor, setLoadingPredictor] = useState(true);
   const [predictorError, setPredictorError] = useState<string | null>(null);
+  const [predictorProgress, setPredictorProgress] = useState<PredictorCalibrationProgress | null>(null);
   const [selectedManagerId, setSelectedManagerId] = useState("");
   const [rsvpList, setRsvpList] = useState<any[]>([]);
   const [isSubmittingRsvp, setIsSubmittingRsvp] = useState(false);
@@ -194,11 +196,12 @@ export default function HomeClient({ initialMember, initialPublishedRecap, initi
 
     async function loadPredictorData() {
       try {
-        const response = await fetch("/api/power-rankings");
+        const [response, statusResponse] = await Promise.all([fetch("/api/power-rankings"), fetch("/api/predictor/status", { cache: "no-store" })]);
         if (!response.ok) throw new Error("Power rankings data could not be loaded.");
         const payload = await response.json();
         if (!Array.isArray(payload.teams) || payload.teams.length === 0) throw new Error("Power rankings data could not be loaded.");
         setPredictorTeams(payload.teams);
+        if (statusResponse.ok) setPredictorProgress(await statusResponse.json() as PredictorCalibrationProgress);
       } catch (error) {
         console.error(error);
         setPredictorError("Power rankings data could not be loaded.");
@@ -212,6 +215,20 @@ export default function HomeClient({ initialMember, initialPublishedRecap, initi
       unsubscribe?.();
     };
   }, [initialPublishedRecap, showRsvp]);
+
+  useEffect(() => {
+    let active = true;
+    const refreshPredictorStatus = async () => {
+      try {
+        const response = await fetch("/api/predictor/status", { cache: "no-store" });
+        if (active && response.ok) setPredictorProgress(await response.json() as PredictorCalibrationProgress);
+      } catch {
+        // Keep the last factual status visible when the read-only status route is unavailable.
+      }
+    };
+    const interval = window.setInterval(refreshPredictorStatus, 300_000);
+    return () => { active = false; window.clearInterval(interval); };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -289,7 +306,7 @@ export default function HomeClient({ initialMember, initialPublishedRecap, initi
         </DashboardCard>}
       </section>
       <section className="contents" aria-label="League activity and finance">
-        <DashboardCard label="Predictor" icon={<TrendingUp size={17} className="text-blue-600" />}><h2 className="mt-5 text-2xl font-black uppercase italic leading-none">What Are My Chances?</h2><p className="mt-4 text-sm leading-6 text-slate-600 dark:text-white/60">Simulate the season to see projected standings, playoff odds, and championship odds.</p><div className="mt-5 grid grid-cols-1 gap-2 text-xs"><MiniStat label="Projected Standings" value="Calibrating" /><MiniStat label="Playoff Odds" value="Calibrating" /><MiniStat label="Championship Odds" value="Calibrating" /></div><p className="mt-4 rounded-lg bg-slate-100 p-3 text-[10px] leading-4 text-slate-500 dark:bg-white/5 dark:text-white/55">Season projections are being calibrated with real projection-vs-actual evidence.</p><Link href="/predictor" className="mt-5 inline-flex min-h-10 items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-700">Open Predictor <ArrowRight size={14} /></Link></DashboardCard>
+        <DashboardCard label="Predictor" icon={<TrendingUp size={17} className="text-blue-600" />}><h2 className="mt-5 text-2xl font-black uppercase italic leading-none">What Are My Chances?</h2><p className="mt-4 text-sm leading-6 text-slate-600 dark:text-white/60">{predictorProgress?.readiness === "SHADOW_READY" ? "Projected standings are available while probability output is validated privately." : "Season projections are being calibrated with real projection-vs-actual evidence."}</p><div className="mt-5 grid grid-cols-2 gap-2 text-xs"><MiniStat label="Projection Baseline" value={predictorProgress?.projectionBaselines.find(row => row.week === 2)?.status === "CAPTURED" ? "Week 2 · Captured" : "Waiting"} /><MiniStat label="Player Samples" value={`${predictorProgress?.playerSamples ?? 0} / 50`} /><MiniStat label="Team Samples" value={`${predictorProgress?.teamSamples ?? 0} / 12`} /><MiniStat label="Eligible Weeks" value={String(predictorProgress?.eligibleWeeks.length ?? 0)} /></div><p className="mt-4 rounded-lg bg-slate-100 p-3 text-[10px] leading-4 text-slate-500 dark:bg-white/5 dark:text-white/55"><strong>Next:</strong> {predictorProgress?.nextEvent ?? "Loading calibration status..."}<br /><strong>Status:</strong> {predictorProgress?.readiness ?? "CALIBRATING"}</p><Link href="/predictor" className="mt-5 inline-flex min-h-10 items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-700">Open Predictor <ArrowRight size={14} /></Link></DashboardCard>
         <DashboardCard label="2026 Power Rankings" icon={<TrendingUp size={17} className="text-fuchsia-600" />}><p className="mt-4 text-xs text-slate-500 dark:text-white/55">Current roster-strength ranking.</p><div className="mt-5 space-y-2">{loadingPredictor ? <p className="text-xs font-bold text-slate-500">Loading rankings...</p> : predictorError ? <p className="text-xs font-bold text-red-600">{predictorError}</p> : predictorTeams.length === 0 ? <p className="text-xs font-bold text-slate-500">Power rankings unavailable.</p> : getHomePowerRankingTeams(predictorTeams).map((team) => <Link key={team.franchiseId} href="/power-rankings" className="flex min-w-0 items-center justify-between border-b border-slate-900/10 py-2 text-sm dark:border-white/10"><span className="min-w-0 truncate font-bold"><span className="mr-3 text-xs text-slate-400">#{team.leagueRelativeRank}</span>{team.teamName}</span><span className="ml-3 shrink-0 text-[9px] font-black uppercase tracking-widest text-fuchsia-600">{team.tier}</span></Link>)}</div><p className="mt-4 rounded-lg bg-slate-100 p-3 text-[10px] leading-4 text-slate-500 dark:bg-white/5 dark:text-white/55">This uses the preseason-strength-v1 model on current rosters. It is not a projected record or win probability.</p><Link href="/power-rankings" className="mt-5 inline-flex min-h-10 items-center gap-2 text-[10px] font-black uppercase tracking-widest text-fuchsia-600">View Full Power Rankings <ArrowRight size={14} /></Link></DashboardCard>
         <DashboardCard label="2026 Matchups" accent><h2 className="mt-8 text-3xl font-black uppercase italic leading-none">Follow Every Matchup</h2><p className="mt-5 text-sm leading-6 text-slate-600 dark:text-white/60">See weekly head-to-heads, starting lineups, projected scores, Series History, and the playoff bracket.</p><Link href="/matchups" className="mt-7 inline-flex min-h-11 items-center gap-2 rounded-lg bg-blue-700 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition hover:bg-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700">Open 2026 Matchups <ArrowRight size={14} /></Link><div className="mt-8 text-center text-5xl font-black italic text-blue-700/15" aria-hidden="true">VS</div></DashboardCard>
         <DashboardCard label="Legislative Hub" icon={<Gavel size={17} className="text-orange-600" />}><h2 className="mt-5 text-2xl font-black uppercase italic leading-none">Shape League Rules</h2><p className="mt-4 text-sm leading-6 text-slate-600 dark:text-white/60">Submit league proposals, follow meeting business, and vote when the chamber is open.</p><Link href="/league-info/legislative" className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-lg bg-orange-600 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition hover:bg-orange-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600">Open Legislative Hub <ArrowRight size={14} /></Link></DashboardCard>
