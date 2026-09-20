@@ -6,11 +6,12 @@ export const SHADOW_SIMULATION_COUNT = SIMULATION_COUNTS.commissionerShadow;
 export const SHADOW_RESULT_SCHEMA = "river-city-predictor-shadow-v1" as const;
 export type ShadowTeamResult = Readonly<{ franchiseId: string; teamName: string; projectedWins: number; projectedLosses: number; projectedFinish: number; playoffProbability: number; championshipProbability: number; averagePoints: number; simulationDiagnostics: Readonly<{ winCount: number; playoffCount: number; championshipCount: number }> }>;
 export type ShadowResult = Readonly<{ schemaVersion: typeof SHADOW_RESULT_SCHEMA; season: number; throughWeek: number; generatedAt: string; simulationCount: number; inputEvidenceChecksums: readonly string[]; readinessState: "SHADOW_READY"; teamResults: readonly ShadowTeamResult[]; resultId: string }>;
-export type ShadowResultStore = { read(resultId: string): Promise<ShadowResult | null>; create(result: ShadowResult): Promise<"CREATED" | "DUPLICATE"> };
+export type ShadowResultStore = { read(resultId: string): Promise<ShadowResult | null>; create(result: ShadowResult): Promise<"CREATED" | "DUPLICATE">; findByInput(input: Pick<ShadowResult, "season" | "throughWeek" | "simulationCount" | "inputEvidenceChecksums">): Promise<ShadowResult | null> };
 
 export class MemoryShadowResultStore implements ShadowResultStore {
   private readonly results = new Map<string, ShadowResult>();
   async read(resultId: string) { return this.results.get(resultId) ?? null; }
+  async findByInput(input: Pick<ShadowResult, "season" | "throughWeek" | "simulationCount" | "inputEvidenceChecksums">) { return [...this.results.values()].find(result => result.season === input.season && result.throughWeek === input.throughWeek && result.simulationCount === input.simulationCount && [...result.inputEvidenceChecksums].sort().join("|") === [...input.inputEvidenceChecksums].sort().join("|")) ?? null; }
   async create(result: ShadowResult) {
     const existing = this.results.get(result.resultId);
     if (existing) {

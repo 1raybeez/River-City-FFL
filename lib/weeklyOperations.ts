@@ -6,6 +6,7 @@ import { listPublishedWeeklyRecaps } from "@/lib/weeklyRecapPublication";
 import { getLeagueInfo, getMatchups, getNFLState, LEAGUE_ID } from "@/lib/sleeper";
 import { MATCHUP_POLL_INTERVAL_MS } from "@/lib/matchupsPolling";
 import { canonicalAuctionTeams } from "@/lib/auction/canonicalTeamCatalog";
+import { getPredictorCalibrationProgress } from "@/lib/predictor/calibrationStatus";
 
 export const OPERATIONS_SEASON = 2026;
 export const SETTLEMENT_FUNCTION_NAME = "settleWeeklyHighScore";
@@ -25,7 +26,7 @@ export type WeeklyOperationsSnapshot = {
   actuals: { week: number; status: string; path: string | null; playerRows: number; teamRows: number; calibration: string; message: string };
   postFinality: { residual: string; calibration: string; recapDraft: string; message: string };
   freeze: { week: number; status: string; statusLevel: OperationStatus; windowOpen: string | null; firstKickoff: string | null; command: string; message: string };
-  predictor: { status: string; baselineWeek1: boolean; actualWeek1: boolean; residualWeek1: boolean; baselineWeek2: boolean; actualWeek2: boolean; message: string };
+  predictor: { status: string; readiness: string; shadowStatus: string; baselineWeek1: boolean; actualWeek1: boolean; residualWeek1: boolean; baselineWeek2: boolean; actualWeek2: boolean; message: string };
   health: { headline: string; lifecycle: string; actionRequired: boolean; durableEvidence: string; scheduler: string };
   issues: WeeklyOperationIssue[]; checklist: Array<{ status: OperationStatus; label: string; detail: string; command?: string }>;
 };
@@ -59,6 +60,7 @@ export async function buildWeeklyOperationsSnapshot(now = new Date()): Promise<W
     getMatchups(currentWeekValue, LEAGUE_ID),
     listWeeklyHighScoreSettlements(OPERATIONS_SEASON), listPublishedWeeklyRecaps(OPERATIONS_SEASON), actualArtifact(1), authoritativeProjectionArtifact(2),
   ]);
+  const predictorProgress = await getPredictorCalibrationProgress().catch(() => null);
   const currentWeek = Number.isInteger(state.week) ? state.week : null;
   const displayWeek = Number.isInteger((state as { display_week?: number }).display_week) ? (state as { display_week?: number }).display_week! : null;
   const lastScoredLeg = typeof league.settings?.last_scored_leg === "number" ? league.settings.last_scored_leg : null;
@@ -82,7 +84,7 @@ export async function buildWeeklyOperationsSnapshot(now = new Date()): Promise<W
     actuals: { week: 1, status: artifact ? "CAPTURED" : "READY TO CAPTURE", path: artifact?.file ?? null, playerRows: Array.isArray(artifact?.data.playerActuals) ? artifact!.data.playerActuals.length : 0, teamRows: Array.isArray(artifact?.data.matchupResults) ? artifact!.data.matchupResults.length : 0, calibration: artifact?.data.calibrationEligibility === "INELIGIBLE_PATH_C" ? "INELIGIBLE / PATH C" : "UNKNOWN", message: artifact ? "Week 1 actual player and team evidence exists; it cannot form a residual calibration pair." : "Capture is read-only/dry-run capable; use the command below only when authorized." },
     postFinality: { residual: artifact?.data.calibrationEligibility === "INELIGIBLE_PATH_C" ? "NOT APPLICABLE / PATH C" : "WAITING", calibration: "CALIBRATING", recapDraft: recap ? "PUBLISHED RECAP EXISTS" : finalizedWeek ? "REVIEW DRAFT PENDING" : "NOT_READY", message: artifact?.data.calibrationEligibility === "INELIGIBLE_PATH_C" ? "Week 1 is protected: no reconstructed projection, residual, or calibration pair is permitted." : "Finalized weeks progress automatically; editorial recap publication remains manual." },
     freeze: { week: 2, status: baseline ? "COMPLETE" : freezeDecision.eligible ? "READY TO FREEZE" : freezeDecision.reason === "BEFORE_APPROVED_FREEZE_WINDOW" ? "NOT OPEN" : "CLOSED / NOT ELIGIBLE", statusLevel: baseline ? "GREEN" : freezeDecision.eligible ? "BLUE" : "YELLOW", windowOpen: freezeWindow?.windowOpen ?? null, firstKickoff: freezeWindow?.firstKickoff ?? null, command: PROJECTION_FREEZE_COMMAND, message: baseline ? `Authoritative baseline recognized: ${baseline.file}` : freezeDecision.eligible ? "Window is open, but this control plane never runs the freeze." : "No authoritative Week 2 baseline currently exists; the Sep 11 diagnostic remains non-authoritative." },
-    predictor: { status: "CALIBRATING", baselineWeek1: false, actualWeek1: Boolean(artifact), residualWeek1: false, baselineWeek2: Boolean(baseline), actualWeek2: false, message: "Week 1 PATH C actuals are historical-only. Week 2 probabilities remain gated until valid residual evidence exists." },
+    predictor: { status: predictorProgress?.readiness ?? "CALIBRATING", readiness: predictorProgress?.readiness ?? "CALIBRATING", shadowStatus: predictorProgress?.readiness === "SHADOW_READY" ? "10,000-run validation ready/current" : predictorProgress?.readiness === "PRODUCTION_READY" ? "PRODUCTION READY" : "No shadow result eligible", baselineWeek1: false, actualWeek1: Boolean(artifact), residualWeek1: false, baselineWeek2: Boolean(baseline), actualWeek2: false, message: predictorProgress?.projectedStandingsReason ?? "Week 1 PATH C actuals are historical-only. Week 2 probabilities remain gated until valid residual evidence exists." },
     health: { headline: "ALL SYSTEMS GREEN", lifecycle, actionRequired: false, durableEvidence: "DESIGN READY · PRODUCTION STORAGE NOT YET ACTIVATED", scheduler: `${SETTLEMENT_FUNCTION_NAME} configured · ${SETTLEMENT_SCHEDULE} · ${SETTLEMENT_TIMEZONE}` },
     issues, checklist: [
       { status: currentComplete ? "GREEN" : "GREEN", label: "Monitor current Matchups", detail: currentComplete ? "Final scores are available; polling is off." : "Week 2 is provisional and polling is configured." },

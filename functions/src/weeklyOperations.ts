@@ -11,6 +11,8 @@ import { buildRunRecord } from "../../lib/weeklyOperationsOrchestrator";
 import { runPostFinalityAutomation } from "../../lib/weeklyPostFinality";
 import { CloudStorageCalibrationReadinessStore } from "../../lib/seasonSimulator/calibrationReadiness";
 import { CloudStorageRecapDraftStore } from "../../lib/weeklyRecapDraft";
+import { CloudStorageShadowResultStore } from "../../lib/predictor/durableShadowStore";
+import { runProductionShadowPipeline } from "../../lib/predictor/productionShadowPipeline";
 
 export const WEEKLY_OPERATIONS_SCHEDULE = "0 * * * *" as const;
 export const WEEKLY_OPERATIONS_TIMEZONE = "America/New_York" as const;
@@ -61,6 +63,10 @@ export async function executeWeeklyOperations(now = new Date(), apiKey = fantasy
       const postOperation = buildRunRecord({ season, week: finalizedWeek, operation: "POST_FINALITY", result: postFinality.state, startedAt: now.toISOString(), completedAt: new Date().toISOString(), retryCount: 0, error: postFinality.reason });
       await new FirestoreWeeklyOperationRunStore().create({ ...postOperation, schemaVersion: "river-city-weekly-operation-run-v1", writePerformed: postFinality.writePerformed, sourceAsOf: postFinality.actual?.finalizedAt ?? null, evidenceChecksums: [postFinality.actual?.actualInputChecksum, postFinality.residual?.diagnostics.checksum, postFinality.draft?.draftChecksum].filter((value): value is string => Boolean(value)), issueCodes: postFinality.reason ? [postFinality.state] : [], recommendedAction: postFinality.reason, schedulerInvocationId: invocationId });
     }
+  }
+  if (apiKey.trim()) {
+    const shadow = await runProductionShadowPipeline({ now, fantasyProsApiKey: apiKey, shadowStore: new CloudStorageShadowResultStore() });
+    logger.info("River City predictor shadow pipeline", { state: shadow.state, reason: shadow.reason ?? null, resultId: shadow.resultId ?? null });
   }
   return result;
 }
