@@ -26,6 +26,7 @@
     "start": "next start",
     "lint": "eslint",
     "home:live-season:test": "tsx scripts/home-live-season.test.ts",
+    "nfl:game-center:test": "tsx scripts/nfl-game-center.test.ts",
     "season-simulator:capture-actuals": "tsx scripts/season-simulator-capture-actuals.ts",
     "weekly:settle": "tsx scripts/weekly-settle.ts",
     "weekly:settle:automation": "tsx scripts/weekly-settle-automation.ts",

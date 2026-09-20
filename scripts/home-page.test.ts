@@ -7,8 +7,8 @@ const wrapper = readFileSync("app/page.tsx", "utf8");
 const publicFinanceRoute = readFileSync("app/api/public-finance/summary/route.ts", "utf8");
 
 assert.match(page, /2026 Power Rankings/);
-assert.doesNotMatch(page, /Championship Odds/);
-assert.match(page, /Power rankings currently reflect preseason roster strength/);
+assert.match(page, /Championship Odds/);
+assert.match(page, /Current roster-strength ranking/);
 assert.match(page, /href="\/predictor"/);
 assert.match(page, /Open 2026 Matchups/);
 assert.match(page, /href="\/matchups"/);
@@ -26,12 +26,11 @@ assert.doesNotMatch(page, /amountOwedCents|paymentHandle|paymentTimestamp|venmo|
 assert.match(page, /aria-label="Close league history"/);
 assert.match(page, /aria-label="Close commissioner briefing"/);
 assert.match(page, /role="dialog" aria-modal="true"/);
-assert.match(page, /Commissioner Corner/);
+assert.match(page, /NFL Game Center/);
+assert.match(wrapper, /getHomeNflGameCenter/);
 assert.doesNotMatch(page, /2026 public draft status/);
-assert.match(page, /2026 virtual draft/);
-assert.match(page, /Virtual Draft HQ/);
+assert.match(page, /api\/nfl-game-center/);
 assert.doesNotMatch(page, /Aug 22|Keepers lock by|authorized-only|available to all managers/i);
-assert.match(page, /Keepers remain editable until the draft begins/);
 assert.match(page, /Join Google Meet/);
 assert.match(page, /meetLink/);
 assert.match(page, /OPEN YOUR WAR ROOM|Open Your War Room/);

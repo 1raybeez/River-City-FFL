@@ -1,9 +1,10 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { ArrowRight, BarChart3, Calendar, CalendarDays, DollarSign, FileText, Gavel, Megaphone, Menu, MessageCircle, SlidersHorizontal, Swords, Target, Trophy, TrendingUp, X } from "lucide-react";
+import { ArrowRight, BarChart3, Calendar, CalendarDays, DollarSign, FileText, Gavel, Menu, MessageCircle, SlidersHorizontal, Swords, Target, Trophy, TrendingUp, X } from "lucide-react";
 import { SignOutControl } from "@/components/SiteShell";
 import OwnerFeedbackFooter from "@/components/OwnerFeedbackFooter";
 import MemberAccountMenu from "@/components/MemberAccountMenu";
@@ -18,19 +19,18 @@ import { getHomePowerRankingTeams, type CanonicalPowerRankings } from "@/lib/pow
 import type { HomeLiveSeasonState } from "@/lib/home/liveSeasonState";
 import { getWeeklySpotlightLabel } from "@/lib/home/weeklySpotlight";
 import type { WeeklyLeagueRecap } from "@/lib/weeklyRecapPublication";
+import type { NflGameCenterState } from "@/lib/nflGameCenter";
 
 const RECAP_LOADING_TEXT = "Loading latest league note...";
 const RECAP_FALLBACK_TEXT = "Commish recap could not be loaded. Check back soon for the latest league update.";
-const PUBLIC_AUCTION_VALUE_STATUS = "Values ready";
-const PUBLIC_ADP_STATUS = "ADP ready";
 const managers = RSVP_ATTENDEES.map((attendee) => [attendee.name, attendee.id] as const);
 
 type DashboardCardProps = { label: string; icon?: ReactNode; children: ReactNode; accent?: boolean };
 
 function DashboardCard({ label, icon, children, accent = false }: DashboardCardProps) {
   if (label === "League History") return null;
-  const desktopOrder = { "Commissioner Corner": "lg:order-1", "Reigning Champion": "lg:order-2", "2026 WEEKLY SPOTLIGHT": "lg:order-3", "WEEKLY HIGH SCORE": "lg:order-3", "PLAYOFF SPOTLIGHT": "lg:order-3", "CHAMPIONSHIP SPOTLIGHT": "lg:order-3", "2026 Power Rankings": "lg:order-4", "2026 Matchups": "lg:order-5", Predictor: "lg:order-6", "Legislative Hub": "lg:order-7", "2026 Payouts": "lg:order-8", "Recent Recap": "lg:order-9" }[label] ?? "";
-  const cardIcon = label === "Commissioner Corner" ? <Megaphone size={17} className="text-orange-600" />
+  const desktopOrder = { "NFL Game Center": "lg:order-1", "Reigning Champion": "lg:order-2", "2026 WEEKLY SPOTLIGHT": "lg:order-3", "WEEKLY HIGH SCORE": "lg:order-3", "PLAYOFF SPOTLIGHT": "lg:order-3", "CHAMPIONSHIP SPOTLIGHT": "lg:order-3", "2026 Power Rankings": "lg:order-4", "2026 Matchups": "lg:order-5", Predictor: "lg:order-6", "Legislative Hub": "lg:order-7", "2026 Payouts": "lg:order-8", "Recent Recap": "lg:order-9" }[label] ?? "";
+  const cardIcon = label === "NFL Game Center" ? <Calendar size={17} className="text-orange-600" />
     : label === "Reigning Champion" ? <Trophy size={17} className="text-amber-500" />
       : label.includes("SPOTLIGHT") ? <Target size={17} className="text-orange-600" />
         : label === "2026 Power Rankings" ? <BarChart3 size={17} className="text-fuchsia-600" />
@@ -126,7 +126,7 @@ function useModalFocusTrap(
   }, [dialogRef, open, triggerRef]);
 }
 
-export default function HomeClient({ initialMember, initialPublishedRecap, initialPublishedWeeklyRecap, initialBoxOneState, initialLiveSeasonState }: { initialMember: CurrentMember; initialPublishedRecap: PublicLeagueRecap | null; initialPublishedWeeklyRecap: WeeklyLeagueRecap | null; initialBoxOneState: BoxOneState; initialLiveSeasonState: HomeLiveSeasonState }) {
+export default function HomeClient({ initialMember, initialPublishedRecap, initialPublishedWeeklyRecap, initialBoxOneState, initialLiveSeasonState, initialNflGameCenter }: { initialMember: CurrentMember; initialPublishedRecap: PublicLeagueRecap | null; initialPublishedWeeklyRecap: WeeklyLeagueRecap | null; initialBoxOneState: BoxOneState; initialLiveSeasonState: HomeLiveSeasonState; initialNflGameCenter: NflGameCenterState }) {
   const [showRecap, setShowRecap] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const recapTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -155,6 +155,7 @@ export default function HomeClient({ initialMember, initialPublishedRecap, initi
   const [countdownNow, setCountdownNow] = useState<Date | null>(null);
   const boxOneState = initialBoxOneState;
   const liveSeasonState = initialLiveSeasonState;
+  const [nflGameCenter, setNflGameCenter] = useState(initialNflGameCenter);
   const showRsvp = boxOneState.state === "DRAFT_UPCOMING";
   const boxOneCountdown = formatCountdown(boxOneState, countdownNow);
 
@@ -213,6 +214,22 @@ export default function HomeClient({ initialMember, initialPublishedRecap, initi
   }, [initialPublishedRecap, showRsvp]);
 
   useEffect(() => {
+    let active = true;
+    const refresh = async () => {
+      try {
+        const response = await fetch("/api/nfl-game-center", { cache: "no-store" });
+        if (!response.ok) return;
+        const next = await response.json() as NflGameCenterState;
+        if (active) setNflGameCenter(next);
+      } catch {
+        // Keep the last successful card visible when the provider is unavailable.
+      }
+    };
+    const interval = window.setInterval(refresh, 60_000);
+    return () => { active = false; window.clearInterval(interval); };
+  }, []);
+
+  useEffect(() => {
     if (boxOneState.state !== "DRAFT_UPCOMING" && boxOneState.state !== "POST_DRAFT_PRESEASON") {
       setCountdownNow(null);
       return;
@@ -244,23 +261,6 @@ export default function HomeClient({ initialMember, initialPublishedRecap, initi
   const isDraftPhase = boxOneState.state === "DRAFT_UPCOMING" || boxOneState.state === "DRAFT_LIVE";
   const showDraftRecap = boxOneState.state === "POST_DRAFT_PRESEASON";
   const liveSeasonSpotlightLabel = getWeeklySpotlightLabel(liveSeasonState.phase, liveSeasonState.weeklyHighScorePrizeCents !== null);
-  const commissionerEyebrow = boxOneState.state === "DRAFT_UPCOMING"
-    ? "2026 virtual draft"
-    : boxOneState.state === "DRAFT_LIVE"
-      ? "Live draft operations"
-      : boxOneState.state === "POST_DRAFT_PRESEASON"
-        ? "2026 season preview"
-        : boxOneState.state === "SEASON_LIVE"
-          ? "2026 season"
-          : "League update";
-  const commissionerTitle = isDraftPhase ? "Virtual Draft HQ" : boxOneState.state === "DATA_UNAVAILABLE" ? "League Update Center" : "River City Season Hub";
-  const commissionerDescription = boxOneState.state === "DRAFT_UPCOMING"
-    ? "Draft day is virtual. Keepers remain editable until the draft begins."
-    : boxOneState.state === "DRAFT_LIVE"
-      ? "The live draft is underway. Use the operational tools for draft-day context."
-      : boxOneState.state === "DATA_UNAVAILABLE"
-        ? "Draft and season status are temporarily unavailable."
-        : "The 2026 draft is complete. Follow season coverage and league updates here.";
   const historyFinanceText = publicFinance
     ? `For 2026, the public finance summary reports a championship allocation of ${publicFinance.championshipAllocation ?? "—"} and projected champion cash of ${publicFinance.projectedChampionCash ?? "—"}.`
     : "Current 2026 finance details are temporarily unavailable.";
@@ -282,7 +282,7 @@ export default function HomeClient({ initialMember, initialPublishedRecap, initi
     <main className="mx-auto grid max-w-7xl gap-5 px-4 pb-12 sm:px-6 md:grid-cols-2 lg:grid-cols-12 lg:px-8" aria-label="Home dashboard">
       <section className="contents" aria-label="Primary season status">
         {boxOneState.state === "DRAFT_UPCOMING" && <><DashboardCard label="2026 League Event" icon={<CalendarDays size={17} className="text-orange-600" />}><h2 className="mt-5 text-2xl font-black uppercase italic leading-none">{boxOneState.title}</h2><p className="mt-4 text-sm font-semibold">{draftDateTime?.date ?? "Draft date unavailable"}</p><p className="mt-1 text-sm text-slate-500 dark:text-white/55">{draftDateTime?.time ?? "Draft time unavailable"} · Location TBD</p><div className="mt-5"><MiniStat label="Draft countdown" value={draftCountdownLabel} /></div><div className="mt-6 flex flex-col gap-3"><select aria-label="Select your name for RSVP" className="min-h-11 w-full rounded-lg border border-slate-900/10 bg-white px-3 text-xs font-bold dark:border-white/10 dark:bg-black/20" value={selectedManagerId} onChange={(e) => setSelectedManagerId(e.target.value)}><option value="">Select your name</option>{managers.map(([name, id]) => <option key={id} value={id}>{name}</option>)}</select><button type="button" onClick={handleRsvp} disabled={!selectedManagerId || hasSelectedRsvp || isSubmittingRsvp} className="min-h-11 rounded-lg bg-emerald-600 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-emerald-500 disabled:opacity-50">{hasSelectedRsvp ? "Attendance Confirmed" : `${rsvpList.length} confirmed · Confirm attendance`}</button><div className="flex flex-wrap items-center justify-center gap-3">{event.gCalLink && <a href={event.gCalLink} target="_blank" rel="noopener noreferrer" className="min-h-10 px-2 py-2 text-center text-[10px] font-black uppercase tracking-widest text-orange-600 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-600">View calendar invite</a>}{event.meetLink && <a href={event.meetLink} target="_blank" rel="noopener noreferrer" className="min-h-10 px-2 py-2 text-center text-[10px] font-black uppercase tracking-widest text-blue-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700">Join Google Meet</a>}</div></div></DashboardCard></>}
-        <DashboardCard label="Commissioner Corner" icon={<MessageCircle size={17} className="text-blue-600" />}><p className="mt-5 text-[10px] font-black uppercase tracking-widest text-blue-600">{commissionerEyebrow}</p><h2 className="mt-2 text-2xl font-black uppercase italic leading-none">{commissionerTitle}</h2><div className="mt-5 grid grid-cols-2 gap-2 text-xs">{isDraftPhase && <>{showRsvp && <MiniStat label="Countdown" value={draftCountdownLabel} />}{showRsvp && <MiniStat label="RSVP" value={`${rsvpList.length} confirmed`} />}<MiniStat label="Values" value={PUBLIC_AUCTION_VALUE_STATUS} /><MiniStat label="ADP" value={PUBLIC_ADP_STATUS} /></>}{!isDraftPhase && <><MiniStat label="Week" value={`Week ${liveSeasonState.activeWeek}`} /><MiniStat label="State" value={liveSeasonState.finality.finalizedWeek === null ? "Underway" : `Week ${liveSeasonState.finality.finalizedWeek} final`} /></>}</div><p className="mt-5 text-xs leading-5 text-slate-500 dark:text-white/55">{isDraftPhase ? commissionerDescription : `What matters right now in River City: Week ${liveSeasonState.activeWeek} coverage and league updates.`}</p><div className="mt-5 flex flex-wrap gap-2">{isDraftPhase && <Link href="/commish/auction" className="min-h-10 rounded-lg bg-orange-600 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white">Open Your War Room</Link>}{boxOneState.state === "DRAFT_LIVE" && <a href={event.meetLink} target="_blank" rel="noopener noreferrer" className="min-h-10 rounded-lg bg-blue-700 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white">Join Google Meet</a>}{boxOneState.state === "SEASON_LIVE" && <Link href={`/matchups?week=${liveSeasonState.activeWeek}`} className="min-h-10 rounded-lg bg-blue-700 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white">View Week {liveSeasonState.activeWeek} Matchups</Link>}{initialMember.canAccessMaintenance && <Link href="/commish" className="min-h-10 rounded-lg border border-slate-900/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest dark:border-white/10">Commissioner Hub</Link>}{showDraftRecap && <Link href="/league-info/draft-report/overview" className="min-h-10 rounded-lg border border-orange-600/40 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">2026 Draft Recap</Link>}</div></DashboardCard>
+        <DashboardCard label="NFL Game Center"><p className="mt-5 text-[10px] font-black uppercase tracking-widest text-orange-600">{nflGameCenter.card?.isFavoriteTeamGame ? "Your team next up" : "Next up"}</p>{nflGameCenter.card ? <><h2 className="mt-2 text-2xl font-black uppercase italic leading-none">{nflGameCenter.card.status === "LIVE" ? "Live now" : nflGameCenter.card.status === "FINAL" ? "Final" : "NFL Game Center"}</h2><div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-center"><div className="min-w-0"><div className="flex justify-center">{nflGameCenter.card.awayLogo ? <img src={nflGameCenter.card.awayLogo} alt="" className="h-10 w-10 object-contain" /> : <span className="text-lg font-black">{nflGameCenter.card.awayAbbreviation}</span>}</div><p className="mt-2 truncate text-sm font-black">{nflGameCenter.card.awayAbbreviation}</p>{nflGameCenter.card.awayScore !== null && <p className="text-xl font-black">{nflGameCenter.card.awayScore}</p>}</div><span className="text-xs font-black uppercase tracking-widest text-slate-400">at</span><div className="min-w-0"><div className="flex justify-center">{nflGameCenter.card.homeLogo ? <img src={nflGameCenter.card.homeLogo} alt="" className="h-10 w-10 object-contain" /> : <span className="text-lg font-black">{nflGameCenter.card.homeAbbreviation}</span>}</div><p className="mt-2 truncate text-sm font-black">{nflGameCenter.card.homeAbbreviation}</p>{nflGameCenter.card.homeScore !== null && <p className="text-xl font-black">{nflGameCenter.card.homeScore}</p>}</div></div><p className="mt-5 text-sm font-semibold">{nflGameCenter.card.kickoffLabel}</p>{nflGameCenter.card.network && <p className="mt-1 text-xs font-black uppercase tracking-widest text-slate-500 dark:text-white/55">{nflGameCenter.card.network}</p>}{nflGameCenter.card.isFavoriteTeamGame && <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-orange-600">Favorite team game</p>}</> : <><h2 className="mt-2 text-2xl font-black uppercase italic leading-none">{nflGameCenter.unavailable ? "NFL Game Center" : "Offseason / Next NFL Action"}</h2><p className="mt-5 text-sm leading-6 text-slate-500 dark:text-white/55">{nflGameCenter.unavailable ? "Schedule temporarily unavailable. Check back soon." : "No NFL game is currently available."}</p></>}{isDraftPhase && <Link href="/commish/auction" className="mt-5 inline-flex min-h-10 items-center rounded-lg bg-orange-600 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white">Open Your War Room</Link>}{boxOneState.state === "DRAFT_LIVE" && <a href={event.meetLink} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex min-h-10 items-center rounded-lg bg-blue-700 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white">Join Google Meet</a>}{boxOneState.state === "SEASON_LIVE" && <Link href={`/matchups?week=${liveSeasonState.activeWeek}`} className="mt-5 inline-flex min-h-10 items-center rounded-lg bg-blue-700 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white">View Week {liveSeasonState.activeWeek} Matchups</Link>}{showDraftRecap && <Link href="/league-info/draft-report/overview" className="mt-5 inline-flex min-h-10 items-center rounded-lg border border-orange-600/40 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">2026 Draft Recap</Link>}{initialMember.canAccessMaintenance && <Link href="/commish" className="mt-5 inline-flex min-h-10 items-center rounded-lg border border-slate-900/10 px-4 py-3 text-[10px] font-black tracking-widest dark:border-white/10">Commissioner Hub</Link>}</DashboardCard>
         <DashboardCard label="Reigning Champion" icon={<span className="text-xl text-amber-500">🏆</span>}><div className="mt-5 flex items-center gap-4"><div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full border-4 border-amber-500/20"><Image src="/managers/Aaron.png" alt="Aaron Hawkins" fill className="object-cover" unoptimized /></div><div><h2 className="text-xl font-black uppercase italic">Aaron Hawkins</h2><p className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/50">Official 2025 winner</p></div></div><div className="mt-6 grid grid-cols-2 gap-2"><MiniStat label="Record" value="9-5" /><MiniStat label="Year" value="2025" /></div></DashboardCard>
         {boxOneState.state !== "DRAFT_UPCOMING" && <DashboardCard label={liveSeasonSpotlightLabel} icon={<CalendarDays size={17} className="text-orange-600" />}>
           {liveSeasonState.weeklyHighScore.length > 0 ? <><h2 className="mt-5 text-2xl font-black uppercase italic leading-none">Week {liveSeasonState.weeklyHighScore[0].week} High Score</h2><div className="mt-5 flex items-center gap-4"><div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full border-4 border-amber-500/20"><Image src={liveSeasonState.weeklyHighScore[0].ownerPhoto ?? liveSeasonState.weeklyHighScore[0].sleeperAvatar ?? "/River City FFL Logo.JPG"} alt={liveSeasonState.weeklyHighScore.map((winner) => winner.ownerNames.join(" and ")).join("; ")} fill className="object-cover" unoptimized /><span className="absolute -bottom-1 -right-1 rounded-full bg-amber-400 p-1 text-amber-950" aria-label="Weekly high score"><span aria-hidden="true">🏆</span></span></div><div><p className="text-lg font-black uppercase italic">{liveSeasonState.weeklyHighScore.map((winner) => winner.teamName).join(" / ")}</p><p className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/50">{liveSeasonState.weeklyHighScore.flatMap((winner) => winner.ownerNames).join(" / ")}</p></div></div><p className="mt-5 text-sm font-semibold">{liveSeasonState.weeklyHighScore[0].points.toFixed(2)} PTS{liveSeasonState.weeklyHighScore.length > 1 ? " · TIE" : ""}</p><p className="mt-1 text-sm text-slate-500 dark:text-white/55">Highest score in River City this week.</p><Link href={`/matchups?week=${liveSeasonState.weeklyHighScore[0].week}`} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-blue-700 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white">View Week {liveSeasonState.weeklyHighScore[0].week} Results <ArrowRight size={14} /></Link></> : boxOneState.state === "POST_DRAFT_PRESEASON" ? <><h2 className="mt-5 text-2xl font-black uppercase italic leading-none">NFL KICKOFF</h2><p className="mt-4 text-sm font-black uppercase italic">{boxOneState.openingEvent?.matchupLabel}</p><p className="mt-4 text-sm font-semibold">{seasonDateTime?.date ?? "Kickoff date unavailable"}</p><p className="mt-1 text-sm text-slate-500 dark:text-white/55">{seasonDateTime?.time ?? "Kickoff time unavailable"}</p><div className="mt-6"><MiniStat label="Kickoff countdown" value={boxOneCountdown ? `${boxOneCountdown.days} DAYS · ${boxOneCountdown.hours} HRS · ${boxOneCountdown.minutes} MIN` : "Unavailable"} /></div><Link href="/matchups" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-blue-700 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white">View Matchups <ArrowRight size={14} /></Link></> : boxOneState.state === "DRAFT_LIVE" ? <><h2 className="mt-5 text-2xl font-black uppercase italic leading-none">{boxOneState.title}</h2><p className="mt-4 text-sm font-semibold">Drafting now</p><p className="mt-1 text-sm text-slate-500 dark:text-white/55">{draftDateTime?.time ?? "Live draft"} · Location TBD</p></> : <><h2 className="mt-5 text-2xl font-black uppercase italic leading-none">Week {liveSeasonState.activeWeek} Underway</h2><p className="mt-4 text-sm font-semibold">River City football is back.</p><p className="mt-1 text-sm text-slate-500 dark:text-white/55">No finalized weekly high score yet.</p></>}

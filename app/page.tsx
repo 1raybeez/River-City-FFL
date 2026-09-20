@@ -11,6 +11,7 @@ import { getHomeLiveSeasonState } from "@/lib/home/liveSeasonState";
 import type { HomeLiveSeasonState } from "@/lib/home/liveSeasonState";
 import { getPublishedWeeklyRecap } from "@/lib/weeklyRecapPublication";
 import type { WeeklyLeagueRecap } from "@/lib/weeklyRecapPublication";
+import { getHomeNflGameCenter, type NflGameCenterState } from "@/lib/nflGameCenter";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export default async function HomePage() {
   let publishedWeeklyRecap: WeeklyLeagueRecap | null = null;
   let boxOneState: BoxOneState;
   let liveSeasonState: HomeLiveSeasonState;
+  let nflGameCenter: NflGameCenterState;
   try {
     member = await getCurrentMember();
   } catch {
@@ -73,5 +75,10 @@ export default async function HomePage() {
       seasonType: null,
     };
   }
-  return <HomeClient initialMember={member} initialPublishedRecap={publishedRecap} initialPublishedWeeklyRecap={publishedWeeklyRecap} initialBoxOneState={boxOneState} initialLiveSeasonState={liveSeasonState} />;
+  try {
+    nflGameCenter = await getHomeNflGameCenter({ favoriteTeam: member.favoriteNflTeam });
+  } catch {
+    nflGameCenter = { card: null, unavailable: true, season: 2026, week: null };
+  }
+  return <HomeClient initialMember={member} initialPublishedRecap={publishedRecap} initialPublishedWeeklyRecap={publishedWeeklyRecap} initialBoxOneState={boxOneState} initialLiveSeasonState={liveSeasonState} initialNflGameCenter={nflGameCenter} />;
 }

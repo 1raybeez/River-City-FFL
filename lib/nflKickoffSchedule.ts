@@ -1,4 +1,22 @@
-export type NflKickoff = Readonly<{ season: number; week: number; kickoffAt: string; source: string; gameId: string }>;
+export type NflGameStatus = "UPCOMING" | "LIVE" | "FINAL";
+export type NflGameTeam = Readonly<{
+  name: string;
+  abbreviation: string;
+  logo: string | null;
+  score: number | null;
+}>;
+export type NflKickoff = Readonly<{
+  season: number;
+  week: number;
+  kickoffAt: string;
+  source: string;
+  gameId: string;
+  awayTeam?: NflGameTeam;
+  homeTeam?: NflGameTeam;
+  status?: NflGameStatus;
+  broadcasts?: readonly string[];
+  venue?: string | null;
+}>;
 export type NflKickoffSchedule = { listGames(season: number, week: number): Promise<readonly NflKickoff[]> };
 
 export const ESPN_NFL_SCHEDULE_SOURCE = "ESPN NFL scoreboard API";
@@ -29,7 +47,25 @@ export class EspnNflScheduleAdapter implements NflKickoffSchedule {
     const url = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?limit=100&dates=${season}&seasontype=2&week=${week}`;
     const response = await this.fetchImpl(url, { cache: "no-store" });
     if (!response.ok) throw new KickoffScheduleUnavailableError(`NFL schedule provider returned HTTP ${response.status}.`);
-    const body = await response.json() as { events?: Array<{ id?: string; date?: string; season?: { year?: number }; week?: { number?: number }; competitions?: Array<{ date?: string }> }> };
+    const body = await response.json() as {
+      events?: Array<{
+        id?: string;
+        date?: string;
+        season?: { year?: number };
+        week?: { number?: number };
+        status?: { type?: { state?: string; completed?: boolean } };
+        competitions?: Array<{
+          date?: string;
+          broadcasts?: Array<{ names?: string[] }>;
+          venue?: { fullName?: string };
+          competitors?: Array<{
+            homeAway?: string;
+            score?: string;
+            team?: { displayName?: string; abbreviation?: string; logo?: string };
+          }>;
+        }>;
+      }>;
+    };
     const events = body.events ?? [];
     const games = events.map(event => {
       const eventSeason = event.season?.year;
@@ -37,7 +73,35 @@ export class EspnNflScheduleAdapter implements NflKickoffSchedule {
       if ((eventSeason !== undefined && eventSeason !== season) || (eventWeek !== undefined && eventWeek !== week)) throw new KickoffScheduleUnavailableError("NFL schedule provider returned a season/week mismatch.");
       const kickoffAt = event.date ?? event.competitions?.[0]?.date;
       if (!event.id || !kickoffAt || Number.isNaN(Date.parse(kickoffAt))) throw new KickoffScheduleUnavailableError("NFL schedule provider returned incomplete kickoff data.");
-      return { season, week, kickoffAt: new Date(kickoffAt).toISOString(), source: ESPN_NFL_SCHEDULE_SOURCE, gameId: event.id };
+      const competition = event.competitions?.[0];
+      const competitors = competition?.competitors ?? [];
+      const buildTeam = (homeAway: "away" | "home") => {
+        const team = competitors.find(candidate => candidate.homeAway === homeAway)?.team;
+        if (!team?.displayName || !team.abbreviation) return undefined;
+        const score = competitors.find(candidate => candidate.homeAway === homeAway)?.score;
+        return {
+          name: team.displayName,
+          abbreviation: team.abbreviation,
+          logo: team.logo ?? null,
+          score: score !== undefined && Number.isFinite(Number(score)) ? Number(score) : null,
+        } satisfies NflGameTeam;
+      };
+      const state = event.status?.type?.state;
+      const status: NflGameStatus = event.status?.type?.completed || state === "post"
+        ? "FINAL"
+        : state === "in" ? "LIVE" : "UPCOMING";
+      return {
+        season,
+        week,
+        kickoffAt: new Date(kickoffAt).toISOString(),
+        source: ESPN_NFL_SCHEDULE_SOURCE,
+        gameId: event.id,
+        awayTeam: buildTeam("away"),
+        homeTeam: buildTeam("home"),
+        status,
+        broadcasts: Array.from(new Set((competition?.broadcasts ?? []).flatMap(broadcast => broadcast.names ?? []))),
+        venue: competition?.venue?.fullName ?? null,
+      };
     });
     const resolved = resolveFirstKickoff(games);
     if (!resolved) throw new KickoffScheduleUnavailableError("NFL schedule provider returned no usable games.");
