@@ -15,6 +15,11 @@ export type HomeNflGameCard = Readonly<{
   kickoffLabel: string;
   network: string | null;
   status: NflGameStatus;
+  eventLabel: string;
+  statusDetail: string | null;
+  period: number | null;
+  clock: string | null;
+  week: number;
   isFavoriteTeamGame: boolean;
   selectionReason: "LIVE" | "FAVORITE" | "THURSDAY_NIGHT" | "SUNDAY_NIGHT" | "MONDAY_NIGHT" | "CHRONOLOGICAL";
   venue: string | null;
@@ -65,6 +70,41 @@ function isFavorite(game: NflKickoff, favoriteTeam?: TeamCode | null) {
 
 function isLiveNationalOrFavorite(game: NflKickoff, favoriteTeam?: TeamCode | null) {
   return game.status === "LIVE" && (isNational(game) || isFavorite(game, favoriteTeam));
+}
+
+const EVENT_LABELS = ["THURSDAY NIGHT FOOTBALL", "SUNDAY NIGHT FOOTBALL", "MONDAY NIGHT FOOTBALL"] as const;
+
+function normalizedEventLabel(value?: string | null) {
+  const normalized = value?.toUpperCase().replace(/[^A-Z ]/g, " ").replace(/\s+/g, " ").trim();
+  return EVENT_LABELS.find(label => normalized?.includes(label)) ?? null;
+}
+
+export function getNflEventLabel(game: Pick<NflKickoff, "eventLabel" | "kickoffAt">) {
+  const providerLabel = normalizedEventLabel(game.eventLabel);
+  if (providerLabel) return providerLabel;
+  const day = easternWeekday(game.kickoffAt);
+  const hour = easternHour(game.kickoffAt);
+  if (day === "Thu") return "THURSDAY NIGHT FOOTBALL";
+  if (day === "Sun" && hour >= 19) return "SUNDAY NIGHT FOOTBALL";
+  if (day === "Mon") return "MONDAY NIGHT FOOTBALL";
+  return "NEXT NFL GAME";
+}
+
+export function getNflLiveDetail(card: Pick<HomeNflGameCard, "status" | "statusDetail" | "period" | "clock">) {
+  if (card.status !== "LIVE") return null;
+  if (card.statusDetail && /half\s*time/i.test(card.statusDetail)) return "HALFTIME";
+  if (card.statusDetail && /overtime|\bot\b/i.test(card.statusDetail)) {
+    return card.clock ? `OT · ${card.clock}` : "OT";
+  }
+  if (card.period && card.clock) return `${card.period >= 5 ? "OT" : `Q${card.period}`} · ${card.clock}`;
+  return "LIVE";
+}
+
+export function getNflCardEyebrow(card: Pick<HomeNflGameCard, "status" | "week">, currentWeek?: number | null) {
+  if (card.status === "LIVE") return "LIVE";
+  if (card.status === "FINAL") return "FINAL";
+  if (currentWeek && card.week > currentWeek) return `WEEK ${card.week} · NEXT UP`;
+  return "NEXT UP";
 }
 
 function gameReason(game: NflKickoff, favoriteTeam?: TeamCode | null): HomeNflGameCard["selectionReason"] {
@@ -123,6 +163,11 @@ function toPresentation(game: NflKickoff, favoriteTeam?: TeamCode | null): HomeN
     kickoffLabel: `${dateLabel} · ${timeLabel} ET`,
     network: game.broadcasts?.[0] ?? null,
     status: game.status,
+    eventLabel: getNflEventLabel(game),
+    statusDetail: game.statusDetail ?? null,
+    period: game.period ?? null,
+    clock: game.clock ?? null,
+    week: game.week,
     isFavoriteTeamGame: isFavorite(game, favoriteTeam),
     selectionReason: gameReason(game, favoriteTeam),
     venue: game.venue ?? null,

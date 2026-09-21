@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { buildNflGameCenterState, getHomeNflGameCenter, resolveNflWeek, selectNflGame } from "../lib/nflGameCenter";
+import { buildNflGameCenterState, getHomeNflGameCenter, getNflCardEyebrow, getNflEventLabel, getNflLiveDetail, resolveNflWeek, selectNflGame } from "../lib/nflGameCenter";
 import { EspnNflScheduleAdapter, KickoffScheduleUnavailableError, resolveFirstKickoff, type NflKickoff } from "../lib/nflKickoffSchedule";
 
 const game = (overrides: Partial<NflKickoff> = {}): NflKickoff => ({
@@ -29,6 +29,39 @@ assert.equal(liveCard?.status, "LIVE");
 assert.equal(liveCard?.awayScore, 14);
 assert.equal(liveCard?.network, "FOX");
 assert.equal(liveCard?.isFavoriteTeamGame, true);
+assert.equal(liveCard?.eventLabel, "NEXT NFL GAME");
+assert.equal(getNflCardEyebrow(liveCard!), "LIVE");
+assert.equal(getNflLiveDetail(liveCard!), "LIVE");
+
+const upcomingSnf = buildNflGameCenterState([game({ kickoffAt: "2026-09-21T00:20:00.000Z" })]).card!;
+assert.equal(upcomingSnf.eventLabel, "SUNDAY NIGHT FOOTBALL");
+assert.equal(getNflCardEyebrow(upcomingSnf, 2), "NEXT UP");
+assert.equal(getNflLiveDetail(upcomingSnf), null);
+
+const liveSnf = buildNflGameCenterState([game({ status: "LIVE", kickoffAt: "2026-09-21T00:20:00.000Z", period: 3, clock: "8:42" })]).card!;
+assert.equal(liveSnf.eventLabel, "SUNDAY NIGHT FOOTBALL");
+assert.equal(getNflCardEyebrow(liveSnf, 2), "LIVE");
+assert.equal(getNflLiveDetail(liveSnf), "Q3 · 8:42");
+
+const liveMnf = buildNflGameCenterState([game({ status: "LIVE", kickoffAt: "2026-09-22T00:15:00.000Z" })]).card!;
+assert.equal(liveMnf.eventLabel, "MONDAY NIGHT FOOTBALL");
+assert.equal(getNflCardEyebrow(liveMnf, 2), "LIVE");
+
+const liveTnf = buildNflGameCenterState([game({ status: "LIVE", kickoffAt: "2026-09-18T00:15:00.000Z" })]).card!;
+assert.equal(liveTnf.eventLabel, "THURSDAY NIGHT FOOTBALL");
+assert.equal(getNflCardEyebrow(liveTnf, 2), "LIVE");
+
+const halftime = buildNflGameCenterState([game({ status: "LIVE", statusDetail: "Halftime", period: 2, clock: "0:00" })]).card!;
+assert.equal(getNflLiveDetail(halftime), "HALFTIME");
+
+const finalWithNextGame = buildNflGameCenterState([game({ status: "FINAL" }), game({ gameId: "next", status: "UPCOMING", kickoffAt: "2026-09-21T00:20:00.000Z" })]).card!;
+assert.equal(finalWithNextGame.status, "UPCOMING");
+assert.equal(finalWithNextGame.eventLabel, "SUNDAY NIGHT FOOTBALL");
+
+const crossWeek = buildNflGameCenterState([game({ week: 3, kickoffAt: "2026-09-25T00:15:00.000Z" })]).card!;
+assert.equal(crossWeek.eventLabel, "THURSDAY NIGHT FOOTBALL");
+assert.equal(getNflCardEyebrow(crossWeek, 2), "WEEK 3 · NEXT UP");
+assert.equal(getNflEventLabel({ eventLabel: "Unknown broadcast", kickoffAt: "2026-09-20T17:00:00.000Z" }), "NEXT NFL GAME");
 
 const finalCard = buildNflGameCenterState([game({ status: "FINAL", awayTeam: { name: "Carolina Panthers", abbreviation: "CAR", logo: null, score: 14 }, homeTeam: { name: "Atlanta Falcons", abbreviation: "ATL", logo: null, score: 17 } })], undefined, new Date("2026-09-21T00:00:00.000Z")).card;
 assert.equal(finalCard?.status, "FINAL");

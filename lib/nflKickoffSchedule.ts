@@ -14,6 +14,8 @@ export type NflKickoff = Readonly<{
   awayTeam?: NflGameTeam;
   homeTeam?: NflGameTeam;
   status?: NflGameStatus;
+  eventLabel?: string | null;
+  statusDetail?: string | null;
   period?: number | null;
   clock?: string | null;
   broadcasts?: readonly string[];
@@ -64,10 +66,12 @@ export class EspnNflScheduleAdapter implements NflKickoffSchedule {
     const body = await response.json() as {
       events?: Array<{
         id?: string;
+        name?: string;
+        shortName?: string;
         date?: string;
         season?: { year?: number };
         week?: { number?: number };
-        status?: { period?: number; displayClock?: string; type?: { state?: string; completed?: boolean } };
+        status?: { period?: number; displayClock?: string; type?: { state?: string; completed?: boolean; detail?: string; shortDetail?: string } };
         competitions?: Array<{
           date?: string;
           broadcasts?: Array<{ names?: string[] }>;
@@ -113,6 +117,8 @@ export class EspnNflScheduleAdapter implements NflKickoffSchedule {
         awayTeam: buildTeam("away"),
         homeTeam: buildTeam("home"),
         status,
+        eventLabel: event.name ?? event.shortName ?? null,
+        statusDetail: event.status?.type?.detail ?? event.status?.type?.shortDetail ?? null,
         period: event.status?.period ?? null,
         clock: event.status?.displayClock ?? null,
         broadcasts: Array.from(new Set((competition?.broadcasts ?? []).flatMap(broadcast => broadcast.names ?? []))),
