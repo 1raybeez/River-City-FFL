@@ -18,7 +18,7 @@ assert.match(home, /Join Google Meet/);
 assert.match(home, /DRAFT_UPCOMING/);
 assert.match(home, /DRAFT_LIVE/);
 assert.match(home, /POST_DRAFT_PRESEASON/);
-assert.match(home, /SEASON_LIVE/);
+assert.match(home, /Week \{liveSeasonState\.activeWeek\} Underway/);
 assert.match(page, /DATA_UNAVAILABLE/);
 assert.match(home, /NFL Game Center/);
 assert.match(home, /nflGameCenter\.card/);
@@ -59,9 +59,10 @@ assert.match(home, /Est\. 2011 <span className=\"text-orange-600\/80\">•<\/spa
 assert.match(home, /Calendar/);
 assert.match(home, /DollarSign/);
 assert.match(home, /FileText/);
-assert.match(home, /Projected Standings.*Calibrating/);
-assert.match(home, /Playoff Odds.*Calibrating/);
-assert.match(home, /Championship Odds.*Calibrating/);
+assert.match(home, /Projection Baseline/);
+assert.match(home, /Projected Standings/);
+assert.match(home, /Eligible Weeks/);
+assert.match(home, /<strong>Odds:<\/strong>.*Calibrating/);
 assert.doesNotMatch(home, /Projected Standings.*\d+%|Playoff Odds.*\d+%|Championship Odds.*\d+%/);
 
 for (const unsafeField of ["email", "firebaseUid", "canonicalOwnerId", "warRoomId", "rosterId", "idToken", "plannedCaps", "preferredEntry"]) {

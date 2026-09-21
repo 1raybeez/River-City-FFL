@@ -5,6 +5,12 @@ export type NflGameTeam = Readonly<{
   logo: string | null;
   score: number | null;
 }>;
+export type NflTeamLogoAsset = Readonly<{
+  href?: string;
+  rel?: readonly string[];
+  width?: number;
+  height?: number;
+}>;
 export type NflKickoff = Readonly<{
   season: number;
   week: number;
@@ -26,6 +32,19 @@ export type NflKickoffSchedule = { listGames(season: number, week: number): Prom
 export const ESPN_NFL_SCHEDULE_SOURCE = "ESPN NFL scoreboard API";
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const scheduleCache = new Map<string, { expiresAt: number; games: readonly NflKickoff[] }>();
+
+/** Select an ESPN-labelled full-colour team mark, with the scoreboard logo as fallback. */
+export function selectNflTeamLogo(assets: readonly NflTeamLogoAsset[] | undefined, fallback: string | null = null): string | null {
+  if (!assets?.length) return fallback;
+  const usable = assets.filter(asset => typeof asset.href === "string" && asset.href.length > 0 && asset.rel?.includes("full"));
+  const preferred = ["secondary_logo_on_white_color", "primary_logo_on_white_color", "default"];
+  for (const rel of preferred) {
+    const match = usable.find(asset => asset.rel?.includes(rel) && !asset.rel?.includes("scoreboard"));
+    if (match?.href) return match.href;
+  }
+  const safeFallback = usable.find(asset => !asset.rel?.some(label => ["scoreboard", "dark", "grayscale", "white", "black"].includes(label)));
+  return safeFallback?.href ?? fallback;
+}
 
 export type NflScheduleReasonCode =
   | "ESPN_FETCH_FAILED"
@@ -79,7 +98,7 @@ export class EspnNflScheduleAdapter implements NflKickoffSchedule {
           competitors?: Array<{
             homeAway?: string;
             score?: string;
-            team?: { displayName?: string; abbreviation?: string; logo?: string };
+            team?: { id?: string; displayName?: string; abbreviation?: string; logo?: string };
           }>;
         }>;
       }>;
@@ -125,6 +144,30 @@ export class EspnNflScheduleAdapter implements NflKickoffSchedule {
         venue: competition?.venue?.fullName ?? null,
       };
     });
+    const teamIds = Array.from(new Set(events.flatMap(event => event.competitions?.[0]?.competitors ?? []).map(candidate => candidate.team?.id).filter((id): id is string => Boolean(id))));
+    if (teamIds.length > 0) {
+      try {
+        const logoResponse = await this.fetchImpl("https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams?limit=100", { cache: "no-store" });
+        if (logoResponse.ok) {
+          const logoBody = await logoResponse.json() as { sports?: Array<{ leagues?: Array<{ teams?: Array<{ team?: { id?: string; logos?: NflTeamLogoAsset[] } }> }> }> };
+          const logosById = new Map<string, readonly NflTeamLogoAsset[]>();
+          for (const teamEntry of logoBody.sports?.flatMap(sport => sport.leagues ?? []).flatMap(league => league.teams ?? []) ?? []) {
+            if (teamEntry.team?.id && teamEntry.team.logos) logosById.set(teamEntry.team.id, teamEntry.team.logos);
+          }
+          for (const game of games) {
+            for (const side of ["awayTeam", "homeTeam"] as const) {
+              const team = game[side];
+              if (!team) continue;
+              const providerTeam = events.find(event => event.id === game.gameId)?.competitions?.[0]?.competitors?.find(candidate => candidate.homeAway === (side === "awayTeam" ? "away" : "home"))?.team;
+              const logo = selectNflTeamLogo(providerTeam?.id ? logosById.get(providerTeam.id) : undefined, team.logo);
+              (game as { [key in typeof side]?: NflGameTeam })[side] = { ...team, logo };
+            }
+          }
+        }
+      } catch {
+        // Team metadata is an enhancement; retain the scoreboard logo on failure.
+      }
+    }
     const resolved = resolveFirstKickoff(games);
     if (!resolved) throw new KickoffScheduleUnavailableError("NFL schedule provider returned no usable games.", "NO_VALID_KICKOFFS", events.length);
     scheduleCache.set(key, { expiresAt: this.now() + CACHE_TTL_MS, games });

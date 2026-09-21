@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { buildNflGameCenterState, getHomeNflGameCenter, getNflCardEyebrow, getNflEventLabel, getNflLiveDetail, resolveNflWeek, selectNflGame } from "../lib/nflGameCenter";
-import { EspnNflScheduleAdapter, KickoffScheduleUnavailableError, resolveFirstKickoff, type NflKickoff } from "../lib/nflKickoffSchedule";
+import { EspnNflScheduleAdapter, KickoffScheduleUnavailableError, resolveFirstKickoff, selectNflTeamLogo, type NflKickoff } from "../lib/nflKickoffSchedule";
 
 const game = (overrides: Partial<NflKickoff> = {}): NflKickoff => ({
   season: 2026,
@@ -17,6 +17,13 @@ const game = (overrides: Partial<NflKickoff> = {}): NflKickoff => ({
 
 assert.equal(resolveNflWeek(new Date("2026-09-19T15:00:00.000Z")), 2);
 assert.equal(resolveFirstKickoff([game({ gameId: "same-time-a" }), game({ gameId: "same-time-b" })]).gameId, "same-time-a");
+assert.equal(selectNflTeamLogo([
+  { href: "scoreboard.png", rel: ["full", "scoreboard"] },
+  { href: "rams-head.png", rel: ["full", "secondary_logo_on_white_color"] },
+  { href: "primary.png", rel: ["full", "primary_logo_on_white_color"] },
+]), "rams-head.png");
+assert.equal(selectNflTeamLogo([{ href: "primary.png", rel: ["full", "primary_logo_on_white_color"] }], "scoreboard.png"), "primary.png");
+assert.equal(selectNflTeamLogo(undefined, "scoreboard.png"), "scoreboard.png");
 assert.equal(selectNflGame([game({ gameId: "later", kickoffAt: "2026-09-20T20:20:00.000Z" }), game({ gameId: "favorite", kickoffAt: "2026-09-20T17:00:00.000Z" })], "ATL")?.gameId, "favorite");
 assert.equal(selectNflGame([game({ gameId: "live", status: "LIVE", kickoffAt: "2026-09-20T20:20:00.000Z" }), game({ gameId: "favorite", kickoffAt: "2026-09-20T17:00:00.000Z" })], "ATL")?.gameId, "live");
 assert.equal(selectNflGame([game({ gameId: "tnf", kickoffAt: "2026-09-18T00:15:00.000Z" }), game({ gameId: "sun", kickoffAt: "2026-09-20T20:20:00.000Z" })])?.gameId, "tnf");
@@ -107,6 +114,32 @@ assert.deepEqual(parsed[1]?.broadcasts, []);
 assert.equal(calls, 1);
 assert.equal((await adapter.listGames(2099, 2)).length, 2);
 assert.equal(calls, 1);
+
+let logoCalls = 0;
+const logoAdapter = new EspnNflScheduleAdapter(async (url) => {
+  logoCalls += 1;
+  if (String(url).includes("scoreboard")) {
+    return new Response(JSON.stringify({ events: [{
+      ...espnEvent("logo-game", "2095-09-20T17:00:00.000Z"),
+      season: { year: 2095 },
+      competitions: [{
+        date: "2095-09-20T17:00:00.000Z",
+        competitors: [
+          { homeAway: "away", score: "0", team: { id: "14", displayName: "Los Angeles Rams", abbreviation: "LAR", logo: "scoreboard-lar.png" } },
+          { homeAway: "home", score: "0", team: { id: "21", displayName: "New York Giants", abbreviation: "NYG", logo: "scoreboard-nyg.png" } },
+        ],
+      }],
+    }] }), { status: 200 });
+  }
+  return new Response(JSON.stringify({ sports: [{ leagues: [{ teams: [
+    { team: { id: "14", logos: [{ href: "primary-lar.png", rel: ["full", "primary_logo_on_white_color"] }, { href: "full-color-lar.png", rel: ["full", "secondary_logo_on_white_color"] }] } },
+    { team: { id: "21", logos: [{ href: "primary-nyg.png", rel: ["full", "primary_logo_on_white_color"] }] } },
+  ] }] }] }), { status: 200 });
+}, () => 4);
+const logoGames = await logoAdapter.listGames(2095, 2);
+assert.equal(logoGames[0]?.awayTeam?.logo, "full-color-lar.png");
+assert.equal(logoGames[0]?.homeTeam?.logo, "primary-nyg.png");
+assert.equal(logoCalls, 2);
 
 const failedAdapter = new EspnNflScheduleAdapter(async () => new Response("provider down", { status: 503 }), () => 1);
 await assert.rejects(() => failedAdapter.listGames(2098, 2), KickoffScheduleUnavailableError);
