@@ -14,6 +14,8 @@ export type NflKickoff = Readonly<{
   awayTeam?: NflGameTeam;
   homeTeam?: NflGameTeam;
   status?: NflGameStatus;
+  period?: number | null;
+  clock?: string | null;
   broadcasts?: readonly string[];
   venue?: string | null;
 }>;
@@ -65,7 +67,7 @@ export class EspnNflScheduleAdapter implements NflKickoffSchedule {
         date?: string;
         season?: { year?: number };
         week?: { number?: number };
-        status?: { type?: { state?: string; completed?: boolean } };
+        status?: { period?: number; displayClock?: string; type?: { state?: string; completed?: boolean } };
         competitions?: Array<{
           date?: string;
           broadcasts?: Array<{ names?: string[] }>;
@@ -111,6 +113,8 @@ export class EspnNflScheduleAdapter implements NflKickoffSchedule {
         awayTeam: buildTeam("away"),
         homeTeam: buildTeam("home"),
         status,
+        period: event.status?.period ?? null,
+        clock: event.status?.displayClock ?? null,
         broadcasts: Array.from(new Set((competition?.broadcasts ?? []).flatMap(broadcast => broadcast.names ?? []))),
         venue: competition?.venue?.fullName ?? null,
       };
