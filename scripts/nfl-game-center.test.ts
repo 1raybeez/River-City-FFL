@@ -93,6 +93,24 @@ assert.equal(recoveryCalls, 2);
 const unavailable = await getHomeNflGameCenter({ now: new Date("2026-09-20T18:00:00.000Z"), adapter: { listGames: async () => [] } });
 assert.equal(unavailable.card, null);
 assert.equal(unavailable.unavailable, false);
+assert.equal(unavailable.reasonCode, "NO_EVENTS");
+assert.equal(unavailable.eventCount, 0);
+
+const providerFailure = await getHomeNflGameCenter({ now: new Date("2026-09-20T18:00:00.000Z"), adapter: { listGames: async () => { throw new Error("provider failure"); } } });
+assert.equal(providerFailure.reasonCode, "ESPN_FETCH_FAILED");
+assert.equal(providerFailure.unavailable, true);
+
+const finalFavoriteAndLive = selectNflGame([
+  game({ gameId: "atl-final", status: "FINAL", kickoffAt: "2026-09-20T17:00:00.000Z" }),
+  game({ gameId: "live-other", status: "LIVE", kickoffAt: "2026-09-20T20:05:00.000Z", awayTeam: { name: "Jacksonville Jaguars", abbreviation: "JAX", logo: null, score: 10 }, homeTeam: { name: "Denver Broncos", abbreviation: "DEN", logo: null, score: 14 } }),
+], "ATL", new Date("2026-09-20T21:00:00.000Z"));
+assert.equal(finalFavoriteAndLive?.gameId, "live-other");
+
+const finalFavoriteAndSundayNight = selectNflGame([
+  game({ gameId: "atl-final", status: "FINAL", kickoffAt: "2026-09-20T17:00:00.000Z" }),
+  game({ gameId: "snf-upcoming", status: "UPCOMING", kickoffAt: "2026-09-21T00:20:00.000Z" }),
+], "ATL", new Date("2026-09-20T21:00:00.000Z"));
+assert.equal(finalFavoriteAndSundayNight?.gameId, "snf-upcoming");
 console.log("NFL Game Center tests passed.");
 })().catch(error => {
   console.error(error);

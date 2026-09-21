@@ -1,4 +1,4 @@
-import { EspnNflScheduleAdapter, type NflKickoff, type NflGameStatus, type NflKickoffSchedule } from "@/lib/nflKickoffSchedule";
+import { EspnNflScheduleAdapter, KickoffScheduleUnavailableError, type NflKickoff, type NflGameStatus, type NflKickoffSchedule } from "@/lib/nflKickoffSchedule";
 import type { TeamCode } from "@/lib/types/Manager";
 
 export type HomeNflGameCard = Readonly<{
@@ -23,6 +23,9 @@ export type HomeNflGameCard = Readonly<{
 export type NflGameCenterState = Readonly<{
   card: HomeNflGameCard | null;
   unavailable: boolean;
+  reasonCode?: "ESPN_FETCH_FAILED" | "ESPN_HTTP_ERROR" | "INVALID_PROVIDER_PAYLOAD" | "NO_EVENTS" | "NO_VALID_KICKOFFS" | "PROVIDER_SEASON_WEEK_MISMATCH" | "NO_GAME_SELECTED" | "PRESENTATION_MAPPING_FAILED" | "FAVORITE_LOOKUP_FAILED" | "UNKNOWN_GAME_CENTER_ERROR";
+  eventCount?: number;
+  selectionCandidateCount?: number;
   season: number;
   week: number | null;
 }>;
@@ -128,7 +131,16 @@ function toPresentation(game: NflKickoff, favoriteTeam?: TeamCode | null): HomeN
 
 export function buildNflGameCenterState(games: readonly NflKickoff[], favoriteTeam?: TeamCode | null, now = new Date()): NflGameCenterState {
   const card = selectNflGame(games, favoriteTeam, now);
-  return { card: card ? toPresentation(card, favoriteTeam) : null, unavailable: false, season: now.getUTCFullYear(), week: games[0]?.week ?? null };
+  const presentation = card ? toPresentation(card, favoriteTeam) : null;
+  return {
+    card: presentation,
+    unavailable: false,
+    ...(games.length === 0 ? { reasonCode: "NO_EVENTS" as const } : card && !presentation ? { reasonCode: "PRESENTATION_MAPPING_FAILED" as const } : !card ? { reasonCode: "NO_GAME_SELECTED" as const } : {}),
+    eventCount: games.length,
+    selectionCandidateCount: games.filter((game) => game.status === "LIVE" || game.status === "UPCOMING" || game.status === "FINAL").length,
+    season: now.getUTCFullYear(),
+    week: games[0]?.week ?? null,
+  };
 }
 
 export async function getHomeNflGameCenter({ favoriteTeam, now = new Date(), adapter = new EspnNflScheduleAdapter() }: { favoriteTeam?: TeamCode | null; now?: Date; adapter?: NflKickoffSchedule } = {}): Promise<NflGameCenterState> {
@@ -138,7 +150,10 @@ export async function getHomeNflGameCenter({ favoriteTeam, now = new Date(), ada
   try {
     const games = await adapter.listGames(season, week);
     return buildNflGameCenterState(games, favoriteTeam, now);
-  } catch {
-    return { card: null, unavailable: true, season, week };
+  } catch (error) {
+    if (error instanceof KickoffScheduleUnavailableError) {
+      return { card: null, unavailable: true, reasonCode: error.reasonCode, ...(error.eventCount === undefined ? {} : { eventCount: error.eventCount }), season, week };
+    }
+    return { card: null, unavailable: true, reasonCode: "ESPN_FETCH_FAILED", season, week };
   }
 }

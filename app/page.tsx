@@ -78,7 +78,7 @@ export default async function HomePage() {
   try {
     nflGameCenter = await getHomeNflGameCenter({ favoriteTeam: member.favoriteNflTeam });
   } catch {
-    nflGameCenter = { card: null, unavailable: true, season: 2026, week: null };
+    nflGameCenter = { card: null, unavailable: true, reasonCode: "UNKNOWN_GAME_CENTER_ERROR", season: 2026, week: null };
   }
   return <HomeClient initialMember={member} initialPublishedRecap={publishedRecap} initialPublishedWeeklyRecap={publishedWeeklyRecap} initialBoxOneState={boxOneState} initialLiveSeasonState={liveSeasonState} initialNflGameCenter={nflGameCenter} />;
 }
