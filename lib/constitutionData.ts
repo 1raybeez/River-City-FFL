@@ -163,6 +163,17 @@ const constitutionData: ConstitutionSection[] = [
         ]
       },
       {
+        id: "4.2.2",
+        title: "4.2.2 Complete Starting Lineup Requirement",
+        content: [
+          "Each team must start an eligible player at every required starting position each week. A manager may not intentionally leave a starting position vacant, bench an otherwise available starter without replacing that player, or otherwise leave a lineup slot unfilled for strategic purposes, including an attempt to preserve a lead or avoid the possibility of negative points.",
+          "The required starting positions are QB, RB, WR, TE, FLEX, K, and DEF.",
+          "An exception may be made when a manager does not have an eligible player reasonably available because of injury, injured reserve, suspension, a late inactive designation, or another legitimate roster circumstance. Managers will not be required to make an unreasonable roster transaction, such as dropping a player solely to address an unforeseen short-term absence.",
+          "Strategically taking a zero by intentionally leaving a starting position empty is prohibited. For example, a manager leading by 0.2 points entering Monday Night Football may not bench the team's remaining defense merely to eliminate the possibility that it scores negative fantasy points. Having an eligible player already available and intentionally choosing not to start that player for strategic purposes is not a legitimate exception.",
+          "The Commissioner may review unusual circumstances and determine whether a reasonable, good-faith effort was made to field a complete lineup."
+        ]
+      },
+      {
         id: "4.3",
         title: "4.3 Keepers",
         content: [

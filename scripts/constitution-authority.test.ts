@@ -19,7 +19,7 @@ const historicalReferences = versionHistory.flatMap((entry) => entry.changes.map
 const staleReferences = [...new Set(historicalReferences.filter((reference) => !currentIds.has(reference)))];
 
 assert.equal(constitutionData.length, 12);
-assert.equal(currentIds.size, 52);
+assert.equal(currentIds.size, 53);
 assert.equal(staleReferences.length, 14);
 assert.ok(staleReferences.every((reference) => LEGACY_VERSION_RULE_IDS.has(reference)));
 assert.ok(staleReferences.every((reference) => classifyRuleReference(reference, "legacy-version-history") === "legacy-unresolved"));
