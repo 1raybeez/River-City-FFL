@@ -2,14 +2,23 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const page = readFileSync("app/commish/page.tsx", "utf8");
+const overview = readFileSync("components/CommissionerHubOverview.tsx", "utf8");
+const presentation = `${page}\n${overview}`;
 const shell = readFileSync("components/SiteShell.tsx", "utf8");
 const nav = readFileSync("lib/navigation/siteNavigation.ts", "utf8");
 
 assert.match(page, /import SiteShell from ['"]@\/components\/SiteShell['"]/);
 assert.match(page, /<SiteShell activePath="\/commish">/);
-assert.match(page, /Commissioner Hub/);
-assert.match(page, /River City Commissioner Hub/);
-assert.match(page, /League administration, finance, governance, maintenance, and draft operations\./);
+assert.match(presentation, /Commissioner Hub/);
+assert.match(overview, /model\.leagueIdentity\.leagueName/);
+assert.match(presentation, /League administration, finance, governance, maintenance, and draft operations\./);
+assert.match(overview, /Needs Attention/);
+assert.match(overview, /Weekly Operations/);
+assert.match(overview, /All caught up/);
+assert.match(overview, /<details/);
+assert.match(overview, /grid gap-3 md:grid-cols-2/);
+assert.match(overview, /sm:p-6/);
+assert.doesNotMatch(overview, /fetch\(|firestore|FieldValue|requireAuctionAccess/);
 assert.match(page, /requireAuctionAccess\("maintenance"\)/);
 
 const destinations = [

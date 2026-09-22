@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { FileText, Gavel, Grid3X3, Home, MessageSquare, Shield, WalletCards, Wrench } from 'lucide-react';
+import { FileText, Gavel, Grid3X3, Home, MessageSquare, WalletCards, Wrench } from 'lucide-react';
 import SiteShell from '@/components/SiteShell';
+import CommissionerHubOverview from '@/components/CommissionerHubOverview';
+import { getCommissionerHubModel } from '@/lib/commissionerHub';
 import {
   AuctionAccessError,
   requireAuctionAccess,
@@ -53,8 +55,9 @@ const hubLinks = [
 ];
 
 export default async function CommishPage() {
+  let session;
   try {
-    await requireAuctionAccess("maintenance");
+    session = await requireAuctionAccess("maintenance");
   } catch (error) {
     if (error instanceof AuctionAccessError) {
       redirect('/commish/login?returnTo=%2Fcommish');
@@ -63,29 +66,26 @@ export default async function CommishPage() {
     throw error;
   }
 
+  const hubModel = await getCommissionerHubModel({
+    viewer: {
+      canViewHub: true,
+      canViewFinance: true,
+      canViewLegislativeHub: true,
+      canViewSeasonOperations: true,
+      canViewWarRoom: session.access.canAccessWarRoom,
+      warRoomScope: session.access.role === "commissioner" ? "COMMISSIONER" : session.access.canAccessWarRoom ? "OWNER" : "NONE",
+      canViewLeagueIntelligence: true,
+      canViewOwnerFeedback: true,
+      canViewSystemHealth: true,
+    },
+  });
+
   return (
       <SiteShell activePath="/commish">
         <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-          <section className="mb-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 dark:border-white/10 dark:bg-[#121212]">
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-orange-600 text-white shadow-lg">
-                <Shield className="h-7 w-7" aria-hidden="true" />
-              </div>
-              <div>
-                <p className="mb-3 text-[10px] font-black uppercase tracking-[0.3em] text-orange-600">
-                  Commissioner Hub
-                </p>
-                <h1 className="text-4xl font-black uppercase italic tracking-tighter text-[#071a33] sm:text-5xl dark:text-white">
-                  River City Commissioner Hub
-                </h1>
-                <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-600 dark:text-gray-400">
-                  League administration, finance, governance, maintenance, and draft operations.
-                </p>
-              </div>
-            </div>
-          </section>
+          <CommissionerHubOverview model={hubModel} />
 
-          <section aria-labelledby="commissioner-destinations-heading">
+          <section aria-labelledby="commissioner-destinations-heading" className="mt-10">
             <div className="mb-4 flex items-end justify-between gap-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-orange-600">
