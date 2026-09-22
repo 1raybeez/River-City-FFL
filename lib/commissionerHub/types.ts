@@ -117,6 +117,11 @@ export interface SystemHealthSummary {
   readonly overallHealth: CapabilityHealth;
   readonly sourceFreshness: string | null;
   readonly automationScheduler: string | null;
+  readonly schedulerStatus?: CapabilityHealth;
+  readonly lastSuccessfulRunAt?: string | null;
+  readonly lastFailedRunAt?: string | null;
+  readonly failureReason?: string | null;
+  readonly affectedSystems?: readonly string[];
   readonly providerRuntime: string | null;
   readonly authIdentityDiagnostics: string | null;
   readonly finalizationDiagnostics: string | null;

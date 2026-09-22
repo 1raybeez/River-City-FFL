@@ -41,5 +41,10 @@ const product: LeagueIntelligenceProduct = { id: "PREDICTOR", label: "Predictor"
   const unhealthy = await getCommissionerHubModel({ sources: { weeklyOperations: async () => weekly, systemHealth: { overallHealth: "ERROR", issueCount: 2, destination: "/commish/health" } } });
   assert.equal(unhealthy.systemHealthSummary.issueCount, 2);
   assert.equal(unhealthy.systemHealthSummary.destination, "/commish/health");
+  const schedulerFailure = await getCommissionerHubModel({ sources: { weeklyOperations: async () => ({ ...weekly, sourceSnapshot: { health: { schedulerStatus: "ERROR", lastFailedRunAt: "2026-09-22T12:00:00.000Z", failureReason: "Operational run record conflict.", affectedSystems: ["POST_FINALITY"] } } }) } });
+  assert.equal(schedulerFailure.systemHealthSummary.overallHealth, "WARNING");
+  assert.equal(schedulerFailure.systemHealthSummary.schedulerStatus, "ERROR");
+  assert.equal(schedulerFailure.systemHealthSummary.lastFailedRunAt, "2026-09-22T12:00:00.000Z");
+  assert.equal(schedulerFailure.capabilities.find((capability) => capability.id === "SYSTEM_HEALTH")?.humanAction, "NONE");
   console.log("commissioner hub contract and adapter tests passed");
 })().catch((error) => { console.error(error); process.exitCode = 1; });

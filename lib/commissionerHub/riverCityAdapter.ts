@@ -148,18 +148,27 @@ export async function getCommissionerHubModel(options: GetCommissionerHubModelOp
     const health: CapabilityHealth | undefined = definition.id === "SEASON_OPERATIONS" && weeklyOperations.blockers.some((blocker) => blocker.state === "ACTIVE" && blocker.requiresHumanAction) ? "NEEDS_ATTENTION" : undefined;
     return makeCapability(definition, hubPermissions[definition.permissionKey] === true, count, status, health);
   });
+  const snapshotHealth = weeklyOperations.sourceSnapshot && typeof weeklyOperations.sourceSnapshot === "object" && "health" in weeklyOperations.sourceSnapshot
+    ? (weeklyOperations.sourceSnapshot as { health?: { schedulerStatus?: CapabilityHealth; lastSuccessfulRunAt?: string | null; lastFailedRunAt?: string | null; failureReason?: string | null; affectedSystems?: readonly string[] } }).health
+    : undefined;
+  const schedulerFailed = snapshotHealth?.schedulerStatus === "ERROR";
   const systemHealthSummary: SystemHealthSummary = {
-    overallHealth: source.systemHealth?.overallHealth ?? (weeklyOperations.blockers.some((blocker) => blocker.state === "ACTIVE") ? "WARNING" : "HEALTHY"),
+    overallHealth: source.systemHealth?.overallHealth ?? (schedulerFailed || weeklyOperations.blockers.some((blocker) => blocker.state === "ACTIVE") ? "WARNING" : "HEALTHY"),
     sourceFreshness: source.systemHealth?.sourceFreshness ?? source.sourceFreshness ?? weeklyOperations.freshness,
     automationScheduler: source.systemHealth?.automationScheduler ?? weeklyOperations.automationHealth,
+    schedulerStatus: source.systemHealth?.schedulerStatus ?? snapshotHealth?.schedulerStatus ?? "UNKNOWN",
+    lastSuccessfulRunAt: source.systemHealth?.lastSuccessfulRunAt ?? snapshotHealth?.lastSuccessfulRunAt ?? null,
+    lastFailedRunAt: source.systemHealth?.lastFailedRunAt ?? snapshotHealth?.lastFailedRunAt ?? null,
+    failureReason: source.systemHealth?.failureReason ?? snapshotHealth?.failureReason ?? null,
+    affectedSystems: source.systemHealth?.affectedSystems ?? snapshotHealth?.affectedSystems ?? [],
     providerRuntime: source.systemHealth?.providerRuntime ?? source.providerRuntime ?? "UNKNOWN",
     authIdentityDiagnostics: source.systemHealth?.authIdentityDiagnostics ?? source.authIdentityDiagnostics ?? "UNKNOWN",
     finalizationDiagnostics: source.systemHealth?.finalizationDiagnostics ?? weeklyOperations.finalizationState,
-    issueCount: source.systemHealth?.issueCount ?? attentionItems.length + weeklyOperations.blockers.filter((blocker) => blocker.state === "ACTIVE").length,
+    issueCount: source.systemHealth?.issueCount ?? attentionItems.length + weeklyOperations.blockers.filter((blocker) => blocker.state === "ACTIVE").length + (schedulerFailed ? 1 : 0),
     destination: source.systemHealth?.destination ?? "/commish/health",
   };
   const systemCapability: CommissionerCapability = {
-    id: "SYSTEM_HEALTH", label: "System Health", description: "Compact provider, scheduler, identity, and finalization diagnostics.", route: "/commish/health", availability: hubPermissions.canViewSystemHealth ? "ACTIVE" : "UNAVAILABLE", health: systemHealthSummary.overallHealth, seasonalRelevance: "IN_SEASON", humanAction: systemHealthSummary.issueCount > 0 ? "REVIEW" : "NONE", attentionCount: systemHealthSummary.issueCount, statusText: systemHealthSummary.issueCount ? `${systemHealthSummary.issueCount} issue(s)` : "Healthy", visibility: hubPermissions.canViewSystemHealth ? "VISIBLE" : "HIDDEN", permissionKey: "canViewSystemHealth",
+    id: "SYSTEM_HEALTH", label: "System Health", description: "Compact provider, scheduler, identity, and finalization diagnostics.", route: "/commish/health", availability: hubPermissions.canViewSystemHealth ? "ACTIVE" : "UNAVAILABLE", health: systemHealthSummary.overallHealth, seasonalRelevance: "IN_SEASON", humanAction: weeklyOperations.blockers.some((blocker) => blocker.state === "ACTIVE" && blocker.requiresHumanAction) || attentionItems.some((item) => item.sourceCapability === "SYSTEM_HEALTH") ? "REVIEW" : "NONE", attentionCount: systemHealthSummary.issueCount, statusText: systemHealthSummary.issueCount ? `${systemHealthSummary.issueCount} issue(s)` : "Healthy", visibility: hubPermissions.canViewSystemHealth ? "VISIBLE" : "HIDDEN", permissionKey: "canViewSystemHealth",
   };
   const allCapabilities = [...capabilities, systemCapability];
   return {

@@ -100,8 +100,10 @@ const espnEvent = (id: string, kickoffAt: string, overrides: Record<string, unkn
 (async () => {
 
 let calls = 0;
-const adapter = new EspnNflScheduleAdapter(async () => {
+let requestInit: RequestInit | undefined;
+const adapter = new EspnNflScheduleAdapter(async (_url, init) => {
   calls += 1;
+  requestInit = init;
   return new Response(JSON.stringify({ events: [
     espnEvent("same-time-1", "2099-09-20T17:00:00.000Z"),
     espnEvent("same-time-2", "2099-09-20T17:00:00.000Z", { broadcasts: [] }),
@@ -112,6 +114,8 @@ assert.equal(parsed.length, 2);
 assert.equal(parsed[0]?.status, "UPCOMING");
 assert.deepEqual(parsed[1]?.broadcasts, []);
 assert.equal(calls, 1);
+assert.equal((requestInit?.headers as Record<string, string>)["user-agent"], "river-city-ffl/1.0 (+https://rivercityffl.com)");
+assert.equal(requestInit?.cache, "no-store");
 assert.equal((await adapter.listGames(2099, 2)).length, 2);
 assert.equal(calls, 1);
 
@@ -161,6 +165,10 @@ assert.equal(unavailable.card, null);
 assert.equal(unavailable.unavailable, false);
 assert.equal(unavailable.reasonCode, "NO_EVENTS");
 assert.equal(unavailable.eventCount, 0);
+
+let selectedWeek: number | null = null;
+await getHomeNflGameCenter({ now: new Date("2026-09-20T18:00:00.000Z"), readLeagueState: async () => ({ season: "2026", week: 3 }), adapter: { listGames: async (_season, week) => { selectedWeek = week; return [game({ week: 3 })]; } } });
+assert.equal(selectedWeek, 3);
 
 const providerFailure = await getHomeNflGameCenter({ now: new Date("2026-09-20T18:00:00.000Z"), adapter: { listGames: async () => { throw new Error("provider failure"); } } });
 assert.equal(providerFailure.reasonCode, "ESPN_FETCH_FAILED");

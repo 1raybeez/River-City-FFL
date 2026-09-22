@@ -1,5 +1,6 @@
 import { EspnNflScheduleAdapter, KickoffScheduleUnavailableError, type NflKickoff, type NflGameStatus, type NflKickoffSchedule } from "@/lib/nflKickoffSchedule";
 import type { TeamCode } from "@/lib/types/Manager";
+import { getNFLState } from "@/lib/sleeper";
 
 export type HomeNflGameCard = Readonly<{
   gameId: string;
@@ -188,9 +189,14 @@ export function buildNflGameCenterState(games: readonly NflKickoff[], favoriteTe
   };
 }
 
-export async function getHomeNflGameCenter({ favoriteTeam, now = new Date(), adapter = new EspnNflScheduleAdapter() }: { favoriteTeam?: TeamCode | null; now?: Date; adapter?: NflKickoffSchedule } = {}): Promise<NflGameCenterState> {
-  const week = resolveNflWeek(now);
+export async function getHomeNflGameCenter({ favoriteTeam, now = new Date(), adapter = new EspnNflScheduleAdapter(), readLeagueState = getNFLState }: { favoriteTeam?: TeamCode | null; now?: Date; adapter?: NflKickoffSchedule; readLeagueState?: () => Promise<{ week?: number; season?: string }> } = {}): Promise<NflGameCenterState> {
   const season = now.getUTCFullYear();
+  const authoritativeState = await readLeagueState().catch(() => null);
+  const authoritativeSeason = Number(authoritativeState?.season);
+  const authoritativeWeek = authoritativeState?.week;
+  const week = authoritativeSeason === season && typeof authoritativeWeek === "number" && Number.isInteger(authoritativeWeek) && authoritativeWeek >= 1 && authoritativeWeek <= 18
+    ? authoritativeWeek
+    : resolveNflWeek(now);
   if (!week) return { card: null, unavailable: false, season, week: null };
   try {
     const games = await adapter.listGames(season, week);

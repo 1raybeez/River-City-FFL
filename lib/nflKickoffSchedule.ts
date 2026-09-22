@@ -31,6 +31,7 @@ export type NflKickoffSchedule = { listGames(season: number, week: number): Prom
 
 export const ESPN_NFL_SCHEDULE_SOURCE = "ESPN NFL scoreboard API";
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const ESPN_REQUEST_TIMEOUT_MS = 8_000;
 const scheduleCache = new Map<string, { expiresAt: number; games: readonly NflKickoff[] }>();
 
 /** Select an ESPN-labelled full-colour team mark, with the scoreboard logo as fallback. */
@@ -80,7 +81,16 @@ export class EspnNflScheduleAdapter implements NflKickoffSchedule {
     const cached = scheduleCache.get(key);
     if (cached && cached.expiresAt > this.now()) return cached.games;
     const url = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?limit=100&dates=${season}&seasontype=2&week=${week}`;
-    const response = await this.fetchImpl(url, { cache: "no-store" });
+    const response = await this.fetchImpl(url, {
+      cache: "no-store",
+      headers: {
+        accept: "application/json",
+        // ESPN can reject the minimal runtime fetch identity used by serverless
+        // runtimes even when the same URL succeeds in a browser.
+        "user-agent": "river-city-ffl/1.0 (+https://rivercityffl.com)",
+      },
+      signal: AbortSignal.timeout(ESPN_REQUEST_TIMEOUT_MS),
+    });
     if (!response.ok) throw new KickoffScheduleUnavailableError(`NFL schedule provider returned HTTP ${response.status}.`, "ESPN_HTTP_ERROR");
     const body = await response.json() as {
       events?: Array<{
@@ -104,12 +114,16 @@ export class EspnNflScheduleAdapter implements NflKickoffSchedule {
       }>;
     };
     const events = body.events ?? [];
-    const games = events.map(event => {
+    const validEvents = events.filter(event => {
       const eventSeason = event.season?.year;
       const eventWeek = event.week?.number;
       if ((eventSeason !== undefined && eventSeason !== season) || (eventWeek !== undefined && eventWeek !== week)) throw new KickoffScheduleUnavailableError("NFL schedule provider returned a season/week mismatch.", "PROVIDER_SEASON_WEEK_MISMATCH", events.length);
       const kickoffAt = event.date ?? event.competitions?.[0]?.date;
-      if (!event.id || !kickoffAt || Number.isNaN(Date.parse(kickoffAt))) throw new KickoffScheduleUnavailableError("NFL schedule provider returned incomplete kickoff data.", "INVALID_PROVIDER_PAYLOAD", events.length);
+      return Boolean(event.id && kickoffAt && !Number.isNaN(Date.parse(kickoffAt)));
+    });
+    if (events.length > 0 && validEvents.length === 0) throw new KickoffScheduleUnavailableError("NFL schedule provider returned no usable kickoff events.", "INVALID_PROVIDER_PAYLOAD", events.length);
+    const games = validEvents.map(event => {
+      const kickoffAt = event.date ?? event.competitions?.[0]?.date ?? "";
       const competition = event.competitions?.[0];
       const competitors = competition?.competitors ?? [];
       const buildTeam = (homeAway: "away" | "home") => {
@@ -132,7 +146,7 @@ export class EspnNflScheduleAdapter implements NflKickoffSchedule {
         week,
         kickoffAt: new Date(kickoffAt).toISOString(),
         source: ESPN_NFL_SCHEDULE_SOURCE,
-        gameId: event.id,
+        gameId: event.id!,
         awayTeam: buildTeam("away"),
         homeTeam: buildTeam("home"),
         status,
