@@ -114,7 +114,7 @@ assert.equal(parsed.length, 2);
 assert.equal(parsed[0]?.status, "UPCOMING");
 assert.deepEqual(parsed[1]?.broadcasts, []);
 assert.equal(calls, 1);
-assert.equal((requestInit?.headers as Record<string, string>)["user-agent"], "river-city-ffl/1.0 (+https://rivercityffl.com)");
+assert.deepEqual(requestInit?.headers, { accept: "application/json" });
 assert.equal(requestInit?.cache, "no-store");
 assert.equal((await adapter.listGames(2099, 2)).length, 2);
 assert.equal(calls, 1);
@@ -149,6 +149,13 @@ const failedAdapter = new EspnNflScheduleAdapter(async () => new Response("provi
 await assert.rejects(() => failedAdapter.listGames(2098, 2), KickoffScheduleUnavailableError);
 const emptyAdapter = new EspnNflScheduleAdapter(async () => new Response(JSON.stringify({ events: [] }), { status: 200 }), () => 2);
 await assert.rejects(() => emptyAdapter.listGames(2097, 2), KickoffScheduleUnavailableError);
+const malformedAdapter = new EspnNflScheduleAdapter(async () => new Response(JSON.stringify({ events: [{ id: "malformed", date: "not-a-date" }] }), { status: 200 }), () => 2.5);
+await assert.rejects(() => malformedAdapter.listGames(2097, 2), (error: unknown) => error instanceof KickoffScheduleUnavailableError && error.reasonCode === "INVALID_PROVIDER_PAYLOAD");
+const timeoutAdapter = new EspnNflScheduleAdapter(async (_url, init) => {
+  assert.ok(init?.signal, "request must carry timeout protection");
+  throw new DOMException("The operation timed out.", "TimeoutError");
+}, () => 2.75);
+await assert.rejects(() => timeoutAdapter.listGames(2097, 2), /timed out/);
 
 let recoveryCalls = 0;
 const recoveryAdapter = new EspnNflScheduleAdapter(async () => {

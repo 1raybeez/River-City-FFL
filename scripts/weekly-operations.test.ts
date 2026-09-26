@@ -4,7 +4,7 @@ import { evaluateFreezeWindow, getApprovedFreezeWindow } from "../lib/seasonSimu
 import { SETTLEMENT_FUNCTION_NAME, SETTLEMENT_SCHEDULE, SETTLEMENT_TIMEZONE } from "../lib/weeklyOperations";
 import { buildDurableEvidenceRecord, durableEvidencePath, MemoryImmutableEvidenceStore } from "../lib/seasonSimulator/durableEvidence";
 import { classifyWeeklyLifecycle, operationId } from "../lib/weeklyOperationsOrchestrator";
-import { isEquivalentWeeklyOperationRun, type WeeklyOperationRunDocument } from "../lib/weeklyOperationRunStore";
+import { classifyWeeklyOperationRun, isEquivalentWeeklyOperationRun, type WeeklyOperationRunDocument } from "../lib/weeklyOperationRunStore";
 
 assert.equal(MATCHUP_POLL_INTERVAL_MS, 60_000);
 assert.equal(shouldPollMatchups({ selectedWeek: 2, currentWeek: 2, leagueStatus: "in_season" }), true);
@@ -28,12 +28,34 @@ const storedRuns = new Map<string, WeeklyOperationRunDocument>();
 const safeCreate = (candidate: WeeklyOperationRunDocument) => {
   const existing = storedRuns.get(candidate.operationId);
   if (!existing) { storedRuns.set(candidate.operationId, candidate); return "CREATED" as const; }
-  if (isEquivalentWeeklyOperationRun(existing, candidate)) return "DUPLICATE" as const;
-  throw new Error("Operational run record conflict.");
+  return classifyWeeklyOperationRun([existing], candidate);
 };
 assert.equal(safeCreate(run), "CREATED");
 assert.equal(safeCreate({ ...run, startedAt: "2026-09-22T13:00:00.000Z", completedAt: "2026-09-22T13:01:00.000Z", schedulerInvocationId: "safe-retry", evidenceChecksums: ["actual"] }), "DUPLICATE");
-assert.throws(() => safeCreate({ ...run, result: "ERROR", error: "provider failure" }), /conflict/);
+assert.equal(classifyWeeklyOperationRun([{
+  ...run,
+  result: "PROVIDER_UNAVAILABLE",
+  error: "ESPN returned HTTP 403.",
+  writePerformed: false,
+  startedAt: "2026-09-22T12:00:00.000Z",
+  completedAt: "2026-09-22T12:01:00.000Z",
+}], {
+  ...run,
+  result: "PROVIDER_UNAVAILABLE",
+  error: "ESPN returned HTTP 503.",
+  writePerformed: false,
+  startedAt: "2026-09-22T13:00:00.000Z",
+  completedAt: "2026-09-22T13:01:00.000Z",
+  schedulerInvocationId: "failed-retry",
+}), "RETRY");
+assert.equal(classifyWeeklyOperationRun([{
+  ...run,
+  result: "PROVIDER_UNAVAILABLE",
+  error: "provider failure",
+  writePerformed: false,
+}], { ...run, result: "FROZEN", error: null, writePerformed: true }), "RETRY");
+assert.equal(classifyWeeklyOperationRun([run], { ...run, startedAt: "2026-09-22T14:00:00.000Z", completedAt: "2026-09-22T14:01:00.000Z", schedulerInvocationId: "duplicate-success" }), "DUPLICATE");
+assert.equal(classifyWeeklyOperationRun([run], { ...run, result: "FROZEN", error: null, writePerformed: true }), "CONFLICT");
 (async () => {
   const evidence = buildDurableEvidenceRecord({ season: 2026, week: 2, kind: "ACTUAL", source: "fixture", sourceChecksum: "abc", capturedAt: "now", payload: { immutable: true } });
   const evidencePath = durableEvidencePath(2026, 2, "ACTUAL", "abc");

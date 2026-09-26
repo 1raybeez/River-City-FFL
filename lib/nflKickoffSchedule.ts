@@ -85,9 +85,6 @@ export class EspnNflScheduleAdapter implements NflKickoffSchedule {
       cache: "no-store",
       headers: {
         accept: "application/json",
-        // ESPN can reject the minimal runtime fetch identity used by serverless
-        // runtimes even when the same URL succeeds in a browser.
-        "user-agent": "river-city-ffl/1.0 (+https://rivercityffl.com)",
       },
       signal: AbortSignal.timeout(ESPN_REQUEST_TIMEOUT_MS),
     });
