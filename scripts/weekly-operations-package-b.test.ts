@@ -53,6 +53,10 @@ async function main() {
   const protectedWeek1 = await runPostFinalityAutomation({ ...baseInput, week: 1, projection: projection(), existingActual: pathC.artifact, evidenceStore: store, readinessStore, draftStore: drafts });
   assert.equal(protectedWeek1.state, "WEEK_1_PATH_C_PROTECTED");
   assert.equal(protectedWeek1.writePerformed, false);
+  const unresolved = await runPostFinalityAutomation({ ...baseInput, playerDirectory: {}, evidenceStore: new MemoryImmutableEvidenceStore(), readinessStore: new MemoryCalibrationReadinessStore(), draftStore: new MemoryRecapDraftStore(), projection: projection() });
+  assert.equal(unresolved.state, "CONFLICT");
+  assert.match(unresolved.reason ?? "", /ACTUAL_IDENTITY_UNRESOLVED:p1/);
+  assert.equal(unresolved.writePerformed, false);
   console.log("weekly operations Package B tests passed");
 }
 

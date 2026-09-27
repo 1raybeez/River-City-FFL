@@ -339,6 +339,24 @@ export async function getSleeperPlayerIdentityDirectory(playerIds?: readonly (st
   const registry = getLocalPlayerIdentityRegistry();
   if (!playerIds) return registry;
   const requested = new Set(playerIds.filter((id): id is string | number => id !== null && id !== undefined).map(String));
+  const missing = [...requested].filter((playerId) => !registry[playerId]);
+  const fetched = await Promise.all(missing.map(async (playerId) => {
+    const player = await sleeperFetch<Record<string, unknown>>(`https://api.sleeper.app/v1/players/nfl/${playerId}`, { fresh: true });
+    if (!player) return null;
+    const position = readString(player.position) ?? readString(player.fantasy_positions && Array.isArray(player.fantasy_positions) ? player.fantasy_positions[0] : null);
+    const identity: SleeperPlayerIdentity = {
+      playerId,
+      displayName: [readString(player.first_name), readString(player.last_name)].filter(Boolean).join(" ") || null,
+      position,
+      nflTeam: readString(player.team),
+      injuryStatus: readString(player.injury_status),
+      avatar: readString(player.avatar),
+    };
+    return identity.displayName || identity.position ? identity : null;
+  }));
+  fetched.forEach((identity) => {
+    if (identity) registry[identity.playerId] = identity;
+  });
   return Object.fromEntries(Object.entries(registry).filter(([playerId]) => requested.has(playerId)));
 }
 // --- LEAGUE COMPONENT FETCHERS ---

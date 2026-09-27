@@ -43,7 +43,12 @@ function hasUnresolvedTie(matchups: readonly ActualEvidenceMatchup[]) {
 
 export async function runPostFinalityAutomation(input: PostFinalityInput): Promise<PostFinalityResult> {
   if (input.season === 2026 && input.week === 1) return base(input, "WEEK_1_PATH_C_PROTECTED", "Week 1 actual evidence is already captured as PATH C; no projection pair or rebuild is permitted.", { actual: input.existingActual ?? null });
-  const capture = input.existingActual ? { state: "CAPTURED" as const, artifact: input.existingActual, reason: null } : captureWeeklyActualEvidence(input);
+  let capture: ReturnType<typeof captureWeeklyActualEvidence>;
+  try {
+    capture = input.existingActual ? { state: "CAPTURED" as const, artifact: input.existingActual, reason: null } : captureWeeklyActualEvidence(input);
+  } catch (error) {
+    return base(input, "CONFLICT", error instanceof Error ? error.message : "Actual evidence identity resolution failed safely.");
+  }
   if (capture.state === "WAITING_FOR_FINALITY") return base(input, "WAITING_FOR_FINALITY", capture.reason);
   if (capture.state === "CONFLICT" || !capture.artifact) return base(input, "CONFLICT", capture.reason);
   const actual = capture.artifact;

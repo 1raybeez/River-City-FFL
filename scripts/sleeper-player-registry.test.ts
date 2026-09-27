@@ -17,6 +17,8 @@ assert.deepEqual(Object.keys(adp.rows[0]).includes("playerId"), true);
 assert.equal(Object.keys(tradePlayers.players).length, 163);
 assert.match(sleeperSource, /export interface SleeperPlayerIdentity/);
 assert.match(sleeperSource, /getSleeperPlayerIdentityDirectory\(playerIds\?/);
+assert.match(sleeperSource, /api\.sleeper\.app\/v1\/players\/nfl\/\$\{playerId\}/);
+assert.match(sleeperSource, /fresh: true/);
 assert.match(snapshotSource, /getSleeperPlayerIdentityDirectory\(playerIds\)/);
 assert.match(recommendedSource, /getSleeperPlayerIdentityDirectory\(snapshot\.picks\.map/);
 assert.match(metricsSource, /sleeper\.getSleeperPlayerIdentityDirectory\(\)/);

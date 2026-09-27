@@ -51,13 +51,17 @@ export async function executeWeeklyOperations(now = new Date(), apiKey = fantasy
   const lastScoredLeg = Number(league.settings?.last_scored_leg);
   const finalizedWeek = league.status === "complete" ? Math.max(1, week - 1) : Number.isInteger(lastScoredLeg) ? lastScoredLeg : null;
   if (finalizedWeek && finalizedWeek > 1 && finalizedWeek < week) {
-    const [finalRosters, finalMatchups, playerDirectory, projection, existingActual] = await Promise.all([
+    const [finalRosters, finalMatchups, projection, existingActual] = await Promise.all([
       getLeagueRosters(undefined, { fresh: true }),
       getMatchups(finalizedWeek),
-      getSleeperPlayerIdentityDirectory(),
       cloudArtifact(store, season, finalizedWeek, "PROJECTION"),
       cloudArtifact(store, season, finalizedWeek, "ACTUAL"),
     ]);
+    const playerIds = finalMatchups.flatMap(matchup => {
+      const players = matchup.players_points;
+      return players && typeof players === "object" && !Array.isArray(players) ? Object.keys(players) : [];
+    });
+    const playerDirectory = await getSleeperPlayerIdentityDirectory(playerIds);
     const postFinality = await runPostFinalityAutomation({ season, week: finalizedWeek, now, state: state as unknown as Record<string, unknown>, league: league as unknown as Record<string, unknown>, rosters: finalRosters as Array<Record<string, unknown>>, matchups: finalMatchups as never, playerDirectory, projection: projection as never, existingActual: existingActual as never, evidenceStore: store, readinessStore: new CloudStorageCalibrationReadinessStore(), draftStore: new CloudStorageRecapDraftStore() });
     if (postFinality.state !== "WAITING_FOR_FINALITY" && postFinality.state !== "WEEK_1_PATH_C_PROTECTED") {
       const postOperation = buildRunRecord({ season, week: finalizedWeek, operation: "POST_FINALITY", result: postFinality.state, startedAt: now.toISOString(), completedAt: new Date().toISOString(), retryCount: 0, error: postFinality.reason });
@@ -74,5 +78,5 @@ export async function executeWeeklyOperations(now = new Date(), apiKey = fantasy
 export const runWeeklyOperations = onSchedule({ schedule: WEEKLY_OPERATIONS_SCHEDULE, timeZone: WEEKLY_OPERATIONS_TIMEZONE, region: "us-central1", retryCount: 0, secrets: [fantasyProsApiKey] }, async event => {
   const result = await executeWeeklyOperations(new Date(), fantasyProsApiKey.value(), event.context?.eventId ?? "scheduler");
   logger.info("River City weekly operations run", { state: result.state, season: result.season, week: result.week, writePerformed: "writePerformed" in result ? result.writePerformed : false });
-  if (["CONFLICT", "ERROR", "MISSED", "FREEZE_COVERAGE_INCOMPLETE"].includes(result.state)) throw new Error(`Weekly operations ${result.state}: ${result.reason ?? "review required"}`);
+  if (["CONFLICT", "ERROR", "FREEZE_COVERAGE_INCOMPLETE"].includes(result.state)) throw new Error(`Weekly operations ${result.state}: ${result.reason ?? "review required"}`);
 });
