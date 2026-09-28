@@ -30,6 +30,6 @@ assert.match(login, /router\.replace\(returnTo\)/);
 assert.match(financeLayout, /returnTo=%2Fcommish%2Ffinance%2F2026/);
 assert.match(auctionPage, /returnTo=%2Fcommish%2Fauction/);
 assert.doesNotMatch(commish, /redirect\('\/commish\/auction\/login'\)/);
-assert.match(history, /Hall of Fame/);
+assert.match(history, /HALL OF FAME/);
 
 console.log("Site-shell navigation checks passed.");

@@ -31,6 +31,26 @@ function HistorySelector({ activeView }: { activeView: HistoryView }) {
   </nav>;
 }
 
+function LeagueAnnals() {
+  return <section className="mt-10 rounded-3xl border border-orange-200 bg-orange-50/60 p-6 sm:p-8" aria-labelledby="league-annals-title">
+    <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-700">The League Annals</p>
+    <h2 id="league-annals-title" className="mt-2 text-3xl font-black tracking-tight">Our History: From Roots to RVA</h2>
+    <div className="mt-5 space-y-5 text-base leading-7 text-slate-700">
+      <p><strong>Area 10 FFL</strong> was born in 2011, founded by a small group from Area 10 church with a simple goal: to create a community beyond Sunday services and small groups. It was a space for new members and longtime attendees to connect over a shared passion for fantasy football.</p>
+      <p>As time passed, life happened. Core members moved away, but the bond forged over draft picks and weekly matchups held firm. In 2019, to keep our league together and honor our enduring friendships, we decided to rebrand. We shed the church affiliation and became <strong>River City FFL</strong>, a name that proudly ties us to the heart of Richmond, Virginia—the RVA.</p>
+    </div>
+    <div className="mt-7 rounded-2xl border border-orange-200 bg-white/80 p-5">
+      <h3 className="text-xl font-black italic underline decoration-orange-600 underline-offset-4">The Stakes</h3>
+      <div className="mt-4 space-y-5 text-base leading-7 text-slate-700">
+        <p>Every season, our managers compete for a place in the record books. The ultimate champion walks away with a <strong>$219 payout</strong>, a custom championship ring, and all the bragging rights they can handle. So far, <strong>Tommy Moore</strong> is the one to beat, holding an impressive five league titles.</p>
+        <p>But not every story has a happy ending. Our league has its own unique form of punishment: the Toilet Bowl. While the league's loser bracket dates back even further, the Toilet Bowl became an official River City tradition in 2022, ensuring that finishing last comes with more than just a bruised ego. Today's unfortunate loser is tasked with writing a cringe-worthy apology letter to the league. And no one knows the pain of the Toilet Bowl better than Landon Elliott, who holds the record with three trips to the bottom—in 2018, 2019, and 2023.</p>
+      </div>
+    </div>
+    <p className="mt-7 italic font-medium leading-7 text-slate-700">While the competition gets more intense each year, our core values of community and friendly rivalry remain the same. The trophy, the payout, and the shame are all just bonuses to the friendships we've built along the way.</p>
+    <Link href="/league-info/trophy-room" className={`mt-6 inline-flex ${linkClass}`}>Visit the Trophy Room <span aria-hidden="true">→</span></Link>
+  </section>;
+}
+
 type RecentChampionship = { season: number; champions: string[]; teams: string[] };
 function Overview({ completedSeasons, uniqueChampionCount, recentChampionships }: { completedSeasons: number[]; uniqueChampionCount: number; recentChampionships: RecentChampionship[] }) {
   return <>
@@ -42,6 +62,7 @@ function Overview({ completedSeasons, uniqueChampionCount, recentChampionships }
     </div></section>
     <section className="mt-10" aria-labelledby="recent-champions-title"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-widest text-amber-700">The record</p><h2 id="recent-champions-title" className="mt-1 text-2xl font-black">Recent champions</h2></div><p className="text-sm text-slate-600">Completed seasons only</p></div><div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-5">{recentChampionships.map(({ season, champions, teams }) => <article key={season} className={cardClass}><p className="text-sm font-black text-slate-500">{season}</p><h3 className="mt-2 text-lg font-black">{champions.length > 1 ? "CO-CHAMPIONS" : "Champion"}</h3><p className="mt-2 font-bold text-slate-900">{champions.join(" · ")}</p>{teams.length > 0 && <p className="mt-2 text-xs text-slate-500">{teams.join(" · ")}</p>}</article>)}</div></section>
     <section className="mt-10" aria-labelledby="eras-title"><h2 id="eras-title" className="text-2xl font-black">League eras</h2><div className="mt-4 grid gap-3 sm:grid-cols-2"><div className={cardClass}><h3 className="font-black">2011–2021</h3><p className="mt-2 text-sm leading-6 text-slate-600">{getHistoricalPostseasonEra(2011).toUpperCase()}</p></div><div className={cardClass}><h3 className="font-black">2022–Present</h3><p className="mt-2 text-sm leading-6 text-slate-600">{getHistoricalPostseasonEra(2022).toUpperCase()}</p></div></div><div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-5"><p className="text-xs font-black uppercase tracking-widest text-slate-500">Historical data coverage</p><p className="mt-2 text-sm leading-6 text-slate-600">{getHistoryMatchupCoverageNote()} Final standings and championship history are available back to 2011.</p></div></section>
+    <LeagueAnnals />
     <ExploreMoreHistory />
   </>;
 }
