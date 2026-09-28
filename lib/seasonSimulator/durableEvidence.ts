@@ -6,11 +6,50 @@ export const DURABLE_EVIDENCE_SCHEMA = "river-city-durable-evidence-v1" as const
 export type DurableEvidenceRecord = Readonly<{ schemaVersion: typeof DURABLE_EVIDENCE_SCHEMA; season: number; week: number; kind: "PROJECTION" | "ACTUAL" | "RESIDUAL"; source: string; sourceChecksum: string; capturedAt: string; payload: unknown; recordChecksum: string }>;
 export type ImmutableEvidenceStore = { read(path: string): Promise<DurableEvidenceRecord | null>; create(path: string, record: DurableEvidenceRecord): Promise<"CREATED" | "DUPLICATE"> };
 
+const VOLATILE_EVIDENCE_KEYS = new Set([
+  "capturedAt",
+  "generatedAt",
+  "processedAt",
+  "runtimeTimestamp",
+  "runtimeAt",
+  "invocationId",
+  "invocationID",
+  "schedulerInvocationId",
+  "schedulerInvocationID",
+  "schedulerId",
+  "schedulerID",
+  "startedAt",
+  "completedAt",
+]);
+
+function canonicalEvidenceValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalEvidenceValue);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([key]) => !VOLATILE_EVIDENCE_KEYS.has(key))
+      .map(([key, entry]) => [key, canonicalEvidenceValue(entry)]),
+  );
+}
+
+/** Fingerprint substantive evidence while retaining audit metadata in storage. */
+export function canonicalEvidenceFingerprint(record: Omit<DurableEvidenceRecord, "recordChecksum">): string {
+  return checksum({
+    schemaVersion: record.schemaVersion,
+    season: record.season,
+    week: record.week,
+    kind: record.kind,
+    source: record.source,
+    sourceChecksum: record.sourceChecksum,
+    payload: canonicalEvidenceValue(record.payload),
+  });
+}
+
 export function durableEvidencePath(season: number, week: number, kind: DurableEvidenceRecord["kind"], sourceChecksum: string) { return `${DURABLE_EVIDENCE_BUCKET_PREFIX}/${season}/week-${String(week).padStart(2, "0")}/${kind.toLowerCase()}-${sourceChecksum}.json`; }
 
 export function buildDurableEvidenceRecord(input: Omit<DurableEvidenceRecord, "schemaVersion" | "recordChecksum">): DurableEvidenceRecord {
   const base = { ...input, schemaVersion: DURABLE_EVIDENCE_SCHEMA } as Omit<DurableEvidenceRecord, "recordChecksum">;
-  return { ...base, recordChecksum: checksum(base) };
+  return { ...base, recordChecksum: canonicalEvidenceFingerprint(base) };
 }
 
 export class MemoryImmutableEvidenceStore implements ImmutableEvidenceStore {
@@ -19,7 +58,7 @@ export class MemoryImmutableEvidenceStore implements ImmutableEvidenceStore {
   async create(path: string, record: DurableEvidenceRecord) {
     const existing = this.records.get(path);
     if (existing) {
-      if (existing.recordChecksum !== record.recordChecksum) throw new Error("Evidence checksum conflict.");
+      if (canonicalEvidenceFingerprint(existing) !== canonicalEvidenceFingerprint(record)) throw new Error("Evidence checksum conflict.");
       return "DUPLICATE" as const;
     }
     this.records.set(path, record);
@@ -59,7 +98,7 @@ export class CloudStorageImmutableEvidenceStore implements ImmutableEvidenceStor
       return "CREATED" as const;
     } catch (error) {
       const existing = await this.read(path);
-      if (existing?.recordChecksum === record.recordChecksum) return "DUPLICATE" as const;
+      if (existing && canonicalEvidenceFingerprint(existing) === canonicalEvidenceFingerprint(record)) return "DUPLICATE" as const;
       if (existing) throw new Error("Evidence checksum conflict.");
       throw error;
     }
@@ -74,6 +113,8 @@ export async function listDurableEvidence(store: { getFiles(options: { prefix: s
 
 export function validateDurableEvidenceRecord(record: DurableEvidenceRecord) {
   const base = Object.fromEntries(Object.entries(record).filter(([key]) => key !== "recordChecksum"));
-  if (record.schemaVersion !== DURABLE_EVIDENCE_SCHEMA || record.recordChecksum !== checksum(base)) throw new Error("Durable evidence checksum validation failed.");
+  const legacyChecksum = checksum(base);
+  const canonicalChecksum = canonicalEvidenceFingerprint(base as Omit<DurableEvidenceRecord, "recordChecksum">);
+  if (record.schemaVersion !== DURABLE_EVIDENCE_SCHEMA || ![legacyChecksum, canonicalChecksum].includes(record.recordChecksum)) throw new Error("Durable evidence checksum validation failed.");
   return record;
 }

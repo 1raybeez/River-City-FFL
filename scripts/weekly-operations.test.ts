@@ -3,7 +3,8 @@ import fs from "node:fs";
 import { MATCHUP_POLL_INTERVAL_MS, shouldPollMatchups } from "../lib/matchupsPolling";
 import { evaluateFreezeWindow, getApprovedFreezeWindow } from "../lib/seasonSimulator/freezeWindow";
 import { SETTLEMENT_FUNCTION_NAME, SETTLEMENT_SCHEDULE, SETTLEMENT_TIMEZONE } from "../lib/weeklyOperations";
-import { buildDurableEvidenceRecord, durableEvidencePath, MemoryImmutableEvidenceStore } from "../lib/seasonSimulator/durableEvidence";
+import { buildDurableEvidenceRecord, canonicalEvidenceFingerprint, durableEvidencePath, MemoryImmutableEvidenceStore } from "../lib/seasonSimulator/durableEvidence";
+import { checksum } from "../lib/seasonSimulator/evidenceSnapshot";
 import { classifyWeeklyLifecycle, operationId } from "../lib/weeklyOperationsOrchestrator";
 import { classifyWeeklyOperationRun, isEquivalentWeeklyOperationRun, type WeeklyOperationRunDocument } from "../lib/weeklyOperationRunStore";
 
@@ -62,11 +63,22 @@ assert.equal(classifyWeeklyOperationRun([{
 assert.equal(classifyWeeklyOperationRun([run], { ...run, startedAt: "2026-09-22T14:00:00.000Z", completedAt: "2026-09-22T14:01:00.000Z", schedulerInvocationId: "duplicate-success" }), "DUPLICATE");
 assert.equal(classifyWeeklyOperationRun([run], { ...run, result: "FROZEN", error: null, writePerformed: true }), "CONFLICT");
 (async () => {
-  const evidence = buildDurableEvidenceRecord({ season: 2026, week: 2, kind: "ACTUAL", source: "fixture", sourceChecksum: "abc", capturedAt: "now", payload: { immutable: true } });
+  const evidence = buildDurableEvidenceRecord({ season: 2026, week: 2, kind: "ACTUAL", source: "fixture", sourceChecksum: "abc", capturedAt: "2026-09-27T19:00:00.000Z", payload: { immutable: true, schedulerInvocationId: "first" } });
   const evidencePath = durableEvidencePath(2026, 2, "ACTUAL", "abc");
   const store = new MemoryImmutableEvidenceStore();
   assert.equal(await store.create(evidencePath, evidence), "CREATED");
-  assert.equal(await store.create(evidencePath, evidence), "DUPLICATE");
-  await assert.rejects(() => store.create(evidencePath, { ...evidence, payload: { conflict: true }, recordChecksum: "different" }), /conflict/);
+  const retry = buildDurableEvidenceRecord({ season: 2026, week: 2, kind: "ACTUAL", source: "fixture", sourceChecksum: "abc", capturedAt: "2026-09-27T20:00:00.000Z", payload: { immutable: true, schedulerInvocationId: "retry" } });
+  assert.equal(canonicalEvidenceFingerprint(evidence), canonicalEvidenceFingerprint(retry));
+  assert.equal(await store.create(evidencePath, retry), "DUPLICATE");
+  const reordered = buildDurableEvidenceRecord({ season: 2026, week: 2, kind: "ACTUAL", source: "fixture", sourceChecksum: "abc", capturedAt: "2026-09-27T21:00:00.000Z", payload: { schedulerInvocationId: "third", immutable: true } });
+  assert.equal(await store.create(evidencePath, reordered), "DUPLICATE");
+  await assert.rejects(() => store.create(evidencePath, buildDurableEvidenceRecord({ season: 2026, week: 2, kind: "ACTUAL", source: "fixture", sourceChecksum: "changed-score", capturedAt: "2026-09-27T20:00:00.000Z", payload: { immutable: true } })), /conflict/);
+  await assert.rejects(() => store.create(evidencePath, buildDurableEvidenceRecord({ season: 2026, week: 2, kind: "ACTUAL", source: "fixture", sourceChecksum: "abc", capturedAt: "2026-09-27T20:00:00.000Z", payload: { immutable: false } })), /conflict/);
+  const legacyBase = { season: 2026, week: 2, kind: "ACTUAL" as const, source: "legacy", sourceChecksum: "legacy", capturedAt: "2026-09-27T19:00:00.000Z", payload: { immutable: true }, schemaVersion: "river-city-durable-evidence-v1" as const };
+  const legacy = { ...legacyBase, recordChecksum: checksum(legacyBase) };
+  const legacyPath = durableEvidencePath(2026, 2, "ACTUAL", "legacy");
+  assert.equal(await store.create(legacyPath, legacy), "CREATED");
+  const legacyRetry = buildDurableEvidenceRecord({ ...legacyBase, capturedAt: "2026-09-27T20:00:00.000Z", payload: { immutable: true } });
+  assert.equal(await store.create(legacyPath, legacyRetry), "DUPLICATE");
   console.log("weekly operations control-plane tests passed");
 })().catch(error => { console.error(error); process.exitCode = 1; });

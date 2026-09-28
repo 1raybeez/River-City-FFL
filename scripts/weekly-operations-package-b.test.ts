@@ -47,8 +47,9 @@ async function main() {
   assert.equal(first.writePerformed, true);
   assert.equal(first.draft?.status, "REVIEW_DRAFT");
   assert.equal(first.draft?.matchups.length, 6);
-  const retry = await runPostFinalityAutomation({ ...baseInput, projection: projection(), existingActual: first.actual, existingResiduals: [first.residual!], existingReadiness: first.readiness, existingDraft: first.draft, evidenceStore: store, readinessStore, draftStore: drafts });
+  const retry = await runPostFinalityAutomation({ ...baseInput, now: new Date("2026-09-22T18:00:00.000Z"), projection: projection(), existingActual: first.actual, existingResiduals: [first.residual!], existingReadiness: first.readiness, existingDraft: first.draft, evidenceStore: store, readinessStore, draftStore: drafts });
   assert.equal(retry.state, "RECAP_DRAFT_READY");
+  assert.equal(retry.writePerformed, false);
   assert.equal(retry.draft?.draftChecksum, first.draft?.draftChecksum);
   const protectedWeek1 = await runPostFinalityAutomation({ ...baseInput, week: 1, projection: projection(), existingActual: pathC.artifact, evidenceStore: store, readinessStore, draftStore: drafts });
   assert.equal(protectedWeek1.state, "WEEK_1_PATH_C_PROTECTED");
